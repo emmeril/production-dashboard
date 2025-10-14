@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Production Board</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .login-container {
+            background-color: #222;
+            padding: 40px;
+            border-radius: 8px;
+            width: 400px;
+            margin: 100px auto;
+            text-align: center;
+        }
+        
+        .login-container h2 {
+            color: #FFD700;
+            margin-bottom: 30px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #fff;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            background-color: #333;
+            color: #fff;
+            border: 1px solid #555;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        
+        .btn-login {
+            background-color: #FFC000;
+            color: #000;
+            border: none;
+            padding: 12px 30px;
+            font-size: 1.2em;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 10px;
+        }
+        
+        .error-message {
+            color: #ff4444;
+            margin-top: 10px;
+            background-color: #332222;
+            padding: 10px;
+            border-radius: 4px;
+            display: none;
+        }
+        
+        .user-info {
+            color: #FFD700;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <h2>PRODUCTION BOARD LOGIN</h2>
+        
+        <div id="user-info" class="user-info" style="display: none;">
+            Anda sudah login sebagai: <span id="current-username"></span>
+        </div>
+        
+        <form id="login-form">
+            <div class="form-group">
+                <label for="username">Username:</label>
+                <input type="text" id="username" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Password:</label>
+                <input type="password" id="password" required>
+            </div>
+            
+            <button type="submit" class="btn-login">LOGIN</button>
+        </form>
+        
+        <div id="error-message" class="error-message"></div>
+        
+        <div style="margin-top: 30px; color: #888; text-align: left;">
+            <h4>Test Accounts:</h4>
+            <p><strong>Admin:</strong> admin / admin123</p>
+            <p><strong>Operator F1-5A:</strong> operator1 / password123</p>
+            <p><strong>Operator F1-5B:</strong> operator2 / password123</p>
+            <p><strong>Operator F1-5C:</strong> operator3 / password123</p>
+        </div>
+    </div>
+
+    <script>
+        // Cek apakah user sudah login
+        async function checkCurrentUser() {
+            try {
+                const response = await fetch('/api/current-user');
+                if (response.ok) {
+                    const user = await response.json();
+                    document.getElementById('user-info').style.display = 'block';
+                    document.getElementById('current-username').textContent = user.name;
+                    document.getElementById('login-form').style.display = 'none';
+                    
+                    // Redirect setelah 2 detik
+                    setTimeout(() => {
+                        if (user.role === 'admin') {
+                            window.location.href = '/';
+                        } else {
+                            window.location.href = `/line/${user.line}`;
+                        }
+                    }, 2000);
+                }
+            } catch (error) {
+                console.error('Error checking user:', error);
+            }
+        }
+
+        // Login function
+        document.getElementById('login-form').addEventListener('submit', async function(event) {
+            event.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const errorMessage = document.getElementById('error-message');
+
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    // Login successful
+                    if (data.user.role === 'admin') {
+                        window.location.href = '/';
+                    } else {
+                        window.location.href = `/line/${data.user.line}`;
+                    }
+                } else {
+                    errorMessage.textContent = data.error;
+                    errorMessage.style.display = 'block';
+                }
+            } catch (error) {
+                errorMessage.textContent = 'Login failed. Please try again.';
+                errorMessage.style.display = 'block';
+            }
+        });
+
+        // Check current user on page load
+        checkCurrentUser();
+    </script>
+</body>
+</html>

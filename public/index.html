@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Production Dashboard</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body class="login-body">
+    <div class="login-container">
+        <div class="login-header">
+            <h1>PRODUCTION DASHBOARD</h1>
+            <p>Sistem Monitoring Produksi</p>
+        </div>
+        
+        <div class="login-form-container">
+            <h2>LOGIN</h2>
+            
+            <div id="user-info" class="user-info" style="display: none;">
+                <p>Anda sudah login sebagai: <strong id="current-username"></strong></p>
+                <p>Redirecting...</p>
+            </div>
+            
+            <form id="login-form">
+                <div class="form-group">
+                    <label for="username">Username:</label>
+                    <input type="text" id="username" required placeholder="Masukkan username">
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Password:</label>
+                    <input type="password" id="password" required placeholder="Masukkan password">
+                </div>
+                
+                <button type="submit" class="btn-login">MASUK</button>
+            </form>
+            
+            <div id="error-message" class="error-message"></div>
+        </div>
+        
+        <div class="login-footer">
+            <h3>Akun Testing:</h3>
+            <div class="test-accounts">
+                <div class="account">
+                    <strong>Admin:</strong> admin / admin123
+                </div>
+                <div class="account">
+                    <strong>Operator F1-5A:</strong> operator1 / password123
+                </div>
+                <div class="account">
+                    <strong>Operator F1-5B:</strong> operator2 / password123
+                </div>
+                <div class="account">
+                    <strong>Operator F1-5C:</strong> operator3 / password123
+                </div>
+            </div>
+            <p class="note">* Setiap operator hanya bisa mengakses line masing-masing</p>
+        </div>
+    </div>
+
+    <script src="/login.js"></script>
+</body>
+</html>

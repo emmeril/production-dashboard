@@ -2,16 +2,15 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const session = require('express-session');
+const XLSX = require('xlsx');
 
 const app = express();
 const port = 3000;
 
-// Middleware - HARUS di awal
+// Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-// Static file serving - FIXED
-app.use('/public', express.static(path.join(__dirname, 'public')));
+app.use(express.static('public'));
 
 // Session middleware
 app.use(session({
@@ -42,6 +41,7 @@ function initializeDataFiles() {
           "achivementPercentage": 600.00,
           "defectRatePercentage": 2.89,
           "hourly_data": [
+            { "hour": "07:00 - 08:00", "output": 80, "defect": 1 },
             { "hour": "08:00 - 09:00", "output": 100, "defect": 2 },
             { "hour": "09:00 - 10:00", "output": 120, "defect": 3 },
             { "hour": "10:00 - 11:00", "output": 110, "defect": 1 },
@@ -77,15 +77,16 @@ function initializeDataFiles() {
           "achivementPercentage": 625.00,
           "defectRatePercentage": 2.40,
           "hourly_data": [
-            { "hour": "08:00 - 09:00", "output": 80, "defect": 1 },
-            { "hour": "09:00 - 10:00", "output": 90, "defect": 2 },
-            { "hour": "10:00 - 11:00", "output": 85, "defect": 1 },
-            { "hour": "11:00 - 12:00", "output": 95, "defect": 3 },
-            { "hour": "12:00 - 13:00", "output": 0, "defect": 0 },
-            { "hour": "13:00 - 14:00", "output": 100, "defect": 2 },
-            { "hour": "14:00 - 15:00", "output": 110, "defect": 4 },
-            { "hour": "15:00 - 16:00", "output": 95, "defect": 2 },
-            { "hour": "16:00 - 17:00", "output": 95, "defect": 3 }
+            { "hour": "07:00 - 08:00", "output": 70, "defect": 1 },
+            { "hour": "08:00 - 09:00", "output": 90, "defect": 2 },
+            { "hour": "09:00 - 10:00", "output": 85, "defect": 1 },
+            { "hour": "10:00 - 11:00", "output": 95, "defect": 3 },
+            { "hour": "11:00 - 12:00", "output": 0, "defect": 0 },
+            { "hour": "12:00 - 13:00", "output": 100, "defect": 2 },
+            { "hour": "13:00 - 14:00", "output": 110, "defect": 4 },
+            { "hour": "14:00 - 15:00", "output": 95, "defect": 2 },
+            { "hour": "15:00 - 16:00", "output": 95, "defect": 3 },
+            { "hour": "16:00 - 17:00", "output": 90, "defect": 2 }
           ],
           "operators": [
             {
@@ -112,6 +113,7 @@ function initializeDataFiles() {
           "achivementPercentage": 611.11,
           "defectRatePercentage": 2.91,
           "hourly_data": [
+            { "hour": "07:00 - 08:00", "output": 100, "defect": 2 },
             { "hour": "08:00 - 09:00", "output": 120, "defect": 3 },
             { "hour": "09:00 - 10:00", "output": 130, "defect": 4 },
             { "hour": "10:00 - 11:00", "output": 125, "defect": 2 },
@@ -471,6 +473,111 @@ app.delete('/api/operators/:lineName/:id', requireLogin, requireAdmin, (req, res
   res.json({ message: 'Operator deleted successfully.' });
 });
 
+// Export Excel Function
+function generateExcelData(lineData, lineName) {
+  const workbook = XLSX.utils.book_new();
+  
+  // Sheet 1: Summary Data
+  const summaryData = [
+    ['PRODUCTION REPORT SUMMARY'],
+    [],
+    ['Line', lineName],
+    ['Label/Week', lineData.labelWeek],
+    ['Model', lineData.model],
+    ['Date', lineData.date],
+    ['Target', lineData.target],
+    ['Output/Hari', lineData.outputDay],
+    ['Defect/Hari', lineData.defectDay],
+    ['Achievement (%)', lineData.achivementPercentage],
+    ['Defect Rate (%)', lineData.defectRatePercentage],
+    [],
+    ['Generated at', new Date().toLocaleString('id-ID')]
+  ];
+  
+  const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
+  XLSX.utils.book_append_sheet(workbook, summarySheet, 'Summary');
+  
+  // Sheet 2: Hourly Data
+  const hourlyData = [
+    ['HOURLY PRODUCTION DATA'],
+    [],
+    ['Jam', 'Output', 'Defect', 'Defect Rate (%)']
+  ];
+  
+  lineData.hourly_data.forEach(hour => {
+    const defectRate = hour.output > 0 ? ((hour.defect / hour.output) * 100).toFixed(2) : '0.00';
+    hourlyData.push([hour.hour, hour.output, hour.defect, defectRate]);
+  });
+  
+  // Add totals
+  hourlyData.push([]);
+  hourlyData.push(['TOTAL', lineData.outputDay, lineData.defectDay, lineData.defectRatePercentage + '%']);
+  
+  const hourlySheet = XLSX.utils.aoa_to_sheet(hourlyData);
+  XLSX.utils.book_append_sheet(workbook, hourlySheet, 'Hourly Data');
+  
+  // Sheet 3: Operator Data
+  if (lineData.operators && lineData.operators.length > 0) {
+    const operatorData = [
+      ['OPERATOR PERFORMANCE'],
+      [],
+      ['No', 'Nama Operator', 'Posisi', 'Target', 'Output', 'Defect', 'Efisiensi (%)', 'Status']
+    ];
+    
+    lineData.operators.forEach((operator, index) => {
+      operatorData.push([
+        index + 1,
+        operator.name,
+        operator.position,
+        operator.target,
+        operator.output,
+        operator.defect,
+        operator.efficiency,
+        operator.status === 'active' ? 'Aktif' : operator.status === 'break' ? 'Istirahat' : 'Off'
+      ]);
+    });
+    
+    const operatorSheet = XLSX.utils.aoa_to_sheet(operatorData);
+    XLSX.utils.book_append_sheet(workbook, operatorSheet, 'Operator Data');
+  }
+  
+  return workbook;
+}
+
+// Export Excel Endpoint
+app.get('/api/export/:lineName', requireLogin, (req, res) => {
+  const user = req.session.user;
+  const lineName = req.params.lineName;
+
+  if (user.role === 'operator' && user.line !== lineName) {
+    return res.status(403).json({ error: 'Access denied to this line' });
+  }
+
+  const data = readProductionData();
+  const lineData = data.lines[lineName];
+
+  if (!lineData) {
+    return res.status(404).json({ error: 'Line not found' });
+  }
+
+  try {
+    const workbook = generateExcelData(lineData, lineName);
+    
+    // Generate buffer
+    const excelBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+    
+    // Set headers
+    const fileName = `Production_Report_${lineName}_${new Date().toISOString().split('T')[0]}.xlsx`;
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    
+    res.send(excelBuffer);
+  } catch (error) {
+    console.error('Export error:', error);
+    res.status(500).json({ error: 'Failed to generate Excel file' });
+  }
+});
+
 // Page Routes
 app.get('/', (req, res) => {
   if (req.session.user) {
@@ -507,6 +614,19 @@ app.get('/line/:lineName', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'operator.html'));
 });
 
+app.get('/input/:lineName', (req, res) => {
+  if (!req.session.user) {
+    return res.redirect('/');
+  }
+
+  const lineName = req.params.lineName;
+  if (req.session.user.role === 'operator' && req.session.user.line !== lineName) {
+    return res.status(403).send('Access denied to this line');
+  }
+
+  res.sendFile(path.join(__dirname, 'public', 'input.html'));
+});
+
 // Static file routes as backup
 app.get('/style.css', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'style.css'));
@@ -524,6 +644,10 @@ app.get('/operator.js', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'operator.js'));
 });
 
+app.get('/input.js', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'input.js'));
+});
+
 // Initialize and Start Server
 initializeDataFiles();
 
@@ -538,9 +662,9 @@ app.listen(port, () => {
   console.log(`- Operator F1-5B: operator2 / password123`);
   console.log(`- Operator F1-5C: operator3 / password123`);
   console.log(`=================================`);
-  console.log(`URL Khusus per Line:`);
-  console.log(`- Line F1-5A: http://localhost:${port}/line/F1-5A`);
-  console.log(`- Line F1-5B: http://localhost:${port}/line/F1-5B`);
-  console.log(`- Line F1-5C: http://localhost:${port}/line/F1-5C`);
+  console.log(`URL Khusus:`);
+  console.log(`- Dashboard Admin: http://localhost:${port}/admin`);
+  console.log(`- Dashboard Output: http://localhost:${port}/line/[lineName]`);
+  console.log(`- Input Data: http://localhost:${port}/input/[lineName]`);
   console.log(`=================================`);
 });

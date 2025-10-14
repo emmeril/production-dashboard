@@ -6,7 +6,7 @@ let currentLine = '';
 // Check authentication dan ambil data line
 async function initializeOperator() {
     try {
-        console.log('Initializing operator...');
+        console.log('Initializing operator dashboard...');
         const response = await fetch('/api/current-user');
         if (response.ok) {
             currentUser = await response.json();
@@ -20,6 +20,9 @@ async function initializeOperator() {
             currentLine = currentUser.line;
             document.getElementById('operator-name').textContent = currentUser.name;
             document.getElementById('operator-line').textContent = currentLine;
+            
+            // Set link untuk input data
+            document.getElementById('input-data-link').href = `/input/${currentLine}`;
             
             await fetchLineData();
         } else {
@@ -49,7 +52,6 @@ async function fetchLineData() {
         const data = await response.json();
         console.log('Data received:', data);
         updateDashboard(data);
-        updateHourlyInputs(data.hourly_data);
     } catch (error) {
         console.error("Gagal mengambil data line:", error);
         showError('Gagal mengambil data produksi. Silakan refresh halaman.');
@@ -111,84 +113,29 @@ function updateHourlyTable(hourlyData) {
             row.insertCell().textContent = item.hour || '-';
             row.insertCell().textContent = item.output || 0;
             row.insertCell().textContent = item.defect || 0;
+            
+            // Calculate defect rate
+            const defectRateCell = row.insertCell();
+            const defectRate = item.output > 0 ? ((item.defect / item.output) * 100).toFixed(2) : '0.00';
+            defectRateCell.textContent = `${defectRate}%`;
+            
+            // Color coding for defect rate
+            const defectRateValue = parseFloat(defectRate);
+            if (defectRateValue > 5) {
+                defectRateCell.className = 'efficiency-low';
+            } else if (defectRateValue > 2) {
+                defectRateCell.className = 'efficiency-medium';
+            } else {
+                defectRateCell.className = 'efficiency-high';
+            }
         });
     } else {
         const row = tableBody.insertRow();
         const cell = row.insertCell();
-        cell.colSpan = 3;
+        cell.colSpan = 4;
         cell.textContent = "Data per jam belum tersedia.";
         cell.style.textAlign = 'center';
         cell.style.color = '#888';
-    }
-}
-
-function updateHourlyInputs(hourlyData) {
-    const hourlyInputs = document.getElementById('hourly-inputs');
-    hourlyInputs.innerHTML = '';
-    
-    if (!hourlyData || hourlyData.length === 0) {
-        hourlyInputs.innerHTML = '<div style="text-align: center; color: #888; padding: 20px;">Data per jam tidak tersedia.</div>';
-        return;
-    }
-    
-    // Buat input fields untuk setiap jam
-    hourlyData.forEach((hour, index) => {
-        const hourDiv = document.createElement('div');
-        hourDiv.className = 'hour-input-group';
-        hourDiv.innerHTML = `
-            <div class="hour-label">${hour.hour || `Jam ${index + 1}`}</div>
-            <div class="hour-inputs">
-                <input type="number" id="hour-output-${index}" value="${hour.output || 0}" placeholder="Output" min="0" style="color: #000;">
-                <input type="number" id="hour-defect-${index}" value="${hour.defect || 0}" placeholder="Defect" min="0" style="color: #000;">
-                <button type="button" class="btn-update" data-hour="${index}">Update</button>
-            </div>
-        `;
-        hourlyInputs.appendChild(hourDiv);
-    });
-    
-    // Add event listeners untuk update buttons
-    document.querySelectorAll('.btn-update').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const hourIndex = this.getAttribute('data-hour');
-            const output = document.getElementById(`hour-output-${hourIndex}`).value;
-            const defect = document.getElementById(`hour-defect-${hourIndex}`).value;
-            
-            if (output !== '' && defect !== '') {
-                updateHourlyData(hourIndex, output, defect);
-            } else {
-                alert('Harap isi output dan defect!');
-            }
-        });
-    });
-}
-
-async function updateHourlyData(hourIndex, output, defect) {
-    try {
-        console.log('Updating hourly data:', { hourIndex, output, defect });
-        
-        const response = await fetch(`/api/update-hourly/${currentLine}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                hourIndex: parseInt(hourIndex),
-                output: parseInt(output),
-                defect: parseInt(defect)
-            })
-        });
-
-        if (response.ok) {
-            const data = await response.json();
-            alert('Data berhasil diupdate!');
-            fetchLineData(); // Refresh data
-        } else {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Gagal update data');
-        }
-    } catch (error) {
-        console.error('Error updating hourly data:', error);
-        alert('Gagal mengupdate data: ' + error.message);
     }
 }
 
@@ -242,8 +189,31 @@ function getStatusText(status) {
     return statusMap[status] || status;
 }
 
+// Export Excel function
+async function exportToExcel() {
+    try {
+        const response = await fetch(`/api/export/${currentLine}`);
+        if (response.ok) {
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = `Production_Report_${currentLine}_${new Date().toISOString().split('T')[0]}.xlsx`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        } else {
+            throw new Error('Gagal export data');
+        }
+    } catch (error) {
+        console.error('Export error:', error);
+        alert('Gagal mengexport data ke Excel.');
+    }
+}
+
 function showError(message) {
-    // Anda bisa implementasikan notifikasi error yang lebih baik di sini
     console.error('Error:', message);
     const errorDiv = document.createElement('div');
     errorDiv.style.cssText = `
@@ -278,7 +248,7 @@ async function logout() {
 
 // Event listeners
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOM loaded, initializing operator...');
+    console.log('DOM loaded, initializing operator dashboard...');
     
     initializeOperator();
     
@@ -287,6 +257,8 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('Manual refresh triggered');
         fetchLineData();
     });
+    
+    document.getElementById('export-excel-btn').addEventListener('click', exportToExcel);
     
     // Auto-refresh setiap 30 detik
     setInterval(fetchLineData, 30000);

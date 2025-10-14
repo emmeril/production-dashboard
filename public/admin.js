@@ -128,11 +128,26 @@ function updateDashboard(data) {
             row.insertCell().textContent = item.hour;
             row.insertCell().textContent = item.output;
             row.insertCell().textContent = item.defect;
+            
+            // Calculate defect rate
+            const defectRateCell = row.insertCell();
+            const defectRate = item.output > 0 ? ((item.defect / item.output) * 100).toFixed(2) : '0.00';
+            defectRateCell.textContent = `${defectRate}%`;
+            
+            // Color coding for defect rate
+            const defectRateValue = parseFloat(defectRate);
+            if (defectRateValue > 5) {
+                defectRateCell.className = 'efficiency-low';
+            } else if (defectRateValue > 2) {
+                defectRateCell.className = 'efficiency-medium';
+            } else {
+                defectRateCell.className = 'efficiency-high';
+            }
         });
     } else {
         const row = tableBody.insertRow();
         const cell = row.insertCell();
-        cell.colSpan = 3;
+        cell.colSpan = 4;
         cell.textContent = "Data per jam belum tersedia.";
     }
 
@@ -343,6 +358,35 @@ async function saveOperator(event) {
     }
 }
 
+// Export Excel function
+async function exportToExcel() {
+    if (!currentLine) {
+        alert('Pilih line terlebih dahulu!');
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/export/${currentLine}`);
+        if (response.ok) {
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = `Production_Report_${currentLine}_${new Date().toISOString().split('T')[0]}.xlsx`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        } else {
+            throw new Error('Gagal export data');
+        }
+    } catch (error) {
+        console.error('Export error:', error);
+        alert('Gagal mengexport data ke Excel.');
+    }
+}
+
 // Logout function
 async function logout() {
     try {
@@ -362,6 +406,7 @@ function initializeAdmin() {
     // Event listeners
     document.getElementById('logout-btn').addEventListener('click', logout);
     document.getElementById('add-operator-btn').addEventListener('click', showModal);
+    document.getElementById('export-excel-btn').addEventListener('click', exportToExcel);
     document.getElementById('refresh-operators-btn').addEventListener('click', fetchOperators);
     
     // Modal event listeners

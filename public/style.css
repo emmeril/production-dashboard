@@ -185,6 +185,12 @@ body {
     color: #FFD700;
 }
 
+.header-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
 .btn-logout {
     background-color: #E70000;
     color: #fff;
@@ -398,14 +404,25 @@ body {
     align-items: center;
 }
 
+.input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.input-group label {
+    font-size: 0.9em;
+    color: #ccc;
+    font-weight: normal;
+}
+
 .hour-inputs input {
     padding: 8px 12px;
-    background-color: #222;
+    background-color: white;
     color: #000;
     border: 1px solid #555;
     border-radius: 4px;
     width: 120px;
-    background-color: white;
 }
 
 .btn-update {
@@ -420,6 +437,43 @@ body {
 
 .btn-update:hover {
     background-color: #0056b3;
+}
+
+/* Quick Stats */
+.quick-stats {
+    margin-top: 30px;
+    padding: 20px;
+    background-color: #333;
+    border-radius: 8px;
+    border-left: 4px solid #FFC000;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+    margin-top: 15px;
+}
+
+.stat-item {
+    background-color: #222;
+    padding: 15px;
+    border-radius: 5px;
+    text-align: center;
+}
+
+.stat-label {
+    display: block;
+    font-size: 0.9em;
+    color: #ccc;
+    margin-bottom: 5px;
+}
+
+.stat-value {
+    display: block;
+    font-size: 1.5em;
+    font-weight: bold;
+    color: #FFD700;
 }
 
 /* Container Styles */
@@ -454,6 +508,9 @@ body {
     border-radius: 5px;
     cursor: pointer;
     transition: background-color 0.3s ease;
+    text-decoration: none;
+    display: inline-block;
+    text-align: center;
 }
 
 .btn-primary:hover {
@@ -630,6 +687,10 @@ tr:hover {
     .percentage-item {
         font-size: 2.5em;
     }
+    
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
 }
 
 @media (max-width: 768px) {
@@ -637,6 +698,17 @@ tr:hover {
         flex-direction: column;
         gap: 10px;
         text-align: center;
+    }
+    
+    .user-header {
+        flex-direction: column;
+        gap: 15px;
+        align-items: stretch;
+    }
+    
+    .header-actions {
+        flex-direction: column;
+        align-items: stretch;
     }
     
     .line-buttons {
@@ -673,5 +745,9 @@ tr:hover {
     .modal-content {
         width: 90%;
         margin: 10% auto;
+    }
+    
+    .stats-grid {
+        grid-template-columns: 1fr;
     }
 }

@@ -14,7 +14,11 @@
                 Operator: <strong id="operator-name">-</strong> | 
                 Line: <strong id="operator-line">-</strong>
             </div>
-            <button id="logout-btn" class="btn-logout">LOGOUT</button>
+            <div class="header-actions">
+                <a href="#" id="input-data-link" class="btn-primary">Input Data Produksi</a>
+                <button id="export-excel-btn" class="btn-primary">Export Excel</button>
+                <button id="logout-btn" class="btn-logout">LOGOUT</button>
+            </div>
         </div>
 
         <div class="header-info">
@@ -47,26 +51,12 @@
             <div class="percentage-item red-bg" id="defect-rate">0.00%</div>
         </div>
 
-        <!-- Input Data Section untuk Operator -->
-        <div class="input-data-container">
-            <h2>INPUT DATA PRODUKSI</h2>
-            <div class="input-controls">
-                <button id="refresh-data-btn" class="btn-primary">Refresh Data</button>
-            </div>
-            
-            <div class="hourly-input-section">
-                <h3>Update Data per Jam:</h3>
-                <div id="hourly-inputs">
-                    <div style="text-align: center; color: #888; padding: 20px;">
-                        Loading input data...
-                    </div>
-                </div>
-            </div>
-        </div>
-
         <!-- Operator Data Section -->
         <div class="operator-data-container">
             <h2>DATA OPERATOR - <span id="current-line">-</span></h2>
+            <div class="operator-controls">
+                <button id="refresh-data-btn" class="btn-primary">Refresh Data</button>
+            </div>
             <table id="operator-table">
                 <thead>
                     <tr>
@@ -96,11 +86,12 @@
                         <th>JAM</th>
                         <th>OUTPUT</th>
                         <th>DEFECT</th>
+                        <th>DEFECT RATE</th>
                     </tr>
                 </thead>
                 <tbody id="hourly-table-body">
                     <tr>
-                        <td colspan="3" style="text-align: center; color: #888;">Loading data hourly...</td>
+                        <td colspan="4" style="text-align: center; color: #888;">Loading data hourly...</td>
                     </tr>
                 </tbody>
             </table>

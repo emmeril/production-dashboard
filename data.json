@@ -7,15 +7,20 @@
       "target": 150,
       "productivity": 0,
       "defectTarget": 0,
-      "outputDay": 885,
-      "defectDay": 29,
-      "achivementPercentage": 590,
-      "defectRatePercentage": 3.28,
+      "outputDay": 900,
+      "defectDay": 26,
+      "achivementPercentage": 600.0,
+      "defectRatePercentage": 2.89,
       "hourly_data": [
         {
+          "hour": "07:00 - 08:00",
+          "output": 80,
+          "defect": 1
+        },
+        {
           "hour": "08:00 - 09:00",
-          "output": 85,
-          "defect": 5
+          "output": 100,
+          "defect": 2
         },
         {
           "hour": "09:00 - 10:00",
@@ -66,7 +71,7 @@
           "target": 100,
           "output": 95,
           "defect": 3,
-          "efficiency": 95,
+          "efficiency": 95.0,
           "status": "active"
         }
       ]
@@ -80,53 +85,58 @@
       "defectTarget": 0,
       "outputDay": 750,
       "defectDay": 18,
-      "achivementPercentage": 625,
+      "achivementPercentage": 625.0,
       "defectRatePercentage": 2.4,
       "hourly_data": [
         {
-          "hour": "08:00 - 09:00",
-          "output": 80,
+          "hour": "07:00 - 08:00",
+          "output": 70,
           "defect": 1
         },
         {
-          "hour": "09:00 - 10:00",
+          "hour": "08:00 - 09:00",
           "output": 90,
           "defect": 2
         },
         {
-          "hour": "10:00 - 11:00",
+          "hour": "09:00 - 10:00",
           "output": 85,
           "defect": 1
         },
         {
-          "hour": "11:00 - 12:00",
+          "hour": "10:00 - 11:00",
           "output": 95,
           "defect": 3
         },
         {
-          "hour": "12:00 - 13:00",
+          "hour": "11:00 - 12:00",
           "output": 0,
           "defect": 0
         },
         {
-          "hour": "13:00 - 14:00",
+          "hour": "12:00 - 13:00",
           "output": 100,
           "defect": 2
         },
         {
-          "hour": "14:00 - 15:00",
+          "hour": "13:00 - 14:00",
           "output": 110,
           "defect": 4
         },
         {
-          "hour": "15:00 - 16:00",
+          "hour": "14:00 - 15:00",
           "output": 95,
           "defect": 2
         },
         {
-          "hour": "16:00 - 17:00",
+          "hour": "15:00 - 16:00",
           "output": 95,
           "defect": 3
+        },
+        {
+          "hour": "16:00 - 17:00",
+          "output": 90,
+          "defect": 2
         }
       ],
       "operators": [
@@ -137,7 +147,7 @@
           "target": 50,
           "output": 48,
           "defect": 2,
-          "efficiency": 96,
+          "efficiency": 96.0,
           "status": "active"
         }
       ]
@@ -154,6 +164,11 @@
       "achivementPercentage": 611.11,
       "defectRatePercentage": 2.91,
       "hourly_data": [
+        {
+          "hour": "07:00 - 08:00",
+          "output": 100,
+          "defect": 2
+        },
         {
           "hour": "08:00 - 09:00",
           "output": 120,

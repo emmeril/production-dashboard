@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Input Data Produksi - Production Board</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Header dengan User Info -->
+        <div class="user-header">
+            <div class="user-display">
+                Operator: <strong id="operator-name">-</strong> | 
+                Line: <strong id="operator-line">-</strong>
+            </div>
+            <div class="header-actions">
+                <a href="#" id="dashboard-link" class="btn-primary">Lihat Dashboard</a>
+                <button id="export-excel-btn" class="btn-primary">Export Excel</button>
+                <button id="logout-btn" class="btn-logout">LOGOUT</button>
+            </div>
+        </div>
+
+        <!-- Input Data Section -->
+        <div class="input-data-container">
+            <h2>INPUT DATA PRODUKSI - <span id="current-line">-</span></h2>
+            <div class="input-controls">
+                <button id="refresh-data-btn" class="btn-primary">Refresh Data</button>
+                <button id="save-all-btn" class="btn-primary">Simpan Semua Data</button>
+            </div>
+            
+            <div class="hourly-input-section">
+                <h3>Data Produksi per Jam (07:00 - 17:00):</h3>
+                <div id="hourly-inputs">
+                    <div style="text-align: center; color: #888; padding: 20px;">
+                        Loading input data...
+                    </div>
+                </div>
+            </div>
+
+            <div class="quick-stats">
+                <h3>Statistik Cepat:</h3>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <span class="stat-label">Total Output:</span>
+                        <span class="stat-value" id="total-output">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Total Defect:</span>
+                        <span class="stat-value" id="total-defect">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Defect Rate:</span>
+                        <span class="stat-value" id="total-defect-rate">0%</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/input.js"></script>
+</body>
+</html>

@@ -60,6 +60,7 @@
             <h2>DATA OPERATOR - <span id="current-line">-</span></h2>
             <div class="operator-controls">
                 <button id="add-operator-btn" class="btn-primary">Tambah Operator</button>
+                <button id="export-excel-btn" class="btn-primary">Export Excel</button>
                 <button id="refresh-operators-btn" class="btn-secondary">Refresh Data</button>
             </div>
             <table id="operator-table">
@@ -92,11 +93,12 @@
                         <th>JAM</th>
                         <th>OUTPUT</th>
                         <th>DEFECT</th>
+                        <th>DEFECT RATE</th>
                     </tr>
                 </thead>
                 <tbody id="hourly-table-body">
                     <tr>
-                        <td colspan="3" style="text-align: center; color: #888;">Loading data...</td>
+                        <td colspan="4" style="text-align: center; color: #888;">Loading data...</td>
                     </tr>
                 </tbody>
             </table>

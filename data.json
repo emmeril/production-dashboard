@@ -4,17 +4,16 @@
       "labelWeek": "AP/14-2550",
       "model": "GOSIG GOLDEN SOFT TOY 40 PDS/GOLDEN RETRIEVER",
       "date": "2025-09-30",
-      "target": 150,
-      "productivity": 0,
-      "defectTarget": 0,
-      "outputDay": 900,
-      "defectDay": 26,
-      "achivementPercentage": 600.0,
-      "defectRatePercentage": 2.89,
+      "target": 180,
+      "productivity": 20,
+      "outputDay": 925,
+      "defectDay": 27,
+      "achivementPercentage": 513.89,
+      "defectRatePercentage": 2.92,
       "hourly_data": [
         {
           "hour": "07:00 - 08:00",
-          "output": 80,
+          "output": 25,
           "defect": 1
         },
         {
@@ -71,8 +70,18 @@
           "target": 100,
           "output": 95,
           "defect": 3,
-          "efficiency": 95.0,
+          "efficiency": 95,
           "status": "active"
+        },
+        {
+          "name": "anita",
+          "position": "Quality Control",
+          "target": 100,
+          "output": 0,
+          "defect": 0,
+          "status": "active",
+          "id": 2,
+          "efficiency": "0.0"
         }
       ]
     },
@@ -80,12 +89,11 @@
       "labelWeek": "AP/14-2551",
       "model": "GOSIG GOLDEN SOFT TOY 40 PDS/GOLDEN RETRIEVER",
       "date": "2025-09-30",
-      "target": 120,
-      "productivity": 0,
-      "defectTarget": 0,
+      "target": 135,
+      "productivity": 15,
       "outputDay": 750,
       "defectDay": 18,
-      "achivementPercentage": 625.0,
+      "achivementPercentage": 555.56,
       "defectRatePercentage": 2.4,
       "hourly_data": [
         {
@@ -147,7 +155,7 @@
           "target": 50,
           "output": 48,
           "defect": 2,
-          "efficiency": 96.0,
+          "efficiency": 96,
           "status": "active"
         }
       ]
@@ -157,8 +165,7 @@
       "model": "GOSIG GOLDEN SOFT TOY 40 PDS/GOLDEN RETRIEVER",
       "date": "2025-09-30",
       "target": 180,
-      "productivity": 0,
-      "defectTarget": 0,
+      "productivity": 20,
       "outputDay": 1100,
       "defectDay": 32,
       "achivementPercentage": 611.11,

@@ -35,24 +35,19 @@
         <div class="main-grid">
             <div class="grid-item label-primary">TARGET</div>
             <div class="grid-item label-primary">PRODUCTIVITY</div>
-            <div class="grid-item label-primary">DEFECT</div>
+            <div class="grid-item label-primary">OUTPUT/DAY</div>
 
             <div class="grid-item value-primary" id="target">0</div>
-            <div class="grid-item value-primary" id="productivity">0</div>
-            <div class="grid-item value-primary" id="defect-target">0</div>
+            <div class="grid-item value-primary" id="productivity">0/jam</div>
+            <div class="grid-item value-primary" id="output-day">0</div>
 
-            <div class="grid-item label-secondary">OUTPUT/DAY</div>
-            <div class="grid-item label-secondary">DEFECT/DAY</div>
-            <div class="grid-item label-secondary hidden-label"></div>
+            <div class="grid-item label-secondary">TOTAL DEFECT</div>
+            <div class="grid-item label-secondary">ACHIEVEMENT</div>
+            <div class="grid-item label-secondary">DEFECT RATE</div>
 
-            <div class="grid-item value-secondary yellow-bg" id="output-day">0</div>
             <div class="grid-item value-secondary red-bg" id="defect-day">0</div>
-            <div class="grid-item value-secondary empty-cell"></div>
-        </div>
-
-        <div class="percentage-row">
-            <div class="percentage-item yellow-bg" id="achievement">0.00%</div>
-            <div class="percentage-item red-bg" id="defect-rate">0.00%</div>
+            <div class="grid-item value-secondary yellow-bg" id="achievement">0%</div>
+            <div class="grid-item value-secondary red-bg" id="defect-rate">0%</div>
         </div>
 
         <!-- Operator Data Section -->
@@ -149,6 +144,80 @@
                 <div class="form-actions">
                     <button type="submit" class="btn-primary">Simpan</button>
                     <button type="button" class="btn-secondary" id="cancel-btn">Batal</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Line Modal -->
+    <div id="line-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h3 id="line-modal-title">Tambah Line Baru</h3>
+            <form id="line-form">
+                <div class="form-group">
+                    <label for="line-name">Nama Line:</label>
+                    <input type="text" id="line-name" required placeholder="Contoh: F1-5D">
+                </div>
+                <div class="form-group">
+                    <label for="line-label">Label/Week:</label>
+                    <input type="text" id="line-label" required placeholder="Contoh: AP/14-2553">
+                </div>
+                <div class="form-group">
+                    <label for="line-model">Model:</label>
+                    <input type="text" id="line-model" required placeholder="Contoh: GOSIG GOLDEN SOFT TOY 40 PDS/GOLDEN RETRIEVER">
+                </div>
+                <div class="form-group">
+                    <label for="line-date">Date:</label>
+                    <input type="date" id="line-date" required>
+                </div>
+                <div class="form-group">
+                    <label for="line-target">Target Harian:</label>
+                    <input type="number" id="line-target" required min="0">
+                    <small style="color: #888;">Target total produksi per hari</small>
+                </div>
+                <div class="form-group">
+                    <label>Productivity (auto-calculated):</label>
+                    <input type="text" id="line-productivity" readonly style="background-color: #f0f0f0;">
+                    <small style="color: #888;">Target per jam = Target Harian ÷ 9 jam kerja</small>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn-primary">Simpan Line</button>
+                    <button type="button" class="btn-secondary" id="cancel-line-btn">Batal</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="edit-line-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h3>Edit Line - <span id="edit-line-name">-</span></h3>
+            <form id="edit-line-form">
+                <div class="form-group">
+                    <label for="edit-line-label">Label/Week:</label>
+                    <input type="text" id="edit-line-label" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit-line-model">Model:</label>
+                    <input type="text" id="edit-line-model" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit-line-date">Date:</label>
+                    <input type="date" id="edit-line-date" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit-line-target">Target Harian:</label>
+                    <input type="number" id="edit-line-target" required min="0">
+                </div>
+                <div class="form-group">
+                    <label>Productivity (auto-calculated):</label>
+                    <input type="text" id="edit-line-productivity" readonly style="background-color: #f0f0f0;">
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn-primary">Update Line</button>
+                    <button type="button" class="btn-danger" id="delete-line-btn">Hapus Line</button>
+                    <button type="button" class="btn-secondary" id="cancel-edit-line-btn">Batal</button>
                 </div>
             </form>
         </div>

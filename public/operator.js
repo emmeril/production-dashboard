@@ -69,10 +69,9 @@ function updateDashboard(data) {
 
     // Update Main Values
     document.getElementById('target').textContent = data.target || 0;
-    document.getElementById('productivity').textContent = data.productivity || 0;
-    document.getElementById('defect-target').textContent = data.defectTarget || 0;
+    document.getElementById('productivity').textContent = `${data.productivity || 0}/jam`;
     document.getElementById('output-day').textContent = data.outputDay || 0;
-    document.getElementById('defect-day').textContent = data.defectDay || 0;
+    document.getElementById('defect-day').textContent = data.defectDay || 0; // Total defect keseluruhan
 
     // Update Percentages & Color Logic
     const achievementElement = document.getElementById('achievement');

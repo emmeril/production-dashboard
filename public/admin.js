@@ -2,6 +2,7 @@
 
 let currentLine = '';
 let currentUser = null;
+let allLines = {};
 
 // Check authentication
 async function checkAuth() {
@@ -51,23 +52,50 @@ async function fetchLineData(line) {
 }
 
 function updateLineSelector(lines) {
+    allLines = lines; // Store lines data
     const lineButtons = document.getElementById('line-buttons');
     lineButtons.innerHTML = '';
 
+    // Add "Add Line" button for admin
+    const addButton = document.createElement('button');
+    addButton.className = 'line-btn add-line-btn';
+    addButton.innerHTML = '+ Tambah Line';
+    addButton.onclick = showLineModal;
+    lineButtons.appendChild(addButton);
+
     Object.keys(lines).forEach(line => {
+        const buttonContainer = document.createElement('div');
+        buttonContainer.className = 'line-button-container';
+        
+        const lineData = lines[line];
         const button = document.createElement('button');
         button.className = 'line-btn';
-        button.textContent = line;
+        button.innerHTML = `
+            <div>${line}</div>
+            <small style="font-size: 0.8em; opacity: 0.8;">
+                Target: ${lineData.target} | Productivity: ${lineData.productivity}/jam
+            </small>
+        `;
         button.onclick = () => {
             currentLine = line;
             fetchLineData(line);
             updateLineButtons();
         };
-        
-        lineButtons.appendChild(button);
+
+        const editButton = document.createElement('button');
+        editButton.className = 'line-edit-btn';
+        editButton.innerHTML = '✎';
+        editButton.title = 'Edit Line';
+        editButton.onclick = (e) => {
+            e.stopPropagation();
+            showEditLineModal(line);
+        };
+
+        buttonContainer.appendChild(button);
+        buttonContainer.appendChild(editButton);
+        lineButtons.appendChild(buttonContainer);
     });
 
-    // Set default line jika belum ada
     if (!currentLine && Object.keys(lines).length > 0) {
         currentLine = Object.keys(lines)[0];
         fetchLineData(currentLine);
@@ -78,7 +106,7 @@ function updateLineSelector(lines) {
 
 function updateLineButtons() {
     document.querySelectorAll('.line-btn').forEach(btn => {
-        if (btn.textContent === currentLine) {
+        if (btn.textContent.includes(currentLine)) {
             btn.classList.add('active');
         } else {
             btn.classList.remove('active');
@@ -93,12 +121,11 @@ function updateDashboard(data) {
     document.getElementById('model').textContent = data.model || 'N/A';
     document.getElementById('date').textContent = `DATE: ${data.date || 'N/A'}`;
 
-    // Update Main Values
+    // Update Main Values dengan penjelasan
     document.getElementById('target').textContent = data.target || 0;
-    document.getElementById('productivity').textContent = data.productivity || 0;
-    document.getElementById('defect-target').textContent = data.defectTarget || 0;
+    document.getElementById('productivity').textContent = `${data.productivity || 0}/jam`;
     document.getElementById('output-day').textContent = data.outputDay || 0;
-    document.getElementById('defect-day').textContent = data.defectDay || 0;
+    document.getElementById('defect-day').textContent = data.defectDay || 0; // Total defect keseluruhan
 
     // Update Percentages & Color Logic
     const achievementElement = document.getElementById('achievement');
@@ -118,12 +145,28 @@ function updateDashboard(data) {
         achievementElement.classList.remove('green-bg');
     }
     
+    // Update section titles
+    document.getElementById('current-line').textContent = data.line;
+    document.getElementById('hourly-line').textContent = data.line;
+    document.getElementById('modal-line').textContent = data.line;
+
     // Update Hourly Data Table
+    updateHourlyTable(data.hourly_data);
+
+    // Update operators
+    if (data.operators) {
+        updateOperatorTable(data.operators);
+    } else {
+        fetchOperators();
+    }
+}
+
+function updateHourlyTable(hourlyData) {
     const tableBody = document.getElementById('hourly-table-body');
     tableBody.innerHTML = '';
 
-    if (data.hourly_data && data.hourly_data.length > 0) {
-        data.hourly_data.forEach(item => {
+    if (hourlyData && hourlyData.length > 0) {
+        hourlyData.forEach(item => {
             const row = tableBody.insertRow();
             row.insertCell().textContent = item.hour;
             row.insertCell().textContent = item.output;
@@ -149,18 +192,6 @@ function updateDashboard(data) {
         const cell = row.insertCell();
         cell.colSpan = 4;
         cell.textContent = "Data per jam belum tersedia.";
-    }
-
-    // Update section titles
-    document.getElementById('current-line').textContent = data.line;
-    document.getElementById('hourly-line').textContent = data.line;
-    document.getElementById('modal-line').textContent = data.line;
-
-    // Update operators
-    if (data.operators) {
-        updateOperatorTable(data.operators);
-    } else {
-        fetchOperators();
     }
 }
 
@@ -358,6 +389,168 @@ async function saveOperator(event) {
     }
 }
 
+// Line Management Functions
+function showLineModal() {
+    document.getElementById('line-modal').style.display = 'block';
+    document.getElementById('line-form').reset();
+    document.getElementById('line-productivity').value = '0';
+}
+
+function showEditLineModal(lineName) {
+    const lineData = allLines[lineName];
+    if (!lineData) return;
+
+    document.getElementById('edit-line-modal').style.display = 'block';
+    document.getElementById('edit-line-name').textContent = lineName;
+    
+    document.getElementById('edit-line-label').value = lineData.labelWeek || '';
+    document.getElementById('edit-line-model').value = lineData.model || '';
+    document.getElementById('edit-line-date').value = lineData.date || '';
+    document.getElementById('edit-line-target').value = lineData.target || 0;
+    document.getElementById('edit-line-productivity').value = lineData.productivity || 0;
+}
+
+function hideLineModals() {
+    document.getElementById('line-modal').style.display = 'none';
+    document.getElementById('edit-line-modal').style.display = 'none';
+}
+
+// Calculate productivity based on target
+function calculateProductivity(target) {
+    return Math.round(target / 9); // 9 working hours
+}
+
+// Add new line
+async function addNewLine(event) {
+    event.preventDefault();
+    
+    const lineData = {
+        lineName: document.getElementById('line-name').value,
+        labelWeek: document.getElementById('line-label').value,
+        model: document.getElementById('line-model').value,
+        date: document.getElementById('line-date').value,
+        target: parseInt(document.getElementById('line-target').value)
+    };
+
+    // Validasi
+    if (lineData.target < 0) {
+        alert('Target harus lebih dari 0');
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/lines', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(lineData)
+        });
+
+        if (response.ok) {
+            const result = await response.json();
+            hideLineModals();
+            alert(`Line berhasil ditambahkan!\n${result.calculated.message}`);
+            fetchLines(); // Refresh line list
+        } else {
+            const error = await response.json();
+            throw new Error(error.error || 'Gagal menambah line');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Gagal menambah line: ' + error.message);
+    }
+}
+
+// Update existing line
+async function updateLine(event) {
+    event.preventDefault();
+    
+    const lineName = document.getElementById('edit-line-name').textContent;
+    const lineData = {
+        labelWeek: document.getElementById('edit-line-label').value,
+        model: document.getElementById('edit-line-model').value,
+        date: document.getElementById('edit-line-date').value,
+        target: parseInt(document.getElementById('edit-line-target').value)
+    };
+
+    // Validasi
+    if (lineData.target < 0) {
+        alert('Target harus lebih dari 0');
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/lines/${lineName}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(lineData)
+        });
+
+        if (response.ok) {
+            const result = await response.json();
+            hideLineModals();
+            alert(`Line berhasil diupdate!\n${result.calculated.message}`);
+            fetchLines(); // Refresh line list
+            if (currentLine === lineName) {
+                fetchLineData(currentLine); // Refresh current line data
+            }
+        } else {
+            const error = await response.json();
+            throw new Error(error.error || 'Gagal update line');
+        }
+  } catch (error) {
+        console.error('Error:', error);
+        alert('Gagal update line: ' + error.message);
+    }
+}
+
+// Delete line
+async function deleteLine() {
+    const lineName = document.getElementById('edit-line-name').textContent;
+    
+    if (!confirm(`Apakah Anda yakin ingin menghapus line ${lineName}?`)) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/lines/${lineName}`, {
+            method: 'DELETE'
+        });
+
+        if (response.ok) {
+            hideLineModals();
+            alert('Line berhasil dihapus!');
+            fetchLines(); // Refresh line list
+            if (currentLine === lineName) {
+                currentLine = '';
+                // Reset dashboard
+                document.querySelectorAll('.line-btn').forEach(btn => btn.classList.remove('active'));
+                document.getElementById('line').textContent = 'LINE: -';
+                document.getElementById('label-week').textContent = 'LABEL/WEEK: -';
+                document.getElementById('model').textContent = '-';
+                document.getElementById('date').textContent = 'DATE: -';
+                // Reset values
+                ['target', 'productivity', 'output-day', 'defect-day'].forEach(id => {
+                    document.getElementById(id).textContent = '0';
+                });
+                document.getElementById('achievement').textContent = '0.00%';
+                document.getElementById('defect-rate').textContent = '0.00%';
+                document.getElementById('operator-table-body').innerHTML = '<tr><td colspan="9" style="text-align: center; color: #888;">Tidak ada data operator.</td></tr>';
+                document.getElementById('hourly-table-body').innerHTML = '<tr><td colspan="4" style="text-align: center; color: #888;">Data per jam belum tersedia.</td></tr>';
+            }
+        } else {
+            const error = await response.json();
+            throw new Error(error.error || 'Gagal hapus line');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Gagal menghapus line: ' + error.message);
+    }
+}
+
 // Export Excel function
 async function exportToExcel() {
     if (!currentLine) {
@@ -414,11 +607,33 @@ function initializeAdmin() {
     document.getElementById('cancel-btn').addEventListener('click', hideModal);
     document.getElementById('operator-form').addEventListener('submit', saveOperator);
     
-    // Close modal when clicking outside
+    // Line management event listeners
+    document.getElementById('line-target').addEventListener('input', function() {
+        const target = parseInt(this.value) || 0;
+        document.getElementById('line-productivity').value = calculateProductivity(target);
+    });
+
+    document.getElementById('edit-line-target').addEventListener('input', function() {
+        const target = parseInt(this.value) || 0;
+        document.getElementById('edit-line-productivity').value = calculateProductivity(target);
+    });
+
+    document.getElementById('line-form').addEventListener('submit', addNewLine);
+    document.getElementById('edit-line-form').addEventListener('submit', updateLine);
+    document.getElementById('delete-line-btn').addEventListener('click', deleteLine);
+    document.getElementById('cancel-line-btn').addEventListener('click', hideLineModals);
+    document.getElementById('cancel-edit-line-btn').addEventListener('click', hideLineModals);
+    
+    // Close modals when clicking outside
     window.addEventListener('click', function(event) {
-        const modal = document.getElementById('operator-modal');
-        if (event.target === modal) {
+        if (event.target === document.getElementById('operator-modal')) {
             hideModal();
+        }
+        if (event.target === document.getElementById('line-modal')) {
+            hideLineModals();
+        }
+        if (event.target === document.getElementById('edit-line-modal')) {
+            hideLineModals();
         }
     });
     

@@ -33,12 +33,11 @@ function initializeDataFiles() {
           "labelWeek": "AP/14-2550",
           "model": "GOSIG GOLDEN SOFT TOY 40 PDS/GOLDEN RETRIEVER",
           "date": "2025-09-30",
-          "target": 150,
-          "productivity": 0,
-          "defectTarget": 0,
+          "target": 180,
+          "productivity": 20,
           "outputDay": 900,
           "defectDay": 26,
-          "achivementPercentage": 600.00,
+          "achivementPercentage": 500.00,
           "defectRatePercentage": 2.89,
           "hourly_data": [
             { "hour": "07:00 - 08:00", "output": 80, "defect": 1 },
@@ -69,12 +68,11 @@ function initializeDataFiles() {
           "labelWeek": "AP/14-2551",
           "model": "GOSIG GOLDEN SOFT TOY 40 PDS/GOLDEN RETRIEVER",
           "date": "2025-09-30",
-          "target": 120,
-          "productivity": 0,
-          "defectTarget": 0,
+          "target": 135,
+          "productivity": 15,
           "outputDay": 750,
           "defectDay": 18,
-          "achivementPercentage": 625.00,
+          "achivementPercentage": 555.56,
           "defectRatePercentage": 2.40,
           "hourly_data": [
             { "hour": "07:00 - 08:00", "output": 70, "defect": 1 },
@@ -106,8 +104,7 @@ function initializeDataFiles() {
           "model": "GOSIG GOLDEN SOFT TOY 40 PDS/GOLDEN RETRIEVER",
           "date": "2025-09-30",
           "target": 180,
-          "productivity": 0,
-          "defectTarget": 0,
+          "productivity": 20,
           "outputDay": 1100,
           "defectDay": 32,
           "achivementPercentage": 611.11,
@@ -269,7 +266,7 @@ app.get('/api/current-user', (req, res) => {
   }
 });
 
-// Data Routes
+// Line Management Routes
 app.get('/api/lines', requireLogin, (req, res) => {
   if (req.session.user.role !== 'admin') {
     return res.status(403).json({ error: 'Admin access required' });
@@ -278,6 +275,93 @@ app.get('/api/lines', requireLogin, (req, res) => {
   res.json(data.lines || {});
 });
 
+app.post('/api/lines', requireLogin, requireAdmin, (req, res) => {
+  const { lineName, labelWeek, model, date, target } = req.body;
+  const data = readProductionData();
+
+  if (data.lines[lineName]) {
+    return res.status(400).json({ error: 'Line already exists' });
+  }
+
+  // Calculate productivity (target per hour)
+  const productivity = Math.round(target / 9); // 9 working hours (07:00-17:00)
+
+  data.lines[lineName] = {
+    labelWeek,
+    model,
+    date,
+    target: parseInt(target),
+    productivity,
+    outputDay: 0,
+    defectDay: 0,
+    achivementPercentage: 0,
+    defectRatePercentage: 0,
+    hourly_data: Array(10).fill().map((_, index) => {
+      const startHour = 7 + index;
+      const endHour = 8 + index;
+      return {
+        hour: `${startHour.toString().padStart(2, '0')}:00 - ${endHour.toString().padStart(2, '0')}:00`,
+        output: 0,
+        defect: 0
+      };
+    }),
+    operators: []
+  };
+
+  writeProductionData(data);
+  res.json({ 
+    message: `Line ${lineName} created successfully`, 
+    data: data.lines[lineName],
+    calculated: {
+      productivity: productivity,
+      message: `Productivity: ${productivity} unit/jam (Target: ${target} ÷ 9 jam)`
+    }
+  });
+});
+
+app.put('/api/lines/:lineName', requireLogin, requireAdmin, (req, res) => {
+  const lineName = req.params.lineName;
+  const { labelWeek, model, date, target } = req.body;
+  const data = readProductionData();
+
+  if (!data.lines[lineName]) {
+    return res.status(404).json({ error: 'Line not found' });
+  }
+
+  // Update data and recalculate productivity
+  const productivity = Math.round(target / 9);
+
+  data.lines[lineName].labelWeek = labelWeek;
+  data.lines[lineName].model = model;
+  data.lines[lineName].date = date;
+  data.lines[lineName].target = parseInt(target);
+  data.lines[lineName].productivity = productivity;
+
+  writeProductionData(data);
+  res.json({ 
+    message: `Line ${lineName} updated successfully`, 
+    data: data.lines[lineName],
+    calculated: {
+      productivity: productivity,
+      message: `Productivity: ${productivity} unit/jam (Target: ${target} ÷ 9 jam)`
+    }
+  });
+});
+
+app.delete('/api/lines/:lineName', requireLogin, requireAdmin, (req, res) => {
+  const lineName = req.params.lineName;
+  const data = readProductionData();
+
+  if (!data.lines[lineName]) {
+    return res.status(404).json({ error: 'Line not found' });
+  }
+
+  delete data.lines[lineName];
+  writeProductionData(data);
+  res.json({ message: `Line ${lineName} deleted successfully` });
+});
+
+// Data Routes
 app.get('/api/line/:lineName', requireLogin, (req, res) => {
   const user = req.session.user;
   const lineName = req.params.lineName;
@@ -378,11 +462,17 @@ app.post('/api/update-hourly/:lineName', requireLogin, (req, res) => {
   writeProductionData(data);
   res.json({
     message: 'Hourly data updated successfully.',
-    data: data.lines[lineName]
+    data: data.lines[lineName],
+    summary: {
+      totalOutput: totalOutput,
+      totalDefect: totalDefect,
+      defectRate: defectRatePercentage.toFixed(2) + '%',
+      productivity: data.lines[lineName].productivity + ' unit/jam'
+    }
   });
 });
 
-// Operator Routes
+// Operator Routes dengan Auto Account Creation
 app.get('/api/operators/:lineName', requireLogin, (req, res) => {
   const user = req.session.user;
   const lineName = req.params.lineName;
@@ -412,19 +502,42 @@ app.post('/api/operators/:lineName', requireLogin, requireAdmin, (req, res) => {
     data.lines[lineName].operators = [];
   }
 
-  // Generate ID jika tidak ada
-  if (!newOperator.id) {
-    const maxId = data.lines[lineName].operators.reduce((max, op) => Math.max(max, op.id), 0);
-    newOperator.id = maxId + 1;
-  }
-
-  // Hitung efisiensi
+  // Generate ID
+  const maxId = data.lines[lineName].operators.reduce((max, op) => Math.max(max, op.id), 0);
+  newOperator.id = maxId + 1;
+  
+  // Create username from name (lowercase, no spaces)
+  const username = newOperator.name.toLowerCase().replace(/\s/g, '');
+  
+  // Calculate efficiency
   newOperator.efficiency = ((newOperator.output / newOperator.target) * 100).toFixed(1);
 
   data.lines[lineName].operators.push(newOperator);
-  writeProductionData(data);
 
-  res.json({ message: 'Operator added successfully.', operator: newOperator });
+  // Create user account automatically
+  const usersData = readUsersData();
+  const newUser = {
+    id: usersData.users.length + 1,
+    username: username,
+    password: "password123", // default password
+    name: newOperator.name,
+    line: lineName,
+    role: "operator"
+  };
+  
+  usersData.users.push(newUser);
+  fs.writeFileSync(path.join(__dirname, 'users.json'), JSON.stringify(usersData, null, 2));
+
+  writeProductionData(data);
+  res.json({ 
+    message: 'Operator added successfully.', 
+    operator: newOperator,
+    userAccount: {
+      username: username,
+      password: "password123",
+      message: "Akun operator telah dibuat secara otomatis"
+    }
+  });
 });
 
 app.put('/api/operators/:lineName/:id', requireLogin, requireAdmin, (req, res) => {
@@ -486,8 +599,9 @@ function generateExcelData(lineData, lineName) {
     ['Model', lineData.model],
     ['Date', lineData.date],
     ['Target', lineData.target],
+    ['Productivity/Hour', lineData.productivity],
     ['Output/Hari', lineData.outputDay],
-    ['Defect/Hari', lineData.defectDay],
+    ['Total Defect', lineData.defectDay],
     ['Achievement (%)', lineData.achivementPercentage],
     ['Defect Rate (%)', lineData.defectRatePercentage],
     [],
@@ -627,7 +741,7 @@ app.get('/input/:lineName', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'input.html'));
 });
 
-// Static file routes as backup
+// Static file routes
 app.get('/style.css', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'style.css'));
 });

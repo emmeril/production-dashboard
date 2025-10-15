@@ -19,13 +19,14 @@ body {
     align-items: center;
     min-height: 100vh;
     background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+    padding: 20px;
 }
 
 .login-container {
     background-color: #111;
     border-radius: 10px;
     padding: 40px;
-    width: 90%;
+    width: 100%;
     max-width: 500px;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
     border: 1px solid #333;
@@ -38,7 +39,7 @@ body {
 
 .login-header h1 {
     color: #FFD700;
-    font-size: 2.5em;
+    font-size: 2.2em;
     margin-bottom: 10px;
     text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
 }
@@ -302,10 +303,10 @@ body {
 }
 
 .line-buttons {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 15px;
     justify-content: center;
-    gap: 10px;
-    flex-wrap: wrap;
 }
 
 .line-button-container {
@@ -313,7 +314,6 @@ body {
     align-items: center;
     gap: 5px;
     width: 100%;
-    max-width: 300px;
 }
 
 .line-btn {
@@ -328,6 +328,10 @@ body {
     transition: all 0.3s ease;
     text-align: left;
     flex: 1;
+    min-height: 70px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
 }
 
 .line-btn:hover {
@@ -358,6 +362,7 @@ body {
     cursor: pointer;
     font-size: 0.9em;
     height: fit-content;
+    min-height: 70px;
 }
 
 .line-edit-btn:hover {
@@ -368,8 +373,10 @@ body {
     background-color: #28a745 !important;
     border-color: #28a745 !important;
     text-align: center !important;
-    max-width: 200px;
+    grid-column: 1 / -1;
+    max-width: 300px;
     margin: 0 auto;
+    justify-content: center;
 }
 
 .add-line-btn:hover {
@@ -378,20 +385,20 @@ body {
 
 /* Header Info */
 .header-info {
-    display: flex;
-    justify-content: space-between;
-    font-size: 1.2em;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    font-size: 1.1em;
     padding: 15px 20px;
     margin-bottom: 20px;
     border-bottom: 3px solid #333;
     background-color: #1a1a1a;
     border-radius: 5px;
-    flex-wrap: wrap;
-    gap: 10px;
+    text-align: center;
 }
 
 .header-info span {
-    padding: 0 10px;
+    padding: 5px 0;
 }
 
 /* Main Grid */
@@ -411,25 +418,25 @@ body {
     align-items: center;
     justify-content: center;
     text-align: center;
+    min-height: 80px;
 }
 
 /* Primary Row */
 .label-primary {
     background-color: #111;
     color: #fff;
-    font-size: 1.5em;
+    font-size: 1.3em;
     text-align: center;
 }
 
 .value-primary {
     background-color: #000;
     color: #FFD700;
-    font-size: 3.5em;
+    font-size: 2.8em;
     line-height: 1.1;
     padding: 20px;
     text-align: center;
     border: 2px solid #333;
-    min-height: 120px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -439,16 +446,15 @@ body {
 .label-secondary {
     background-color: #111;
     color: #fff;
-    font-size: 1.5em;
+    font-size: 1.3em;
     text-align: center;
 }
 
 .value-secondary {
-    font-size: 3em;
+    font-size: 2.5em;
     line-height: 1.1;
     text-align: center;
     border: 2px solid #333;
-    min-height: 100px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -467,30 +473,6 @@ body {
 .green-bg {
     background-color: #008000 !important;
     color: #fff !important;
-}
-
-/* Percentage Row */
-.percentage-row {
-    display: flex;
-    justify-content: space-between;
-    margin: 20px 0;
-    gap: 10px;
-}
-
-.percentage-item {
-    width: 50%;
-    padding: 25px 0;
-    font-size: 2.5em;
-    font-weight: bold;
-    text-align: center;
-    border-radius: 5px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.hidden-label, .empty-cell {
-    visibility: hidden;
 }
 
 /* Input Data Section untuk Operator */
@@ -540,10 +522,10 @@ body {
 }
 
 .hour-inputs {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 15px;
     align-items: center;
-    flex-wrap: wrap;
 }
 
 .input-group {
@@ -564,7 +546,7 @@ body {
     color: #000;
     border: 1px solid #555;
     border-radius: 4px;
-    width: 120px;
+    width: 100%;
     font-size: 1em;
 }
 
@@ -806,11 +788,6 @@ tr:hover {
         min-height: 80px;
     }
     
-    .percentage-item {
-        font-size: 2em;
-        padding: 15px 0;
-    }
-    
     .stats-grid {
         grid-template-columns: repeat(2, 1fr);
     }
@@ -820,10 +797,23 @@ tr:hover {
     }
 }
 
+@media (max-width: 992px) {
+    .line-buttons {
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    }
+    
+    .header-info {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .hour-inputs {
+        grid-template-columns: 1fr;
+    }
+}
+
 @media (max-width: 768px) {
     .header-info {
-        flex-direction: column;
-        gap: 10px;
+        grid-template-columns: 1fr;
         text-align: center;
     }
     
@@ -839,8 +829,7 @@ tr:hover {
     }
     
     .line-buttons {
-        flex-direction: column;
-        align-items: center;
+        grid-template-columns: 1fr;
     }
     
     .line-button-container {
@@ -849,15 +838,6 @@ tr:hover {
     
     .line-btn {
         width: 100%;
-    }
-    
-    .percentage-row {
-        flex-direction: column;
-    }
-    
-    .percentage-item {
-        width: 100%;
-        margin-bottom: 10px;
     }
     
     .hour-inputs {
@@ -900,9 +880,17 @@ tr:hover {
         width: 100%;
         margin: 5px 0;
     }
+    
+    .login-container {
+        padding: 30px 20px;
+    }
+    
+    .login-header h1 {
+        font-size: 1.8em;
+    }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 576px) {
     .dashboard-container {
         padding: 10px;
     }
@@ -913,13 +901,8 @@ tr:hover {
         padding: 10px;
     }
     
-    .percentage-item {
-        font-size: 1.5em;
-        padding: 10px 0;
-    }
-    
     .label-primary, .label-secondary {
-        font-size: 1.2em;
+        font-size: 1.1em;
     }
     
     .header-info {
@@ -928,5 +911,40 @@ tr:hover {
     
     .user-display {
         font-size: 1em;
+    }
+    
+    .modal-content {
+        width: 95%;
+        padding: 15px;
+    }
+    
+    .login-container {
+        padding: 20px 15px;
+    }
+    
+    .login-header h1 {
+        font-size: 1.6em;
+    }
+}
+
+/* Print Styles */
+@media print {
+    .btn-primary, .btn-secondary, .btn-danger, .btn-logout, .header-actions {
+        display: none !important;
+    }
+    
+    body {
+        background-color: white;
+        color: black;
+    }
+    
+    .dashboard-container {
+        width: 100%;
+        max-width: none;
+        padding: 0;
+    }
+    
+    .user-header, .line-selector {
+        border: 1px solid #000;
     }
 }

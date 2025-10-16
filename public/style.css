@@ -5,15 +5,31 @@
     box-sizing: border-box;
 }
 
+html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background-color: #000;
     color: #fff;
-    line-height: 1.5;
+    line-height: 1.6;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Container utama dengan ukuran fixed 960x540 */
+.app-container {
     width: 960px;
     height: 540px;
+    position: relative;
+    background-color: #111;
+    border: 1px solid #333;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.7);
     overflow: hidden;
-    position: fixed;
 }
 
 /* Login Page Styles */
@@ -21,19 +37,17 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    width: 960px;
-    height: 540px;
+    width: 100%;
+    height: 100%;
     background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
-    padding: 20px;
 }
 
 .login-container {
     background-color: #111;
     border-radius: 8px;
     padding: 30px;
-    width: 90%;
-    max-width: 450px;
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.5);
+    width: 400px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
     border: 1px solid #333;
 }
 
@@ -137,12 +151,13 @@ body {
 
 /* Dashboard Styles */
 .dashboard-container {
-    width: 960px;
-    height: 540px;
-    margin: 0;
+    width: 100%;
+    height: 100%;
     padding: 15px;
     background-color: #111;
-    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    overflow: auto;
 }
 
 /* Header dengan User Info */
@@ -155,6 +170,7 @@ body {
     border-radius: 6px;
     margin-bottom: 15px;
     border-left: 4px solid #FFC000;
+    flex-shrink: 0;
 }
 
 .user-display {
@@ -176,8 +192,8 @@ body {
     background-color: #FFC000;
     color: #000;
     border: none;
-    padding: 10px 18px;
-    font-size: 0.9em;
+    padding: 8px 16px;
+    font-size: 0.85em;
     font-weight: bold;
     border-radius: 4px;
     cursor: pointer;
@@ -195,8 +211,8 @@ body {
     background-color: #444;
     color: #fff;
     border: none;
-    padding: 10px 18px;
-    font-size: 0.9em;
+    padding: 8px 16px;
+    font-size: 0.85em;
     font-weight: bold;
     border-radius: 4px;
     cursor: pointer;
@@ -259,8 +275,8 @@ body {
     border-radius: 4px;
     cursor: pointer;
     font-weight: bold;
+    font-size: 0.85em;
     transition: background-color 0.3s ease;
-    font-size: 0.9em;
 }
 
 .btn-logout:hover {
@@ -274,6 +290,7 @@ body {
     margin-bottom: 15px;
     border-radius: 6px;
     text-align: center;
+    flex-shrink: 0;
 }
 
 .line-selector h3 {
@@ -328,7 +345,7 @@ body {
 .line-btn small {
     display: block;
     font-weight: normal;
-    margin-top: 4px;
+    margin-top: 3px;
     font-size: 0.75em;
     opacity: 0.8;
 }
@@ -375,10 +392,11 @@ body {
     background-color: #1a1a1a;
     border-radius: 4px;
     text-align: center;
+    flex-shrink: 0;
 }
 
 .header-info span {
-    padding: 4px 0;
+    padding: 3px 0;
 }
 
 /* Main Grid */
@@ -387,6 +405,7 @@ body {
     grid-template-columns: repeat(3, 1fr);
     gap: 8px;
     margin-bottom: 15px;
+    flex-shrink: 0;
 }
 
 .grid-item {
@@ -406,14 +425,13 @@ body {
 .label-primary {
     background-color: #111;
     color: #fff;
-    font-size: 1em;
     text-align: center;
 }
 
 .value-primary {
     background-color: #000;
     color: #FFD700;
-    font-size: 2em;
+    font-size: 1.8em;
     line-height: 1.1;
     padding: 15px;
     text-align: center;
@@ -427,12 +445,11 @@ body {
 .label-secondary {
     background-color: #111;
     color: #fff;
-    font-size: 1em;
     text-align: center;
 }
 
 .value-secondary {
-    font-size: 1.8em;
+    font-size: 1.6em;
     line-height: 1.1;
     text-align: center;
     border: 2px solid #333;
@@ -456,12 +473,23 @@ body {
     color: #fff !important;
 }
 
+/* Container untuk data yang bisa di-scroll */
+.scrollable-content {
+    flex: 1;
+    overflow: auto;
+    display: flex;
+    flex-direction: column;
+}
+
 /* Input Data Section untuk Operator */
 .input-data-container {
-    margin-top: 20px;
+    margin-top: 15px;
     padding: 15px;
     background-color: #222;
     border-radius: 6px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
 }
 
 .input-data-container h2 {
@@ -480,12 +508,15 @@ body {
 
 .hourly-input-section {
     margin-top: 15px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
 }
 
 .hourly-input-section h3 {
     color: #FFD700;
     margin-bottom: 12px;
-    font-size: 1.1em;
+    font-size: 1em;
 }
 
 .hour-input-group {
@@ -529,23 +560,24 @@ body {
     border: 1px solid #555;
     border-radius: 3px;
     width: 100%;
-    font-size: 0.9em;
+    font-size: 0.85em;
 }
 
 /* Quick Stats */
 .quick-stats {
-    margin-top: 20px;
+    margin-top: 15px;
     padding: 15px;
     background-color: #333;
     border-radius: 6px;
     border-left: 3px solid #FFC000;
+    flex-shrink: 0;
 }
 
 .stats-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 10px;
-    margin-top: 12px;
+    margin-top: 10px;
 }
 
 .stat-item {
@@ -571,10 +603,13 @@ body {
 
 /* Container Styles */
 .operator-data-container, .hourly-data-container {
-    margin-top: 20px;
+    margin-top: 15px;
     padding: 15px;
     background-color: #222;
     border-radius: 6px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
 }
 
 .operator-data-container h2, .hourly-data-container h2 {
@@ -592,6 +627,11 @@ body {
 }
 
 /* Table Styles */
+.table-container {
+    flex: 1;
+    overflow: auto;
+}
+
 table {
     width: 100%;
     border-collapse: collapse;
@@ -603,13 +643,15 @@ th, td {
     padding: 8px 10px;
     border: 1px solid #444;
     text-align: center;
+    white-space: nowrap;
 }
 
 th {
     background-color: #000;
     color: #fff;
-    font-size: 0.9em;
     font-weight: bold;
+    position: sticky;
+    top: 0;
 }
 
 tr:nth-child(even) {
@@ -658,8 +700,8 @@ tr:hover {
     z-index: 1000;
     left: 0;
     top: 0;
-    width: 960px;
-    height: 540px;
+    width: 100%;
+    height: 100%;
     background-color: rgba(0,0,0,0.8);
     overflow: auto;
 }
@@ -722,7 +764,7 @@ tr:hover {
 
 .form-group input, .form-group select {
     width: 100%;
-    padding: 10px 12px;
+    padding: 8px 10px;
     background-color: #333;
     color: #fff;
     border: 2px solid #555;
@@ -762,34 +804,11 @@ tr:hover {
     font-size: 0.9em;
 }
 
-/* Scrollbar Styles */
-.dashboard-container::-webkit-scrollbar {
-    width: 8px;
-}
-
-.dashboard-container::-webkit-scrollbar-track {
-    background: #222;
-}
-
-.dashboard-container::-webkit-scrollbar-thumb {
-    background: #444;
-    border-radius: 4px;
-}
-
-.dashboard-container::-webkit-scrollbar-thumb:hover {
-    background: #555;
-}
-
-/* Kiosk-specific optimizations */
-@media (max-width: 960px) and (max-height: 540px) {
-    /* Ensure everything fits within the fixed dimensions */
-    body {
-        overflow: hidden;
-    }
-    
-    .dashboard-container {
-        overflow-y: auto;
-        height: 510px; /* Account for padding */
+/* Responsive Design untuk konten dalam container fixed */
+@media (max-width: 960px) {
+    .app-container {
+        width: 100%;
+        height: 100%;
     }
 }
 
@@ -802,17 +821,13 @@ tr:hover {
     body {
         background-color: white;
         color: black;
-        width: auto;
-        height: auto;
-        position: static;
-        overflow: visible;
     }
     
-    .dashboard-container {
+    .app-container {
         width: 100%;
         height: auto;
-        padding: 0;
-        overflow: visible;
+        box-shadow: none;
+        border: none;
     }
     
     .user-header, .line-selector {

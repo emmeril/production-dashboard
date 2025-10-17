@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -17,86 +18,123 @@
             <button id="logout-btn" class="btn-logout">LOGOUT</button>
         </div>
 
-        <!-- Line Selector -->
-        <div class="line-selector">
-            <h3>PILIH LINE UNTUK DILIHAT:</h3>
-            <div class="line-buttons" id="line-buttons">
-                <!-- Line buttons akan di-generate oleh JavaScript -->
+        <!-- Management Tabs -->
+        <div class="management-tabs">
+            <button class="tab-button active" data-tab="line-management">Line Management</button>
+            <button class="tab-button" data-tab="user-management">User Management</button>
+        </div>
+
+        <!-- Line Management Tab -->
+        <div id="line-management" class="tab-content active">
+            <!-- Line Selector -->
+            <div class="line-selector">
+                <h3>PILIH LINE UNTUK DILIHAT:</h3>
+                <div class="line-buttons" id="line-buttons">
+                    <!-- Line buttons akan di-generate oleh JavaScript -->
+                </div>
+            </div>
+
+            <div class="header-info">
+                <span id="line">LINE: -</span>
+                <span id="label-week">LABEL/WEEK: -</span>
+                <span id="model">-</span>
+                <span id="date">DATE: -</span>
+            </div>
+
+            <div class="main-grid">
+                <div class="grid-item label-primary">TARGET</div>
+                <div class="grid-item label-primary">PRODUCTIVITY</div>
+                <div class="grid-item label-primary">OUTPUT/DAY</div>
+
+                <div class="grid-item value-primary" id="target">0</div>
+                <div class="grid-item value-primary" id="productivity">0/jam</div>
+                <div class="grid-item value-primary" id="output-day">0</div>
+
+                <div class="grid-item label-secondary">TOTAL DEFECT</div>
+                <div class="grid-item label-secondary">ACHIEVEMENT</div>
+                <div class="grid-item label-secondary">DEFECT RATE</div>
+
+                <div class="grid-item value-secondary red-bg" id="defect-day">0</div>
+                <div class="grid-item value-secondary yellow-bg" id="achievement">0%</div>
+                <div class="grid-item value-secondary red-bg" id="defect-rate">0%</div>
+            </div>
+
+            <!-- Operator Data Section -->
+            <div class="operator-data-container">
+                <h2>DATA OPERATOR - <span id="current-line">-</span></h2>
+                <div class="operator-controls">
+                    <button id="add-operator-btn" class="btn-primary">Tambah Operator</button>
+                    <button id="export-excel-btn" class="btn-primary">Export Excel</button>
+                    <button id="refresh-operators-btn" class="btn-secondary">Refresh Data</button>
+                </div>
+                <table id="operator-table">
+                    <thead>
+                        <tr>
+                            <th>No</th>
+                            <th>Nama Operator</th>
+                            <th>Posisi</th>
+                            <th>Target</th>
+                            <th>Output</th>
+                            <th>Defect</th>
+                            <th>Efisiensi</th>
+                            <th>Status</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="operator-table-body">
+                        <tr>
+                            <td colspan="9" style="text-align: center; color: #888;">Loading data...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="hourly-data-container">
+                <h2>OUTPUT & DEFECT PER JAM - <span id="hourly-line">-</span></h2>
+                <table id="hourly-table">
+                    <thead>
+                        <tr>
+                            <th>JAM</th>
+                            <th>OUTPUT</th>
+                            <th>DEFECT</th>
+                            <th>DEFECT RATE</th>
+                        </tr>
+                    </thead>
+                    <tbody id="hourly-table-body">
+                        <tr>
+                            <td colspan="4" style="text-align: center; color: #888;">Loading data...</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
 
-        <div class="header-info">
-            <span id="line">LINE: -</span>
-            <span id="label-week">LABEL/WEEK: -</span>
-            <span id="model">-</span>
-            <span id="date">DATE: -</span>
-        </div>
-
-        <div class="main-grid">
-            <div class="grid-item label-primary">TARGET</div>
-            <div class="grid-item label-primary">PRODUCTIVITY</div>
-            <div class="grid-item label-primary">OUTPUT/DAY</div>
-
-            <div class="grid-item value-primary" id="target">0</div>
-            <div class="grid-item value-primary" id="productivity">0/jam</div>
-            <div class="grid-item value-primary" id="output-day">0</div>
-
-            <div class="grid-item label-secondary">TOTAL DEFECT</div>
-            <div class="grid-item label-secondary">ACHIEVEMENT</div>
-            <div class="grid-item label-secondary">DEFECT RATE</div>
-
-            <div class="grid-item value-secondary red-bg" id="defect-day">0</div>
-            <div class="grid-item value-secondary yellow-bg" id="achievement">0%</div>
-            <div class="grid-item value-secondary red-bg" id="defect-rate">0%</div>
-        </div>
-
-        <!-- Operator Data Section -->
-        <div class="operator-data-container">
-            <h2>DATA OPERATOR - <span id="current-line">-</span></h2>
-            <div class="operator-controls">
-                <button id="add-operator-btn" class="btn-primary">Tambah Operator</button>
-                <button id="export-excel-btn" class="btn-primary">Export Excel</button>
-                <button id="refresh-operators-btn" class="btn-secondary">Refresh Data</button>
+        <!-- User Management Tab -->
+        <div id="user-management" class="tab-content">
+            <div class="user-management-container">
+                <h2>USER MANAGEMENT</h2>
+                <div class="user-controls">
+                    <button id="add-user-btn" class="btn-primary">Tambah User</button>
+                    <button id="refresh-users-btn" class="btn-secondary">Refresh Data</button>
+                </div>
+                <table id="user-table">
+                    <thead>
+                        <tr>
+                            <th>No</th>
+                            <th>Username</th>
+                            <th>Nama</th>
+                            <th>Line</th>
+                            <th>Role</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="user-table-body">
+                        <tr>
+                            <td colspan="6" style="text-align: center; color: #888;">Loading data...</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
-            <table id="operator-table">
-                <thead>
-                    <tr>
-                        <th>No</th>
-                        <th>Nama Operator</th>
-                        <th>Posisi</th>
-                        <th>Target</th>
-                        <th>Output</th>
-                        <th>Defect</th>
-                        <th>Efisiensi</th>
-                        <th>Status</th>
-                        <th>Aksi</th>
-                    </tr>
-                </thead>
-                <tbody id="operator-table-body">
-                    <tr>
-                        <td colspan="9" style="text-align: center; color: #888;">Loading data...</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-
-        <div class="hourly-data-container">
-            <h2>OUTPUT & DEFECT PER JAM - <span id="hourly-line">-</span></h2>
-            <table id="hourly-table">
-                <thead>
-                    <tr>
-                        <th>JAM</th>
-                        <th>OUTPUT</th>
-                        <th>DEFECT</th>
-                        <th>DEFECT RATE</th>
-                    </tr>
-                </thead>
-                <tbody id="hourly-table-body">
-                    <tr>
-                        <td colspan="4" style="text-align: center; color: #888;">Loading data...</td>
-                    </tr>
-                </tbody>
-            </table>
         </div>
     </div>
 
@@ -223,6 +261,51 @@
         </div>
     </div>
 
+    <!-- User Modal -->
+    <div id="user-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h3 id="user-modal-title">Tambah User Baru</h3>
+            <form id="user-form">
+                <input type="hidden" id="user-id">
+                <div class="form-group">
+                    <label for="user-username">Username:</label>
+                    <input type="text" id="user-username" required>
+                </div>
+                <div class="form-group">
+                    <label for="user-password">Password:</label>
+                    <input type="password" id="user-password" required>
+                    <small id="password-help" style="color: #888; display: none;">Kosongkan jika tidak ingin mengubah password</small>
+                </div>
+                <div class="form-group">
+                    <label for="user-name">Nama:</label>
+                    <input type="text" id="user-name" required>
+                </div>
+                <div class="form-group">
+                    <label for="user-line">Line:</label>
+                    <select id="user-line" required>
+                        <option value="">Pilih Line</option>
+                        <!-- Options will be populated by JavaScript -->
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="user-role">Role:</label>
+                    <select id="user-role" required>
+                        <option value="">Pilih Role</option>
+                        <option value="operator">Operator</option>
+                        <option value="leader">Leader</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn-primary">Simpan User</button>
+                    <button type="button" class="btn-secondary" id="cancel-user-btn">Batal</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script src="/admin.js"></script>
 </body>
 </html>
+[file content end]

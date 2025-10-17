@@ -176,6 +176,14 @@ function initializeDataFiles() {
           "name": "Administrator",
           "line": "all",
           "role": "admin"
+        },
+        {
+          "id": 5,
+          "username": "leader1",
+          "password": "leader123",
+          "name": "Team Leader A",
+          "line": "F1-5A,F1-5B",
+          "role": "leader"
         }
       ]
     };
@@ -230,6 +238,47 @@ function requireAdmin(req, res, next) {
   }
 }
 
+// Middleware untuk Leader
+function requireLeader(req, res, next) {
+  if (req.session.user && (req.session.user.role === 'leader' || req.session.user.role === 'admin')) {
+    next();
+  } else {
+    res.status(403).json({ error: 'Forbidden - Leader or Admin access required' });
+  }
+}
+
+// Middleware untuk mengakses line tertentu
+function requireLineAccess(req, res, next) {
+  const user = req.session.user;
+  const lineName = req.params.lineName;
+  
+  if (!user) {
+    return res.status(401).json({ error: 'Unauthorized - Please login' });
+  }
+
+  // Admin bisa akses semua line
+  if (user.role === 'admin') {
+    return next();
+  }
+
+  // Leader bisa akses line yang ditugaskan
+  if (user.role === 'leader') {
+    const assignedLines = user.line.split(',');
+    if (assignedLines.includes(lineName)) {
+      return next();
+    } else {
+      return res.status(403).json({ error: 'Access denied to this line' });
+    }
+  }
+
+  // Operator hanya bisa akses line-nya sendiri
+  if (user.role === 'operator' && user.line === lineName) {
+    return next();
+  }
+
+  res.status(403).json({ error: 'Access denied to this line' });
+}
+
 // Authentication Routes
 app.post('/api/login', (req, res) => {
   const { username, password } = req.body;
@@ -268,11 +317,36 @@ app.get('/api/current-user', (req, res) => {
 
 // Line Management Routes
 app.get('/api/lines', requireLogin, (req, res) => {
-  if (req.session.user.role !== 'admin') {
-    return res.status(403).json({ error: 'Admin access required' });
-  }
+  const user = req.session.user;
   const data = readProductionData();
-  res.json(data.lines || {});
+  
+  // Admin bisa melihat semua line
+  if (user.role === 'admin') {
+    return res.json(data.lines || {});
+  }
+  
+  // Leader hanya bisa melihat line yang ditugaskan
+  if (user.role === 'leader') {
+    const assignedLines = user.line.split(',');
+    const leaderLines = {};
+    assignedLines.forEach(lineName => {
+      if (data.lines[lineName]) {
+        leaderLines[lineName] = data.lines[lineName];
+      }
+    });
+    return res.json(leaderLines);
+  }
+  
+  // Operator hanya bisa melihat line-nya sendiri
+  if (user.role === 'operator') {
+    const operatorLine = {};
+    if (data.lines[user.line]) {
+      operatorLine[user.line] = data.lines[user.line];
+    }
+    return res.json(operatorLine);
+  }
+  
+  res.status(403).json({ error: 'Access denied' });
 });
 
 app.post('/api/lines', requireLogin, requireAdmin, (req, res) => {
@@ -362,15 +436,8 @@ app.delete('/api/lines/:lineName', requireLogin, requireAdmin, (req, res) => {
 });
 
 // Data Routes
-app.get('/api/line/:lineName', requireLogin, (req, res) => {
-  const user = req.session.user;
+app.get('/api/line/:lineName', requireLogin, requireLineAccess, (req, res) => {
   const lineName = req.params.lineName;
-
-  // Operator hanya bisa akses line-nya sendiri
-  if (user.role === 'operator' && user.line !== lineName) {
-    return res.status(403).json({ error: 'Access denied to this line' });
-  }
-
   const data = readProductionData();
   const lineData = data.lines[lineName];
 
@@ -381,15 +448,9 @@ app.get('/api/line/:lineName', requireLogin, (req, res) => {
   }
 });
 
-app.post('/api/update-line/:lineName', requireLogin, (req, res) => {
-  const user = req.session.user;
+app.post('/api/update-line/:lineName', requireLogin, requireLineAccess, (req, res) => {
   const lineName = req.params.lineName;
   const newData = req.body;
-
-  // Operator hanya bisa update line-nya sendiri
-  if (user.role === 'operator' && user.line !== lineName) {
-    return res.status(403).json({ error: 'Access denied to this line' });
-  }
 
   const data = readProductionData();
 
@@ -416,15 +477,9 @@ app.post('/api/update-line/:lineName', requireLogin, (req, res) => {
   res.json({ message: `Line ${lineName} updated successfully.`, data: line });
 });
 
-app.post('/api/update-hourly/:lineName', requireLogin, (req, res) => {
-  const user = req.session.user;
+app.post('/api/update-hourly/:lineName', requireLogin, requireLineAccess, (req, res) => {
   const lineName = req.params.lineName;
   const { hourIndex, output, defect } = req.body;
-
-  // Operator hanya bisa update line-nya sendiri
-  if (user.role === 'operator' && user.line !== lineName) {
-    return res.status(403).json({ error: 'Access denied to this line' });
-  }
 
   const data = readProductionData();
 
@@ -472,16 +527,11 @@ app.post('/api/update-hourly/:lineName', requireLogin, (req, res) => {
   });
 });
 
-// Operator Routes dengan Auto Account Creation
-app.get('/api/operators/:lineName', requireLogin, (req, res) => {
-  const user = req.session.user;
+// Operator Routes - Leader bisa mengelola operator di line yang ditugaskan
+app.get('/api/operators/:lineName', requireLogin, requireLineAccess, (req, res) => {
   const lineName = req.params.lineName;
-
-  if (user.role === 'operator' && user.line !== lineName) {
-    return res.status(403).json({ error: 'Access denied to this line' });
-  }
-
   const data = readProductionData();
+  
   if (data.lines[lineName]) {
     res.json(data.lines[lineName].operators || []);
   } else {
@@ -489,7 +539,8 @@ app.get('/api/operators/:lineName', requireLogin, (req, res) => {
   }
 });
 
-app.post('/api/operators/:lineName', requireLogin, requireAdmin, (req, res) => {
+// Leader bisa menambah operator
+app.post('/api/operators/:lineName', requireLogin, requireLineAccess, requireLeader, (req, res) => {
   const data = readProductionData();
   const lineName = req.params.lineName;
   const newOperator = req.body;
@@ -540,7 +591,8 @@ app.post('/api/operators/:lineName', requireLogin, requireAdmin, (req, res) => {
   });
 });
 
-app.put('/api/operators/:lineName/:id', requireLogin, requireAdmin, (req, res) => {
+// Leader bisa mengupdate operator
+app.put('/api/operators/:lineName/:id', requireLogin, requireLineAccess, requireLeader, (req, res) => {
   const data = readProductionData();
   const lineName = req.params.lineName;
   const operatorId = parseInt(req.params.id);
@@ -571,7 +623,8 @@ app.put('/api/operators/:lineName/:id', requireLogin, requireAdmin, (req, res) =
   res.json({ message: 'Operator updated successfully.', operator: data.lines[lineName].operators[operatorIndex] });
 });
 
-app.delete('/api/operators/:lineName/:id', requireLogin, requireAdmin, (req, res) => {
+// Leader bisa menghapus operator
+app.delete('/api/operators/:lineName/:id', requireLogin, requireLineAccess, requireLeader, (req, res) => {
   const data = readProductionData();
   const lineName = req.params.lineName;
   const operatorId = parseInt(req.params.id);
@@ -584,6 +637,96 @@ app.delete('/api/operators/:lineName/:id', requireLogin, requireAdmin, (req, res
   writeProductionData(data);
 
   res.json({ message: 'Operator deleted successfully.' });
+});
+
+// User Management Routes - Admin only
+app.get('/api/users', requireLogin, requireAdmin, (req, res) => {
+  const usersData = readUsersData();
+  res.json(usersData.users || []);
+});
+
+app.post('/api/users', requireLogin, requireAdmin, (req, res) => {
+  const { username, password, name, line, role } = req.body;
+  const usersData = readUsersData();
+
+  // Check if username already exists
+  if (usersData.users.find(u => u.username === username)) {
+    return res.status(400).json({ error: 'Username already exists' });
+  }
+
+  const newUser = {
+    id: usersData.users.length + 1,
+    username,
+    password,
+    name,
+    line,
+    role
+  };
+
+  usersData.users.push(newUser);
+  fs.writeFileSync(path.join(__dirname, 'users.json'), JSON.stringify(usersData, null, 2));
+
+  res.json({ 
+    message: 'User created successfully',
+    user: newUser
+  });
+});
+
+app.put('/api/users/:id', requireLogin, requireAdmin, (req, res) => {
+  const userId = parseInt(req.params.id);
+  const { username, password, name, line, role } = req.body;
+  const usersData = readUsersData();
+
+  const userIndex = usersData.users.findIndex(u => u.id === userId);
+  if (userIndex === -1) {
+    return res.status(404).json({ error: 'User not found' });
+  }
+
+  // Check if username already exists (excluding current user)
+  if (usersData.users.find(u => u.username === username && u.id !== userId)) {
+    return res.status(400).json({ error: 'Username already exists' });
+  }
+
+  // Update user
+  usersData.users[userIndex] = {
+    ...usersData.users[userIndex],
+    username,
+    // Only update password if provided
+    ...(password && { password }),
+    name,
+    line,
+    role
+  };
+
+  fs.writeFileSync(path.join(__dirname, 'users.json'), JSON.stringify(usersData, null, 2));
+
+  res.json({ 
+    message: 'User updated successfully',
+    user: usersData.users[userIndex]
+  });
+});
+
+app.delete('/api/users/:id', requireLogin, requireAdmin, (req, res) => {
+  const userId = parseInt(req.params.id);
+  const usersData = readUsersData();
+
+  const userIndex = usersData.users.findIndex(u => u.id === userId);
+  if (userIndex === -1) {
+    return res.status(404).json({ error: 'User not found' });
+  }
+
+  // Prevent deletion of own account
+  if (req.session.user.id === userId) {
+    return res.status(400).json({ error: 'Cannot delete your own account' });
+  }
+
+  const deletedUser = usersData.users.splice(userIndex, 1)[0];
+  fs.writeFileSync(path.join(__dirname, 'users.json'), JSON.stringify(usersData, null, 2));
+
+  res.json({ 
+    message: 'User deleted successfully',
+    user: deletedUser
+  });
 });
 
 // Export Excel Function
@@ -659,13 +802,8 @@ function generateExcelData(lineData, lineName) {
 }
 
 // Export Excel Endpoint
-app.get('/api/export/:lineName', requireLogin, (req, res) => {
-  const user = req.session.user;
+app.get('/api/export/:lineName', requireLogin, requireLineAccess, (req, res) => {
   const lineName = req.params.lineName;
-
-  if (user.role === 'operator' && user.line !== lineName) {
-    return res.status(403).json({ error: 'Access denied to this line' });
-  }
 
   const data = readProductionData();
   const lineData = data.lines[lineName];
@@ -697,6 +835,8 @@ app.get('/', (req, res) => {
   if (req.session.user) {
     if (req.session.user.role === 'admin') {
       res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+    } else if (req.session.user.role === 'leader') {
+      res.sendFile(path.join(__dirname, 'public', 'leader.html'));
     } else {
       res.redirect(`/line/${req.session.user.line}`);
     }
@@ -710,9 +850,26 @@ app.get('/admin', (req, res) => {
     return res.redirect('/');
   }
   if (req.session.user.role !== 'admin') {
+    if (req.session.user.role === 'leader') {
+      return res.redirect('/leader');
+    }
     return res.redirect(`/line/${req.session.user.line}`);
   }
   res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+});
+
+// Route untuk Leader Dashboard
+app.get('/leader', (req, res) => {
+  if (!req.session.user) {
+    return res.redirect('/');
+  }
+  if (req.session.user.role !== 'leader') {
+    if (req.session.user.role === 'admin') {
+      return res.redirect('/admin');
+    }
+    return res.redirect(`/line/${req.session.user.line}`);
+  }
+  res.sendFile(path.join(__dirname, 'public', 'leader.html'));
 });
 
 app.get('/line/:lineName', (req, res) => {
@@ -721,7 +878,21 @@ app.get('/line/:lineName', (req, res) => {
   }
 
   const lineName = req.params.lineName;
-  if (req.session.user.role === 'operator' && req.session.user.line !== lineName) {
+  
+  // Check line access
+  const user = req.session.user;
+  let hasAccess = false;
+  
+  if (user.role === 'admin') {
+    hasAccess = true;
+  } else if (user.role === 'leader') {
+    const assignedLines = user.line.split(',');
+    hasAccess = assignedLines.includes(lineName);
+  } else if (user.role === 'operator') {
+    hasAccess = user.line === lineName;
+  }
+
+  if (!hasAccess) {
     return res.status(403).send('Access denied to this line');
   }
 
@@ -734,7 +905,21 @@ app.get('/input/:lineName', (req, res) => {
   }
 
   const lineName = req.params.lineName;
-  if (req.session.user.role === 'operator' && req.session.user.line !== lineName) {
+  
+  // Check line access
+  const user = req.session.user;
+  let hasAccess = false;
+  
+  if (user.role === 'admin') {
+    hasAccess = true;
+  } else if (user.role === 'leader') {
+    const assignedLines = user.line.split(',');
+    hasAccess = assignedLines.includes(lineName);
+  } else if (user.role === 'operator') {
+    hasAccess = user.line === lineName;
+  }
+
+  if (!hasAccess) {
     return res.status(403).send('Access denied to this line');
   }
 
@@ -752,6 +937,11 @@ app.get('/login.js', (req, res) => {
 
 app.get('/admin.js', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin.js'));
+});
+
+// Leader JavaScript
+app.get('/leader.js', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'leader.js'));
 });
 
 app.get('/operator.js', (req, res) => {
@@ -772,12 +962,14 @@ app.listen(port, () => {
   console.log(`=================================`);
   console.log(`Test Accounts:`);
   console.log(`- Admin: admin / admin123`);
+  console.log(`- Leader: leader1 / leader123 (Mengelola F1-5A dan F1-5B)`);
   console.log(`- Operator F1-5A: operator1 / password123`);
   console.log(`- Operator F1-5B: operator2 / password123`);
   console.log(`- Operator F1-5C: operator3 / password123`);
   console.log(`=================================`);
   console.log(`URL Khusus:`);
   console.log(`- Dashboard Admin: http://localhost:${port}/admin`);
+  console.log(`- Dashboard Leader: http://localhost:${port}/leader`);
   console.log(`- Dashboard Output: http://localhost:${port}/line/[lineName]`);
   console.log(`- Input Data: http://localhost:${port}/input/[lineName]`);
   console.log(`=================================`);

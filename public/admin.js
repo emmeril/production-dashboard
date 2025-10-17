@@ -1,8 +1,10 @@
+
 // public/admin.js
 
 let currentLine = '';
 let currentUser = null;
 let allLines = {};
+let allUsers = [];
 
 // Check authentication
 async function checkAuth() {
@@ -25,6 +27,31 @@ async function checkAuth() {
     }
 }
 
+// Tab management
+function initTabs() {
+    const tabButtons = document.querySelectorAll('.tab-button');
+    const tabContents = document.querySelectorAll('.tab-content');
+
+    tabButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            const tabName = button.getAttribute('data-tab');
+            
+            // Deactivate all tabs
+            tabButtons.forEach(btn => btn.classList.remove('active'));
+            tabContents.forEach(content => content.classList.remove('active'));
+            
+            // Activate current tab
+            button.classList.add('active');
+            document.getElementById(tabName).classList.add('active');
+
+            // Load data based on active tab
+            if (tabName === 'user-management') {
+                fetchUsers();
+            }
+        });
+    });
+}
+
 async function fetchLines() {
     try {
         const response = await fetch('/api/lines');
@@ -32,6 +59,7 @@ async function fetchLines() {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         const lines = await response.json();
+        allLines = lines;
         updateLineSelector(lines);
     } catch (error) {
         console.error("Gagal mengambil data lines:", error);
@@ -286,6 +314,211 @@ function getStatusText(status) {
         'off': 'Off'
     };
     return statusMap[status] || status;
+}
+
+// User Management Functions
+async function fetchUsers() {
+    try {
+        const response = await fetch('/api/users');
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        allUsers = await response.json();
+        updateUserTable(allUsers);
+    } catch (error) {
+        console.error("Gagal mengambil data users:", error);
+    }
+}
+
+function updateUserTable(users) {
+    const tableBody = document.getElementById('user-table-body');
+    tableBody.innerHTML = '';
+
+    if (users && users.length > 0) {
+        users.forEach((user, index) => {
+            const row = tableBody.insertRow();
+            row.insertCell().textContent = index + 1;
+            row.insertCell().textContent = user.username;
+            row.insertCell().textContent = user.name;
+            row.insertCell().textContent = user.line;
+            
+            // Role dengan styling
+            const roleCell = row.insertCell();
+            roleCell.textContent = user.role;
+            if (user.role === 'admin') {
+                roleCell.className = 'efficiency-high';
+            } else if (user.role === 'leader') {
+                roleCell.className = 'efficiency-medium';
+            } else {
+                roleCell.className = 'efficiency-low';
+            }
+            
+            // Aksi
+            const actionCell = row.insertCell();
+            const editButton = document.createElement('button');
+            editButton.textContent = 'Edit';
+            editButton.className = 'btn-edit';
+            editButton.onclick = () => editUser(user);
+            
+            const deleteButton = document.createElement('button');
+            deleteButton.textContent = 'Hapus';
+            deleteButton.className = 'btn-danger';
+            deleteButton.onclick = () => deleteUser(user.id);
+            
+            actionCell.appendChild(editButton);
+            actionCell.appendChild(deleteButton);
+        });
+    } else {
+        const row = tableBody.insertRow();
+        const cell = row.insertCell();
+        cell.colSpan = 6;
+        cell.textContent = "Tidak ada data user.";
+        cell.style.textAlign = 'center';
+    }
+}
+
+function showUserModal() {
+    document.getElementById('user-modal').style.display = 'block';
+    document.getElementById('user-form').reset();
+    document.getElementById('user-id').value = '';
+    document.getElementById('user-modal-title').textContent = 'Tambah User Baru';
+    document.getElementById('password-help').style.display = 'none';
+    document.getElementById('user-password').required = true;
+
+    // Populate line options
+    const lineSelect = document.getElementById('user-line');
+    lineSelect.innerHTML = '<option value="">Pilih Line</option>';
+    
+    Object.keys(allLines).forEach(line => {
+        const option = document.createElement('option');
+        option.value = line;
+        option.textContent = line;
+        lineSelect.appendChild(option);
+    });
+    
+    // Add "all" option for admin
+    const allOption = document.createElement('option');
+    allOption.value = 'all';
+    allOption.textContent = 'all (Semua Line)';
+    lineSelect.appendChild(allOption);
+
+    // Add multiple lines option for leader
+    const multipleOption = document.createElement('option');
+    multipleOption.value = 'multiple';
+    multipleOption.textContent = 'multiple (Beberapa Line)';
+    lineSelect.appendChild(multipleOption);
+}
+
+function editUser(user) {
+    document.getElementById('user-id').value = user.id;
+    document.getElementById('user-username').value = user.username;
+    document.getElementById('user-password').value = '';
+    document.getElementById('user-name').value = user.name;
+    document.getElementById('user-role').value = user.role;
+
+    document.getElementById('user-modal-title').textContent = 'Edit User';
+    document.getElementById('password-help').style.display = 'block';
+    document.getElementById('user-password').required = false;
+
+    // Populate line options
+    const lineSelect = document.getElementById('user-line');
+    lineSelect.innerHTML = '<option value="">Pilih Line</option>';
+    
+    Object.keys(allLines).forEach(line => {
+        const option = document.createElement('option');
+        option.value = line;
+        option.textContent = line;
+        lineSelect.appendChild(option);
+    });
+    
+    // Add "all" option for admin
+    const allOption = document.createElement('option');
+    allOption.value = 'all';
+    allOption.textContent = 'all (Semua Line)';
+    lineSelect.appendChild(allOption);
+
+    // Add multiple lines option for leader
+    const multipleOption = document.createElement('option');
+    multipleOption.value = 'multiple';
+    multipleOption.textContent = 'multiple (Beberapa Line)';
+    lineSelect.appendChild(multipleOption);
+
+    // Set current value
+    lineSelect.value = user.line;
+}
+
+async function saveUser(event) {
+    event.preventDefault();
+    
+    const userData = {
+        username: document.getElementById('user-username').value,
+        password: document.getElementById('user-password').value,
+        name: document.getElementById('user-name').value,
+        line: document.getElementById('user-line').value,
+        role: document.getElementById('user-role').value
+    };
+    
+    const userId = document.getElementById('user-id').value;
+    
+    try {
+        let response;
+        if (userId) {
+            // Update existing user
+            response = await fetch(`/api/users/${userId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(userData)
+            });
+        } else {
+            // Add new user
+            response = await fetch('/api/users', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(userData)
+            });
+        }
+        
+        if (response.ok) {
+            hideUserModal();
+            fetchUsers();
+            alert(`User berhasil ${userId ? 'diupdate' : 'ditambahkan'}.`);
+        } else {
+            const error = await response.json();
+            throw new Error(error.error || 'Gagal menyimpan user');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Gagal menyimpan user: ' + error.message);
+    }
+}
+
+async function deleteUser(userId) {
+    if (confirm('Apakah Anda yakin ingin menghapus user ini?')) {
+        try {
+            const response = await fetch(`/api/users/${userId}`, {
+                method: 'DELETE'
+            });
+            
+            if (response.ok) {
+                alert('User berhasil dihapus.');
+                fetchUsers();
+            } else {
+                const error = await response.json();
+                throw new Error(error.error || 'Gagal menghapus user');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Gagal menghapus user: ' + error.message);
+        }
+    }
+}
+
+function hideUserModal() {
+    document.getElementById('user-modal').style.display = 'none';
 }
 
 // Modal Functions
@@ -596,16 +829,32 @@ function initializeAdmin() {
     // Load lines data
     fetchLines();
     
+    // Initialize tabs
+    initTabs();
+    
     // Event listeners
     document.getElementById('logout-btn').addEventListener('click', logout);
     document.getElementById('add-operator-btn').addEventListener('click', showModal);
     document.getElementById('export-excel-btn').addEventListener('click', exportToExcel);
     document.getElementById('refresh-operators-btn').addEventListener('click', fetchOperators);
     
+    // User management event listeners
+    document.getElementById('add-user-btn').addEventListener('click', showUserModal);
+    document.getElementById('refresh-users-btn').addEventListener('click', fetchUsers);
+    
     // Modal event listeners
-    document.querySelector('.close').addEventListener('click', hideModal);
+    document.querySelectorAll('.close').forEach(closeBtn => {
+        closeBtn.addEventListener('click', function() {
+            this.closest('.modal').style.display = 'none';
+        });
+    });
+    
     document.getElementById('cancel-btn').addEventListener('click', hideModal);
     document.getElementById('operator-form').addEventListener('submit', saveOperator);
+    
+    // User modal event listeners
+    document.getElementById('cancel-user-btn').addEventListener('click', hideUserModal);
+    document.getElementById('user-form').addEventListener('submit', saveUser);
     
     // Line management event listeners
     document.getElementById('line-target').addEventListener('input', function() {
@@ -626,14 +875,8 @@ function initializeAdmin() {
     
     // Close modals when clicking outside
     window.addEventListener('click', function(event) {
-        if (event.target === document.getElementById('operator-modal')) {
-            hideModal();
-        }
-        if (event.target === document.getElementById('line-modal')) {
-            hideLineModals();
-        }
-        if (event.target === document.getElementById('edit-line-modal')) {
-            hideLineModals();
+        if (event.target.classList.contains('modal')) {
+            event.target.style.display = 'none';
         }
     });
     

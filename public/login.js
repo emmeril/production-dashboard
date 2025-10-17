@@ -1,3 +1,4 @@
+
 // public/login.js
 
 // Cek apakah user sudah login
@@ -27,6 +28,8 @@ function showUserInfo(user) {
 function redirectUser(user) {
     if (user.role === 'admin') {
         window.location.href = '/admin';
+    } else if (user.role === 'leader') {
+        window.location.href = '/leader';
     } else {
         window.location.href = `/line/${user.line}`;
     }
@@ -55,6 +58,8 @@ async function handleLogin(event) {
             // Login successful
             if (data.user.role === 'admin') {
                 window.location.href = '/admin';
+            } else if (data.user.role === 'leader') {
+                window.location.href = '/leader';
             } else {
                 window.location.href = `/line/${data.user.line}`;
             }

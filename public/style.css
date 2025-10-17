@@ -1,3 +1,4 @@
+
 /* Reset dan Base Styles */
 * {
     margin: 0;
@@ -165,6 +166,47 @@ body {
     display: flex;
     gap: 15px;
     align-items: center;
+}
+
+/* Management Tabs */
+.management-tabs {
+    display: flex;
+    margin-bottom: 25px;
+    background-color: #222;
+    border-radius: 8px;
+    padding: 10px;
+    gap: 10px;
+}
+
+.tab-button {
+    background-color: #333;
+    color: #fff;
+    border: none;
+    padding: 15px 30px;
+    font-size: 1.1em;
+    font-weight: bold;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    flex: 1;
+    text-align: center;
+}
+
+.tab-button:hover {
+    background-color: #444;
+}
+
+.tab-button.active {
+    background-color: #FFC000;
+    color: #000;
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
 }
 
 /* Button Styles */
@@ -455,6 +497,28 @@ body {
     grid-template-columns: 1fr 1fr;
     gap: 25px;
     margin-top: 30px;
+}
+
+/* User Management */
+.user-management-container {
+    padding: 25px;
+    background-color: #222;
+    border-radius: 8px;
+    height: fit-content;
+}
+
+.user-management-container h2 {
+    font-size: 1.6em;
+    color: #FFD700;
+    margin-bottom: 20px;
+    text-align: left;
+}
+
+.user-controls {
+    margin-bottom: 20px;
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
 }
 
 /* Input Data Section untuk Operator */
@@ -806,6 +870,10 @@ tr:hover {
     .modal-content {
         width: 90%;
         margin: 5% auto;
+    }
+    
+    .management-tabs {
+        flex-direction: column;
     }
 }
 

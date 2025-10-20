@@ -69,7 +69,7 @@ function updateDashboard(data) {
 
     // Update Main Values
     document.getElementById('target').textContent = data.target || 0;
-    document.getElementById('productivity').textContent = `${data.productivity || 0}/H`;
+    document.getElementById('productivity').textContent = `${data.productivity || 0}`;
     document.getElementById('output-day').textContent = data.outputDay || 0;
     document.getElementById('defect-day').textContent = data.defectDay || 0; // Total defect keseluruhan
 

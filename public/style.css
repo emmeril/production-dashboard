@@ -496,7 +496,7 @@ body {
     min-height: 100px; /* Diperkecil */
 }
 
-/* Primary Row */
+/* Primary Row - ANGKA DIPERBESAR LAGI */
 .label-primary {
     background-color: var(--bg-card);
     color: var(--text-light);
@@ -507,17 +507,18 @@ body {
 .value-primary {
     background-color: var(--bg-dark);
     color: var(--primary-color);
-    font-size: 6em; /* DIPERBESAR dari 5em */
-    line-height: 1.1;
-    padding: 25px;
+    font-size: 8em; /* DIPERBESAR LAGI dari 6em */
+    line-height: 1;
+    padding: 30px;
     text-align: center;
     border: 2px solid #333;
     display: flex;
     align-items: center;
     justify-content: center;
+    font-weight: bold;
 }
 
-/* Secondary Row */
+/* Secondary Row - ANGKA DIPERBESAR LAGI */
 .label-secondary {
     background-color: var(--bg-card);
     color: var(--text-light);
@@ -526,13 +527,14 @@ body {
 }
 
 .value-secondary {
-    font-size: 5.5em; /* DIPERBESAR dari 4.5em */
-    line-height: 1.1;
+    font-size: 7em; /* DIPERBESAR LAGI dari 5.5em */
+    line-height: 1;
     text-align: center;
     border: 2px solid #333;
     display: flex;
     align-items: center;
     justify-content: center;
+    font-weight: bold;
 }
 
 .yellow-bg {
@@ -656,7 +658,7 @@ body {
     font-size: 1em; /* Diperkecil */
 }
 
-/* Quick Stats */
+/* Quick Stats - ANGKA DIPERBESAR LAGI */
 .quick-stats {
     margin-top: 25px;
     padding: 20px;
@@ -688,9 +690,10 @@ body {
 
 .stat-value {
     display: block;
-    font-size: 3.2em; /* DIPERBESAR dari 2.8em */
+    font-size: 4.5em; /* DIPERBESAR LAGI dari 3.2em */
     font-weight: bold;
     color: var(--primary-color);
+    line-height: 1;
 }
 
 /* Container Styles */

@@ -1,3 +1,4 @@
+
 /* Reset dan Base Styles */
 * {
     margin: 0;
@@ -18,7 +19,7 @@
 
 html {
     /* Base scaling untuk mobile */
-    font-size: 16px;
+    font-size: 18px; /* Dinaikkan dari 16px */
 }
 
 body {
@@ -29,6 +30,7 @@ body {
     min-height: 100vh;
     overflow-x: auto;
     overflow-y: auto;
+    font-size: 1.1rem; /* Ditambahkan untuk base font yang lebih besar */
 }
 
 /* Container utama dengan width fixed seperti desktop */
@@ -95,14 +97,14 @@ body {
 
 .login-header h1 {
     color: var(--primary-color);
-    font-size: 2.8em;
+    font-size: 3.2em; /* Dinaikkan dari 2.8em */
     margin-bottom: 15px;
     text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
 }
 
 .login-header p {
     color: var(--text-muted);
-    font-size: 1.3em;
+    font-size: 1.5em; /* Dinaikkan dari 1.3em */
 }
 
 .login-form-container {
@@ -113,7 +115,7 @@ body {
     color: var(--primary-color);
     text-align: center;
     margin-bottom: 30px;
-    font-size: 2em;
+    font-size: 2.3em; /* Dinaikkan dari 2em */
 }
 
 .form-group {
@@ -126,17 +128,17 @@ body {
     margin-bottom: 10px;
     color: var(--text-light);
     font-weight: 600;
-    font-size: 1.1em;
+    font-size: 1.3em; /* Dinaikkan dari 1.1em */
 }
 
 .form-group input {
     width: 100%;
-    padding: 15px 18px;
+    padding: 18px 20px; /* Dinaikkan padding */
     background-color: var(--bg-element);
     color: var(--text-light);
     border: 2px solid #444;
     border-radius: 5px;
-    font-size: 1.1em;
+    font-size: 1.3em; /* Dinaikkan dari 1.1em */
     transition: border-color 0.3s ease;
 }
 
@@ -149,8 +151,8 @@ body {
     background-color: var(--secondary-color);
     color: #000;
     border: none;
-    padding: 18px;
-    font-size: 1.3em;
+    padding: 20px; /* Dinaikkan dari 18px */
+    font-size: 1.5em; /* Dinaikkan dari 1.3em */
     font-weight: bold;
     border-radius: 5px;
     cursor: pointer;
@@ -173,7 +175,7 @@ body {
     text-align: center;
     display: none;
     border-left: 4px solid #ff4444;
-    font-size: 1.1em;
+    font-size: 1.3em; /* Dinaikkan dari 1.1em */
 }
 
 .user-info {
@@ -183,7 +185,7 @@ body {
     margin-bottom: 25px;
     text-align: center;
     border-left: 4px solid #00ff00;
-    font-size: 1.2em;
+    font-size: 1.4em; /* Dinaikkan dari 1.2em */
 }
 
 /* Dashboard Styles */
@@ -210,7 +212,7 @@ body {
 }
 
 .user-display {
-    font-size: 1.4em;
+    font-size: 1.6em; /* Dinaikkan dari 1.4em */
 }
 
 .user-display strong {
@@ -237,8 +239,8 @@ body {
     background-color: #333;
     color: var(--text-light);
     border: none;
-    padding: 15px 30px;
-    font-size: 1.1em;
+    padding: 18px 32px; /* Dinaikkan padding */
+    font-size: 1.3em; /* Dinaikkan dari 1.1em */
     font-weight: bold;
     border-radius: 5px;
     cursor: pointer;
@@ -269,8 +271,8 @@ body {
     background-color: var(--secondary-color);
     color: #000;
     border: none;
-    padding: 15px 30px;
-    font-size: 1.1em;
+    padding: 18px 32px; /* Dinaikkan padding */
+    font-size: 1.3em; /* Dinaikkan dari 1.1em */
     font-weight: bold;
     border-radius: 5px;
     cursor: pointer;
@@ -288,8 +290,8 @@ body {
     background-color: #444;
     color: var(--text-light);
     border: none;
-    padding: 15px 30px;
-    font-size: 1.1em;
+    padding: 18px 32px; /* Dinaikkan padding */
+    font-size: 1.3em; /* Dinaikkan dari 1.1em */
     font-weight: bold;
     border-radius: 5px;
     cursor: pointer;
@@ -304,8 +306,8 @@ body {
     background-color: var(--accent-color);
     color: var(--text-light);
     border: none;
-    padding: 10px 18px;
-    font-size: 1em;
+    padding: 12px 20px; /* Dinaikkan padding */
+    font-size: 1.2em; /* Dinaikkan dari 1em */
     border-radius: 4px;
     cursor: pointer;
     margin-left: 8px;
@@ -319,8 +321,8 @@ body {
     background-color: #007bff;
     color: var(--text-light);
     border: none;
-    padding: 10px 18px;
-    font-size: 1em;
+    padding: 12px 20px; /* Dinaikkan padding */
+    font-size: 1.2em; /* Dinaikkan dari 1em */
     border-radius: 4px;
     cursor: pointer;
 }
@@ -333,10 +335,11 @@ body {
     background-color: #007bff;
     color: var(--text-light);
     border: none;
-    padding: 10px 18px;
+    padding: 12px 20px; /* Dinaikkan padding */
     border-radius: 4px;
     cursor: pointer;
     font-weight: bold;
+    font-size: 1.2em; /* Ditambahkan */
 }
 
 .btn-update:hover {
@@ -347,11 +350,12 @@ body {
     background-color: var(--accent-color);
     color: var(--text-light);
     border: none;
-    padding: 12px 25px;
+    padding: 15px 28px; /* Dinaikkan padding */
     border-radius: 5px;
     cursor: pointer;
     font-weight: bold;
     transition: background-color 0.3s ease;
+    font-size: 1.3em; /* Ditambahkan */
 }
 
 .btn-logout:hover {
@@ -370,7 +374,7 @@ body {
 .line-selector h3 {
     color: var(--primary-color);
     margin-bottom: 20px;
-    font-size: 1.5em;
+    font-size: 1.8em; /* Dinaikkan dari 1.5em */
 }
 
 .line-buttons {
@@ -391,15 +395,15 @@ body {
     background-color: #333;
     color: var(--text-light);
     border: 2px solid #555;
-    padding: 15px 20px;
-    font-size: 1.1em;
+    padding: 18px 22px; /* Dinaikkan padding */
+    font-size: 1.3em; /* Dinaikkan dari 1.1em */
     font-weight: bold;
     border-radius: 5px;
     cursor: pointer;
     transition: all 0.3s ease;
     text-align: left;
     flex: 1;
-    min-height: 80px;
+    min-height: 90px; /* Sedikit dinaikkan */
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -420,7 +424,7 @@ body {
     display: block;
     font-weight: normal;
     margin-top: 8px;
-    font-size: 0.9em;
+    font-size: 1em; /* Dinaikkan dari 0.9em */
     opacity: 0.8;
 }
 
@@ -428,12 +432,12 @@ body {
     background-color: #007bff;
     color: white;
     border: none;
-    padding: 10px 15px;
+    padding: 12px 18px; /* Dinaikkan padding */
     border-radius: 3px;
     cursor: pointer;
-    font-size: 1em;
+    font-size: 1.2em; /* Dinaikkan dari 1em */
     height: fit-content;
-    min-height: 80px;
+    min-height: 90px; /* Sesuai dengan line-btn */
 }
 
 .line-edit-btn:hover {
@@ -459,7 +463,7 @@ body {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     gap: 20px;
-    font-size: 1.3em;
+    font-size: 1.5em; /* Dinaikkan dari 1.3em */
     padding: 20px 25px;
     margin-bottom: 25px;
     border-bottom: 3px solid #333;
@@ -496,14 +500,14 @@ body {
 .label-primary {
     background-color: var(--bg-card);
     color: var(--text-light);
-    font-size: 1.5em;
+    font-size: 1.8em; /* Dinaikkan dari 1.5em */
     text-align: center;
 }
 
 .value-primary {
     background-color: var(--bg-dark);
     color: var(--primary-color);
-    font-size: 3.5em;
+    font-size: 4em; /* Dinaikkan dari 3.5em */
     line-height: 1.1;
     padding: 25px;
     text-align: center;
@@ -517,12 +521,12 @@ body {
 .label-secondary {
     background-color: var(--bg-card);
     color: var(--text-light);
-    font-size: 1.5em;
+    font-size: 1.8em; /* Dinaikkan dari 1.5em */
     text-align: center;
 }
 
 .value-secondary {
-    font-size: 3em;
+    font-size: 3.5em; /* Dinaikkan dari 3em */
     line-height: 1.1;
     text-align: center;
     border: 2px solid #333;
@@ -563,7 +567,7 @@ body {
 }
 
 .user-management-container h2 {
-    font-size: 1.6em;
+    font-size: 1.8em; /* Dinaikkan dari 1.6em */
     color: var(--primary-color);
     margin-bottom: 20px;
     text-align: left;
@@ -585,7 +589,7 @@ body {
 }
 
 .input-data-container h2 {
-    font-size: 1.6em;
+    font-size: 1.8em; /* Dinaikkan dari 1.6em */
     color: var(--primary-color);
     margin-bottom: 20px;
     text-align: left;
@@ -605,7 +609,7 @@ body {
 .hourly-input-section h3 {
     color: var(--primary-color);
     margin-bottom: 20px;
-    font-size: 1.3em;
+    font-size: 1.5em; /* Dinaikkan dari 1.3em */
 }
 
 .hour-input-group {
@@ -620,7 +624,7 @@ body {
     font-weight: bold;
     margin-bottom: 12px;
     color: var(--text-light);
-    font-size: 1.2em;
+    font-size: 1.4em; /* Dinaikkan dari 1.2em */
 }
 
 .hour-inputs {
@@ -637,19 +641,19 @@ body {
 }
 
 .input-group label {
-    font-size: 1em;
+    font-size: 1.2em; /* Dinaikkan dari 1em */
     color: var(--text-muted);
     font-weight: normal;
 }
 
 .hour-inputs input {
-    padding: 10px 14px;
+    padding: 12px 16px; /* Dinaikkan padding */
     background-color: white;
     color: #000;
     border: 1px solid #555;
     border-radius: 4px;
     width: 100%;
-    font-size: 1.1em;
+    font-size: 1.3em; /* Dinaikkan dari 1.1em */
 }
 
 /* Quick Stats */
@@ -677,14 +681,14 @@ body {
 
 .stat-label {
     display: block;
-    font-size: 1em;
+    font-size: 1.2em; /* Dinaikkan dari 1em */
     color: var(--text-muted);
     margin-bottom: 8px;
 }
 
 .stat-value {
     display: block;
-    font-size: 1.8em;
+    font-size: 2.2em; /* Dinaikkan dari 1.8em */
     font-weight: bold;
     color: var(--primary-color);
 }
@@ -698,7 +702,7 @@ body {
 }
 
 .operator-data-container h2, .hourly-data-container h2 {
-    font-size: 1.6em;
+    font-size: 1.8em; /* Dinaikkan dari 1.6em */
     color: var(--primary-color);
     margin-bottom: 20px;
     text-align: left;
@@ -715,12 +719,12 @@ body {
 table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 1.1em;
+    font-size: 1.3em; /* Dinaikkan dari 1.1em */
     margin-top: 15px;
 }
 
 th, td {
-    padding: 15px 18px;
+    padding: 18px 20px; /* Dinaikkan padding */
     border: 1px solid #444;
     text-align: center;
 }
@@ -728,7 +732,7 @@ th, td {
 th {
     background-color: var(--bg-dark);
     color: var(--text-light);
-    font-size: 1.2em;
+    font-size: 1.4em; /* Dinaikkan dari 1.2em */
     font-weight: bold;
 }
 
@@ -744,31 +748,37 @@ tr:hover {
 .status-active {
     color: #00FF00;
     font-weight: bold;
+    font-size: 1.2em; /* Ditambahkan */
 }
 
 .status-break {
     color: #FFA500;
     font-weight: bold;
+    font-size: 1.2em; /* Ditambahkan */
 }
 
 .status-off {
     color: #FF0000;
     font-weight: bold;
+    font-size: 1.2em; /* Ditambahkan */
 }
 
 .efficiency-high {
     color: #00FF00;
     font-weight: bold;
+    font-size: 1.2em; /* Ditambahkan */
 }
 
 .efficiency-medium {
     color: #FFA500;
     font-weight: bold;
+    font-size: 1.2em; /* Ditambahkan */
 }
 
 .efficiency-low {
     color: #FF0000;
     font-weight: bold;
+    font-size: 1.2em; /* Ditambahkan */
 }
 
 /* Modal Styles */
@@ -801,7 +811,7 @@ tr:hover {
 .close {
     color: #aaa;
     float: right;
-    font-size: 32px;
+    font-size: 36px; /* Dinaikkan dari 32px */
     font-weight: bold;
     cursor: pointer;
     position: absolute;
@@ -816,7 +826,7 @@ tr:hover {
 .modal-content h3 {
     color: var(--primary-color);
     margin-bottom: 25px;
-    font-size: 1.6em;
+    font-size: 1.8em; /* Dinaikkan dari 1.6em */
 }
 
 .form-actions {
@@ -837,17 +847,17 @@ tr:hover {
     margin-bottom: 10px;
     color: var(--text-light);
     font-weight: 600;
-    font-size: 1.1em;
+    font-size: 1.3em; /* Dinaikkan dari 1.1em */
 }
 
 .form-group input, .form-group select {
     width: 100%;
-    padding: 15px 18px;
+    padding: 18px 20px; /* Dinaikkan padding */
     background-color: #333;
     color: var(--text-light);
     border: 2px solid #555;
     border-radius: 5px;
-    font-size: 1.1em;
+    font-size: 1.3em; /* Dinaikkan dari 1.1em */
     transition: border-color 0.3s ease;
 }
 
@@ -869,7 +879,7 @@ tr:hover {
     border-radius: 5px;
     margin: 15px 0;
     border-left: 4px solid #00ff00;
-    font-size: 1.1em;
+    font-size: 1.3em; /* Dinaikkan dari 1.1em */
 }
 
 .error-message {
@@ -879,7 +889,7 @@ tr:hover {
     border-radius: 5px;
     margin: 15px 0;
     border-left: 4px solid #ff4444;
-    font-size: 1.1em;
+    font-size: 1.3em; /* Dinaikkan dari 1.1em */
 }
 
 /* Scrollbar Styling */
@@ -914,11 +924,11 @@ tr:hover {
     background-color: var(--secondary-color);
     color: #000;
     border: none;
-    padding: 10px 15px;
+    padding: 12px 18px; /* Dinaikkan padding */
     border-radius: 5px;
     cursor: pointer;
     font-weight: bold;
-    font-size: 1.2em;
+    font-size: 1.4em; /* Dinaikkan dari 1.2em */
 }
 
 /* Untuk layar yang lebih kecil dari 1920px, kita akan scaling container */

@@ -190,6 +190,13 @@ function initializeDataFiles() {
     fs.writeFileSync(path.join(__dirname, 'users.json'), JSON.stringify(initialUsers, null, 2));
     console.log('Users file created successfully');
   }
+
+  // Create history directory if doesn't exist
+  const historyDir = path.join(__dirname, 'history');
+  if (!fs.existsSync(historyDir)) {
+    fs.mkdirSync(historyDir);
+    console.log('History directory created successfully');
+  }
 }
 
 // Utility Functions
@@ -218,6 +225,55 @@ function readUsersData() {
   } catch (error) {
     console.error('ERROR: Gagal membaca users.json:', error.message);
     return { users: [] };
+  }
+}
+
+// History Functions
+function saveDailyBackup() {
+  try {
+    const data = readProductionData();
+    const today = new Date().toISOString().split('T')[0];
+    const backupFile = path.join(__dirname, 'history', `data_${today}.json`);
+    
+    fs.writeFileSync(backupFile, JSON.stringify(data, null, 2));
+    console.log(`Daily backup saved: data_${today}.json`);
+  } catch (error) {
+    console.error('Error saving daily backup:', error);
+  }
+}
+
+function getHistoryFiles() {
+  try {
+    const historyDir = path.join(__dirname, 'history');
+    const files = fs.readdirSync(historyDir)
+      .filter(file => file.startsWith('data_') && file.endsWith('.json'))
+      .map(file => {
+        const filePath = path.join(historyDir, file);
+        const stats = fs.statSync(filePath);
+        return {
+          filename: file,
+          date: file.replace('data_', '').replace('.json', ''),
+          size: stats.size,
+          created: stats.birthtime
+        };
+      })
+      .sort((a, b) => new Date(b.date) - new Date(a.date));
+    
+    return files;
+  } catch (error) {
+    console.error('Error reading history files:', error);
+    return [];
+  }
+}
+
+function readHistoryData(filename) {
+  try {
+    const filePath = path.join(__dirname, 'history', filename);
+    const data = fs.readFileSync(filePath, 'utf8');
+    return JSON.parse(data);
+  } catch (error) {
+    console.error('Error reading history file:', error);
+    return null;
   }
 }
 
@@ -312,6 +368,158 @@ app.get('/api/current-user', (req, res) => {
     res.json(req.session.user);
   } else {
     res.status(401).json({ error: 'Not logged in' });
+  }
+});
+
+// History Data Routes
+app.get('/api/history/files', requireLogin, requireAdmin, (req, res) => {
+  try {
+    const historyFiles = getHistoryFiles();
+    res.json(historyFiles);
+  } catch (error) {
+    console.error('Error getting history files:', error);
+    res.status(500).json({ error: 'Failed to get history files' });
+  }
+});
+
+app.get('/api/history/:filename', requireLogin, requireAdmin, (req, res) => {
+  const { filename } = req.params;
+  
+  // Security check to prevent directory traversal
+  if (!filename.startsWith('data_') || !filename.endsWith('.json')) {
+    return res.status(400).json({ error: 'Invalid filename' });
+  }
+
+  try {
+    const historyData = readHistoryData(filename);
+    if (!historyData) {
+      return res.status(404).json({ error: 'History file not found' });
+    }
+    res.json(historyData);
+  } catch (error) {
+    console.error('Error reading history file:', error);
+    res.status(500).json({ error: 'Failed to read history data' });
+  }
+});
+
+app.get('/api/history/:filename/export', requireLogin, requireAdmin, (req, res) => {
+  const { filename } = req.params;
+  
+  // Security check
+  if (!filename.startsWith('data_') || !filename.endsWith('.json')) {
+    return res.status(400).json({ error: 'Invalid filename' });
+  }
+
+  try {
+    const historyData = readHistoryData(filename);
+    if (!historyData) {
+      return res.status(404).json({ error: 'History file not found' });
+    }
+
+    const date = filename.replace('data_', '').replace('.json', '');
+    
+    // Create Excel workbook
+    const workbook = XLSX.utils.book_new();
+    
+    // Add summary sheet for all lines
+    const summaryData = [
+      ['HISTORICAL PRODUCTION REPORT SUMMARY'],
+      ['Generated from backup:', date],
+      [],
+      ['Line', 'Label/Week', 'Model', 'Date', 'Target', 'Output', 'Defect', 'Achievement%', 'Defect Rate%']
+    ];
+
+    Object.keys(historyData.lines).forEach(lineName => {
+      const line = historyData.lines[lineName];
+      summaryData.push([
+        lineName,
+        line.labelWeek,
+        line.model,
+        line.date,
+        line.target,
+        line.outputDay,
+        line.defectDay,
+        line.achivementPercentage,
+        line.defectRatePercentage
+      ]);
+    });
+
+    const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
+    XLSX.utils.book_append_sheet(workbook, summarySheet, 'Summary');
+
+    // Add sheets for each line
+    Object.keys(historyData.lines).forEach(lineName => {
+      const line = historyData.lines[lineName];
+      
+      // Line details
+      const lineData = [
+        [`PRODUCTION REPORT - ${lineName}`],
+        [],
+        ['Label/Week', line.labelWeek],
+        ['Model', line.model],
+        ['Date', line.date],
+        ['Target', line.target],
+        ['Productivity/Hour', line.productivity],
+        ['Output/Hari', line.outputDay],
+        ['Total Defect', line.defectDay],
+        ['Achievement (%)', line.achivementPercentage],
+        ['Defect Rate (%)', line.defectRatePercentage],
+        [],
+        ['HOURLY DATA'],
+        ['Jam', 'Output', 'Defect', 'Defect Rate (%)']
+      ];
+
+      line.hourly_data.forEach(hour => {
+        const defectRate = hour.output > 0 ? ((hour.defect / hour.output) * 100).toFixed(2) : '0.00';
+        lineData.push([hour.hour, hour.output, hour.defect, defectRate]);
+      });
+
+      // Operator data
+      if (line.operators && line.operators.length > 0) {
+        lineData.push([], ['OPERATOR DATA']);
+        lineData.push(['No', 'Nama', 'Posisi', 'Target', 'Output', 'Defect', 'Efisiensi%', 'Status']);
+        
+        line.operators.forEach((operator, index) => {
+          lineData.push([
+            index + 1,
+            operator.name,
+            operator.position,
+            operator.target,
+            operator.output,
+            operator.defect,
+            operator.efficiency,
+            operator.status === 'active' ? 'Aktif' : operator.status === 'break' ? 'Istirahat' : 'Off'
+          ]);
+        });
+      }
+
+      const lineSheet = XLSX.utils.aoa_to_sheet(lineData);
+      XLSX.utils.book_append_sheet(workbook, lineSheet, lineName);
+    });
+
+    // Generate buffer
+    const excelBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+    
+    // Set headers
+    const downloadFilename = `Historical_Production_Report_${date}.xlsx`;
+    res.setHeader('Content-Disposition', `attachment; filename="${downloadFilename}"`);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    
+    res.send(excelBuffer);
+  } catch (error) {
+    console.error('Export history error:', error);
+    res.status(500).json({ error: 'Failed to export history data' });
+  }
+});
+
+// Manual backup endpoint
+app.post('/api/backup/now', requireLogin, requireAdmin, (req, res) => {
+  try {
+    saveDailyBackup();
+    res.json({ message: 'Backup created successfully' });
+  } catch (error) {
+    console.error('Error creating backup:', error);
+    res.status(500).json({ error: 'Failed to create backup' });
   }
 });
 
@@ -952,25 +1160,25 @@ app.get('/input.js', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'input.js'));
 });
 
+// Schedule daily backup at midnight
+setInterval(() => {
+  const now = new Date();
+  if (now.getHours() === 0 && now.getMinutes() === 0) {
+    saveDailyBackup();
+  }
+}, 60000); // Check every minute
+
 // Initialize and Start Server
 initializeDataFiles();
+
+// Create initial backup
+setTimeout(saveDailyBackup, 5000);
 
 app.listen(port, () => {
   console.log(`=================================`);
   console.log(`Production Dashboard System`);
   console.log(`Server berjalan di http://localhost:${port}`);
   console.log(`=================================`);
-  console.log(`Test Accounts:`);
-  console.log(`- Admin: admin / admin123`);
-  console.log(`- Leader: leader1 / leader123 (Mengelola F1-5A dan F1-5B)`);
-  console.log(`- Operator F1-5A: operator1 / password123`);
-  console.log(`- Operator F1-5B: operator2 / password123`);
-  console.log(`- Operator F1-5C: operator3 / password123`);
-  console.log(`=================================`);
-  console.log(`URL Khusus:`);
-  console.log(`- Dashboard Admin: http://localhost:${port}/admin`);
-  console.log(`- Dashboard Leader: http://localhost:${port}/leader`);
-  console.log(`- Dashboard Output: http://localhost:${port}/line/[lineName]`);
-  console.log(`- Input Data: http://localhost:${port}/input/[lineName]`);
+  console.log(`Fitur History Data telah ditambahkan`);
   console.log(`=================================`);
 });

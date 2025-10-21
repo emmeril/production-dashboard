@@ -1,10 +1,11 @@
-
 // public/admin.js
 
 let currentLine = '';
 let currentUser = null;
 let allLines = {};
 let allUsers = [];
+let currentHistoryFile = '';
+let currentHistoryData = null;
 
 // Check authentication
 async function checkAuth() {
@@ -47,6 +48,8 @@ function initTabs() {
             // Load data based on active tab
             if (tabName === 'user-management') {
                 fetchUsers();
+            } else if (tabName === 'history-management') {
+                fetchHistoryFiles();
             }
         });
     });
@@ -813,6 +816,313 @@ async function exportToExcel() {
     }
 }
 
+// History Data Functions
+async function fetchHistoryFiles() {
+    try {
+        const response = await fetch('/api/history/files');
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const historyFiles = await response.json();
+        updateHistoryTable(historyFiles);
+    } catch (error) {
+        console.error("Gagal mengambil data history:", error);
+    }
+}
+
+function updateHistoryTable(historyFiles) {
+    const tableBody = document.getElementById('history-table-body');
+    tableBody.innerHTML = '';
+
+    if (historyFiles && historyFiles.length > 0) {
+        historyFiles.forEach((file, index) => {
+            const row = tableBody.insertRow();
+            
+            // No
+            row.insertCell().textContent = index + 1;
+            
+            // Tanggal Backup
+            const dateCell = row.insertCell();
+            const date = new Date(file.date);
+            dateCell.textContent = date.toLocaleDateString('id-ID', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+            
+            // Jumlah Line (akan diisi setelah load data)
+            const lineCountCell = row.insertCell();
+            lineCountCell.textContent = 'Loading...';
+            lineCountCell.id = `line-count-${file.date}`;
+            
+            // Ukuran File
+            const sizeCell = row.insertCell();
+            sizeCell.textContent = formatFileSize(file.size);
+            
+            // Aksi
+            const actionCell = row.insertCell();
+            
+            const viewButton = document.createElement('button');
+            viewButton.textContent = 'Lihat Data';
+            viewButton.className = 'btn-edit';
+            viewButton.onclick = () => viewHistoryData(file.filename, file.date);
+            
+            const exportButton = document.createElement('button');
+            exportButton.textContent = 'Export Excel';
+            exportButton.className = 'btn-primary';
+            exportButton.onclick = () => exportHistoryData(file.filename, file.date);
+            
+            actionCell.appendChild(viewButton);
+            actionCell.appendChild(exportButton);
+
+            // Load line count
+            loadLineCount(file.filename, file.date);
+        });
+    } else {
+        const row = tableBody.insertRow();
+        const cell = row.insertCell();
+        cell.colSpan = 5;
+        cell.textContent = "Tidak ada data history.";
+        cell.style.textAlign = 'center';
+    }
+}
+
+async function loadLineCount(filename, date) {
+    try {
+        const response = await fetch(`/api/history/${filename}`);
+        if (response.ok) {
+            const historyData = await response.json();
+            const lineCount = Object.keys(historyData.lines || {}).length;
+            document.getElementById(`line-count-${date}`).textContent = `${lineCount} Line`;
+        }
+    } catch (error) {
+        console.error('Error loading line count:', error);
+        document.getElementById(`line-count-${date}`).textContent = 'Error';
+    }
+}
+
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+async function viewHistoryData(filename, date) {
+    try {
+        const response = await fetch(`/api/history/${filename}`);
+        if (!response.ok) {
+            throw new Error('Gagal mengambil data history');
+        }
+        
+        currentHistoryData = await response.json();
+        currentHistoryFile = filename;
+        
+        // Update modal title
+        document.getElementById('history-date').textContent = new Date(date).toLocaleDateString('id-ID');
+        
+        // Populate line selector
+        updateHistoryLineSelector(currentHistoryData.lines);
+        
+        // Show modal
+        document.getElementById('history-detail-modal').style.display = 'block';
+        
+    } catch (error) {
+        console.error('Error viewing history data:', error);
+        alert('Gagal memuat data history: ' + error.message);
+    }
+}
+
+function updateHistoryLineSelector(lines) {
+    const lineButtons = document.getElementById('history-line-buttons');
+    lineButtons.innerHTML = '';
+
+    Object.keys(lines).forEach(lineName => {
+        const lineData = lines[lineName];
+        const button = document.createElement('button');
+        button.className = 'line-btn';
+        button.innerHTML = `
+            <div>${lineName}</div>
+            <small style="font-size: 0.8em; opacity: 0.8;">
+                Output: ${lineData.outputDay} | Achievement: ${lineData.achivementPercentage}%
+            </small>
+        `;
+        button.onclick = () => {
+            updateHistoryDashboard(lineName, lineData);
+        };
+
+        lineButtons.appendChild(button);
+    });
+
+    // Load first line by default
+    const firstLine = Object.keys(lines)[0];
+    if (firstLine) {
+        updateHistoryDashboard(firstLine, lines[firstLine]);
+    }
+}
+
+function updateHistoryDashboard(lineName, lineData) {
+    // Update Header Info
+    document.getElementById('history-line').textContent = `LINE: ${lineName}`;
+    document.getElementById('history-label-week').textContent = `LABEL/WEEK: ${lineData.labelWeek || 'N/A'}`;
+    document.getElementById('history-model').textContent = lineData.model || 'N/A';
+    document.getElementById('history-date-detail').textContent = `DATE: ${lineData.date || 'N/A'}`;
+
+    // Update Main Values
+    document.getElementById('history-target').textContent = lineData.target || 0;
+    document.getElementById('history-productivity').textContent = `${lineData.productivity || 0}/jam`;
+    document.getElementById('history-output-day').textContent = lineData.outputDay || 0;
+    document.getElementById('history-defect-day').textContent = lineData.defectDay || 0;
+
+    // Update Percentages & Color Logic
+    const achievementElement = document.getElementById('history-achievement');
+    const defectRateElement = document.getElementById('history-defect-rate');
+    
+    const achievement = (lineData.achivementPercentage || 0.00).toFixed(2);
+    const defectRate = (lineData.defectRatePercentage || 0.00).toFixed(2);
+
+    achievementElement.textContent = `${achievement}%`;
+    defectRateElement.textContent = `${defectRate}%`;
+
+    if (parseFloat(achievement) >= 100) {
+        achievementElement.classList.add('green-bg');
+        achievementElement.classList.remove('yellow-bg');
+    } else {
+        achievementElement.classList.add('yellow-bg');
+        achievementElement.classList.remove('green-bg');
+    }
+    
+    // Update section titles
+    document.getElementById('history-current-line').textContent = lineName;
+    document.getElementById('history-hourly-line').textContent = lineName;
+
+    // Update Hourly Data Table
+    updateHistoryHourlyTable(lineData.hourly_data);
+
+    // Update operators
+    updateHistoryOperatorTable(lineData.operators);
+}
+
+function updateHistoryHourlyTable(hourlyData) {
+    const tableBody = document.getElementById('history-hourly-table-body');
+    tableBody.innerHTML = '';
+
+    if (hourlyData && hourlyData.length > 0) {
+        hourlyData.forEach(item => {
+            const row = tableBody.insertRow();
+            row.insertCell().textContent = item.hour;
+            row.insertCell().textContent = item.output;
+            row.insertCell().textContent = item.defect;
+            
+            // Calculate defect rate
+            const defectRateCell = row.insertCell();
+            const defectRate = item.output > 0 ? ((item.defect / item.output) * 100).toFixed(2) : '0.00';
+            defectRateCell.textContent = `${defectRate}%`;
+            
+            // Color coding for defect rate
+            const defectRateValue = parseFloat(defectRate);
+            if (defectRateValue > 5) {
+                defectRateCell.className = 'efficiency-low';
+            } else if (defectRateValue > 2) {
+                defectRateCell.className = 'efficiency-medium';
+            } else {
+                defectRateCell.className = 'efficiency-high';
+            }
+        });
+    } else {
+        const row = tableBody.insertRow();
+        const cell = row.insertCell();
+        cell.colSpan = 4;
+        cell.textContent = "Data per jam tidak tersedia.";
+    }
+}
+
+function updateHistoryOperatorTable(operators) {
+    const tableBody = document.getElementById('history-operator-table-body');
+    tableBody.innerHTML = '';
+
+    if (operators && operators.length > 0) {
+        operators.forEach((operator, index) => {
+            const row = tableBody.insertRow();
+            
+            row.insertCell().textContent = index + 1;
+            row.insertCell().textContent = operator.name;
+            row.insertCell().textContent = operator.position;
+            row.insertCell().textContent = operator.target;
+            row.insertCell().textContent = operator.output;
+            row.insertCell().textContent = operator.defect;
+            
+            // Efisiensi
+            const efficiencyCell = row.insertCell();
+            efficiencyCell.textContent = `${operator.efficiency}%`;
+            
+            // Add efficiency class based on value
+            const efficiency = parseFloat(operator.efficiency);
+            if (efficiency >= 95) {
+                efficiencyCell.className = 'efficiency-high';
+            } else if (efficiency >= 85) {
+                efficiencyCell.className = 'efficiency-medium';
+            } else {
+                efficiencyCell.className = 'efficiency-low';
+            }
+            
+            // Status
+            const statusCell = row.insertCell();
+            statusCell.textContent = getStatusText(operator.status);
+            statusCell.className = `status-${operator.status}`;
+        });
+    } else {
+        const row = tableBody.insertRow();
+        const cell = row.insertCell();
+        cell.colSpan = 8;
+        cell.textContent = "Tidak ada data operator.";
+        cell.style.textAlign = 'center';
+    }
+}
+
+async function createBackup() {
+    try {
+        const response = await fetch('/api/backup/now', {
+            method: 'POST'
+        });
+        
+        if (response.ok) {
+            alert('Backup berhasil dibuat!');
+            fetchHistoryFiles();
+        } else {
+            throw new Error('Gagal membuat backup');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Gagal membuat backup: ' + error.message);
+    }
+}
+
+async function exportHistoryData(filename, date) {
+    try {
+        const response = await fetch(`/api/history/${filename}/export`);
+        if (response.ok) {
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = `Historical_Production_Report_${date}.xlsx`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        } else {
+            throw new Error('Gagal export data history');
+        }
+    } catch (error) {
+        console.error('Export history error:', error);
+        alert('Gagal mengexport data history: ' + error.message);
+    }
+}
+
 // Logout function
 async function logout() {
     try {
@@ -841,6 +1151,16 @@ function initializeAdmin() {
     // User management event listeners
     document.getElementById('add-user-btn').addEventListener('click', showUserModal);
     document.getElementById('refresh-users-btn').addEventListener('click', fetchUsers);
+    
+    // History management event listeners
+    document.getElementById('create-backup-btn').addEventListener('click', createBackup);
+    document.getElementById('refresh-history-btn').addEventListener('click', fetchHistoryFiles);
+    document.getElementById('export-history-btn').addEventListener('click', () => {
+        if (currentHistoryFile) {
+            const date = currentHistoryFile.replace('data_', '').replace('.json', '');
+            exportHistoryData(currentHistoryFile, date);
+        }
+    });
     
     // Modal event listeners
     document.querySelectorAll('.close').forEach(closeBtn => {

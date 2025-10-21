@@ -951,3 +951,64 @@ tr:hover {
         transform-origin: 0 0;
     }
 }
+
+/* History Management Styles */
+.history-management-container {
+    padding: 20px;
+    background-color: var(--bg-element);
+    border-radius: 8px;
+}
+
+.history-management-container h2 {
+    font-size: 1.4em;
+    color: var(--primary-color);
+    margin-bottom: 15px;
+    text-align: left;
+}
+
+.history-controls {
+    margin-bottom: 15px;
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.history-info {
+    background-color: #1a3a1a;
+    padding: 15px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+    text-align: center;
+    border-left: 4px solid #00ff00;
+    font-size: 1em;
+}
+
+.history-info p {
+    margin: 0;
+    color: #90EE90;
+}
+
+.history-detail-content {
+    max-height: 70vh;
+    overflow-y: auto;
+    padding-right: 10px;
+}
+
+/* File size styling */
+.file-size {
+    font-size: 0.9em;
+    color: var(--text-muted);
+    font-family: monospace;
+}
+
+/* Responsive adjustments for history modal */
+@media (max-width: 768px) {
+    .history-detail-content {
+        max-height: 60vh;
+    }
+    
+    .modal-content[style*="max-width: 90%"] {
+        width: 95% !important;
+        margin: 2% auto;
+    }
+}

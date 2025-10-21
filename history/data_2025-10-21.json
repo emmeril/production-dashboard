@@ -1,0 +1,240 @@
+{
+  "lines": {
+    "F1-5A": {
+      "labelWeek": "AP/14-2550",
+      "model": "GOSIG GOLDEN SOFT TOY 40 PDS/GOLDEN RETRIEVER",
+      "date": "2025-09-30",
+      "target": 180,
+      "productivity": 20,
+      "outputDay": 925,
+      "defectDay": 27,
+      "achivementPercentage": 513.89,
+      "defectRatePercentage": 2.92,
+      "hourly_data": [
+        {
+          "hour": "07:00 - 08:00",
+          "output": 25,
+          "defect": 1
+        },
+        {
+          "hour": "08:00 - 09:00",
+          "output": 100,
+          "defect": 2
+        },
+        {
+          "hour": "09:00 - 10:00",
+          "output": 120,
+          "defect": 3
+        },
+        {
+          "hour": "10:00 - 11:00",
+          "output": 110,
+          "defect": 1
+        },
+        {
+          "hour": "11:00 - 12:00",
+          "output": 100,
+          "defect": 5
+        },
+        {
+          "hour": "12:00 - 13:00",
+          "output": 0,
+          "defect": 0
+        },
+        {
+          "hour": "13:00 - 14:00",
+          "output": 130,
+          "defect": 4
+        },
+        {
+          "hour": "14:00 - 15:00",
+          "output": 140,
+          "defect": 6
+        },
+        {
+          "hour": "15:00 - 16:00",
+          "output": 100,
+          "defect": 3
+        },
+        {
+          "hour": "16:00 - 17:00",
+          "output": 100,
+          "defect": 2
+        }
+      ],
+      "operators": [
+        {
+          "id": 1,
+          "name": "Ahmad Susanto",
+          "position": "Operator Mesin",
+          "target": 100,
+          "output": 95,
+          "defect": 3,
+          "efficiency": 95,
+          "status": "active"
+        },
+        {
+          "name": "anita",
+          "position": "Quality Control",
+          "target": 100,
+          "output": 0,
+          "defect": 0,
+          "status": "active",
+          "id": 2,
+          "efficiency": "0.0"
+        }
+      ]
+    },
+    "F1-5B": {
+      "labelWeek": "AP/14-2551",
+      "model": "GOSIG GOLDEN SOFT TOY 40 PDS/GOLDEN RETRIEVER",
+      "date": "2025-09-30",
+      "target": 135,
+      "productivity": 15,
+      "outputDay": 750,
+      "defectDay": 18,
+      "achivementPercentage": 555.56,
+      "defectRatePercentage": 2.4,
+      "hourly_data": [
+        {
+          "hour": "07:00 - 08:00",
+          "output": 70,
+          "defect": 1
+        },
+        {
+          "hour": "08:00 - 09:00",
+          "output": 90,
+          "defect": 2
+        },
+        {
+          "hour": "09:00 - 10:00",
+          "output": 85,
+          "defect": 1
+        },
+        {
+          "hour": "10:00 - 11:00",
+          "output": 95,
+          "defect": 3
+        },
+        {
+          "hour": "11:00 - 12:00",
+          "output": 0,
+          "defect": 0
+        },
+        {
+          "hour": "12:00 - 13:00",
+          "output": 100,
+          "defect": 2
+        },
+        {
+          "hour": "13:00 - 14:00",
+          "output": 110,
+          "defect": 4
+        },
+        {
+          "hour": "14:00 - 15:00",
+          "output": 95,
+          "defect": 2
+        },
+        {
+          "hour": "15:00 - 16:00",
+          "output": 95,
+          "defect": 3
+        },
+        {
+          "hour": "16:00 - 17:00",
+          "output": 90,
+          "defect": 2
+        }
+      ],
+      "operators": [
+        {
+          "id": 2,
+          "name": "Siti Rahayu",
+          "position": "Quality Control",
+          "target": 50,
+          "output": 48,
+          "defect": 2,
+          "efficiency": 96,
+          "status": "active"
+        }
+      ]
+    },
+    "F1-5C": {
+      "labelWeek": "AP/14-2552",
+      "model": "GOSIG GOLDEN SOFT TOY 40 PDS/GOLDEN RETRIEVER",
+      "date": "2025-09-30",
+      "target": 180,
+      "productivity": 20,
+      "outputDay": 1100,
+      "defectDay": 32,
+      "achivementPercentage": 611.11,
+      "defectRatePercentage": 2.91,
+      "hourly_data": [
+        {
+          "hour": "07:00 - 08:00",
+          "output": 100,
+          "defect": 2
+        },
+        {
+          "hour": "08:00 - 09:00",
+          "output": 120,
+          "defect": 3
+        },
+        {
+          "hour": "09:00 - 10:00",
+          "output": 130,
+          "defect": 4
+        },
+        {
+          "hour": "10:00 - 11:00",
+          "output": 125,
+          "defect": 2
+        },
+        {
+          "hour": "11:00 - 12:00",
+          "output": 115,
+          "defect": 6
+        },
+        {
+          "hour": "12:00 - 13:00",
+          "output": 0,
+          "defect": 0
+        },
+        {
+          "hour": "13:00 - 14:00",
+          "output": 140,
+          "defect": 5
+        },
+        {
+          "hour": "14:00 - 15:00",
+          "output": 150,
+          "defect": 7
+        },
+        {
+          "hour": "15:00 - 16:00",
+          "output": 120,
+          "defect": 4
+        },
+        {
+          "hour": "16:00 - 17:00",
+          "output": 100,
+          "defect": 1
+        }
+      ],
+      "operators": [
+        {
+          "id": 3,
+          "name": "Budi Pratama",
+          "position": "Operator Packaging",
+          "target": 150,
+          "output": 142,
+          "defect": 5,
+          "efficiency": 94.7,
+          "status": "break"
+        }
+      ]
+    }
+  },
+  "activeLine": "F1-5A"
+}

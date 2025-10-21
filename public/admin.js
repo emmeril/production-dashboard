@@ -863,17 +863,17 @@ function updateHistoryTable(historyFiles) {
             // Aksi
             const actionCell = row.insertCell();
             
-            const viewButton = document.createElement('button');
-            viewButton.textContent = 'Lihat Data';
-            viewButton.className = 'btn-edit';
-            viewButton.onclick = () => viewHistoryData(file.filename, file.date);
+            // const viewButton = document.createElement('button');
+            // viewButton.textContent = 'Lihat Data';
+            // viewButton.className = 'btn-edit';
+            // viewButton.onclick = () => viewHistoryData(file.filename, file.date);
             
             const exportButton = document.createElement('button');
             exportButton.textContent = 'Export Excel';
             exportButton.className = 'btn-primary';
             exportButton.onclick = () => exportHistoryData(file.filename, file.date);
             
-            actionCell.appendChild(viewButton);
+            // actionCell.appendChild(viewButton);
             actionCell.appendChild(exportButton);
 
             // Load line count

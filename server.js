@@ -94,77 +94,7 @@ function initializeDataFiles() {
               "status": "active"
             }
           ]
-        },
-        "F1-5B": {
-          "labelWeek": "AP/14-2551",
-          "model": "GOSIG GOLDEN SOFT TOY 40 PDS/GOLDEN RETRIEVER",
-          "date": today,
-          "target": 135,
-          "productivity": 15,
-          "outputDay": 0,
-          "defectDay": 0,
-          "achivementPercentage": 0,
-          "defectRatePercentage": 0,
-          "hourly_data": [
-            { "hour": "07:00 - 08:00", "output": 0, "defect": 0 },
-            { "hour": "08:00 - 09:00", "output": 0, "defect": 0 },
-            { "hour": "09:00 - 10:00", "output": 0, "defect": 0 },
-            { "hour": "10:00 - 11:00", "output": 0, "defect": 0 },
-            { "hour": "11:00 - 12:00", "output": 0, "defect": 0 },
-            { "hour": "12:00 - 13:00", "output": 0, "defect": 0 },
-            { "hour": "13:00 - 14:00", "output": 0, "defect": 0 },
-            { "hour": "14:00 - 15:00", "output": 0, "defect": 0 },
-            { "hour": "15:00 - 16:00", "output": 0, "defect": 0 },
-            { "hour": "16:00 - 17:00", "output": 0, "defect": 0 }
-          ],
-          "operators": [
-            {
-              "id": 2,
-              "name": "Siti Rahayu",
-              "position": "Quality Control",
-              "target": 50,
-              "output": 0,
-              "defect": 0,
-              "efficiency": 0,
-              "status": "active"
-            }
-          ]
-        },
-        "F1-5C": {
-          "labelWeek": "AP/14-2552",
-          "model": "GOSIG GOLDEN SOFT TOY 40 PDS/GOLDEN RETRIEVER",
-          "date": today,
-          "target": 180,
-          "productivity": 20,
-          "outputDay": 0,
-          "defectDay": 0,
-          "achivementPercentage": 0,
-          "defectRatePercentage": 0,
-          "hourly_data": [
-            { "hour": "07:00 - 08:00", "output": 0, "defect": 0 },
-            { "hour": "08:00 - 09:00", "output": 0, "defect": 0 },
-            { "hour": "09:00 - 10:00", "output": 0, "defect": 0 },
-            { "hour": "10:00 - 11:00", "output": 0, "defect": 0 },
-            { "hour": "11:00 - 12:00", "output": 0, "defect": 0 },
-            { "hour": "12:00 - 13:00", "output": 0, "defect": 0 },
-            { "hour": "13:00 - 14:00", "output": 0, "defect": 0 },
-            { "hour": "14:00 - 15:00", "output": 0, "defect": 0 },
-            { "hour": "15:00 - 16:00", "output": 0, "defect": 0 },
-            { "hour": "16:00 - 17:00", "output": 0, "defect": 0 }
-          ],
-          "operators": [
-            {
-              "id": 3,
-              "name": "Budi Pratama",
-              "position": "Operator Packaging",
-              "target": 150,
-              "output": 0,
-              "defect": 0,
-              "efficiency": 0,
-              "status": "break"
-            }
-          ]
-        }
+        },     
       },
       "activeLine": "F1-5A"
     };
@@ -182,22 +112,6 @@ function initializeDataFiles() {
           "password": "password123",
           "name": "Ahmad Susanto",
           "line": "F1-5A",
-          "role": "operator"
-        },
-        {
-          "id": 2,
-          "username": "operator2",
-          "password": "password123",
-          "name": "Siti Rahayu",
-          "line": "F1-5B",
-          "role": "operator"
-        },
-        {
-          "id": 3,
-          "username": "operator3",
-          "password": "password123",
-          "name": "Budi Pratama",
-          "line": "F1-5C",
           "role": "operator"
         },
         {

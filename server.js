@@ -23,33 +23,64 @@ app.use(session({
   }
 }));
 
+// Utility Functions
+function getToday() {
+  return new Date().toISOString().split('T')[0];
+}
+
+function resetLineData(line) {
+  return {
+    ...line,
+    outputDay: 0,
+    defectDay: 0,
+    achivementPercentage: 0,
+    defectRatePercentage: 0,
+    hourly_data: Array(10).fill().map((_, index) => {
+      const startHour = 7 + index;
+      const endHour = 8 + index;
+      return {
+        hour: `${startHour.toString().padStart(2, '0')}:00 - ${endHour.toString().padStart(2, '0')}:00`,
+        output: 0,
+        defect: 0
+      };
+    }),
+    operators: line.operators ? line.operators.map(operator => ({
+      ...operator,
+      output: 0,
+      defect: 0,
+      efficiency: 0
+    })) : []
+  };
+}
+
 // Initialize data files
 function initializeDataFiles() {
   // Initialize data.json if doesn't exist
   if (!fs.existsSync(path.join(__dirname, 'data.json'))) {
+    const today = getToday();
     const initialData = {
       "lines": {
         "F1-5A": {
           "labelWeek": "AP/14-2550",
           "model": "GOSIG GOLDEN SOFT TOY 40 PDS/GOLDEN RETRIEVER",
-          "date": "2025-09-30",
+          "date": today,
           "target": 180,
           "productivity": 20,
-          "outputDay": 900,
-          "defectDay": 26,
-          "achivementPercentage": 500.00,
-          "defectRatePercentage": 2.89,
+          "outputDay": 0,
+          "defectDay": 0,
+          "achivementPercentage": 0,
+          "defectRatePercentage": 0,
           "hourly_data": [
-            { "hour": "07:00 - 08:00", "output": 80, "defect": 1 },
-            { "hour": "08:00 - 09:00", "output": 100, "defect": 2 },
-            { "hour": "09:00 - 10:00", "output": 120, "defect": 3 },
-            { "hour": "10:00 - 11:00", "output": 110, "defect": 1 },
-            { "hour": "11:00 - 12:00", "output": 100, "defect": 5 },
+            { "hour": "07:00 - 08:00", "output": 0, "defect": 0 },
+            { "hour": "08:00 - 09:00", "output": 0, "defect": 0 },
+            { "hour": "09:00 - 10:00", "output": 0, "defect": 0 },
+            { "hour": "10:00 - 11:00", "output": 0, "defect": 0 },
+            { "hour": "11:00 - 12:00", "output": 0, "defect": 0 },
             { "hour": "12:00 - 13:00", "output": 0, "defect": 0 },
-            { "hour": "13:00 - 14:00", "output": 130, "defect": 4 },
-            { "hour": "14:00 - 15:00", "output": 140, "defect": 6 },
-            { "hour": "15:00 - 16:00", "output": 100, "defect": 3 },
-            { "hour": "16:00 - 17:00", "output": 100, "defect": 2 }
+            { "hour": "13:00 - 14:00", "output": 0, "defect": 0 },
+            { "hour": "14:00 - 15:00", "output": 0, "defect": 0 },
+            { "hour": "15:00 - 16:00", "output": 0, "defect": 0 },
+            { "hour": "16:00 - 17:00", "output": 0, "defect": 0 }
           ],
           "operators": [
             {
@@ -57,9 +88,9 @@ function initializeDataFiles() {
               "name": "Ahmad Susanto",
               "position": "Operator Mesin",
               "target": 100,
-              "output": 95,
-              "defect": 3,
-              "efficiency": 95.0,
+              "output": 0,
+              "defect": 0,
+              "efficiency": 0,
               "status": "active"
             }
           ]
@@ -67,24 +98,24 @@ function initializeDataFiles() {
         "F1-5B": {
           "labelWeek": "AP/14-2551",
           "model": "GOSIG GOLDEN SOFT TOY 40 PDS/GOLDEN RETRIEVER",
-          "date": "2025-09-30",
+          "date": today,
           "target": 135,
           "productivity": 15,
-          "outputDay": 750,
-          "defectDay": 18,
-          "achivementPercentage": 555.56,
-          "defectRatePercentage": 2.40,
+          "outputDay": 0,
+          "defectDay": 0,
+          "achivementPercentage": 0,
+          "defectRatePercentage": 0,
           "hourly_data": [
-            { "hour": "07:00 - 08:00", "output": 70, "defect": 1 },
-            { "hour": "08:00 - 09:00", "output": 90, "defect": 2 },
-            { "hour": "09:00 - 10:00", "output": 85, "defect": 1 },
-            { "hour": "10:00 - 11:00", "output": 95, "defect": 3 },
+            { "hour": "07:00 - 08:00", "output": 0, "defect": 0 },
+            { "hour": "08:00 - 09:00", "output": 0, "defect": 0 },
+            { "hour": "09:00 - 10:00", "output": 0, "defect": 0 },
+            { "hour": "10:00 - 11:00", "output": 0, "defect": 0 },
             { "hour": "11:00 - 12:00", "output": 0, "defect": 0 },
-            { "hour": "12:00 - 13:00", "output": 100, "defect": 2 },
-            { "hour": "13:00 - 14:00", "output": 110, "defect": 4 },
-            { "hour": "14:00 - 15:00", "output": 95, "defect": 2 },
-            { "hour": "15:00 - 16:00", "output": 95, "defect": 3 },
-            { "hour": "16:00 - 17:00", "output": 90, "defect": 2 }
+            { "hour": "12:00 - 13:00", "output": 0, "defect": 0 },
+            { "hour": "13:00 - 14:00", "output": 0, "defect": 0 },
+            { "hour": "14:00 - 15:00", "output": 0, "defect": 0 },
+            { "hour": "15:00 - 16:00", "output": 0, "defect": 0 },
+            { "hour": "16:00 - 17:00", "output": 0, "defect": 0 }
           ],
           "operators": [
             {
@@ -92,9 +123,9 @@ function initializeDataFiles() {
               "name": "Siti Rahayu",
               "position": "Quality Control",
               "target": 50,
-              "output": 48,
-              "defect": 2,
-              "efficiency": 96.0,
+              "output": 0,
+              "defect": 0,
+              "efficiency": 0,
               "status": "active"
             }
           ]
@@ -102,24 +133,24 @@ function initializeDataFiles() {
         "F1-5C": {
           "labelWeek": "AP/14-2552",
           "model": "GOSIG GOLDEN SOFT TOY 40 PDS/GOLDEN RETRIEVER",
-          "date": "2025-09-30",
+          "date": today,
           "target": 180,
           "productivity": 20,
-          "outputDay": 1100,
-          "defectDay": 32,
-          "achivementPercentage": 611.11,
-          "defectRatePercentage": 2.91,
+          "outputDay": 0,
+          "defectDay": 0,
+          "achivementPercentage": 0,
+          "defectRatePercentage": 0,
           "hourly_data": [
-            { "hour": "07:00 - 08:00", "output": 100, "defect": 2 },
-            { "hour": "08:00 - 09:00", "output": 120, "defect": 3 },
-            { "hour": "09:00 - 10:00", "output": 130, "defect": 4 },
-            { "hour": "10:00 - 11:00", "output": 125, "defect": 2 },
-            { "hour": "11:00 - 12:00", "output": 115, "defect": 6 },
+            { "hour": "07:00 - 08:00", "output": 0, "defect": 0 },
+            { "hour": "08:00 - 09:00", "output": 0, "defect": 0 },
+            { "hour": "09:00 - 10:00", "output": 0, "defect": 0 },
+            { "hour": "10:00 - 11:00", "output": 0, "defect": 0 },
+            { "hour": "11:00 - 12:00", "output": 0, "defect": 0 },
             { "hour": "12:00 - 13:00", "output": 0, "defect": 0 },
-            { "hour": "13:00 - 14:00", "output": 140, "defect": 5 },
-            { "hour": "14:00 - 15:00", "output": 150, "defect": 7 },
-            { "hour": "15:00 - 16:00", "output": 120, "defect": 4 },
-            { "hour": "16:00 - 17:00", "output": 100, "defect": 1 }
+            { "hour": "13:00 - 14:00", "output": 0, "defect": 0 },
+            { "hour": "14:00 - 15:00", "output": 0, "defect": 0 },
+            { "hour": "15:00 - 16:00", "output": 0, "defect": 0 },
+            { "hour": "16:00 - 17:00", "output": 0, "defect": 0 }
           ],
           "operators": [
             {
@@ -127,9 +158,9 @@ function initializeDataFiles() {
               "name": "Budi Pratama",
               "position": "Operator Packaging",
               "target": 150,
-              "output": 142,
-              "defect": 5,
-              "efficiency": 94.7,
+              "output": 0,
+              "defect": 0,
+              "efficiency": 0,
               "status": "break"
             }
           ]
@@ -138,7 +169,7 @@ function initializeDataFiles() {
       "activeLine": "F1-5A"
     };
     fs.writeFileSync(path.join(__dirname, 'data.json'), JSON.stringify(initialData, null, 2));
-    console.log('Data file created successfully');
+    console.log('Data file created successfully with today\'s date:', today);
   }
 
   // Initialize users.json if doesn't exist
@@ -199,7 +230,6 @@ function initializeDataFiles() {
   }
 }
 
-// Utility Functions
 function readProductionData() {
   try {
     const data = fs.readFileSync(path.join(__dirname, 'data.json'), 'utf8');
@@ -523,6 +553,31 @@ app.post('/api/backup/now', requireLogin, requireAdmin, (req, res) => {
   }
 });
 
+// Sync dates endpoint
+app.post('/api/sync-dates', requireLogin, requireAdmin, (req, res) => {
+  const data = readProductionData();
+  const today = getToday();
+  let updatedLines = [];
+
+  Object.keys(data.lines).forEach(lineName => {
+    const line = data.lines[lineName];
+    if (line.date !== today) {
+      data.lines[lineName] = resetLineData({
+        ...line,
+        date: today
+      });
+      updatedLines.push(lineName);
+    }
+  });
+
+  writeProductionData(data);
+  res.json({ 
+    message: `Sinkronisasi tanggal selesai`, 
+    updatedLines: updatedLines,
+    today: today
+  });
+});
+
 // Line Management Routes
 app.get('/api/lines', requireLogin, (req, res) => {
   const user = req.session.user;
@@ -565,13 +620,14 @@ app.post('/api/lines', requireLogin, requireAdmin, (req, res) => {
     return res.status(400).json({ error: 'Line already exists' });
   }
 
-  // Calculate productivity (target per hour)
+  // Gunakan tanggal hari ini jika tidak disediakan
+  const lineDate = date || getToday();
   const productivity = Math.round(target / 9); // 9 working hours (07:00-17:00)
 
   data.lines[lineName] = {
     labelWeek,
     model,
-    date,
+    date: lineDate,
     target: parseInt(target),
     productivity,
     outputDay: 0,
@@ -610,14 +666,27 @@ app.put('/api/lines/:lineName', requireLogin, requireAdmin, (req, res) => {
     return res.status(404).json({ error: 'Line not found' });
   }
 
-  // Update data and recalculate productivity
+  const oldDate = data.lines[lineName].date;
+  const newDate = date || getToday();
   const productivity = Math.round(target / 9);
 
-  data.lines[lineName].labelWeek = labelWeek;
-  data.lines[lineName].model = model;
-  data.lines[lineName].date = date;
-  data.lines[lineName].target = parseInt(target);
-  data.lines[lineName].productivity = productivity;
+  // Jika tanggal berubah, reset semua data
+  if (oldDate !== newDate) {
+    data.lines[lineName] = resetLineData({
+      ...data.lines[lineName],
+      labelWeek,
+      model,
+      date: newDate,
+      target: parseInt(target),
+      productivity
+    });
+  } else {
+    // Jika tanggal sama, hanya update data dasar
+    data.lines[lineName].labelWeek = labelWeek;
+    data.lines[lineName].model = model;
+    data.lines[lineName].target = parseInt(target);
+    data.lines[lineName].productivity = productivity;
+  }
 
   writeProductionData(data);
   res.json({ 
@@ -626,7 +695,8 @@ app.put('/api/lines/:lineName', requireLogin, requireAdmin, (req, res) => {
     calculated: {
       productivity: productivity,
       message: `Productivity: ${productivity} unit/jam (Target: ${target} ÷ 9 jam)`
-    }
+    },
+    reset: oldDate !== newDate ? 'Data telah direset karena perubahan tanggal.' : 'Tanggal tidak berubah, data tetap.'
   });
 });
 
@@ -1179,6 +1249,7 @@ app.listen(port, () => {
   console.log(`Production Dashboard System`);
   console.log(`Server berjalan di http://localhost:${port}`);
   console.log(`=================================`);
-  console.log(`Fitur History Data telah ditambahkan`);
+  console.log(`Fitur Tanggal Otomatis & Reset Data telah ditambahkan`);
+  console.log(`Tanggal hari ini: ${getToday()}`);
   console.log(`=================================`);
 });

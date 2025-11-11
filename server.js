@@ -29,21 +29,33 @@ function getToday() {
 }
 
 function resetLineData(line) {
+  const targetPerHour = Math.round(line.target / 8); // 8 jam kerja efektif
+  
   return {
     ...line,
     outputDay: 0,
-    defectDay: 0,
-    achivementPercentage: 0,
+    qcChecking: 0,
+    actualDefect: 0,
     defectRatePercentage: 0,
-    hourly_data: Array(10).fill().map((_, index) => {
-      const startHour = 7 + index;
-      const endHour = 8 + index;
-      return {
-        hour: `${startHour.toString().padStart(2, '0')}:00 - ${endHour.toString().padStart(2, '0')}:00`,
-        output: 0,
-        defect: 0
-      };
-    }),
+    hourly_data: [
+      // Jam kerja pagi (4 jam)
+      { hour: "07:00 - 08:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 1 },
+      { hour: "08:00 - 09:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 2 },
+      { hour: "09:00 - 10:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 3 },
+      { hour: "10:00 - 11:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 4 },
+      
+      // Istirahat panjang 11:00-13:00 (2 jam) - cumulative target tetap sama
+      { hour: "11:00 - 13:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 4 },
+      
+      // Jam kerja siang (4 jam)
+      { hour: "13:00 - 14:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 5 },
+      { hour: "14:00 - 15:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 6 },
+      { hour: "15:00 - 16:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 7 },
+      { hour: "16:00 - 17:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 8 },
+      
+      // Overtime atau jam tambahan - cumulative target tetap maksimal
+      { hour: "17:00 - 18:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 8 }
+    ],
     operators: line.operators ? line.operators.map(operator => ({
       ...operator,
       output: 0,
@@ -53,11 +65,14 @@ function resetLineData(line) {
   };
 }
 
+
 // Initialize data files
 function initializeDataFiles() {
   // Initialize data.json if doesn't exist
   if (!fs.existsSync(path.join(__dirname, 'data.json'))) {
     const today = getToday();
+    const targetPerHour = Math.round(180 / 8);
+    
     const initialData = {
       "lines": {
         "F1-5A": {
@@ -65,22 +80,22 @@ function initializeDataFiles() {
           "model": "GOSIG GOLDEN SOFT TOY 40 PDS/GOLDEN RETRIEVER",
           "date": today,
           "target": 180,
-          "productivity": 20,
+          "targetPerHour": targetPerHour,
           "outputDay": 0,
-          "defectDay": 0,
-          "achivementPercentage": 0,
+          "qcChecking": 0,
+          "actualDefect": 0,
           "defectRatePercentage": 0,
           "hourly_data": [
-            { "hour": "07:00 - 08:00", "output": 0, "defect": 0 },
-            { "hour": "08:00 - 09:00", "output": 0, "defect": 0 },
-            { "hour": "09:00 - 10:00", "output": 0, "defect": 0 },
-            { "hour": "10:00 - 11:00", "output": 0, "defect": 0 },
-            { "hour": "11:00 - 12:00", "output": 0, "defect": 0 },
-            { "hour": "12:00 - 13:00", "output": 0, "defect": 0 },
-            { "hour": "13:00 - 14:00", "output": 0, "defect": 0 },
-            { "hour": "14:00 - 15:00", "output": 0, "defect": 0 },
-            { "hour": "15:00 - 16:00", "output": 0, "defect": 0 },
-            { "hour": "16:00 - 17:00", "output": 0, "defect": 0 }
+            { "hour": "07:00 - 08:00", "output": 0, "defect": 0, "qcChecked": 0, "cumulativeTarget": targetPerHour * 1 },
+            { "hour": "08:00 - 09:00", "output": 0, "defect": 0, "qcChecked": 0, "cumulativeTarget": targetPerHour * 2 },
+            { "hour": "09:00 - 10:00", "output": 0, "defect": 0, "qcChecked": 0, "cumulativeTarget": targetPerHour * 3 },
+            { "hour": "10:00 - 11:00", "output": 0, "defect": 0, "qcChecked": 0, "cumulativeTarget": targetPerHour * 4 },
+            { "hour": "11:00 - 12:00", "output": 0, "defect": 0, "qcChecked": 0, "cumulativeTarget": targetPerHour * 5 },
+            { "hour": "12:00 - 13:00", "output": 0, "defect": 0, "qcChecked": 0, "cumulativeTarget": targetPerHour * 6 },
+            { "hour": "13:00 - 14:00", "output": 0, "defect": 0, "qcChecked": 0, "cumulativeTarget": targetPerHour * 7 },
+            { "hour": "14:00 - 15:00", "output": 0, "defect": 0, "qcChecked": 0, "cumulativeTarget": targetPerHour * 8 },
+            { "hour": "15:00 - 16:00", "output": 0, "defect": 0, "qcChecked": 0, "cumulativeTarget": targetPerHour * 8 },
+            { "hour": "16:00 - 17:00", "output": 0, "defect": 0, "qcChecked": 0, "cumulativeTarget": targetPerHour * 8 }
           ],
           "operators": [
             {
@@ -94,7 +109,7 @@ function initializeDataFiles() {
               "status": "active"
             }
           ]
-        },     
+        }
       },
       "activeLine": "F1-5A"
     };
@@ -370,7 +385,7 @@ app.get('/api/history/:filename/export', requireLogin, requireAdmin, (req, res) 
       ['HISTORICAL PRODUCTION REPORT SUMMARY'],
       ['Generated from backup:', date],
       [],
-      ['Line', 'Label/Week', 'Model', 'Date', 'Target', 'Output', 'Defect', 'Achievement%', 'Defect Rate%']
+      ['Line', 'Label/Week', 'Model', 'Date', 'Target', 'Output', 'QC Checking', 'Actual Defect', 'Defect Rate%']
     ];
 
     Object.keys(historyData.lines).forEach(lineName => {
@@ -382,8 +397,8 @@ app.get('/api/history/:filename/export', requireLogin, requireAdmin, (req, res) 
         line.date,
         line.target,
         line.outputDay,
-        line.defectDay,
-        line.achivementPercentage,
+        line.qcChecking,
+        line.actualDefect,
         line.defectRatePercentage
       ]);
     });
@@ -403,19 +418,19 @@ app.get('/api/history/:filename/export', requireLogin, requireAdmin, (req, res) 
         ['Model', line.model],
         ['Date', line.date],
         ['Target', line.target],
-        ['Productivity/Hour', line.productivity],
+        ['Target per Hour', line.targetPerHour],
         ['Output/Hari', line.outputDay],
-        ['Total Defect', line.defectDay],
-        ['Achievement (%)', line.achivementPercentage],
+        ['QC Checking', line.qcChecking],
+        ['Actual Defect', line.actualDefect],
         ['Defect Rate (%)', line.defectRatePercentage],
         [],
         ['HOURLY DATA'],
-        ['Jam', 'Output', 'Defect', 'Defect Rate (%)']
+        ['Jam', 'Target Kumulatif', 'Output', 'Defect', 'QC Checked', 'Defect Rate (%)']
       ];
 
       line.hourly_data.forEach(hour => {
-        const defectRate = hour.output > 0 ? ((hour.defect / hour.output) * 100).toFixed(2) : '0.00';
-        lineData.push([hour.hour, hour.output, hour.defect, defectRate]);
+        const defectRate = hour.qcChecked > 0 ? ((hour.defect / hour.qcChecked) * 100).toFixed(2) : '0.00';
+        lineData.push([hour.hour, hour.cumulativeTarget, hour.output, hour.defect, hour.qcChecked, defectRate]);
       });
 
       // Operator data
@@ -536,27 +551,37 @@ app.post('/api/lines', requireLogin, requireAdmin, (req, res) => {
 
   // Gunakan tanggal hari ini jika tidak disediakan
   const lineDate = date || getToday();
-  const productivity = Math.round(target / 9); // 9 working hours (07:00-17:00)
+  const targetPerHour = Math.round(target / 8); // 8 jam kerja efektif
 
   data.lines[lineName] = {
     labelWeek,
     model,
     date: lineDate,
     target: parseInt(target),
-    productivity,
+    targetPerHour: targetPerHour,
     outputDay: 0,
-    defectDay: 0,
-    achivementPercentage: 0,
+    qcChecking: 0,
+    actualDefect: 0,
     defectRatePercentage: 0,
-    hourly_data: Array(10).fill().map((_, index) => {
-      const startHour = 7 + index;
-      const endHour = 8 + index;
-      return {
-        hour: `${startHour.toString().padStart(2, '0')}:00 - ${endHour.toString().padStart(2, '0')}:00`,
-        output: 0,
-        defect: 0
-      };
-    }),
+    hourly_data: [
+      // Jam kerja pagi (4 jam)
+      { hour: "07:00 - 08:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 1 },
+      { hour: "08:00 - 09:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 2 },
+      { hour: "09:00 - 10:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 3 },
+      { hour: "10:00 - 11:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 4 },
+      
+      // Istirahat panjang 11:00-13:00 (2 jam) - cumulative target tetap sama
+      { hour: "11:00 - 13:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 4 },
+      
+      // Jam kerja siang (4 jam)
+      { hour: "13:00 - 14:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 5 },
+      { hour: "14:00 - 15:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 6 },
+      { hour: "15:00 - 16:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 7 },
+      { hour: "16:00 - 17:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 8 },
+      
+      // Overtime atau jam tambahan - cumulative target tetap maksimal
+      { hour: "17:00 - 18:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 8 }
+    ],
     operators: []
   };
 
@@ -565,8 +590,8 @@ app.post('/api/lines', requireLogin, requireAdmin, (req, res) => {
     message: `Line ${lineName} created successfully`, 
     data: data.lines[lineName],
     calculated: {
-      productivity: productivity,
-      message: `Productivity: ${productivity} unit/jam (Target: ${target} ÷ 9 jam)`
+      targetPerHour: targetPerHour,
+      message: `Target per jam: ${targetPerHour} unit (Target: ${target} ÷ 8 jam efektif)`
     }
   });
 });
@@ -582,7 +607,7 @@ app.put('/api/lines/:lineName', requireLogin, requireAdmin, (req, res) => {
 
   const oldDate = data.lines[lineName].date;
   const newDate = date || getToday();
-  const productivity = Math.round(target / 9);
+  const targetPerHour = Math.round(target / 8);
 
   // Jika tanggal berubah, reset semua data
   if (oldDate !== newDate) {
@@ -592,14 +617,20 @@ app.put('/api/lines/:lineName', requireLogin, requireAdmin, (req, res) => {
       model,
       date: newDate,
       target: parseInt(target),
-      productivity
+      targetPerHour: targetPerHour
     });
   } else {
     // Jika tanggal sama, hanya update data dasar
     data.lines[lineName].labelWeek = labelWeek;
     data.lines[lineName].model = model;
     data.lines[lineName].target = parseInt(target);
-    data.lines[lineName].productivity = productivity;
+    data.lines[lineName].targetPerHour = targetPerHour;
+    
+    // Update cumulative target di hourly_data
+    data.lines[lineName].hourly_data = data.lines[lineName].hourly_data.map((hour, index) => ({
+      ...hour,
+      cumulativeTarget: targetPerHour * (index + 1)
+    }));
   }
 
   writeProductionData(data);
@@ -607,8 +638,8 @@ app.put('/api/lines/:lineName', requireLogin, requireAdmin, (req, res) => {
     message: `Line ${lineName} updated successfully`, 
     data: data.lines[lineName],
     calculated: {
-      productivity: productivity,
-      message: `Productivity: ${productivity} unit/jam (Target: ${target} ÷ 9 jam)`
+      targetPerHour: targetPerHour,
+      message: `Target per jam: ${targetPerHour} unit (Target: ${target} ÷ 8 jam)`
     },
     reset: oldDate !== newDate ? 'Data telah direset karena perubahan tanggal.' : 'Tanggal tidak berubah, data tetap.'
   });
@@ -655,14 +686,11 @@ app.post('/api/update-line/:lineName', requireLogin, requireLineAccess, (req, re
 
   // Recalculate percentages
   const line = data.lines[lineName];
-  const target = line.target || 1;
-  const outputDay = line.outputDay || 0;
-  const defectDay = line.defectDay || 0;
+  const qcChecking = line.qcChecking || 0;
+  const actualDefect = line.actualDefect || 0;
 
-  let achivementPercentage = (outputDay / target) * 100;
-  let defectRatePercentage = (outputDay > 0) ? (defectDay / outputDay) * 100 : 0;
+  let defectRatePercentage = (qcChecking > 0) ? (actualDefect / qcChecking) * 100 : 0;
 
-  line.achivementPercentage = parseFloat(achivementPercentage.toFixed(2));
   line.defectRatePercentage = parseFloat(defectRatePercentage.toFixed(2));
 
   writeProductionData(data);
@@ -671,7 +699,7 @@ app.post('/api/update-line/:lineName', requireLogin, requireLineAccess, (req, re
 
 app.post('/api/update-hourly/:lineName', requireLogin, requireLineAccess, (req, res) => {
   const lineName = req.params.lineName;
-  const { hourIndex, output, defect } = req.body;
+  const { hourIndex, output, defect, qcChecked } = req.body;
 
   const data = readProductionData();
 
@@ -683,27 +711,28 @@ app.post('/api/update-hourly/:lineName', requireLogin, requireLineAccess, (req, 
   data.lines[lineName].hourly_data[hourIndex] = {
     ...data.lines[lineName].hourly_data[hourIndex],
     output: parseInt(output),
-    defect: parseInt(defect)
+    defect: parseInt(defect),
+    qcChecked: parseInt(qcChecked)
   };
 
   // Hitung ulang total harian
   let totalOutput = 0;
   let totalDefect = 0;
+  let totalQCChecked = 0;
 
   data.lines[lineName].hourly_data.forEach(hour => {
     totalOutput += hour.output || 0;
     totalDefect += hour.defect || 0;
+    totalQCChecked += hour.qcChecked || 0;
   });
 
   data.lines[lineName].outputDay = totalOutput;
-  data.lines[lineName].defectDay = totalDefect;
+  data.lines[lineName].actualDefect = totalDefect;
+  data.lines[lineName].qcChecking = totalQCChecked;
 
-  // Hitung ulang persentase
-  const target = data.lines[lineName].target || 1;
-  let achivementPercentage = (totalOutput / target) * 100;
-  let defectRatePercentage = (totalOutput > 0) ? (totalDefect / totalOutput) * 100 : 0;
+  // Hitung ulang persentase defect rate
+  const defectRatePercentage = (totalQCChecked > 0) ? (totalDefect / totalQCChecked) * 100 : 0;
 
-  data.lines[lineName].achivementPercentage = parseFloat(achivementPercentage.toFixed(2));
   data.lines[lineName].defectRatePercentage = parseFloat(defectRatePercentage.toFixed(2));
 
   writeProductionData(data);
@@ -713,8 +742,8 @@ app.post('/api/update-hourly/:lineName', requireLogin, requireLineAccess, (req, 
     summary: {
       totalOutput: totalOutput,
       totalDefect: totalDefect,
-      defectRate: defectRatePercentage.toFixed(2) + '%',
-      productivity: data.lines[lineName].productivity + ' unit/jam'
+      totalQCChecked: totalQCChecked,
+      defectRate: defectRatePercentage.toFixed(2) + '%'
     }
   });
 });
@@ -934,10 +963,10 @@ function generateExcelData(lineData, lineName) {
     ['Model', lineData.model],
     ['Date', lineData.date],
     ['Target', lineData.target],
-    ['Productivity/Hour', lineData.productivity],
+    ['Target per Hour', lineData.targetPerHour],
     ['Output/Hari', lineData.outputDay],
-    ['Total Defect', lineData.defectDay],
-    ['Achievement (%)', lineData.achivementPercentage],
+    ['QC Checking', lineData.qcChecking],
+    ['Actual Defect', lineData.actualDefect],
     ['Defect Rate (%)', lineData.defectRatePercentage],
     [],
     ['Generated at', new Date().toLocaleString('id-ID')]
@@ -947,20 +976,21 @@ function generateExcelData(lineData, lineName) {
   XLSX.utils.book_append_sheet(workbook, summarySheet, 'Summary');
   
   // Sheet 2: Hourly Data
-  const hourlyData = [
+// Update bagian hourly data di fungsi generateExcelData:
+const hourlyData = [
     ['HOURLY PRODUCTION DATA'],
     [],
-    ['Jam', 'Output', 'Defect', 'Defect Rate (%)']
-  ];
-  
-  lineData.hourly_data.forEach(hour => {
-    const defectRate = hour.output > 0 ? ((hour.defect / hour.output) * 100).toFixed(2) : '0.00';
-    hourlyData.push([hour.hour, hour.output, hour.defect, defectRate]);
-  });
+    ['Jam', 'Target Kumulatif', 'Output', 'Defect', 'QC Checked', 'Defect Rate (%)']
+];
+
+lineData.hourly_data.forEach(hour => {
+    const defectRate = hour.qcChecked > 0 ? ((hour.defect / hour.qcChecked) * 100).toFixed(2) : '0.00';
+    hourlyData.push([hour.hour, hour.cumulativeTarget, hour.output, hour.defect, hour.qcChecked, defectRate]);
+});
   
   // Add totals
   hourlyData.push([]);
-  hourlyData.push(['TOTAL', lineData.outputDay, lineData.defectDay, lineData.defectRatePercentage + '%']);
+  hourlyData.push(['TOTAL', lineData.target, lineData.outputDay, lineData.actualDefect, lineData.qcChecking, lineData.defectRatePercentage + '%']);
   
   const hourlySheet = XLSX.utils.aoa_to_sheet(hourlyData);
   XLSX.utils.book_append_sheet(workbook, hourlySheet, 'Hourly Data');
@@ -1163,7 +1193,9 @@ app.listen(port, () => {
   console.log(`Production Dashboard System`);
   console.log(`Server berjalan di http://localhost:${port}`);
   console.log(`=================================`);
-  console.log(`Fitur Tanggal Otomatis & Reset Data telah ditambahkan`);
-  console.log(`Tanggal hari ini: ${getToday()}`);
+  console.log(`Fitur Algoritma Baru telah diimplementasikan`);
+  console.log(`- Target kumulatif per jam`);
+  console.log(`- QC Checking & Actual Defect`);
+  console.log(`- Defect Rate berdasarkan QC Checking`);
   console.log(`=================================`);
 });

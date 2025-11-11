@@ -1,30 +1,6 @@
 {
   "users": [
     {
-      "id": 1,
-      "username": "operator1",
-      "password": "password123",
-      "name": "Ahmad Susanto",
-      "line": "F1-5A",
-      "role": "operator"
-    },
-    {
-      "id": 2,
-      "username": "operator2",
-      "password": "password123",
-      "name": "Siti Rahayu",
-      "line": "F1-5B",
-      "role": "operator"
-    },
-    {
-      "id": 3,
-      "username": "operator3",
-      "password": "password123",
-      "name": "Budi Pratama",
-      "line": "F1-5C",
-      "role": "operator"
-    },
-    {
       "id": 4,
       "username": "admin",
       "password": "admin123",
@@ -33,11 +9,11 @@
       "role": "admin"
     },
     {
-      "id": 5,
-      "username": "anita",
-      "password": "password123",
-      "name": "anita",
-      "line": "F1-5A",
+      "id": 2,
+      "username": "qc1",
+      "password": "123",
+      "name": "Hafri",
+      "line": "LINE-1",
       "role": "operator"
     }
   ]

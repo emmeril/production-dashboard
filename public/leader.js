@@ -1,5 +1,4 @@
-
-// public/leader.js
+// public/leader.js - Updated dengan Target Kumulatif Berdasarkan Jam
 
 let currentLine = '';
 let currentUser = null;
@@ -73,7 +72,7 @@ function updateLineSelector(lines) {
             button.innerHTML = `
                 <div>${lineName}</div>
                 <small style="font-size: 0.8em; opacity: 0.8;">
-                    Target: ${lineData.target} | Productivity: ${lineData.productivity}/jam
+                    Target: ${lineData.target} | Target/Jam: ${lineData.targetPerHour}
                 </small>
             `;
             button.onclick = () => {
@@ -104,6 +103,52 @@ function updateLineButtons() {
     });
 }
 
+// Fungsi untuk menghitung target kumulatif berdasarkan jam sekarang
+// Fungsi calculateCurrentTarget yang diperbarui (untuk operator.js, admin.js, leader.js)
+function calculateCurrentTarget(data) {
+    if (!data || !data.hourly_data) return 0;
+    
+    const now = new Date();
+    const currentHour = now.getHours();
+    const currentMinute = now.getMinutes();
+    const currentTime = currentHour + currentMinute / 100; // Format: 8.30 untuk 08:30
+    
+    console.log(`Waktu sekarang: ${currentHour}:${currentMinute.toString().padStart(2, '0')}`);
+    
+    // Cari slot jam yang sesuai dengan waktu sekarang
+    for (let i = 0; i < data.hourly_data.length; i++) {
+        const hourSlot = data.hourly_data[i];
+        const hourRange = hourSlot.hour;
+        
+        console.log(`Memeriksa slot jam: ${hourRange}`);
+        
+        // Parse jam dari format "07:00 - 08:00" atau "11:00 - 13:00"
+        const [startTime, endTime] = hourRange.split(' - ');
+        const startHour = parseInt(startTime.split(':')[0]);
+        const startMinute = parseInt(startTime.split(':')[1]);
+        const endHour = parseInt(endTime.split(':')[0]);
+        const endMinute = parseInt(endTime.split(':')[1]);
+        
+        const startTimeValue = startHour + startMinute / 100;
+        const endTimeValue = endHour + endMinute / 100;
+        
+        // Jika jam sekarang berada dalam rentang jam ini
+        if (currentTime >= startTimeValue && currentTime < endTimeValue) {
+            console.log(`Target kumulatif untuk ${hourRange}: ${hourSlot.cumulativeTarget}`);
+            return hourSlot.cumulativeTarget || 0;
+        }
+    }
+    
+    // Jika sudah lewat jam terakhir (setelah 18:00), gunakan target kumulatif terakhir
+    if (data.hourly_data.length > 0) {
+        const lastTarget = data.hourly_data[data.hourly_data.length - 1].cumulativeTarget || 0;
+        console.log(`Menggunakan target terakhir: ${lastTarget}`);
+        return lastTarget;
+    }
+    
+    return 0;
+}
+
 function updateDashboard(data) {
     // Update Header Info
     document.getElementById('line').textContent = `LINE: ${data.line || 'N/A'}`;
@@ -111,28 +156,48 @@ function updateDashboard(data) {
     document.getElementById('model').textContent = data.model || 'N/A';
     document.getElementById('date').textContent = `DATE: ${data.date || 'N/A'}`;
 
-    // Update Main Values
-    document.getElementById('target').textContent = data.target || 0;
-    document.getElementById('productivity').textContent = `${data.productivity || 0}/jam`;
-    document.getElementById('output-day').textContent = data.outputDay || 0;
-    document.getElementById('defect-day').textContent = data.defectDay || 0;
-
-    // Update Percentages & Color Logic
-    const achievementElement = document.getElementById('achievement');
-    const defectRateElement = document.getElementById('defect-rate');
+    // Hitung target kumulatif berdasarkan jam sekarang
+    const currentTarget = calculateCurrentTarget(data);
     
-    const achievement = (data.achivementPercentage || 0.00).toFixed(2);
+    // Update Main Values dengan algoritma baru
+    document.getElementById('target').textContent = currentTarget;
+    
+    // Productivity = total output
+    document.getElementById('productivity').textContent = data.outputDay || 0;
+    
+    // Output/Day = selisih dari target kumulatif
+    const outputDifference = data.outputDay - currentTarget;
+    document.getElementById('output-day').textContent = outputDifference;
+    
+    // Update QC Checking, Actual Defect, dan Defect Rate
+    document.getElementById('qc-checking').textContent = data.qcChecking || 0;
+    document.getElementById('actual-defect').textContent = data.actualDefect || 0;
+
     const defectRate = (data.defectRatePercentage || 0.00).toFixed(2);
+    document.getElementById('defect-rate').textContent = `${defectRate}%`;
 
-    achievementElement.textContent = `${achievement}%`;
-    defectRateElement.textContent = `${defectRate}%`;
-
-    if (parseFloat(achievement) >= 100) {
-        achievementElement.classList.add('green-bg');
-        achievementElement.classList.remove('yellow-bg');
+    // Warna untuk output difference
+    const outputDayElement = document.getElementById('output-day');
+    if (outputDifference >= 0) {
+        outputDayElement.classList.add('green-bg');
+        outputDayElement.classList.remove('red-bg');
     } else {
-        achievementElement.classList.add('yellow-bg');
-        achievementElement.classList.remove('green-bg');
+        outputDayElement.classList.add('red-bg');
+        outputDayElement.classList.remove('green-bg');
+    }
+
+    // Warna untuk defect rate
+    const defectRateElement = document.getElementById('defect-rate');
+    const defectRateValue = parseFloat(defectRate);
+    if (defectRateValue <= 2) {
+        defectRateElement.classList.add('green-bg');
+        defectRateElement.classList.remove('yellow-bg', 'red-bg');
+    } else if (defectRateValue <= 5) {
+        defectRateElement.classList.add('yellow-bg');
+        defectRateElement.classList.remove('green-bg', 'red-bg');
+    } else {
+        defectRateElement.classList.add('red-bg');
+        defectRateElement.classList.remove('green-bg', 'yellow-bg');
     }
     
     // Update section titles
@@ -140,7 +205,7 @@ function updateDashboard(data) {
     document.getElementById('hourly-line').textContent = data.line;
     document.getElementById('modal-line').textContent = data.line;
 
-    // Update Hourly Data Table
+    // Update Hourly Data Table dengan target kumulatif
     updateHourlyTable(data.hourly_data);
 
     // Update operators
@@ -158,30 +223,42 @@ function updateHourlyTable(hourlyData) {
     if (hourlyData && hourlyData.length > 0) {
         hourlyData.forEach(item => {
             const row = tableBody.insertRow();
-            row.insertCell().textContent = item.hour;
-            row.insertCell().textContent = item.output;
-            row.insertCell().textContent = item.defect;
+            row.insertCell().textContent = item.hour || '-';
             
-            // Calculate defect rate
+            // Target kumulatif
+            row.insertCell().textContent = item.cumulativeTarget || 0;
+            
+            // Output aktual
+            row.insertCell().textContent = item.output || 0;
+            
+            // Defect
+            row.insertCell().textContent = item.defect || 0;
+            
+            // QC Checked
+            row.insertCell().textContent = item.qcChecked || 0;
+            
+            // Calculate defect rate berdasarkan QC Checked
             const defectRateCell = row.insertCell();
-            const defectRate = item.output > 0 ? ((item.defect / item.output) * 100).toFixed(2) : '0.00';
+            const defectRate = item.qcChecked > 0 ? ((item.defect / item.qcChecked) * 100).toFixed(2) : '0.00';
             defectRateCell.textContent = `${defectRate}%`;
             
             // Color coding for defect rate
             const defectRateValue = parseFloat(defectRate);
-            if (defectRateValue > 5) {
-                defectRateCell.className = 'efficiency-low';
-            } else if (defectRateValue > 2) {
+            if (defectRateValue <= 2) {
+                defectRateCell.className = 'efficiency-high';
+            } else if (defectRateValue <= 5) {
                 defectRateCell.className = 'efficiency-medium';
             } else {
-                defectRateCell.className = 'efficiency-high';
+                defectRateCell.className = 'efficiency-low';
             }
         });
     } else {
         const row = tableBody.insertRow();
         const cell = row.insertCell();
-        cell.colSpan = 4;
+        cell.colSpan = 6;
         cell.textContent = "Data per jam belum tersedia.";
+        cell.style.textAlign = 'center';
+        cell.style.color = '#888';
     }
 }
 
@@ -442,7 +519,7 @@ function initializeLeader() {
         }
     });
     
-    // Timer untuk auto-refresh
+    // Timer untuk auto-refresh untuk update target berdasarkan jam
     setInterval(() => {
         if (currentLine) {
             fetchLineData(currentLine);

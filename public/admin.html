@@ -41,23 +41,25 @@
                 <span id="date">DATE: -</span>
             </div>
 
-            <div class="main-grid">
-                <div class="grid-item label-primary">TARGET</div>
-                <div class="grid-item label-primary">PRODUCTIVITY</div>
-                <div class="grid-item label-primary">OUTPUT/DAY</div>
+<!-- Dalam admin.html, ubah bagian main-grid menjadi: -->
+<!-- Dalam admin.html, ubah bagian main-grid menjadi: -->
+<div class="main-grid">
+    <div class="grid-item label-primary">TARGET</div>
+    <div class="grid-item label-primary">PRODUCTIVITY</div>
+    <div class="grid-item label-primary">OUTPUT/DAY</div>
 
-                <div class="grid-item value-primary" id="target">0</div>
-                <div class="grid-item value-primary" id="productivity">0/jam</div>
-                <div class="grid-item value-primary" id="output-day">0</div>
+    <div class="grid-item value-primary" id="target">0</div>
+    <div class="grid-item value-primary" id="productivity">0</div>
+    <div class="grid-item value-primary" id="output-day">0</div>
 
-                <div class="grid-item label-secondary">TOTAL DEFECT</div>
-                <div class="grid-item label-secondary">ACHIEVEMENT</div>
-                <div class="grid-item label-secondary">DEFECT RATE</div>
+    <div class="grid-item label-secondary">QC CHECKING</div>
+    <div class="grid-item label-secondary">ACTUAL DEFECT</div>
+    <div class="grid-item label-secondary">DEFECT RATE</div>
 
-                <div class="grid-item value-secondary red-bg" id="defect-day">0</div>
-                <div class="grid-item value-secondary yellow-bg" id="achievement">0%</div>
-                <div class="grid-item value-secondary red-bg" id="defect-rate">0%</div>
-            </div>
+    <div class="grid-item value-secondary yellow-bg" id="qc-checking">0</div>
+    <div class="grid-item value-secondary red-bg" id="actual-defect">0</div>
+    <div class="grid-item value-secondary red-bg" id="defect-rate">0%</div>
+</div>
 
             <!-- Operator Data Section -->
             <div class="operator-data-container">
@@ -95,9 +97,11 @@
                     <thead>
                         <tr>
                             <th>JAM</th>
-                            <th>OUTPUT</th>
-                            <th>DEFECT</th>
-                            <th>DEFECT RATE</th>
+                        <th>TARGET</th>
+                        <th>OUT</th>
+                        <th>DEFECT</th>
+                        <th>QC CHECKED</th>
+                        <th>RATE</th>
                         </tr>
                     </thead>
                     <tbody id="hourly-table-body">
@@ -235,9 +239,11 @@
                                         <thead>
                                             <tr>
                                                 <th>JAM</th>
-                                                <th>OUTPUT</th>
-                                                <th>DEFECT</th>
-                                                <th>DEFECT RATE</th>
+                        <th>TARGET</th>
+                        <th>OUT</th>
+                        <th>DEFECT</th>
+                        <th>QC CHECKED</th>
+                        <th>RATE</th>
                                             </tr>
                                         </thead>
                                         <tbody id="history-hourly-table-body">

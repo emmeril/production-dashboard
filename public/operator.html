@@ -28,23 +28,25 @@
             <span id="date">DATE: -</span>
         </div>
 
-        <div class="main-grid">
-            <div class="grid-item label-primary">TARGET</div>
-            <div class="grid-item label-primary">PRODUCTIVITY</div>
-            <div class="grid-item label-primary">OUTPUT/DAY</div>
+        <!-- Grid Utama dengan Target Kumulatif Berdasarkan Jam -->
+     <!-- Dalam operator.html, ubah bagian main-grid menjadi: -->
+<div class="main-grid">
+    <div class="grid-item label-primary">TARGET</div>
+    <div class="grid-item label-primary">PRODUCTIVITY</div>
+    <div class="grid-item label-primary">OUTPUT/DAY</div>
 
-            <div class="grid-item value-primary" id="target">0</div>
-            <div class="grid-item value-primary" id="productivity">0/JAM</div>
-            <div class="grid-item value-primary" id="output-day">0</div>
+    <div class="grid-item value-primary" id="target">0</div>
+    <div class="grid-item value-primary" id="productivity">0</div>
+    <div class="grid-item value-primary" id="output-day">0</div>
 
-            <div class="grid-item label-secondary">TOTAL DEFECT</div>
-            <div class="grid-item label-secondary">ACHIEVEMENT</div>
-            <div class="grid-item label-secondary">DEFECT RATE</div>
+    <div class="grid-item label-secondary">QC CHECKING</div>
+    <div class="grid-item label-secondary">ACTUAL DEFECT</div>
+    <div class="grid-item label-secondary">DEFECT RATE</div>
 
-            <div class="grid-item value-secondary red-bg" id="defect-day">0</div>
-            <div class="grid-item value-secondary yellow-bg" id="achievement">0%</div>
-            <div class="grid-item value-secondary red-bg" id="defect-rate">0%</div>
-        </div>
+    <div class="grid-item value-secondary yellow-bg" id="qc-checking">0</div>
+    <div class="grid-item value-secondary red-bg" id="actual-defect">0</div>
+    <div class="grid-item value-secondary red-bg" id="defect-rate">0%</div>
+</div>
 
         <!-- Operator Data Section -->
         <div class="operator-data-container">
@@ -79,66 +81,22 @@
                 <thead>
                     <tr>
                         <th>JAM</th>
+                        <th>TARGET</th>
                         <th>OUT</th>
                         <th>DEFECT</th>
+                        <th>QC CHECKED</th>
                         <th>RATE</th>
                     </tr>
                 </thead>
                 <tbody id="hourly-table-body">
                     <tr>
-                        <td colspan="4" style="text-align: center; color: #888;">Loading data hourly...</td>
+                        <td colspan="6" style="text-align: center; color: #888;">Loading data hourly...</td>
                     </tr>
                 </tbody>
             </table>
         </div>
     </div>
 
-    <!-- Kontrol mobile (akan muncul otomatis di mobile) -->
-    <!-- <div class="mobile-controls">
-        <button class="zoom-control" onclick="zoomOut()">-</button>
-        <button class="zoom-control" onclick="zoomIn()">+</button>
-        <button class="zoom-control" onclick="resetZoom()">Reset</button>
-    </div> -->
-
     <script src="/operator.js"></script>
-     <!-- <script>
-        let currentScale = 1;
-        
-        function zoomIn() {
-            currentScale += 0.1;
-            updateScale();
-        }
-        
-        function zoomOut() {
-            if (currentScale > 0.2) {
-                currentScale -= 0.1;
-                updateScale();
-            }
-        }
-        
-        function resetZoom() {
-            currentScale = 1;
-            updateScale();
-        }
-        
-        function updateScale() {
-            const container = document.querySelector('.desktop-container');
-            container.style.transform = `scale(${currentScale})`;
-        }
-        
-        // Auto scale untuk mobile
-        function autoScaleForMobile() {
-            if (window.innerWidth <= 540) {
-                const container = document.querySelector('.desktop-container');
-                const scale = window.innerWidth / 1920;
-                container.style.transform = `scale(${scale})`;
-                currentScale = scale;
-            }
-        }
-        
-        // Panggil saat halaman dimuat dan di-resize
-        window.addEventListener('load', autoScaleForMobile);
-        window.addEventListener('resize', autoScaleForMobile);
-    </script> -->
 </body>
 </html>

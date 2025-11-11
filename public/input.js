@@ -1,4 +1,4 @@
-// public/input.js
+// public/input.js - Updated
 
 let currentUser = null;
 let currentLine = '';
@@ -52,15 +52,15 @@ async function fetchLineData() {
         
         const data = await response.json();
         console.log('Data received:', data);
-        updateHourlyInputs(data.hourly_data);
-        updateQuickStats(data.hourly_data);
+        updateHourlyInputs(data.hourly_data, data.target);
+        updateQuickStats(data);
     } catch (error) {
         console.error("Gagal mengambil data line:", error);
         showError('Gagal mengambil data produksi. Silakan refresh halaman.');
     }
 }
 
-function updateHourlyInputs(hourlyData) {
+function updateHourlyInputs(hourlyData, totalTarget) {
     const hourlyInputs = document.getElementById('hourly-inputs');
     hourlyInputs.innerHTML = '';
     
@@ -69,12 +69,15 @@ function updateHourlyInputs(hourlyData) {
         return;
     }
     
-    // Buat input fields untuk setiap jam (07:00-17:00)
+    // Buat input fields untuk setiap jam sesuai pola baru
     hourlyData.forEach((hour, index) => {
         const hourDiv = document.createElement('div');
         hourDiv.className = 'hour-input-group';
         hourDiv.innerHTML = `
             <div class="hour-label">${hour.hour || `Jam ${index + 1}`}</div>
+            <div class="hour-info">
+                <span class="target-info">Target: ${hour.cumulativeTarget || 0}</span>
+            </div>
             <div class="hour-inputs">
                 <div class="input-group">
                     <label>Output:</label>
@@ -83,6 +86,10 @@ function updateHourlyInputs(hourlyData) {
                 <div class="input-group">
                     <label>Defect:</label>
                     <input type="number" id="hour-defect-${index}" value="${hour.defect || 0}" placeholder="Defect" min="0" class="data-input">
+                </div>
+                <div class="input-group">
+                    <label>QC Checked:</label>
+                    <input type="number" id="hour-qc-${index}" value="${hour.qcChecked || 0}" placeholder="QC Checked" min="0" class="data-input">
                 </div>
                 <button type="button" class="btn-update" data-hour="${index}">Update</button>
             </div>
@@ -96,11 +103,12 @@ function updateHourlyInputs(hourlyData) {
             const hourIndex = this.getAttribute('data-hour');
             const output = document.getElementById(`hour-output-${hourIndex}`).value;
             const defect = document.getElementById(`hour-defect-${hourIndex}`).value;
+            const qcChecked = document.getElementById(`hour-qc-${hourIndex}`).value;
             
-            if (output !== '' && defect !== '') {
-                updateHourlyData(hourIndex, output, defect);
+            if (output !== '' && defect !== '' && qcChecked !== '') {
+                updateHourlyData(hourIndex, output, defect, qcChecked);
             } else {
-                alert('Harap isi output dan defect!');
+                alert('Harap isi output, defect, dan QC checked!');
             }
         });
     });
@@ -115,41 +123,43 @@ function updateQuickStatsFromInputs() {
     const inputs = document.querySelectorAll('.data-input');
     let totalOutput = 0;
     let totalDefect = 0;
+    let totalQCChecked = 0;
     
-    // Group inputs by hour
-    for (let i = 0; i < inputs.length; i += 2) {
+    // Group inputs by hour (3 inputs per hour: output, defect, qcChecked)
+    for (let i = 0; i < inputs.length; i += 3) {
         const output = parseInt(inputs[i].value) || 0;
         const defect = parseInt(inputs[i + 1].value) || 0;
+        const qcChecked = parseInt(inputs[i + 2].value) || 0;
+        
         totalOutput += output;
         totalDefect += defect;
+        totalQCChecked += qcChecked;
     }
     
-    const defectRate = totalOutput > 0 ? ((totalDefect / totalOutput) * 100).toFixed(2) : '0.00';
+    const defectRate = totalQCChecked > 0 ? ((totalDefect / totalQCChecked) * 100).toFixed(2) : '0.00';
     
     document.getElementById('total-output').textContent = totalOutput;
     document.getElementById('total-defect').textContent = totalDefect;
+    document.getElementById('total-qc-checked').textContent = totalQCChecked;
     document.getElementById('total-defect-rate').textContent = `${defectRate}%`;
 }
 
-function updateQuickStats(hourlyData) {
-    let totalOutput = 0;
-    let totalDefect = 0;
+function updateQuickStats(data) {
+    const totalOutput = data.outputDay || 0;
+    const totalDefect = data.actualDefect || 0;
+    const totalQCChecked = data.qcChecking || 0;
     
-    hourlyData.forEach(hour => {
-        totalOutput += hour.output || 0;
-        totalDefect += hour.defect || 0;
-    });
-    
-    const defectRate = totalOutput > 0 ? ((totalDefect / totalOutput) * 100).toFixed(2) : '0.00';
+    const defectRate = totalQCChecked > 0 ? ((totalDefect / totalQCChecked) * 100).toFixed(2) : '0.00';
     
     document.getElementById('total-output').textContent = totalOutput;
     document.getElementById('total-defect').textContent = totalDefect;
+    document.getElementById('total-qc-checked').textContent = totalQCChecked;
     document.getElementById('total-defect-rate').textContent = `${defectRate}%`;
 }
 
-async function updateHourlyData(hourIndex, output, defect) {
+async function updateHourlyData(hourIndex, output, defect, qcChecked) {
     try {
-        console.log('Updating hourly data:', { hourIndex, output, defect });
+        console.log('Updating hourly data:', { hourIndex, output, defect, qcChecked });
         
         const response = await fetch(`/api/update-hourly/${currentLine}`, {
             method: 'POST',
@@ -159,7 +169,8 @@ async function updateHourlyData(hourIndex, output, defect) {
             body: JSON.stringify({
                 hourIndex: parseInt(hourIndex),
                 output: parseInt(output),
-                defect: parseInt(defect)
+                defect: parseInt(defect),
+                qcChecked: parseInt(qcChecked)
             })
         });
 
@@ -182,12 +193,13 @@ async function saveAllData() {
     const inputs = document.querySelectorAll('.data-input');
     let hasError = false;
     
-    for (let i = 0; i < inputs.length; i += 2) {
-        const hourIndex = i / 2;
+    for (let i = 0; i < inputs.length; i += 3) {
+        const hourIndex = i / 3;
         const output = inputs[i].value;
         const defect = inputs[i + 1].value;
+        const qcChecked = inputs[i + 2].value;
         
-        if (output === '' || defect === '') {
+        if (output === '' || defect === '' || qcChecked === '') {
             showError(`Harap isi data untuk jam ke-${hourIndex + 1}`);
             hasError = true;
             break;
@@ -202,7 +214,8 @@ async function saveAllData() {
                 body: JSON.stringify({
                     hourIndex: parseInt(hourIndex),
                     output: parseInt(output),
-                    defect: parseInt(defect)
+                    defect: parseInt(defect),
+                    qcChecked: parseInt(qcChecked)
                 })
             });
             

@@ -6,16 +6,16 @@
       "date": "2025-11-11",
       "target": 1360,
       "targetPerHour": 170,
-      "outputDay": 0,
-      "qcChecking": 0,
-      "actualDefect": 0,
-      "defectRatePercentage": 0,
+      "outputDay": 100,
+      "qcChecking": 100,
+      "actualDefect": 5,
+      "defectRatePercentage": 5,
       "hourly_data": [
         {
           "hour": "07:00 - 08:00",
-          "output": 0,
-          "defect": 0,
-          "qcChecked": 0,
+          "output": 100,
+          "defect": 5,
+          "qcChecked": 100,
           "cumulativeTarget": 170
         },
         {

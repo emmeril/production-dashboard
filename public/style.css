@@ -7,31 +7,32 @@
 }
 
 :root {
-    --primary-color: #FFD700;
-    --secondary-color: #FFC000;
-    --accent-color: #E70000;
-    --bg-dark: #000;
-    --bg-card: #111;
-    --bg-element: #222;
-    --text-light: #fff;
-    --text-muted: #ccc;
-}
+            --primary-color: #FFD700;
+            --secondary-color: #FFC000;
+            --accent-color: #E70000;
+            --bg-dark: #000;
+            --bg-card: #111;
+            --bg-element: #222;
+            --text-light: #fff;
+            --text-muted: #ccc;
+        }
 
 html {
     /* Base scaling untuk mobile */
     font-size: 18px; /* Dikembalikan ke ukuran normal */
 }
 
-body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background-color: var(--bg-dark);
-    color: var(--text-light);
-    line-height: 1.6;
-    min-height: 100vh;
-    overflow-x: auto;
-    overflow-y: auto;
-    font-size: 1rem; /* Dikembalikan ke ukuran normal */
-}
+ body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-light);
+            line-height: 1.6;
+            width: 1905px;
+            height: 533px;
+            overflow: hidden;
+            margin: 0;
+            padding: 20px;
+        }
 
 /* Container utama dengan width fixed seperti desktop */
 .desktop-container {
@@ -190,14 +191,14 @@ body {
 
 /* Dashboard Styles */
 .dashboard-container {
-    width: 100%;
-    max-width: 1920px;
-    margin: 0 auto;
-    padding: 20px;
-    background-color: var(--bg-card);
-    min-height: 1080px;
-    overflow: visible;
-}
+            width: 100%;
+            height: 100%;
+            background-color: var(--bg-card);
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
 
 /* Header dengan User Info */
 .user-header {
@@ -460,97 +461,96 @@ body {
 
 /* Header Info */
 .header-info {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 15px;
-    font-size: 1.2em; /* Diperkecil */
-    padding: 15px 20px;
-    margin-bottom: 20px;
-    border-bottom: 3px solid #333;
-    background-color: #1a1a1a;
-    border-radius: 5px;
-    text-align: center;
-}
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            font-size: 1.8em;
+            padding: 15px 20px;
+            margin-bottom: 20px;
+            border-bottom: 3px solid #333;
+            background-color: #1a1a1a;
+            border-radius: 5px;
+            text-align: center;
+        }
 
 .header-info span {
-    padding: 8px 0;
-}
+            padding: 8px 0;
+        }
 
 /* Main Grid */
 .main-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 15px;
-    margin-bottom: 20px;
-}
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-grow: 1;
+        }
 
 .grid-item {
-    padding: 20px;
-    font-weight: bold;
-    text-transform: uppercase;
-    border-radius: 5px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    min-height: 100px; /* Diperkecil */
-}
+            padding: 20px;
+            font-weight: bold;
+            text-transform: uppercase;
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
 
 /* Primary Row - ANGKA DIPERBESAR LAGI */
 .label-primary {
-    background-color: var(--bg-card);
-    color: var(--text-light);
-    font-size: 1.4em; /* Diperkecil */
-    text-align: center;
-}
-
+            background-color: var(--bg-card);
+            color: var(--text-light);
+            font-size: 1.8em;
+            text-align: center;
+        }
 .value-primary {
-    background-color: var(--bg-dark);
-    color: var(--primary-color);
-    font-size: 8em; /* DIPERBESAR LAGI dari 6em */
-    line-height: 1;
-    padding: 30px;
-    text-align: center;
-    border: 2px solid #333;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: bold;
-}
+            background-color: var(--bg-dark);
+            color: var(--primary-color);
+            font-size: 6em;
+            line-height: 1;
+            padding: 30px;
+            text-align: center;
+            border: 2px solid #333;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
 
 /* Secondary Row - ANGKA DIPERBESAR LAGI */
 .label-secondary {
-    background-color: var(--bg-card);
-    color: var(--text-light);
-    font-size: 1.4em; /* Diperkecil */
-    text-align: center;
-}
+            background-color: var(--bg-card);
+            color: var(--text-light);
+            font-size: 1.8em;
+            text-align: center;
+        }
 
 .value-secondary {
-    font-size: 7em; /* DIPERBESAR LAGI dari 5.5em */
-    line-height: 1;
-    text-align: center;
-    border: 2px solid #333;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: bold;
-}
+            font-size: 5.5em;
+            line-height: 1;
+            text-align: center;
+            border: 2px solid #333;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
 
 .yellow-bg {
-    background-color: var(--secondary-color);
-    color: #000;
-}
+            background-color: var(--secondary-color);
+            color: #000;
+        }
 
-.red-bg {
-    background-color: var(--accent-color);
-    color: var(--text-light);
-}
+        .red-bg {
+            background-color: var(--accent-color);
+            color: var(--text-light);
+        }
 
-.green-bg {
-    background-color: #008000 !important;
-    color: var(--text-light) !important;
-}
+        .green-bg {
+            background-color: #008000 !important;
+            color: var(--text-light) !important;
+        }
 
 /* Data Containers Layout */
 .data-section {

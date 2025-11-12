@@ -22,17 +22,16 @@ html {
     font-size: 18px; /* Dikembalikan ke ukuran normal */
 }
 
- body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--bg-dark);
-            color: var(--text-light);
-            line-height: 1.6;
-            width: 1905px;
-            height: 533px;
-            overflow: hidden;
-            margin: 0;
-            padding: 20px;
-        }
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--bg-dark);
+    color: var(--text-light);
+    line-height: 1.6;
+    min-height: 100vh;
+    overflow-x: auto;
+    overflow-y: auto;
+    font-size: 1rem; /* Dikembalikan ke ukuran normal */
+}
 
 /* Container utama dengan width fixed seperti desktop */
 .desktop-container {

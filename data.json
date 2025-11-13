@@ -83,6 +83,90 @@
         }
       ],
       "operators": []
+    },
+    "LINE-2": {
+      "labelWeek": "-",
+      "model": "-",
+      "date": "2025-11-13",
+      "target": 1440,
+      "targetPerHour": 180,
+      "outputDay": 0,
+      "qcChecking": 0,
+      "actualDefect": 0,
+      "defectRatePercentage": 0,
+      "hourly_data": [
+        {
+          "hour": "07:00 - 08:00",
+          "output": 0,
+          "defect": 0,
+          "qcChecked": 0,
+          "cumulativeTarget": 180
+        },
+        {
+          "hour": "08:00 - 09:00",
+          "output": 0,
+          "defect": 0,
+          "qcChecked": 0,
+          "cumulativeTarget": 360
+        },
+        {
+          "hour": "09:00 - 10:00",
+          "output": 0,
+          "defect": 0,
+          "qcChecked": 0,
+          "cumulativeTarget": 540
+        },
+        {
+          "hour": "10:00 - 11:00",
+          "output": 0,
+          "defect": 0,
+          "qcChecked": 0,
+          "cumulativeTarget": 720
+        },
+        {
+          "hour": "11:00 - 13:00",
+          "output": 0,
+          "defect": 0,
+          "qcChecked": 0,
+          "cumulativeTarget": 720
+        },
+        {
+          "hour": "13:00 - 14:00",
+          "output": 0,
+          "defect": 0,
+          "qcChecked": 0,
+          "cumulativeTarget": 900
+        },
+        {
+          "hour": "14:00 - 15:00",
+          "output": 0,
+          "defect": 0,
+          "qcChecked": 0,
+          "cumulativeTarget": 1080
+        },
+        {
+          "hour": "15:00 - 16:00",
+          "output": 0,
+          "defect": 0,
+          "qcChecked": 0,
+          "cumulativeTarget": 1260
+        },
+        {
+          "hour": "16:00 - 17:00",
+          "output": 0,
+          "defect": 0,
+          "qcChecked": 0,
+          "cumulativeTarget": 1440
+        },
+        {
+          "hour": "17:00 - 18:00",
+          "output": 0,
+          "defect": 0,
+          "qcChecked": 0,
+          "cumulativeTarget": 1440
+        }
+      ],
+      "operators": []
     }
   },
   "activeLine": "F1-5A"

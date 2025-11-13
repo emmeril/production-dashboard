@@ -1,4 +1,4 @@
-// public/operator.js - Updated dengan Defect Details
+// public/operator.js - Updated dengan Multiple Defect Details
 
 let currentUser = null;
 let currentLine = '';
@@ -160,7 +160,7 @@ function updateDashboard(data) {
     document.getElementById('current-line').textContent = data.line;
     document.getElementById('hourly-line').textContent = data.line;
 
-    // Update Hourly Data Table dengan target kumulatif dan defect details
+    // Update Hourly Data Table dengan defect details
     updateHourlyTable(data.hourly_data);
 
     // Update operators table (read-only untuk operator)
@@ -204,13 +204,22 @@ function updateHourlyTable(hourlyData) {
             }
 
             // Defect details
-            row.insertCell().textContent = item.defectType || '-';
-            row.insertCell().textContent = item.defectArea || '-';
+            const defectDetailsCell = row.insertCell();
+            if (item.defectDetails && item.defectDetails.length > 0) {
+                defectDetailsCell.innerHTML = item.defectDetails.map(defect => 
+                    `<div style="margin-bottom: 5px; font-size: 0.8rem;">
+                        <strong>${defect.quantity}x</strong> - ${defect.type || '-'} (${defect.area || '-'})
+                        ${defect.notes ? `<br><em>${defect.notes}</em>` : ''}
+                    </div>`
+                ).join('');
+            } else {
+                defectDetailsCell.textContent = '-';
+            }
         });
     } else {
         const row = tableBody.insertRow();
         const cell = row.insertCell();
-        cell.colSpan = 8;
+        cell.colSpan = 7;
         cell.textContent = "Data per jam belum tersedia.";
         cell.style.textAlign = 'center';
         cell.style.color = '#888';

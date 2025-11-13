@@ -1136,108 +1136,104 @@ tr:hover {
 
 /* Tambahkan di bagian akhir file style.css */
 
-/* Defect Management Styles */
-.defect-management-container {
-    padding: 20px;
-    background-color: var(--bg-element);
-    border-radius: 8px;
-    height: fit-content;
-}
+/* Tambahkan di bagian akhir file style.css */
 
-.defect-management-container h2 {
-    font-size: clamp(1.2rem, 3vw, 1.4rem);
-    color: var(--primary-color);
-    margin-bottom: 15px;
-    text-align: left;
-}
-
-.defect-controls {
-    margin-bottom: 15px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-.defect-sections {
+/* Multiple Defect Input Styles */
+.defect-input-row {
     display: grid;
-    grid-template-columns: 1fr;
-    gap: 20px;
-}
-
-.defect-type-section, .defect-area-section {
-    background-color: #333;
-    padding: 20px;
-    border-radius: 8px;
-    border-left: 4px solid var(--secondary-color);
-}
-
-.defect-type-section h3, .defect-area-section h3 {
-    color: var(--primary-color);
+    grid-template-columns: 1fr 1fr 1fr 2fr auto;
+    gap: 10px;
     margin-bottom: 15px;
-    font-size: clamp(1.1rem, 2.5vw, 1.2rem);
-}
-
-/* Defect Details Styles untuk Input Page */
-.defect-details-section {
-    grid-column: 1 / -1;
-    margin-top: 15px;
     padding: 15px;
     background-color: #2a2a2a;
     border-radius: 5px;
-    border-left: 4px solid var(--secondary-color);
+    border-left: 3px solid var(--secondary-color);
+    align-items: end;
 }
 
-.defect-details-section h4 {
-    color: var(--primary-color);
-    margin-bottom: 10px;
-    font-size: 1rem;
+.defect-input-row .input-group {
+    margin-bottom: 0;
 }
 
-.defect-inputs {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 10px;
+.defect-input-row label {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-bottom: 5px;
 }
 
-.defect-select, .defect-notes {
-    padding: 10px;
+.defect-input-row input,
+.defect-input-row select {
+    padding: 10px 12px;
+    font-size: 0.9rem;
     background-color: #333;
     color: var(--text-light);
     border: 1px solid #555;
     border-radius: 4px;
-    font-size: 0.9rem;
+    width: 100%;
 }
 
-.defect-select:focus, .defect-notes:focus {
+.defect-input-row input:focus,
+.defect-input-row select:focus {
     outline: none;
     border-color: var(--primary-color);
 }
 
-.defect-notes {
-    width: 100%;
+.defect-quantity {
+    background-color: #444 !important;
+    font-weight: bold;
 }
 
-/* Responsive adjustments */
-@media (min-width: 768px) {
-    .defect-sections {
+.add-defect-btn {
+    background-color: #28a745 !important;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 4px;
+    color: white;
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+
+.add-defect-btn:hover {
+    background-color: #218838 !important;
+}
+
+.remove-defect-btn {
+    background-color: #dc3545;
+    border: none;
+    padding: 10px 12px;
+    border-radius: 4px;
+    color: white;
+    cursor: pointer;
+    font-size: 1.2rem;
+    font-weight: bold;
+    min-width: 40px;
+}
+
+.remove-defect-btn:hover {
+    background-color: #c82333;
+}
+
+/* Responsive adjustments untuk defect inputs */
+@media (max-width: 768px) {
+    .defect-input-row {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+    
+    .defect-input-row .btn-danger {
+        width: 100%;
+        margin-top: 10px;
+    }
+}
+
+@media (min-width: 769px) and (max-width: 1024px) {
+    .defect-input-row {
         grid-template-columns: 1fr 1fr;
     }
     
-    .defect-inputs {
-        grid-template-columns: 1fr 1fr;
-    }
-    
-    .defect-notes {
+    .defect-input-row .btn-danger {
         grid-column: 1 / -1;
-    }
-}
-
-@media (min-width: 1024px) {
-    .defect-inputs {
-        grid-template-columns: 1fr 1fr 2fr;
-    }
-    
-    .defect-notes {
-        grid-column: auto;
+        width: 100%;
+        margin-top: 10px;
     }
 }

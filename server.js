@@ -39,22 +39,22 @@ function resetLineData(line) {
     defectRatePercentage: 0,
     hourly_data: [
       // Jam kerja pagi (4 jam)
-      { hour: "07:00 - 08:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 1 },
-      { hour: "08:00 - 09:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 2 },
-      { hour: "09:00 - 10:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 3 },
-      { hour: "10:00 - 11:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 4 },
+      { hour: "07:00 - 08:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 1, defectDetails: [] },
+      { hour: "08:00 - 09:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 2, defectDetails: [] },
+      { hour: "09:00 - 10:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 3, defectDetails: [] },
+      { hour: "10:00 - 11:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 4, defectDetails: [] },
       
       // Istirahat panjang 11:00-13:00 (2 jam) - cumulative target tetap sama
-      { hour: "11:00 - 13:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 4 },
+      { hour: "11:00 - 13:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 4, defectDetails: [] },
       
       // Jam kerja siang (4 jam)
-      { hour: "13:00 - 14:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 5 },
-      { hour: "14:00 - 15:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 6 },
-      { hour: "15:00 - 16:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 7 },
-      { hour: "16:00 - 17:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 8 },
+      { hour: "13:00 - 14:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 5, defectDetails: [] },
+      { hour: "14:00 - 15:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 6, defectDetails: [] },
+      { hour: "15:00 - 16:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 7, defectDetails: [] },
+      { hour: "16:00 - 17:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 8, defectDetails: [] },
       
       // Overtime atau jam tambahan - cumulative target tetap maksimal
-      { hour: "17:00 - 18:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 8 }
+      { hour: "17:00 - 18:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 8, defectDetails: [] }
     ],
     operators: line.operators ? line.operators.map(operator => ({
       ...operator,
@@ -85,16 +85,16 @@ function initializeDataFiles() {
           "actualDefect": 0,
           "defectRatePercentage": 0,
           "hourly_data": [
-            { "hour": "07:00 - 08:00", "output": 0, "defect": 0, "qcChecked": 0, "cumulativeTarget": targetPerHour * 1 },
-            { "hour": "08:00 - 09:00", "output": 0, "defect": 0, "qcChecked": 0, "cumulativeTarget": targetPerHour * 2 },
-            { "hour": "09:00 - 10:00", "output": 0, "defect": 0, "qcChecked": 0, "cumulativeTarget": targetPerHour * 3 },
-            { "hour": "10:00 - 11:00", "output": 0, "defect": 0, "qcChecked": 0, "cumulativeTarget": targetPerHour * 4 },
-            { "hour": "11:00 - 12:00", "output": 0, "defect": 0, "qcChecked": 0, "cumulativeTarget": targetPerHour * 5 },
-            { "hour": "12:00 - 13:00", "output": 0, "defect": 0, "qcChecked": 0, "cumulativeTarget": targetPerHour * 6 },
-            { "hour": "13:00 - 14:00", "output": 0, "defect": 0, "qcChecked": 0, "cumulativeTarget": targetPerHour * 7 },
-            { "hour": "14:00 - 15:00", "output": 0, "defect": 0, "qcChecked": 0, "cumulativeTarget": targetPerHour * 8 },
-            { "hour": "15:00 - 16:00", "output": 0, "defect": 0, "qcChecked": 0, "cumulativeTarget": targetPerHour * 8 },
-            { "hour": "16:00 - 17:00", "output": 0, "defect": 0, "qcChecked": 0, "cumulativeTarget": targetPerHour * 8 }
+            { "hour": "07:00 - 08:00", "output": 0, "defect": 0, "qcChecked": 0, "cumulativeTarget": targetPerHour * 1, "defectDetails": [] },
+            { "hour": "08:00 - 09:00", "output": 0, "defect": 0, "qcChecked": 0, "cumulativeTarget": targetPerHour * 2, "defectDetails": [] },
+            { "hour": "09:00 - 10:00", "output": 0, "defect": 0, "qcChecked": 0, "cumulativeTarget": targetPerHour * 3, "defectDetails": [] },
+            { "hour": "10:00 - 11:00", "output": 0, "defect": 0, "qcChecked": 0, "cumulativeTarget": targetPerHour * 4, "defectDetails": [] },
+            { "hour": "11:00 - 12:00", "output": 0, "defect": 0, "qcChecked": 0, "cumulativeTarget": targetPerHour * 5, "defectDetails": [] },
+            { "hour": "12:00 - 13:00", "output": 0, "defect": 0, "qcChecked": 0, "cumulativeTarget": targetPerHour * 6, "defectDetails": [] },
+            { "hour": "13:00 - 14:00", "output": 0, "defect": 0, "qcChecked": 0, "cumulativeTarget": targetPerHour * 7, "defectDetails": [] },
+            { "hour": "14:00 - 15:00", "output": 0, "defect": 0, "qcChecked": 0, "cumulativeTarget": targetPerHour * 8, "defectDetails": [] },
+            { "hour": "15:00 - 16:00", "output": 0, "defect": 0, "qcChecked": 0, "cumulativeTarget": targetPerHour * 8, "defectDetails": [] },
+            { "hour": "16:00 - 17:00", "output": 0, "defect": 0, "qcChecked": 0, "cumulativeTarget": targetPerHour * 8, "defectDetails": [] }
           ],
           "operators": [
             {
@@ -487,10 +487,10 @@ app.delete('/api/defect-areas/:id', requireLogin, requireAdmin, (req, res) => {
   res.json({ message: 'Area defect berhasil dihapus' });
 });
 
-// Update hourly data dengan defect details
+// Update hourly data dengan defect details per defect
 app.post('/api/update-hourly/:lineName', requireLogin, requireLineAccess, (req, res) => {
   const lineName = req.params.lineName;
-  const { hourIndex, output, defect, qcChecked, defectType, defectArea, defectNotes } = req.body;
+  const { hourIndex, output, defect, qcChecked, defectDetails } = req.body;
 
   const data = readProductionData();
 
@@ -504,9 +504,7 @@ app.post('/api/update-hourly/:lineName', requireLogin, requireLineAccess, (req, 
     output: parseInt(output),
     defect: parseInt(defect),
     qcChecked: parseInt(qcChecked),
-    defectType: defectType || '',
-    defectArea: defectArea || '',
-    defectNotes: defectNotes || ''
+    defectDetails: defectDetails || []
   };
 
   // Hitung ulang total harian
@@ -637,7 +635,7 @@ app.get('/api/history/:filename/export', requireLogin, requireAdmin, (req, res) 
         ['Defect Rate (%)', line.defectRatePercentage],
         [],
         ['HOURLY DATA'],
-        ['Jam', 'Target Kumulatif', 'Output', 'Defect', 'QC Checked', 'Defect Rate (%)', 'Jenis Defect', 'Area Defect', 'Keterangan']
+        ['Jam', 'Target Kumulatif', 'Output', 'Defect', 'QC Checked', 'Defect Rate (%)']
       ];
 
       line.hourly_data.forEach(hour => {
@@ -648,11 +646,24 @@ app.get('/api/history/:filename/export', requireLogin, requireAdmin, (req, res) 
           hour.output, 
           hour.defect, 
           hour.qcChecked, 
-          defectRate,
-          hour.defectType || '',
-          hour.defectArea || '',
-          hour.defectNotes || ''
+          defectRate
         ]);
+
+        // Add defect details if available
+        if (hour.defectDetails && hour.defectDetails.length > 0) {
+          lineData.push(['', '', 'Detail Defect:', '', '', '']);
+          hour.defectDetails.forEach((detail, index) => {
+            lineData.push([
+              '',
+              '',
+              `Defect ${index + 1}:`,
+              `Jenis: ${detail.type || '-'}`,
+              `Area: ${detail.area || '-'}`,
+              `Keterangan: ${detail.notes || '-'}`
+            ]);
+          });
+          lineData.push(['', '', '', '', '', '']);
+        }
       });
 
       // Operator data
@@ -787,22 +798,22 @@ app.post('/api/lines', requireLogin, requireAdmin, (req, res) => {
     defectRatePercentage: 0,
     hourly_data: [
       // Jam kerja pagi (4 jam)
-      { hour: "07:00 - 08:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 1 },
-      { hour: "08:00 - 09:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 2 },
-      { hour: "09:00 - 10:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 3 },
-      { hour: "10:00 - 11:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 4 },
+      { hour: "07:00 - 08:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 1, defectDetails: [] },
+      { hour: "08:00 - 09:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 2, defectDetails: [] },
+      { hour: "09:00 - 10:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 3, defectDetails: [] },
+      { hour: "10:00 - 11:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 4, defectDetails: [] },
       
       // Istirahat panjang 11:00-13:00 (2 jam) - cumulative target tetap sama
-      { hour: "11:00 - 13:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 4 },
+      { hour: "11:00 - 13:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 4, defectDetails: [] },
       
       // Jam kerja siang (4 jam)
-      { hour: "13:00 - 14:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 5 },
-      { hour: "14:00 - 15:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 6 },
-      { hour: "15:00 - 16:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 7 },
-      { hour: "16:00 - 17:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 8 },
+      { hour: "13:00 - 14:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 5, defectDetails: [] },
+      { hour: "14:00 - 15:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 6, defectDetails: [] },
+      { hour: "15:00 - 16:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 7, defectDetails: [] },
+      { hour: "16:00 - 17:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 8, defectDetails: [] },
       
       // Overtime atau jam tambahan - cumulative target tetap maksimal
-      { hour: "17:00 - 18:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 8 }
+      { hour: "17:00 - 18:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 8, defectDetails: [] }
     ],
     operators: []
   };
@@ -1150,7 +1161,7 @@ function generateExcelData(lineData, lineName) {
   const hourlyData = [
     ['HOURLY PRODUCTION DATA'],
     [],
-    ['Jam', 'Target Kumulatif', 'Output', 'Defect', 'QC Checked', 'Defect Rate (%)', 'Jenis Defect', 'Area Defect', 'Keterangan']
+    ['Jam', 'Target Kumulatif', 'Output', 'Defect', 'QC Checked', 'Defect Rate (%)']
   ];
 
   lineData.hourly_data.forEach(hour => {
@@ -1161,11 +1172,24 @@ function generateExcelData(lineData, lineName) {
       hour.output, 
       hour.defect, 
       hour.qcChecked, 
-      defectRate,
-      hour.defectType || '',
-      hour.defectArea || '',
-      hour.defectNotes || ''
+      defectRate
     ]);
+
+    // Add defect details if available
+    if (hour.defectDetails && hour.defectDetails.length > 0) {
+      hourlyData.push(['', '', 'Detail Defect:', '', '', '']);
+      hour.defectDetails.forEach((detail, index) => {
+        hourlyData.push([
+          '',
+          '',
+          `Defect ${index + 1}:`,
+          `Jenis: ${detail.type || '-'}`,
+          `Area: ${detail.area || '-'}`,
+          `Keterangan: ${detail.notes || '-'}`
+        ]);
+      });
+      hourlyData.push(['', '', '', '', '', '']);
+    }
   });
   
   // Add totals
@@ -1382,5 +1406,6 @@ app.listen(port, () => {
   console.log(`- QC Checking & Actual Defect`);
   console.log(`- Defect Rate berdasarkan QC Checking`);
   console.log(`- Defect Types & Areas Management`);
+  console.log(`- Multiple Defect Details per Jam`);
   console.log(`=================================`);
 });

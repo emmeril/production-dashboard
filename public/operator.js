@@ -1,4 +1,4 @@
-// public/operator.js - Updated dengan Target Kumulatif Berdasarkan Jam
+// public/operator.js - Updated dengan Defect Details
 
 let currentUser = null;
 let currentLine = '';
@@ -59,7 +59,6 @@ async function fetchLineData() {
 }
 
 // Fungsi untuk menghitung target kumulatif berdasarkan jam sekarang
-// Fungsi calculateCurrentTarget yang diperbarui (untuk operator.js, admin.js, leader.js)
 function calculateCurrentTarget(data) {
     if (!data || !data.hourly_data) return 0;
     
@@ -161,7 +160,7 @@ function updateDashboard(data) {
     document.getElementById('current-line').textContent = data.line;
     document.getElementById('hourly-line').textContent = data.line;
 
-    // Update Hourly Data Table dengan target kumulatif
+    // Update Hourly Data Table dengan target kumulatif dan defect details
     updateHourlyTable(data.hourly_data);
 
     // Update operators table (read-only untuk operator)
@@ -203,11 +202,15 @@ function updateHourlyTable(hourlyData) {
             } else {
                 defectRateCell.className = 'efficiency-low';
             }
+
+            // Defect details
+            row.insertCell().textContent = item.defectType || '-';
+            row.insertCell().textContent = item.defectArea || '-';
         });
     } else {
         const row = tableBody.insertRow();
         const cell = row.insertCell();
-        cell.colSpan = 6;
+        cell.colSpan = 8;
         cell.textContent = "Data per jam belum tersedia.";
         cell.style.textAlign = 'center';
         cell.style.color = '#888';

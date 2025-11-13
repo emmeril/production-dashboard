@@ -1133,3 +1133,111 @@ tr:hover {
         display: none;
     }
 }
+
+/* Tambahkan di bagian akhir file style.css */
+
+/* Defect Management Styles */
+.defect-management-container {
+    padding: 20px;
+    background-color: var(--bg-element);
+    border-radius: 8px;
+    height: fit-content;
+}
+
+.defect-management-container h2 {
+    font-size: clamp(1.2rem, 3vw, 1.4rem);
+    color: var(--primary-color);
+    margin-bottom: 15px;
+    text-align: left;
+}
+
+.defect-controls {
+    margin-bottom: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.defect-sections {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 20px;
+}
+
+.defect-type-section, .defect-area-section {
+    background-color: #333;
+    padding: 20px;
+    border-radius: 8px;
+    border-left: 4px solid var(--secondary-color);
+}
+
+.defect-type-section h3, .defect-area-section h3 {
+    color: var(--primary-color);
+    margin-bottom: 15px;
+    font-size: clamp(1.1rem, 2.5vw, 1.2rem);
+}
+
+/* Defect Details Styles untuk Input Page */
+.defect-details-section {
+    grid-column: 1 / -1;
+    margin-top: 15px;
+    padding: 15px;
+    background-color: #2a2a2a;
+    border-radius: 5px;
+    border-left: 4px solid var(--secondary-color);
+}
+
+.defect-details-section h4 {
+    color: var(--primary-color);
+    margin-bottom: 10px;
+    font-size: 1rem;
+}
+
+.defect-inputs {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+}
+
+.defect-select, .defect-notes {
+    padding: 10px;
+    background-color: #333;
+    color: var(--text-light);
+    border: 1px solid #555;
+    border-radius: 4px;
+    font-size: 0.9rem;
+}
+
+.defect-select:focus, .defect-notes:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+
+.defect-notes {
+    width: 100%;
+}
+
+/* Responsive adjustments */
+@media (min-width: 768px) {
+    .defect-sections {
+        grid-template-columns: 1fr 1fr;
+    }
+    
+    .defect-inputs {
+        grid-template-columns: 1fr 1fr;
+    }
+    
+    .defect-notes {
+        grid-column: 1 / -1;
+    }
+}
+
+@media (min-width: 1024px) {
+    .defect-inputs {
+        grid-template-columns: 1fr 1fr 2fr;
+    }
+    
+    .defect-notes {
+        grid-column: auto;
+    }
+}

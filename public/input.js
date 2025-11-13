@@ -1,7 +1,9 @@
-// public/input.js - Updated
+// public/input.js - Updated dengan Defect Details
 
 let currentUser = null;
 let currentLine = '';
+let defectTypes = [];
+let defectAreas = [];
 
 // Check authentication dan ambil data line
 async function initializeInput() {
@@ -25,6 +27,8 @@ async function initializeInput() {
             // Set link untuk dashboard
             document.getElementById('dashboard-link').href = `/line/${currentLine}`;
             
+            // Fetch defect types and areas
+            await fetchDefects();
             await fetchLineData();
         } else {
             console.log('Not logged in, redirecting to login page');
@@ -33,6 +37,25 @@ async function initializeInput() {
     } catch (error) {
         console.error('Auth check failed:', error);
         window.location.href = '/';
+    }
+}
+
+// Fetch defect types and areas
+async function fetchDefects() {
+    try {
+        const [typesResponse, areasResponse] = await Promise.all([
+            fetch('/api/defect-types'),
+            fetch('/api/defect-areas')
+        ]);
+
+        if (typesResponse.ok) {
+            defectTypes = await typesResponse.json();
+        }
+        if (areasResponse.ok) {
+            defectAreas = await areasResponse.json();
+        }
+    } catch (error) {
+        console.error("Gagal mengambil data defects:", error);
     }
 }
 
@@ -91,6 +114,32 @@ function updateHourlyInputs(hourlyData, totalTarget) {
                     <label>QC Checked:</label>
                     <input type="number" id="hour-qc-${index}" value="${hour.qcChecked || 0}" placeholder="QC Checked" min="0" class="data-input">
                 </div>
+                
+                <!-- Defect Details Section -->
+                <div class="defect-details-section">
+                    <h4>Detail Defect:</h4>
+                    <div class="defect-inputs">
+                        <div class="input-group">
+                            <label>Jenis Defect:</label>
+                            <select id="hour-defect-type-${index}" class="defect-select">
+                                <option value="">Pilih Jenis Defect</option>
+                                ${defectTypes.map(type => `<option value="${type.name}" ${hour.defectType === type.name ? 'selected' : ''}>${type.name}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label>Area Defect:</label>
+                            <select id="hour-defect-area-${index}" class="defect-select">
+                                <option value="">Pilih Area Defect</option>
+                                ${defectAreas.map(area => `<option value="${area.name}" ${hour.defectArea === area.name ? 'selected' : ''}>${area.name}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label>Keterangan:</label>
+                            <input type="text" id="hour-defect-notes-${index}" value="${hour.defectNotes || ''}" placeholder="Keterangan tambahan" class="defect-notes">
+                        </div>
+                    </div>
+                </div>
+                
                 <button type="button" class="btn-update" data-hour="${index}">Update</button>
             </div>
         `;
@@ -104,9 +153,12 @@ function updateHourlyInputs(hourlyData, totalTarget) {
             const output = document.getElementById(`hour-output-${hourIndex}`).value;
             const defect = document.getElementById(`hour-defect-${hourIndex}`).value;
             const qcChecked = document.getElementById(`hour-qc-${hourIndex}`).value;
+            const defectType = document.getElementById(`hour-defect-type-${hourIndex}`).value;
+            const defectArea = document.getElementById(`hour-defect-area-${hourIndex}`).value;
+            const defectNotes = document.getElementById(`hour-defect-notes-${hourIndex}`).value;
             
             if (output !== '' && defect !== '' && qcChecked !== '') {
-                updateHourlyData(hourIndex, output, defect, qcChecked);
+                updateHourlyData(hourIndex, output, defect, qcChecked, defectType, defectArea, defectNotes);
             } else {
                 alert('Harap isi output, defect, dan QC checked!');
             }
@@ -157,9 +209,9 @@ function updateQuickStats(data) {
     document.getElementById('total-defect-rate').textContent = `${defectRate}%`;
 }
 
-async function updateHourlyData(hourIndex, output, defect, qcChecked) {
+async function updateHourlyData(hourIndex, output, defect, qcChecked, defectType, defectArea, defectNotes) {
     try {
-        console.log('Updating hourly data:', { hourIndex, output, defect, qcChecked });
+        console.log('Updating hourly data:', { hourIndex, output, defect, qcChecked, defectType, defectArea, defectNotes });
         
         const response = await fetch(`/api/update-hourly/${currentLine}`, {
             method: 'POST',
@@ -170,7 +222,10 @@ async function updateHourlyData(hourIndex, output, defect, qcChecked) {
                 hourIndex: parseInt(hourIndex),
                 output: parseInt(output),
                 defect: parseInt(defect),
-                qcChecked: parseInt(qcChecked)
+                qcChecked: parseInt(qcChecked),
+                defectType: defectType,
+                defectArea: defectArea,
+                defectNotes: defectNotes
             })
         });
 
@@ -198,6 +253,9 @@ async function saveAllData() {
         const output = inputs[i].value;
         const defect = inputs[i + 1].value;
         const qcChecked = inputs[i + 2].value;
+        const defectType = document.getElementById(`hour-defect-type-${hourIndex}`).value;
+        const defectArea = document.getElementById(`hour-defect-area-${hourIndex}`).value;
+        const defectNotes = document.getElementById(`hour-defect-notes-${hourIndex}`).value;
         
         if (output === '' || defect === '' || qcChecked === '') {
             showError(`Harap isi data untuk jam ke-${hourIndex + 1}`);
@@ -215,7 +273,10 @@ async function saveAllData() {
                     hourIndex: parseInt(hourIndex),
                     output: parseInt(output),
                     defect: parseInt(defect),
-                    qcChecked: parseInt(qcChecked)
+                    qcChecked: parseInt(qcChecked),
+                    defectType: defectType,
+                    defectArea: defectArea,
+                    defectNotes: defectNotes
                 })
             });
             

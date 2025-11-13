@@ -6,6 +6,8 @@ let allLines = {};
 let allUsers = [];
 let currentHistoryFile = '';
 let currentHistoryData = null;
+let defectTypes = [];
+let defectAreas = [];
 
 // Check authentication
 async function checkAuth() {
@@ -50,6 +52,8 @@ function initTabs() {
                 fetchUsers();
             } else if (tabName === 'history-management') {
                 fetchHistoryFiles();
+            } else if (tabName === 'defect-management') {
+                fetchDefects();
             }
         });
     });
@@ -202,7 +206,7 @@ function updateDashboard(data) {
     document.getElementById('hourly-line').textContent = data.line;
     document.getElementById('modal-line').textContent = data.line;
 
-    // Update Hourly Data Table dengan target kumulatif
+    // Update Hourly Data Table dengan target kumulatif dan defect details
     updateHourlyTable(data.hourly_data);
 
     // Update operators
@@ -248,11 +252,16 @@ function updateHourlyTable(hourlyData) {
             } else {
                 defectRateCell.className = 'efficiency-low';
             }
+
+            // Defect details
+            row.insertCell().textContent = item.defectType || '-';
+            row.insertCell().textContent = item.defectArea || '-';
+            row.insertCell().textContent = item.defectNotes || '-';
         });
     } else {
         const row = tableBody.insertRow();
         const cell = row.insertCell();
-        cell.colSpan = 6;
+        cell.colSpan = 9;
         cell.textContent = "Data per jam belum tersedia.";
         cell.style.textAlign = 'center';
         cell.style.color = '#888';
@@ -808,7 +817,7 @@ async function deleteLine() {
                 document.getElementById('achievement').textContent = '0.00%';
                 document.getElementById('defect-rate').textContent = '0.00%';
                 document.getElementById('operator-table-body').innerHTML = '<tr><td colspan="9" style="text-align: center; color: #888;">Tidak ada data operator.</td></tr>';
-                document.getElementById('hourly-table-body').innerHTML = '<tr><td colspan="4" style="text-align: center; color: #888;">Data per jam belum tersedia.</td></tr>';
+                document.getElementById('hourly-table-body').innerHTML = '<tr><td colspan="9" style="text-align: center; color: #888;">Data per jam belum tersedia.</td></tr>';
             }
         } else {
             const error = await response.json();
@@ -847,6 +856,271 @@ async function exportToExcel() {
         console.error('Export error:', error);
         alert('Gagal mengexport data ke Excel.');
     }
+}
+
+// Defect Management Functions
+async function fetchDefects() {
+    try {
+        const response = await fetch('/api/defect-config');
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const defectConfig = await response.json();
+        defectTypes = defectConfig.defectTypes || [];
+        defectAreas = defectConfig.defectAreas || [];
+        updateDefectTables();
+    } catch (error) {
+        console.error("Gagal mengambil data defects:", error);
+    }
+}
+
+function updateDefectTables() {
+    updateDefectTypeTable();
+    updateDefectAreaTable();
+}
+
+function updateDefectTypeTable() {
+    const tableBody = document.getElementById('defect-type-table-body');
+    tableBody.innerHTML = '';
+
+    if (defectTypes.length > 0) {
+        defectTypes.forEach((type, index) => {
+            const row = tableBody.insertRow();
+            row.insertCell().textContent = index + 1;
+            row.insertCell().textContent = type.name;
+
+            // Status
+            const statusCell = row.insertCell();
+            statusCell.textContent = type.active ? 'Aktif' : 'Nonaktif';
+            statusCell.className = type.active ? 'status-active' : 'status-off';
+
+            // Aksi
+            const actionCell = row.insertCell();
+            const editButton = document.createElement('button');
+            editButton.textContent = 'Edit';
+            editButton.className = 'btn-edit';
+            editButton.onclick = () => editDefectType(type);
+
+            const deleteButton = document.createElement('button');
+            deleteButton.textContent = 'Hapus';
+            deleteButton.className = 'btn-danger';
+            deleteButton.onclick = () => deleteDefectType(type.id);
+
+            actionCell.appendChild(editButton);
+            actionCell.appendChild(deleteButton);
+        });
+    } else {
+        const row = tableBody.insertRow();
+        const cell = row.insertCell();
+        cell.colSpan = 4;
+        cell.textContent = "Tidak ada data jenis defect.";
+        cell.style.textAlign = 'center';
+    }
+}
+
+function updateDefectAreaTable() {
+    const tableBody = document.getElementById('defect-area-table-body');
+    tableBody.innerHTML = '';
+
+    if (defectAreas.length > 0) {
+        defectAreas.forEach((area, index) => {
+            const row = tableBody.insertRow();
+            row.insertCell().textContent = index + 1;
+            row.insertCell().textContent = area.name;
+
+            // Status
+            const statusCell = row.insertCell();
+            statusCell.textContent = area.active ? 'Aktif' : 'Nonaktif';
+            statusCell.className = area.active ? 'status-active' : 'status-off';
+
+            // Aksi
+            const actionCell = row.insertCell();
+            const editButton = document.createElement('button');
+            editButton.textContent = 'Edit';
+            editButton.className = 'btn-edit';
+            editButton.onclick = () => editDefectArea(area);
+
+            const deleteButton = document.createElement('button');
+            deleteButton.textContent = 'Hapus';
+            deleteButton.className = 'btn-danger';
+            deleteButton.onclick = () => deleteDefectArea(area.id);
+
+            actionCell.appendChild(editButton);
+            actionCell.appendChild(deleteButton);
+        });
+    } else {
+        const row = tableBody.insertRow();
+        const cell = row.insertCell();
+        cell.colSpan = 4;
+        cell.textContent = "Tidak ada data area defect.";
+        cell.style.textAlign = 'center';
+    }
+}
+
+function showDefectTypeModal() {
+    document.getElementById('defect-type-modal').style.display = 'block';
+    document.getElementById('defect-type-form').reset();
+    document.getElementById('defect-type-id').value = '';
+    document.getElementById('defect-type-active').value = 'true';
+    document.getElementById('defect-type-modal-title').textContent = 'Tambah Jenis Defect';
+}
+
+function editDefectType(type) {
+    document.getElementById('defect-type-id').value = type.id;
+    document.getElementById('defect-type-name').value = type.name;
+    document.getElementById('defect-type-active').value = type.active.toString();
+    document.getElementById('defect-type-modal-title').textContent = 'Edit Jenis Defect';
+    document.getElementById('defect-type-modal').style.display = 'block';
+}
+
+function showDefectAreaModal() {
+    document.getElementById('defect-area-modal').style.display = 'block';
+    document.getElementById('defect-area-form').reset();
+    document.getElementById('defect-area-id').value = '';
+    document.getElementById('defect-area-active').value = 'true';
+    document.getElementById('defect-area-modal-title').textContent = 'Tambah Area Defect';
+}
+
+function editDefectArea(area) {
+    document.getElementById('defect-area-id').value = area.id;
+    document.getElementById('defect-area-name').value = area.name;
+    document.getElementById('defect-area-active').value = area.active.toString();
+    document.getElementById('defect-area-modal-title').textContent = 'Edit Area Defect';
+    document.getElementById('defect-area-modal').style.display = 'block';
+}
+
+async function saveDefectType(event) {
+    event.preventDefault();
+
+    const typeData = {
+        name: document.getElementById('defect-type-name').value,
+        active: document.getElementById('defect-type-active').value === 'true'
+    };
+
+    const typeId = document.getElementById('defect-type-id').value;
+
+    try {
+        let response;
+        if (typeId) {
+            response = await fetch(`/api/defect-types/${typeId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(typeData)
+            });
+        } else {
+            response = await fetch('/api/defect-types', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(typeData)
+            });
+        }
+
+        if (response.ok) {
+            hideDefectTypeModal();
+            fetchDefects();
+            alert(`Jenis defect berhasil ${typeId ? 'diupdate' : 'ditambahkan'}.`);
+        } else {
+            throw new Error('Gagal menyimpan jenis defect');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Gagal menyimpan jenis defect: ' + error.message);
+    }
+}
+
+async function saveDefectArea(event) {
+    event.preventDefault();
+
+    const areaData = {
+        name: document.getElementById('defect-area-name').value,
+        active: document.getElementById('defect-area-active').value === 'true'
+    };
+
+    const areaId = document.getElementById('defect-area-id').value;
+
+    try {
+        let response;
+        if (areaId) {
+            response = await fetch(`/api/defect-areas/${areaId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(areaData)
+            });
+        } else {
+            response = await fetch('/api/defect-areas', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(areaData)
+            });
+        }
+
+        if (response.ok) {
+            hideDefectAreaModal();
+            fetchDefects();
+            alert(`Area defect berhasil ${areaId ? 'diupdate' : 'ditambahkan'}.`);
+        } else {
+            throw new Error('Gagal menyimpan area defect');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Gagal menyimpan area defect: ' + error.message);
+    }
+}
+
+async function deleteDefectType(typeId) {
+    if (confirm('Apakah Anda yakin ingin menghapus jenis defect ini?')) {
+        try {
+            const response = await fetch(`/api/defect-types/${typeId}`, {
+                method: 'DELETE'
+            });
+
+            if (response.ok) {
+                alert('Jenis defect berhasil dihapus.');
+                fetchDefects();
+            } else {
+                throw new Error('Gagal menghapus jenis defect');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Gagal menghapus jenis defect: ' + error.message);
+        }
+    }
+}
+
+async function deleteDefectArea(areaId) {
+    if (confirm('Apakah Anda yakin ingin menghapus area defect ini?')) {
+        try {
+            const response = await fetch(`/api/defect-areas/${areaId}`, {
+                method: 'DELETE'
+            });
+
+            if (response.ok) {
+                alert('Area defect berhasil dihapus.');
+                fetchDefects();
+            } else {
+                throw new Error('Gagal menghapus area defect');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Gagal menghapus area defect: ' + error.message);
+        }
+    }
+}
+
+function hideDefectTypeModal() {
+    document.getElementById('defect-type-modal').style.display = 'none';
+}
+
+function hideDefectAreaModal() {
+    document.getElementById('defect-area-modal').style.display = 'none';
 }
 
 // History Data Functions
@@ -896,17 +1170,11 @@ function updateHistoryTable(historyFiles) {
             // Aksi
             const actionCell = row.insertCell();
             
-            // const viewButton = document.createElement('button');
-            // viewButton.textContent = 'Lihat Data';
-            // viewButton.className = 'btn-edit';
-            // viewButton.onclick = () => viewHistoryData(file.filename, file.date);
-            
             const exportButton = document.createElement('button');
             exportButton.textContent = 'Export Excel';
             exportButton.className = 'btn-primary';
             exportButton.onclick = () => exportHistoryData(file.filename, file.date);
             
-            // actionCell.appendChild(viewButton);
             actionCell.appendChild(exportButton);
 
             // Load line count
@@ -1157,7 +1425,6 @@ async function exportHistoryData(filename, date) {
 }
 
 // Fungsi untuk menghitung target kumulatif berdasarkan jam sekarang
-// Fungsi calculateCurrentTarget yang diperbarui (untuk operator.js, admin.js, leader.js)
 function calculateCurrentTarget(data) {
     if (!data || !data.hourly_data) return 0;
     
@@ -1231,6 +1498,11 @@ function initializeAdmin() {
     document.getElementById('add-user-btn').addEventListener('click', showUserModal);
     document.getElementById('refresh-users-btn').addEventListener('click', fetchUsers);
     
+    // Defect management event listeners
+    document.getElementById('add-type-btn').addEventListener('click', showDefectTypeModal);
+    document.getElementById('add-area-btn').addEventListener('click', showDefectAreaModal);
+    document.getElementById('refresh-defects-btn').addEventListener('click', fetchDefects);
+    
     // History management event listeners
     document.getElementById('create-backup-btn').addEventListener('click', createBackup);
     document.getElementById('refresh-history-btn').addEventListener('click', fetchHistoryFiles);
@@ -1254,6 +1526,12 @@ function initializeAdmin() {
     // User modal event listeners
     document.getElementById('cancel-user-btn').addEventListener('click', hideUserModal);
     document.getElementById('user-form').addEventListener('submit', saveUser);
+    
+    // Defect modal event listeners
+    document.getElementById('cancel-defect-type-btn').addEventListener('click', hideDefectTypeModal);
+    document.getElementById('cancel-defect-area-btn').addEventListener('click', hideDefectAreaModal);
+    document.getElementById('defect-type-form').addEventListener('submit', saveDefectType);
+    document.getElementById('defect-area-form').addEventListener('submit', saveDefectArea);
     
     // Line management event listeners
     document.getElementById('line-target').addEventListener('input', function() {

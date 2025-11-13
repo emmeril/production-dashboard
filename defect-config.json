@@ -1,0 +1,46 @@
+{
+  "defectTypes": [
+    {
+      "id": 1,
+      "name": "SOBEK",
+      "active": true
+    },
+    {
+      "id": 2,
+      "name": "BENTUK",
+      "active": true
+    },
+    {
+      "id": 3,
+      "name": "LABEL",
+      "active": true
+    },
+    {
+      "id": 4,
+      "name": "LAIN LAIN",
+      "active": true
+    }
+  ],
+  "defectAreas": [
+    {
+      "id": 1,
+      "name": "TANGAN",
+      "active": true
+    },
+    {
+      "id": 2,
+      "name": "KEPALA",
+      "active": true
+    },
+    {
+      "id": 3,
+      "name": "KAKI",
+      "active": true
+    },
+    {
+      "id": 4,
+      "name": "BADAN",
+      "active": true
+    }
+  ]
+}

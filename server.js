@@ -65,7 +65,6 @@ function resetLineData(line) {
   };
 }
 
-
 // Initialize data files
 function initializeDataFiles() {
   // Initialize data.json if doesn't exist
@@ -151,6 +150,26 @@ function initializeDataFiles() {
     console.log('Users file created successfully');
   }
 
+  // Initialize defect types and areas if doesn't exist
+  if (!fs.existsSync(path.join(__dirname, 'defect-config.json'))) {
+    const initialDefectConfig = {
+      "defectTypes": [
+        { "id": 1, "name": "Cacat Penampilan", "active": true },
+        { "id": 2, "name": "Cacat Dimensi", "active": true },
+        { "id": 3, "name": "Cacat Fungsi", "active": true },
+        { "id": 4, "name": "Cacat Material", "active": true }
+      ],
+      "defectAreas": [
+        { "id": 1, "name": "Area A - Assembly", "active": true },
+        { "id": 2, "name": "Area B - Quality Control", "active": true },
+        { "id": 3, "name": "Area C - Packaging", "active": true },
+        { "id": 4, "name": "Area D - Finishing", "active": true }
+      ]
+    };
+    fs.writeFileSync(path.join(__dirname, 'defect-config.json'), JSON.stringify(initialDefectConfig, null, 2));
+    console.log('Defect config file created successfully');
+  }
+
   // Create history directory if doesn't exist
   const historyDir = path.join(__dirname, 'history');
   if (!fs.existsSync(historyDir)) {
@@ -184,6 +203,24 @@ function readUsersData() {
   } catch (error) {
     console.error('ERROR: Gagal membaca users.json:', error.message);
     return { users: [] };
+  }
+}
+
+function readDefectConfig() {
+  try {
+    const data = fs.readFileSync(path.join(__dirname, 'defect-config.json'), 'utf8');
+    return JSON.parse(data);
+  } catch (error) {
+    console.error('ERROR: Gagal membaca defect-config.json:', error.message);
+    return { defectTypes: [], defectAreas: [] };
+  }
+}
+
+function writeDefectConfig(data) {
+  try {
+    fs.writeFileSync(path.join(__dirname, 'defect-config.json'), JSON.stringify(data, null, 2));
+  } catch (error) {
+    console.error('ERROR: Gagal menulis ke defect-config.json:', error.message);
   }
 }
 
@@ -330,6 +367,181 @@ app.get('/api/current-user', (req, res) => {
   }
 });
 
+// Defect Configuration Routes
+app.get('/api/defect-config', requireLogin, (req, res) => {
+  const defectConfig = readDefectConfig();
+  res.json(defectConfig);
+});
+
+app.get('/api/defect-types', requireLogin, (req, res) => {
+  const defectConfig = readDefectConfig();
+  res.json(defectConfig.defectTypes.filter(type => type.active));
+});
+
+app.get('/api/defect-areas', requireLogin, (req, res) => {
+  const defectConfig = readDefectConfig();
+  res.json(defectConfig.defectAreas.filter(area => area.active));
+});
+
+app.post('/api/defect-types', requireLogin, requireAdmin, (req, res) => {
+  const { name } = req.body;
+  const defectConfig = readDefectConfig();
+  
+  const newType = {
+    id: defectConfig.defectTypes.length > 0 ? Math.max(...defectConfig.defectTypes.map(t => t.id)) + 1 : 1,
+    name,
+    active: true
+  };
+  
+  defectConfig.defectTypes.push(newType);
+  writeDefectConfig(defectConfig);
+  
+  res.json({ message: 'Jenis defect berhasil ditambahkan', defectType: newType });
+});
+
+app.post('/api/defect-areas', requireLogin, requireAdmin, (req, res) => {
+  const { name } = req.body;
+  const defectConfig = readDefectConfig();
+  
+  const newArea = {
+    id: defectConfig.defectAreas.length > 0 ? Math.max(...defectConfig.defectAreas.map(a => a.id)) + 1 : 1,
+    name,
+    active: true
+  };
+  
+  defectConfig.defectAreas.push(newArea);
+  writeDefectConfig(defectConfig);
+  
+  res.json({ message: 'Area defect berhasil ditambahkan', defectArea: newArea });
+});
+
+app.put('/api/defect-types/:id', requireLogin, requireAdmin, (req, res) => {
+  const typeId = parseInt(req.params.id);
+  const { name, active } = req.body;
+  const defectConfig = readDefectConfig();
+  
+  const typeIndex = defectConfig.defectTypes.findIndex(t => t.id === typeId);
+  if (typeIndex === -1) {
+    return res.status(404).json({ error: 'Jenis defect tidak ditemukan' });
+  }
+  
+  defectConfig.defectTypes[typeIndex] = {
+    ...defectConfig.defectTypes[typeIndex],
+    name,
+    active: active !== undefined ? active : defectConfig.defectTypes[typeIndex].active
+  };
+  
+  writeDefectConfig(defectConfig);
+  res.json({ message: 'Jenis defect berhasil diupdate', defectType: defectConfig.defectTypes[typeIndex] });
+});
+
+app.put('/api/defect-areas/:id', requireLogin, requireAdmin, (req, res) => {
+  const areaId = parseInt(req.params.id);
+  const { name, active } = req.body;
+  const defectConfig = readDefectConfig();
+  
+  const areaIndex = defectConfig.defectAreas.findIndex(a => a.id === areaId);
+  if (areaIndex === -1) {
+    return res.status(404).json({ error: 'Area defect tidak ditemukan' });
+  }
+  
+  defectConfig.defectAreas[areaIndex] = {
+    ...defectConfig.defectAreas[areaIndex],
+    name,
+    active: active !== undefined ? active : defectConfig.defectAreas[areaIndex].active
+  };
+  
+  writeDefectConfig(defectConfig);
+  res.json({ message: 'Area defect berhasil diupdate', defectArea: defectConfig.defectAreas[areaIndex] });
+});
+
+app.delete('/api/defect-types/:id', requireLogin, requireAdmin, (req, res) => {
+  const typeId = parseInt(req.params.id);
+  const defectConfig = readDefectConfig();
+  
+  const typeIndex = defectConfig.defectTypes.findIndex(t => t.id === typeId);
+  if (typeIndex === -1) {
+    return res.status(404).json({ error: 'Jenis defect tidak ditemukan' });
+  }
+  
+  // Soft delete - set active to false
+  defectConfig.defectTypes[typeIndex].active = false;
+  writeDefectConfig(defectConfig);
+  
+  res.json({ message: 'Jenis defect berhasil dihapus' });
+});
+
+app.delete('/api/defect-areas/:id', requireLogin, requireAdmin, (req, res) => {
+  const areaId = parseInt(req.params.id);
+  const defectConfig = readDefectConfig();
+  
+  const areaIndex = defectConfig.defectAreas.findIndex(a => a.id === areaId);
+  if (areaIndex === -1) {
+    return res.status(404).json({ error: 'Area defect tidak ditemukan' });
+  }
+  
+  // Soft delete - set active to false
+  defectConfig.defectAreas[areaIndex].active = false;
+  writeDefectConfig(defectConfig);
+  
+  res.json({ message: 'Area defect berhasil dihapus' });
+});
+
+// Update hourly data dengan defect details
+app.post('/api/update-hourly/:lineName', requireLogin, requireLineAccess, (req, res) => {
+  const lineName = req.params.lineName;
+  const { hourIndex, output, defect, qcChecked, defectType, defectArea, defectNotes } = req.body;
+
+  const data = readProductionData();
+
+  if (!data.lines[lineName] || !data.lines[lineName].hourly_data) {
+    return res.status(404).json({ error: 'Line or hourly data not found' });
+  }
+
+  // Update data per jam
+  data.lines[lineName].hourly_data[hourIndex] = {
+    ...data.lines[lineName].hourly_data[hourIndex],
+    output: parseInt(output),
+    defect: parseInt(defect),
+    qcChecked: parseInt(qcChecked),
+    defectType: defectType || '',
+    defectArea: defectArea || '',
+    defectNotes: defectNotes || ''
+  };
+
+  // Hitung ulang total harian
+  let totalOutput = 0;
+  let totalDefect = 0;
+  let totalQCChecked = 0;
+
+  data.lines[lineName].hourly_data.forEach(hour => {
+    totalOutput += hour.output || 0;
+    totalDefect += hour.defect || 0;
+    totalQCChecked += hour.qcChecked || 0;
+  });
+
+  data.lines[lineName].outputDay = totalOutput;
+  data.lines[lineName].actualDefect = totalDefect;
+  data.lines[lineName].qcChecking = totalQCChecked;
+
+  // Hitung ulang persentase defect rate
+  const defectRatePercentage = (totalQCChecked > 0) ? (totalDefect / totalQCChecked) * 100 : 0;
+
+  data.lines[lineName].defectRatePercentage = parseFloat(defectRatePercentage.toFixed(2));
+
+  writeProductionData(data);
+  res.json({
+    message: 'Hourly data updated successfully.',
+    data: data.lines[lineName],
+    summary: {
+      totalOutput: totalOutput,
+      totalDefect: totalDefect,
+      totalQCChecked: totalQCChecked,
+      defectRate: defectRatePercentage.toFixed(2) + '%'
+    }
+  });
+});
+
 // History Data Routes
 app.get('/api/history/files', requireLogin, requireAdmin, (req, res) => {
   try {
@@ -425,12 +637,22 @@ app.get('/api/history/:filename/export', requireLogin, requireAdmin, (req, res) 
         ['Defect Rate (%)', line.defectRatePercentage],
         [],
         ['HOURLY DATA'],
-        ['Jam', 'Target Kumulatif', 'Output', 'Defect', 'QC Checked', 'Defect Rate (%)']
+        ['Jam', 'Target Kumulatif', 'Output', 'Defect', 'QC Checked', 'Defect Rate (%)', 'Jenis Defect', 'Area Defect', 'Keterangan']
       ];
 
       line.hourly_data.forEach(hour => {
         const defectRate = hour.qcChecked > 0 ? ((hour.defect / hour.qcChecked) * 100).toFixed(2) : '0.00';
-        lineData.push([hour.hour, hour.cumulativeTarget, hour.output, hour.defect, hour.qcChecked, defectRate]);
+        lineData.push([
+          hour.hour, 
+          hour.cumulativeTarget, 
+          hour.output, 
+          hour.defect, 
+          hour.qcChecked, 
+          defectRate,
+          hour.defectType || '',
+          hour.defectArea || '',
+          hour.defectNotes || ''
+        ]);
       });
 
       // Operator data
@@ -697,57 +919,6 @@ app.post('/api/update-line/:lineName', requireLogin, requireLineAccess, (req, re
   res.json({ message: `Line ${lineName} updated successfully.`, data: line });
 });
 
-app.post('/api/update-hourly/:lineName', requireLogin, requireLineAccess, (req, res) => {
-  const lineName = req.params.lineName;
-  const { hourIndex, output, defect, qcChecked } = req.body;
-
-  const data = readProductionData();
-
-  if (!data.lines[lineName] || !data.lines[lineName].hourly_data) {
-    return res.status(404).json({ error: 'Line or hourly data not found' });
-  }
-
-  // Update data per jam
-  data.lines[lineName].hourly_data[hourIndex] = {
-    ...data.lines[lineName].hourly_data[hourIndex],
-    output: parseInt(output),
-    defect: parseInt(defect),
-    qcChecked: parseInt(qcChecked)
-  };
-
-  // Hitung ulang total harian
-  let totalOutput = 0;
-  let totalDefect = 0;
-  let totalQCChecked = 0;
-
-  data.lines[lineName].hourly_data.forEach(hour => {
-    totalOutput += hour.output || 0;
-    totalDefect += hour.defect || 0;
-    totalQCChecked += hour.qcChecked || 0;
-  });
-
-  data.lines[lineName].outputDay = totalOutput;
-  data.lines[lineName].actualDefect = totalDefect;
-  data.lines[lineName].qcChecking = totalQCChecked;
-
-  // Hitung ulang persentase defect rate
-  const defectRatePercentage = (totalQCChecked > 0) ? (totalDefect / totalQCChecked) * 100 : 0;
-
-  data.lines[lineName].defectRatePercentage = parseFloat(defectRatePercentage.toFixed(2));
-
-  writeProductionData(data);
-  res.json({
-    message: 'Hourly data updated successfully.',
-    data: data.lines[lineName],
-    summary: {
-      totalOutput: totalOutput,
-      totalDefect: totalDefect,
-      totalQCChecked: totalQCChecked,
-      defectRate: defectRatePercentage.toFixed(2) + '%'
-    }
-  });
-});
-
 // Operator Routes - Leader bisa mengelola operator di line yang ditugaskan
 app.get('/api/operators/:lineName', requireLogin, requireLineAccess, (req, res) => {
   const lineName = req.params.lineName;
@@ -975,22 +1146,31 @@ function generateExcelData(lineData, lineName) {
   const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
   XLSX.utils.book_append_sheet(workbook, summarySheet, 'Summary');
   
-  // Sheet 2: Hourly Data
-// Update bagian hourly data di fungsi generateExcelData:
-const hourlyData = [
+  // Sheet 2: Hourly Data dengan defect details
+  const hourlyData = [
     ['HOURLY PRODUCTION DATA'],
     [],
-    ['Jam', 'Target Kumulatif', 'Output', 'Defect', 'QC Checked', 'Defect Rate (%)']
-];
+    ['Jam', 'Target Kumulatif', 'Output', 'Defect', 'QC Checked', 'Defect Rate (%)', 'Jenis Defect', 'Area Defect', 'Keterangan']
+  ];
 
-lineData.hourly_data.forEach(hour => {
+  lineData.hourly_data.forEach(hour => {
     const defectRate = hour.qcChecked > 0 ? ((hour.defect / hour.qcChecked) * 100).toFixed(2) : '0.00';
-    hourlyData.push([hour.hour, hour.cumulativeTarget, hour.output, hour.defect, hour.qcChecked, defectRate]);
-});
+    hourlyData.push([
+      hour.hour, 
+      hour.cumulativeTarget, 
+      hour.output, 
+      hour.defect, 
+      hour.qcChecked, 
+      defectRate,
+      hour.defectType || '',
+      hour.defectArea || '',
+      hour.defectNotes || ''
+    ]);
+  });
   
   // Add totals
   hourlyData.push([]);
-  hourlyData.push(['TOTAL', lineData.target, lineData.outputDay, lineData.actualDefect, lineData.qcChecking, lineData.defectRatePercentage + '%']);
+  hourlyData.push(['TOTAL', lineData.target, lineData.outputDay, lineData.actualDefect, lineData.qcChecking, lineData.defectRatePercentage + '%', '', '', '']);
   
   const hourlySheet = XLSX.utils.aoa_to_sheet(hourlyData);
   XLSX.utils.book_append_sheet(workbook, hourlySheet, 'Hourly Data');
@@ -1201,5 +1381,6 @@ app.listen(port, () => {
   console.log(`- Target kumulatif per jam`);
   console.log(`- QC Checking & Actual Defect`);
   console.log(`- Defect Rate berdasarkan QC Checking`);
+  console.log(`- Defect Types & Areas Management`);
   console.log(`=================================`);
 });

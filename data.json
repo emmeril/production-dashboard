@@ -3,40 +3,40 @@
     "LINE-1": {
       "labelWeek": "EU / 2546-1",
       "model": "BLAHAJ N SOFT TOY 55 BABY SHARK",
-      "date": "2025-11-12",
+      "date": "2025-11-13",
       "target": 1160,
       "targetPerHour": 145,
-      "outputDay": 580,
-      "qcChecking": 448,
-      "actualDefect": 21,
-      "defectRatePercentage": 4.69,
+      "outputDay": 435,
+      "qcChecking": 300,
+      "actualDefect": 11,
+      "defectRatePercentage": 3.67,
       "hourly_data": [
         {
           "hour": "07:00 - 08:00",
           "output": 145,
-          "defect": 0,
-          "qcChecked": 0,
+          "defect": 10,
+          "qcChecked": 100,
           "cumulativeTarget": 145
         },
         {
           "hour": "08:00 - 09:00",
-          "output": 145,
-          "defect": 0,
-          "qcChecked": 0,
+          "output": 290,
+          "defect": 1,
+          "qcChecked": 200,
           "cumulativeTarget": 290
         },
         {
           "hour": "09:00 - 10:00",
-          "output": 145,
+          "output": 0,
           "defect": 0,
           "qcChecked": 0,
           "cumulativeTarget": 435
         },
         {
           "hour": "10:00 - 11:00",
-          "output": 145,
-          "defect": 21,
-          "qcChecked": 448,
+          "output": 0,
+          "defect": 0,
+          "qcChecked": 0,
           "cumulativeTarget": 580
         },
         {
@@ -44,47 +44,131 @@
           "output": 0,
           "defect": 0,
           "qcChecked": 0,
-          "cumulativeTarget": 725
+          "cumulativeTarget": 580
         },
         {
           "hour": "13:00 - 14:00",
           "output": 0,
           "defect": 0,
           "qcChecked": 0,
-          "cumulativeTarget": 870
+          "cumulativeTarget": 725
         },
         {
           "hour": "14:00 - 15:00",
           "output": 0,
           "defect": 0,
           "qcChecked": 0,
-          "cumulativeTarget": 1015
+          "cumulativeTarget": 870
         },
         {
           "hour": "15:00 - 16:00",
           "output": 0,
           "defect": 0,
           "qcChecked": 0,
-          "cumulativeTarget": 1160
+          "cumulativeTarget": 1015
         },
         {
           "hour": "16:00 - 17:00",
           "output": 0,
           "defect": 0,
           "qcChecked": 0,
-          "cumulativeTarget": 1305
+          "cumulativeTarget": 1160
         },
         {
           "hour": "17:00 - 18:00",
           "output": 0,
           "defect": 0,
           "qcChecked": 0,
-          "cumulativeTarget": 1450
+          "cumulativeTarget": 1160
         }
       ],
       "operators": []
     },
     "LINE-2": {
+      "labelWeek": "-",
+      "model": "-",
+      "date": "2025-11-13",
+      "target": 1440,
+      "targetPerHour": 180,
+      "outputDay": 0,
+      "qcChecking": 0,
+      "actualDefect": 0,
+      "defectRatePercentage": 0,
+      "hourly_data": [
+        {
+          "hour": "07:00 - 08:00",
+          "output": 0,
+          "defect": 0,
+          "qcChecked": 0,
+          "cumulativeTarget": 180
+        },
+        {
+          "hour": "08:00 - 09:00",
+          "output": 0,
+          "defect": 0,
+          "qcChecked": 0,
+          "cumulativeTarget": 360
+        },
+        {
+          "hour": "09:00 - 10:00",
+          "output": 0,
+          "defect": 0,
+          "qcChecked": 0,
+          "cumulativeTarget": 540
+        },
+        {
+          "hour": "10:00 - 11:00",
+          "output": 0,
+          "defect": 0,
+          "qcChecked": 0,
+          "cumulativeTarget": 720
+        },
+        {
+          "hour": "11:00 - 13:00",
+          "output": 0,
+          "defect": 0,
+          "qcChecked": 0,
+          "cumulativeTarget": 720
+        },
+        {
+          "hour": "13:00 - 14:00",
+          "output": 0,
+          "defect": 0,
+          "qcChecked": 0,
+          "cumulativeTarget": 900
+        },
+        {
+          "hour": "14:00 - 15:00",
+          "output": 0,
+          "defect": 0,
+          "qcChecked": 0,
+          "cumulativeTarget": 1080
+        },
+        {
+          "hour": "15:00 - 16:00",
+          "output": 0,
+          "defect": 0,
+          "qcChecked": 0,
+          "cumulativeTarget": 1260
+        },
+        {
+          "hour": "16:00 - 17:00",
+          "output": 0,
+          "defect": 0,
+          "qcChecked": 0,
+          "cumulativeTarget": 1440
+        },
+        {
+          "hour": "17:00 - 18:00",
+          "output": 0,
+          "defect": 0,
+          "qcChecked": 0,
+          "cumulativeTarget": 1440
+        }
+      ],
+      "operators": []
+    },
+    "LINE-3": {
       "labelWeek": "-",
       "model": "-",
       "date": "2025-11-13",

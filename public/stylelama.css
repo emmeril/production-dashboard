@@ -1,3 +1,4 @@
+
 /* Reset dan Base Styles */
 * {
     margin: 0;
@@ -6,18 +7,19 @@
 }
 
 :root {
-    --primary-color: #FFD700;
-    --secondary-color: #FFC000;
-    --accent-color: #E70000;
-    --bg-dark: #000;
-    --bg-card: #111;
-    --bg-element: #222;
-    --text-light: #fff;
-    --text-muted: #ccc;
-}
+            --primary-color: #FFD700;
+            --secondary-color: #FFC000;
+            --accent-color: #E70000;
+            --bg-dark: #000;
+            --bg-card: #111;
+            --bg-element: #222;
+            --text-light: #fff;
+            --text-muted: #ccc;
+        }
 
 html {
-    font-size: 16px;
+    /* Base scaling untuk mobile */
+    font-size: 18px; /* Dikembalikan ke ukuran normal */
 }
 
 body {
@@ -28,39 +30,62 @@ body {
     min-height: 100vh;
     overflow-x: auto;
     overflow-y: auto;
-    font-size: 1rem;
-    width: 100%;
+    font-size: 1rem; /* Dikembalikan ke ukuran normal */
 }
 
-/* Container utama yang responsif */
+/* Container utama dengan width fixed seperti desktop */
 .desktop-container {
-    width: 100%;
-    max-width: 1920px;
+    width: 1920px;
+    min-width: 1920px;
     margin: 0 auto;
     background-color: var(--bg-card);
     position: relative;
-    padding: 0 15px;
 }
 
-/* ========== MOBILE FIRST STYLES ========== */
+/* Scaling untuk berbagai ukuran layar */
+@media (max-width: 1919px) {
+    .desktop-container {
+        transform-origin: 0 0;
+        transform: scale(calc(100vw / 1920));
+        width: 1920px;
+        min-width: 1920px;
+        height: calc(1080 * (100vw / 1920));
+        min-height: calc(1080 * (100vw / 1920));
+        overflow: hidden;
+    }
+}
+
+/* Untuk layar yang sangat kecil (mobile) */
+@media (max-width: 540px) {
+    .desktop-container {
+        transform: scale(0.28); /* 540/1920 = 0.28125 */
+        transform-origin: 0 0;
+        width: 1920px;
+        min-width: 1920px;
+        height: 1080px;
+        min-height: 1080px;
+    }
+    
+    body {
+        overflow: scroll;
+    }
+}
 
 /* Login Page Styles */
 .login-body {
     display: flex;
     justify-content: center;
     align-items: center;
-    min-height: 100vh;
+    height: 100vh;
     background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
     width: 100%;
-    padding: 20px;
 }
 
 .login-container {
     background-color: var(--bg-card);
     border-radius: 10px;
-    padding: 30px;
-    width: 100%;
-    max-width: 500px;
+    padding: 40px;
+    width: 500px;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
     border: 1px solid #333;
 }
@@ -72,14 +97,14 @@ body {
 
 .login-header h1 {
     color: var(--primary-color);
-    font-size: clamp(1.8rem, 5vw, 2.5rem);
+    font-size: 2.5em; /* Diperkecil */
     margin-bottom: 15px;
     text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
 }
 
 .login-header p {
     color: var(--text-muted);
-    font-size: clamp(1rem, 3vw, 1.2rem);
+    font-size: 1.2em; /* Diperkecil */
 }
 
 .login-form-container {
@@ -90,7 +115,7 @@ body {
     color: var(--primary-color);
     text-align: center;
     margin-bottom: 25px;
-    font-size: clamp(1.4rem, 4vw, 1.8rem);
+    font-size: 1.8em; /* Diperkecil */
 }
 
 .form-group {
@@ -103,17 +128,17 @@ body {
     margin-bottom: 8px;
     color: var(--text-light);
     font-weight: 600;
-    font-size: 1rem;
+    font-size: 1em; /* Diperkecil */
 }
 
 .form-group input {
     width: 100%;
-    padding: 15px 20px;
+    padding: 15px 20px; /* Diperkecil */
     background-color: var(--bg-element);
     color: var(--text-light);
     border: 2px solid #444;
     border-radius: 5px;
-    font-size: 1rem;
+    font-size: 1em; /* Diperkecil */
     transition: border-color 0.3s ease;
 }
 
@@ -126,8 +151,8 @@ body {
     background-color: var(--secondary-color);
     color: #000;
     border: none;
-    padding: 15px;
-    font-size: 1.1rem;
+    padding: 15px; /* Diperkecil */
+    font-size: 1.1em; /* Diperkecil */
     font-weight: bold;
     border-radius: 5px;
     cursor: pointer;
@@ -150,7 +175,7 @@ body {
     text-align: center;
     display: none;
     border-left: 4px solid #ff4444;
-    font-size: 1rem;
+    font-size: 1em; /* Diperkecil */
 }
 
 .user-info {
@@ -160,7 +185,7 @@ body {
     margin-bottom: 20px;
     text-align: center;
     border-left: 4px solid #00ff00;
-    font-size: 1rem;
+    font-size: 1em; /* Diperkecil */
 }
 
 /* Dashboard Styles */
@@ -177,9 +202,9 @@ body {
 /* Header dengan User Info */
 .user-header {
     display: flex;
-    flex-direction: column;
-    gap: 15px;
-    padding: 20px;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 25px;
     background-color: var(--bg-element);
     border-radius: 8px;
     margin-bottom: 20px;
@@ -187,7 +212,7 @@ body {
 }
 
 .user-display {
-    font-size: clamp(1rem, 3vw, 1.2rem);
+    font-size: 1.2em; /* Diperkecil */
 }
 
 .user-display strong {
@@ -196,15 +221,13 @@ body {
 
 .header-actions {
     display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-    justify-content: center;
+    gap: 15px;
+    align-items: center;
 }
 
 /* Management Tabs */
 .management-tabs {
     display: flex;
-    flex-direction: column;
     margin-bottom: 20px;
     background-color: var(--bg-element);
     border-radius: 8px;
@@ -216,8 +239,8 @@ body {
     background-color: #333;
     color: var(--text-light);
     border: none;
-    padding: 15px 20px;
-    font-size: 1rem;
+    padding: 15px 25px; /* Diperkecil */
+    font-size: 1em; /* Diperkecil */
     font-weight: bold;
     border-radius: 5px;
     cursor: pointer;
@@ -248,8 +271,8 @@ body {
     background-color: var(--secondary-color);
     color: #000;
     border: none;
-    padding: 15px 25px;
-    font-size: 1rem;
+    padding: 15px 25px; /* Diperkecil */
+    font-size: 1em; /* Diperkecil */
     font-weight: bold;
     border-radius: 5px;
     cursor: pointer;
@@ -257,7 +280,6 @@ body {
     text-decoration: none;
     display: inline-block;
     text-align: center;
-    width: 100%;
 }
 
 .btn-primary:hover {
@@ -268,13 +290,12 @@ body {
     background-color: #444;
     color: var(--text-light);
     border: none;
-    padding: 15px 25px;
-    font-size: 1rem;
+    padding: 15px 25px; /* Diperkecil */
+    font-size: 1em; /* Diperkecil */
     font-weight: bold;
     border-radius: 5px;
     cursor: pointer;
     transition: background-color 0.3s ease;
-    width: 100%;
 }
 
 .btn-secondary:hover {
@@ -285,12 +306,11 @@ body {
     background-color: var(--accent-color);
     color: var(--text-light);
     border: none;
-    padding: 10px 15px;
-    font-size: 0.9rem;
+    padding: 10px 15px; /* Diperkecil */
+    font-size: 0.9em; /* Diperkecil */
     border-radius: 4px;
     cursor: pointer;
     margin-left: 8px;
-    width: 100%;
 }
 
 .btn-danger:hover {
@@ -301,11 +321,10 @@ body {
     background-color: #007bff;
     color: var(--text-light);
     border: none;
-    padding: 10px 15px;
-    font-size: 0.9rem;
+    padding: 10px 15px; /* Diperkecil */
+    font-size: 0.9em; /* Diperkecil */
     border-radius: 4px;
     cursor: pointer;
-    width: 100%;
 }
 
 .btn-edit:hover {
@@ -316,12 +335,11 @@ body {
     background-color: #007bff;
     color: var(--text-light);
     border: none;
-    padding: 10px 15px;
+    padding: 10px 15px; /* Diperkecil */
     border-radius: 4px;
     cursor: pointer;
     font-weight: bold;
-    font-size: 0.9rem;
-    width: 100%;
+    font-size: 0.9em; /* Diperkecil */
 }
 
 .btn-update:hover {
@@ -332,13 +350,12 @@ body {
     background-color: var(--accent-color);
     color: var(--text-light);
     border: none;
-    padding: 12px 20px;
+    padding: 12px 20px; /* Diperkecil */
     border-radius: 5px;
     cursor: pointer;
     font-weight: bold;
     transition: background-color 0.3s ease;
-    font-size: 1rem;
-    width: 100%;
+    font-size: 1em; /* Diperkecil */
 }
 
 .btn-logout:hover {
@@ -357,19 +374,19 @@ body {
 .line-selector h3 {
     color: var(--primary-color);
     margin-bottom: 15px;
-    font-size: clamp(1.2rem, 3vw, 1.4rem);
+    font-size: 1.4em; /* Diperkecil */
 }
 
 .line-buttons {
     display: grid;
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(4, 1fr);
     gap: 15px;
     justify-content: center;
 }
 
 .line-button-container {
     display: flex;
-    flex-direction: column;
+    align-items: center;
     gap: 8px;
     width: 100%;
 }
@@ -378,19 +395,18 @@ body {
     background-color: #333;
     color: var(--text-light);
     border: 2px solid #555;
-    padding: 15px 20px;
-    font-size: 1rem;
+    padding: 15px 20px; /* Diperkecil */
+    font-size: 1em; /* Diperkecil */
     font-weight: bold;
     border-radius: 5px;
     cursor: pointer;
     transition: all 0.3s ease;
     text-align: left;
     flex: 1;
-    min-height: 70px;
+    min-height: 80px; /* Diperkecil */
     display: flex;
     flex-direction: column;
     justify-content: center;
-    width: 100%;
 }
 
 .line-btn:hover {
@@ -408,7 +424,7 @@ body {
     display: block;
     font-weight: normal;
     margin-top: 5px;
-    font-size: 0.85rem;
+    font-size: 0.85em; /* Diperkecil */
     opacity: 0.8;
 }
 
@@ -416,13 +432,12 @@ body {
     background-color: #007bff;
     color: white;
     border: none;
-    padding: 10px 15px;
+    padding: 10px 15px; /* Diperkecil */
     border-radius: 3px;
     cursor: pointer;
-    font-size: 0.9rem;
+    font-size: 0.9em; /* Diperkecil */
     height: fit-content;
-    min-height: 70px;
-    width: 100%;
+    min-height: 80px; /* Sesuai dengan line-btn */
 }
 
 .line-edit-btn:hover {
@@ -461,7 +476,6 @@ body {
             padding: 8px 0;
         }
 
-
 /* Main Grid */
 .main-grid {
             display: grid;
@@ -482,68 +496,65 @@ body {
             text-align: center;
         }
 
-
-
-/* Primary Row */
+/* Primary Row - ANGKA DIPERBESAR LAGI */
 .label-primary {
-    background-color: var(--bg-card);
-    color: var(--text-light);
-    font-size: clamp(1.2rem, 3vw, 1.8rem);
-    text-align: center;
-}
-
+            background-color: var(--bg-card);
+            color: var(--text-light);
+            font-size: 1.8em;
+            text-align: center;
+        }
 .value-primary {
-    background-color: var(--bg-dark);
-    color: var(--primary-color);
-    font-size: clamp(2.5rem, 8vw, 6rem);
-    line-height: 1;
-    padding: 20px;
-    text-align: center;
-    border: 2px solid #333;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: bold;
-}
+            background-color: var(--bg-dark);
+            color: var(--primary-color);
+            font-size: 6em;
+            line-height: 1;
+            padding: 30px;
+            text-align: center;
+            border: 2px solid #333;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
 
-/* Secondary Row */
+/* Secondary Row - ANGKA DIPERBESAR LAGI */
 .label-secondary {
-    background-color: var(--bg-card);
-    color: var(--text-light);
-    font-size: clamp(1.2rem, 3vw, 1.8rem);
-    text-align: center;
-}
+            background-color: var(--bg-card);
+            color: var(--text-light);
+            font-size: 1.8em;
+            text-align: center;
+        }
 
 .value-secondary {
-    font-size: clamp(2rem, 7vw, 5.5rem);
-    line-height: 1;
-    text-align: center;
-    border: 2px solid #333;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: bold;
-}
+            font-size: 5.5em;
+            line-height: 1;
+            text-align: center;
+            border: 2px solid #333;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
 
 .yellow-bg {
-    background-color: var(--secondary-color);
-    color: #000;
-}
+            background-color: var(--secondary-color);
+            color: #000;
+        }
 
-.red-bg {
-    background-color: var(--accent-color);
-    color: var(--text-light);
-}
+        .red-bg {
+            background-color: var(--accent-color);
+            color: var(--text-light);
+        }
 
-.green-bg {
-    background-color: #008000 !important;
-    color: var(--text-light) !important;
-}
+        .green-bg {
+            background-color: #008000 !important;
+            color: var(--text-light) !important;
+        }
 
 /* Data Containers Layout */
 .data-section {
     display: grid;
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr 1fr;
     gap: 20px;
     margin-top: 25px;
 }
@@ -557,7 +568,7 @@ body {
 }
 
 .user-management-container h2 {
-    font-size: clamp(1.2rem, 3vw, 1.4rem);
+    font-size: 1.4em; /* Diperkecil */
     color: var(--primary-color);
     margin-bottom: 15px;
     text-align: left;
@@ -566,8 +577,8 @@ body {
 .user-controls {
     margin-bottom: 15px;
     display: flex;
-    flex-direction: column;
-    gap: 10px;
+    gap: 15px;
+    flex-wrap: wrap;
 }
 
 /* Input Data Section untuk Operator */
@@ -579,7 +590,7 @@ body {
 }
 
 .input-data-container h2 {
-    font-size: clamp(1.2rem, 3vw, 1.4rem);
+    font-size: 1.4em; /* Diperkecil */
     color: var(--primary-color);
     margin-bottom: 15px;
     text-align: left;
@@ -588,8 +599,8 @@ body {
 .input-controls {
     margin-bottom: 20px;
     display: flex;
-    flex-direction: column;
-    gap: 10px;
+    gap: 15px;
+    flex-wrap: wrap;
 }
 
 .hourly-input-section {
@@ -599,7 +610,7 @@ body {
 .hourly-input-section h3 {
     color: var(--primary-color);
     margin-bottom: 15px;
-    font-size: clamp(1.1rem, 2.5vw, 1.2rem);
+    font-size: 1.2em; /* Diperkecil */
 }
 
 .hour-input-group {
@@ -614,12 +625,12 @@ body {
     font-weight: bold;
     margin-bottom: 10px;
     color: var(--text-light);
-    font-size: clamp(1rem, 2vw, 1.1rem);
+    font-size: 1.1em; /* Diperkecil */
 }
 
 .hour-inputs {
     display: grid;
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(3, 1fr);
     gap: 15px;
     align-items: center;
 }
@@ -631,22 +642,22 @@ body {
 }
 
 .input-group label {
-    font-size: 0.95rem;
+    font-size: 0.95em; /* Diperkecil */
     color: var(--text-muted);
     font-weight: normal;
 }
 
 .hour-inputs input {
-    padding: 12px 15px;
+    padding: 12px 15px; /* Diperkecil */
     background-color: white;
     color: #000;
     border: 1px solid #555;
     border-radius: 4px;
     width: 100%;
-    font-size: 1rem;
+    font-size: 1em; /* Diperkecil */
 }
 
-/* Quick Stats */
+/* Quick Stats - ANGKA DIPERBESAR LAGI */
 .quick-stats {
     margin-top: 25px;
     padding: 20px;
@@ -657,7 +668,7 @@ body {
 
 .stats-grid {
     display: grid;
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(3, 1fr);
     gap: 15px;
     margin-top: 15px;
 }
@@ -671,14 +682,14 @@ body {
 
 .stat-label {
     display: block;
-    font-size: 0.95rem;
+    font-size: 0.95em; /* Diperkecil */
     color: var(--text-muted);
     margin-bottom: 8px;
 }
 
 .stat-value {
     display: block;
-    font-size: clamp(2rem, 6vw, 4.5rem);
+    font-size: 4.5em; /* DIPERBESAR LAGI dari 3.2em */
     font-weight: bold;
     color: var(--primary-color);
     line-height: 1;
@@ -693,7 +704,7 @@ body {
 }
 
 .operator-data-container h2, .hourly-data-container h2 {
-    font-size: clamp(1.2rem, 3vw, 1.4rem);
+    font-size: 1.4em; /* Diperkecil */
     color: var(--primary-color);
     margin-bottom: 15px;
     text-align: left;
@@ -702,25 +713,20 @@ body {
 .operator-controls {
     margin-bottom: 15px;
     display: flex;
-    flex-direction: column;
-    gap: 10px;
+    gap: 15px;
+    flex-wrap: wrap;
 }
 
 /* Table Styles */
-.table-responsive {
-    overflow-x: auto;
-    margin-top: 15px;
-}
-
 table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 0.9rem;
-    min-width: 600px;
+    font-size: 1em; /* Diperkecil */
+    margin-top: 15px;
 }
 
 th, td {
-    padding: 12px 15px;
+    padding: 15px 20px; /* Diperkecil */
     border: 1px solid #444;
     text-align: center;
 }
@@ -728,7 +734,7 @@ th, td {
 th {
     background-color: var(--bg-dark);
     color: var(--text-light);
-    font-size: 1rem;
+    font-size: 1.1em; /* Diperkecil */
     font-weight: bold;
 }
 
@@ -744,37 +750,37 @@ tr:hover {
 .status-active {
     color: #00FF00;
     font-weight: bold;
-    font-size: 0.95rem;
+    font-size: 0.95em; /* Diperkecil */
 }
 
 .status-break {
     color: #FFA500;
     font-weight: bold;
-    font-size: 0.95rem;
+    font-size: 0.95em; /* Diperkecil */
 }
 
 .status-off {
     color: #FF0000;
     font-weight: bold;
-    font-size: 0.95rem;
+    font-size: 0.95em; /* Diperkecil */
 }
 
 .efficiency-high {
     color: #00FF00;
     font-weight: bold;
-    font-size: 0.95rem;
+    font-size: 0.95em; /* Diperkecil */
 }
 
 .efficiency-medium {
     color: #FFA500;
     font-weight: bold;
-    font-size: 0.95rem;
+    font-size: 0.95em; /* Diperkecil */
 }
 
 .efficiency-low {
     color: #FF0000;
     font-weight: bold;
-    font-size: 0.95rem;
+    font-size: 0.95em; /* Diperkecil */
 }
 
 /* Modal Styles */
@@ -792,10 +798,10 @@ tr:hover {
 
 .modal-content {
     background-color: var(--bg-element);
-    margin: 5% auto;
-    padding: 20px;
+    margin: 3% auto;
+    padding: 25px;
     border: 1px solid #888;
-    width: 95%;
+    width: 600px;
     max-width: 600px;
     border-radius: 8px;
     color: var(--text-light);
@@ -822,15 +828,15 @@ tr:hover {
 .modal-content h3 {
     color: var(--primary-color);
     margin-bottom: 20px;
-    font-size: clamp(1.2rem, 3vw, 1.4rem);
+    font-size: 1.4em; /* Diperkecil */
 }
 
 .form-actions {
     display: flex;
-    flex-direction: column;
-    gap: 10px;
+    gap: 15px;
     justify-content: flex-end;
     margin-top: 25px;
+    flex-wrap: wrap;
 }
 
 /* Form Styles */
@@ -843,17 +849,17 @@ tr:hover {
     margin-bottom: 8px;
     color: var(--text-light);
     font-weight: 600;
-    font-size: 1rem;
+    font-size: 1em; /* Diperkecil */
 }
 
 .form-group input, .form-group select {
     width: 100%;
-    padding: 15px 20px;
+    padding: 15px 20px; /* Diperkecil */
     background-color: #333;
     color: var(--text-light);
     border: 2px solid #555;
     border-radius: 5px;
-    font-size: 1rem;
+    font-size: 1em; /* Diperkecil */
     transition: border-color 0.3s ease;
 }
 
@@ -875,7 +881,7 @@ tr:hover {
     border-radius: 5px;
     margin: 15px 0;
     border-left: 4px solid #00ff00;
-    font-size: 1rem;
+    font-size: 1em; /* Diperkecil */
 }
 
 .error-message {
@@ -885,76 +891,12 @@ tr:hover {
     border-radius: 5px;
     margin: 15px 0;
     border-left: 4px solid #ff4444;
-    font-size: 1rem;
-}
-
-/* History Management Styles */
-.history-management-container {
-    padding: 20px;
-    background-color: var(--bg-element);
-    border-radius: 8px;
-}
-
-.history-management-container h2 {
-    font-size: clamp(1.2rem, 3vw, 1.4rem);
-    color: var(--primary-color);
-    margin-bottom: 15px;
-    text-align: left;
-}
-
-.history-controls {
-    margin-bottom: 15px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-.history-info {
-    background-color: #1a3a1a;
-    padding: 15px;
-    border-radius: 5px;
-    margin-bottom: 20px;
-    text-align: center;
-    border-left: 4px solid #00ff00;
-    font-size: 1rem;
-}
-
-.history-info p {
-    margin: 0;
-    color: #90EE90;
-}
-
-.history-detail-content {
-    max-height: 70vh;
-    overflow-y: auto;
-    padding-right: 10px;
-}
-
-/* File size styling */
-.file-size {
-    font-size: 0.9rem;
-    color: var(--text-muted);
-    font-family: monospace;
-}
-
-/* Style untuk info target di input page */
-.hour-info {
-    margin-bottom: 10px;
-    padding: 8px;
-    background-color: #2a2a2a;
-    border-radius: 4px;
-    text-align: center;
-}
-
-.target-info {
-    color: var(--primary-color);
-    font-weight: bold;
-    font-size: 1rem;
+    font-size: 1em; /* Diperkecil */
 }
 
 /* Scrollbar Styling */
 ::-webkit-scrollbar {
-    width: 8px;
+    width: 10px;
 }
 
 ::-webkit-scrollbar-track {
@@ -972,7 +914,7 @@ tr:hover {
 
 /* Mobile Navigation Controls */
 .mobile-controls {
-    display: flex;
+    display: none;
     position: fixed;
     bottom: 20px;
     right: 20px;
@@ -988,116 +930,77 @@ tr:hover {
     border-radius: 5px;
     cursor: pointer;
     font-weight: bold;
-    font-size: 1.1rem;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+    font-size: 1.1em;
 }
 
-/* ========== TABLET STYLES (768px ke atas) ========== */
-@media (min-width: 768px) {
+/* Untuk layar yang lebih kecil dari 1920px, kita akan scaling container */
+@media (max-width: 1919px) {
+    body {
+        overflow: auto;
+    }
+}
+
+/* Untuk mobile, tambahkan kontrol zoom */
+@media (max-width: 768px) {
+    .mobile-controls {
+        display: flex;
+    }
+    
     .desktop-container {
-        padding: 0 30px;
-    }
-    
-    .login-container {
-        width: 450px;
-    }
-    
-    .line-buttons {
-        grid-template-columns: repeat(2, 1fr);
-    }
-    
-    .line-button-container {
-        flex-direction: row;
-        align-items: center;
-    }
-    
-    .line-btn {
-        width: auto;
-    }
-    
-    .line-edit-btn {
-        width: auto;
-    }
-    
-
-    
-    .stats-grid {
-        grid-template-columns: repeat(2, 1fr);
-    }
-    
-    .hour-inputs {
-        grid-template-columns: repeat(2, 1fr);
-    }
-    
-    .user-header {
-        flex-direction: row;
-        justify-content: space-between;
-        align-items: center;
-    }
-    
-    .management-tabs {
-        flex-direction: row;
-    }
-    
-    .btn-primary, .btn-secondary, .btn-login, .btn-logout, .tab-button {
-        width: auto;
-    }
-    
-    .btn-danger, .btn-edit, .btn-update {
-        width: auto;
-    }
-    
-    .input-controls, .user-controls, .history-controls, .operator-controls {
-        flex-direction: row;
-        flex-wrap: wrap;
-    }
-    
-    .form-actions {
-        flex-direction: row;
-    }
-    
-    .data-section {
-        grid-template-columns: 1fr 1fr;
+        transform-origin: 0 0;
     }
 }
 
-/* ========== DESKTOP STYLES (1024px ke atas) ========== */
-@media (min-width: 1024px) {
-    .desktop-container {
-        padding: 0 50px;
-    }
-    
-    .line-buttons {
-        grid-template-columns: repeat(3, 1fr);
-    }
-    
-
-    
-    .stats-grid {
-        grid-template-columns: repeat(3, 1fr);
-    }
-    
-    .hour-inputs {
-        grid-template-columns: repeat(3, 1fr);
-    }
+/* History Management Styles */
+.history-management-container {
+    padding: 20px;
+    background-color: var(--bg-element);
+    border-radius: 8px;
 }
 
-/* ========== DESKTOP BESAR (1200px ke atas) ========== */
-@media (min-width: 1200px) {
-    .line-buttons {
-        grid-template-columns: repeat(4, 1fr);
-    }
-    
-    .stats-grid {
-        grid-template-columns: repeat(4, 1fr);
-    }
-    
-    .hour-inputs {
-        grid-template-columns: repeat(4, 1fr);
-    }
+.history-management-container h2 {
+    font-size: 1.4em;
+    color: var(--primary-color);
+    margin-bottom: 15px;
+    text-align: left;
 }
 
-/* Responsive adjustments untuk history modal */
+.history-controls {
+    margin-bottom: 15px;
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.history-info {
+    background-color: #1a3a1a;
+    padding: 15px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+    text-align: center;
+    border-left: 4px solid #00ff00;
+    font-size: 1em;
+}
+
+.history-info p {
+    margin: 0;
+    color: #90EE90;
+}
+
+.history-detail-content {
+    max-height: 70vh;
+    overflow-y: auto;
+    padding-right: 10px;
+}
+
+/* File size styling */
+.file-size {
+    font-size: 0.9em;
+    color: var(--text-muted);
+    font-family: monospace;
+}
+
+/* Responsive adjustments for history modal */
 @media (max-width: 768px) {
     .history-detail-content {
         max-height: 60vh;
@@ -1109,27 +1012,56 @@ tr:hover {
     }
 }
 
-/* Utility Classes untuk Responsif */
-.text-center-mobile {
+/* Tambahkan CSS berikut ke file style.css yang sudah ada */
+
+/* Style untuk info target di input page */
+.hour-info {
+    margin-bottom: 10px;
+    padding: 8px;
+    background-color: #2a2a2a;
+    border-radius: 4px;
     text-align: center;
 }
 
-@media (min-width: 768px) {
-    .text-center-mobile {
-        text-align: left;
-    }
+.target-info {
+    color: var(--primary-color);
+    font-weight: bold;
+    font-size: 1em;
 }
 
-.hide-on-mobile {
-    display: none;
+/* Adjust hourly inputs untuk 3 kolom */
+.hour-inputs {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 15px;
+    align-items: end;
 }
 
-@media (min-width: 768px) {
-    .hide-on-mobile {
-        display: block;
-    }
-    
-    .show-on-mobile {
-        display: none;
-    }
+/* Warna untuk selisih output positif/negatif */
+.green-bg {
+    background-color: #008000 !important;
+    color: var(--text-light) !important;
+}
+
+.red-bg {
+    background-color: var(--accent-color);
+    color: var(--text-light);
+}
+
+.yellow-bg {
+    background-color: var(--secondary-color);
+    color: #000;
+}
+
+/* Adjust table untuk kolom tambahan */
+table th, table td {
+    padding: 12px 15px;
+}
+
+/* Quick stats grid untuk 4 kolom */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 15px;
+    margin-top: 15px;
 }

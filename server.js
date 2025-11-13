@@ -1153,6 +1153,10 @@ app.get('/style.css', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'style.css'));
 });
 
+app.get('/all.css', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'all.css'));
+});
+
 app.get('/login.js', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'login.js'));
 });

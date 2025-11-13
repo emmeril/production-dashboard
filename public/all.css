@@ -1,4 +1,4 @@
-/* Reset dan Base Styles - Responsif */
+/* Reset dan Base Styles */
 * {
     margin: 0;
     padding: 0;
@@ -16,9 +16,8 @@
     --text-muted: #ccc;
 }
 
-/* Mobile First Approach */
 html {
-    font-size: 16px; /* Ukuran base untuk mobile */
+    font-size: 16px;
 }
 
 body {
@@ -28,18 +27,24 @@ body {
     line-height: 1.6;
     min-height: 100vh;
     overflow-x: auto;
+    overflow-y: auto;
+    font-size: 1rem;
     width: 100%;
 }
 
-/* Container responsif */
-.container {
+/* Container utama yang responsif */
+.desktop-container {
     width: 100%;
     max-width: 1920px;
     margin: 0 auto;
+    background-color: var(--bg-card);
+    position: relative;
     padding: 0 15px;
 }
 
-/* Login Page Styles - Responsif */
+/* ========== MOBILE FIRST STYLES ========== */
+
+/* Login Page Styles */
 .login-body {
     display: flex;
     justify-content: center;
@@ -67,14 +72,14 @@ body {
 
 .login-header h1 {
     color: var(--primary-color);
-    font-size: 2.5rem;
+    font-size: clamp(1.8rem, 5vw, 2.5rem);
     margin-bottom: 15px;
     text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
 }
 
 .login-header p {
     color: var(--text-muted);
-    font-size: 1.2rem;
+    font-size: clamp(1rem, 3vw, 1.2rem);
 }
 
 .login-form-container {
@@ -85,7 +90,7 @@ body {
     color: var(--primary-color);
     text-align: center;
     margin-bottom: 25px;
-    font-size: 1.8rem;
+    font-size: clamp(1.4rem, 4vw, 1.8rem);
 }
 
 .form-group {
@@ -95,15 +100,15 @@ body {
 
 .form-group label {
     display: block;
-    margin-bottom: 10px;
+    margin-bottom: 8px;
     color: var(--text-light);
     font-weight: 600;
-    font-size: 1.1rem;
+    font-size: 1rem;
 }
 
 .form-group input {
     width: 100%;
-    padding: 15px;
+    padding: 15px 20px;
     background-color: var(--bg-element);
     color: var(--text-light);
     border: 2px solid #444;
@@ -122,7 +127,7 @@ body {
     color: #000;
     border: none;
     padding: 15px;
-    font-size: 1.2rem;
+    font-size: 1.1rem;
     font-weight: bold;
     border-radius: 5px;
     cursor: pointer;
@@ -138,7 +143,7 @@ body {
 
 .error-message {
     color: #ff4444;
-    margin-top: 20px;
+    margin-top: 15px;
     background-color: #332222;
     padding: 15px;
     border-radius: 5px;
@@ -150,22 +155,23 @@ body {
 
 .user-info {
     background-color: #1a3a1a;
-    padding: 20px;
+    padding: 15px;
     border-radius: 5px;
     margin-bottom: 20px;
     text-align: center;
     border-left: 4px solid #00ff00;
-    font-size: 1.1rem;
+    font-size: 1rem;
 }
 
-/* Dashboard Styles - Responsif */
+/* Dashboard Styles */
 .dashboard-container {
     width: 100%;
-    margin: 0 auto;
-    padding: 20px 15px;
-    background-color: var(--bg-card);
     min-height: 100vh;
-    overflow: visible;
+    background-color: var(--bg-card);
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
 }
 
 /* Header dengan User Info */
@@ -181,8 +187,7 @@ body {
 }
 
 .user-display {
-    font-size: 1.4rem;
-    text-align: center;
+    font-size: clamp(1rem, 3vw, 1.2rem);
 }
 
 .user-display strong {
@@ -192,9 +197,8 @@ body {
 .header-actions {
     display: flex;
     gap: 10px;
-    align-items: center;
-    justify-content: center;
     flex-wrap: wrap;
+    justify-content: center;
 }
 
 /* Management Tabs */
@@ -212,8 +216,8 @@ body {
     background-color: #333;
     color: var(--text-light);
     border: none;
-    padding: 15px;
-    font-size: 1.1rem;
+    padding: 15px 20px;
+    font-size: 1rem;
     font-weight: bold;
     border-radius: 5px;
     cursor: pointer;
@@ -239,13 +243,13 @@ body {
     display: block;
 }
 
-/* Button Styles - Responsif */
+/* Button Styles */
 .btn-primary {
     background-color: var(--secondary-color);
     color: #000;
     border: none;
     padding: 15px 25px;
-    font-size: 1.1rem;
+    font-size: 1rem;
     font-weight: bold;
     border-radius: 5px;
     cursor: pointer;
@@ -254,7 +258,6 @@ body {
     display: inline-block;
     text-align: center;
     width: 100%;
-    max-width: 300px;
 }
 
 .btn-primary:hover {
@@ -266,13 +269,12 @@ body {
     color: var(--text-light);
     border: none;
     padding: 15px 25px;
-    font-size: 1.1rem;
+    font-size: 1rem;
     font-weight: bold;
     border-radius: 5px;
     cursor: pointer;
     transition: background-color 0.3s ease;
     width: 100%;
-    max-width: 300px;
 }
 
 .btn-secondary:hover {
@@ -284,10 +286,11 @@ body {
     color: var(--text-light);
     border: none;
     padding: 10px 15px;
-    font-size: 1rem;
+    font-size: 0.9rem;
     border-radius: 4px;
     cursor: pointer;
-    margin-left: 5px;
+    margin-left: 8px;
+    width: 100%;
 }
 
 .btn-danger:hover {
@@ -299,9 +302,10 @@ body {
     color: var(--text-light);
     border: none;
     padding: 10px 15px;
-    font-size: 1rem;
+    font-size: 0.9rem;
     border-radius: 4px;
     cursor: pointer;
+    width: 100%;
 }
 
 .btn-edit:hover {
@@ -316,7 +320,8 @@ body {
     border-radius: 4px;
     cursor: pointer;
     font-weight: bold;
-    font-size: 1rem;
+    font-size: 0.9rem;
+    width: 100%;
 }
 
 .btn-update:hover {
@@ -332,9 +337,8 @@ body {
     cursor: pointer;
     font-weight: bold;
     transition: background-color 0.3s ease;
-    font-size: 1.1rem;
+    font-size: 1rem;
     width: 100%;
-    max-width: 200px;
 }
 
 .btn-logout:hover {
@@ -352,8 +356,8 @@ body {
 
 .line-selector h3 {
     color: var(--primary-color);
-    margin-bottom: 20px;
-    font-size: 1.5rem;
+    margin-bottom: 15px;
+    font-size: clamp(1.2rem, 3vw, 1.4rem);
 }
 
 .line-buttons {
@@ -366,7 +370,7 @@ body {
 .line-button-container {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
     width: 100%;
 }
 
@@ -374,18 +378,19 @@ body {
     background-color: #333;
     color: var(--text-light);
     border: 2px solid #555;
-    padding: 15px;
-    font-size: 1.1rem;
+    padding: 15px 20px;
+    font-size: 1rem;
     font-weight: bold;
     border-radius: 5px;
     cursor: pointer;
     transition: all 0.3s ease;
     text-align: left;
-    width: 100%;
-    min-height: 80px;
+    flex: 1;
+    min-height: 70px;
     display: flex;
     flex-direction: column;
     justify-content: center;
+    width: 100%;
 }
 
 .line-btn:hover {
@@ -403,7 +408,7 @@ body {
     display: block;
     font-weight: normal;
     margin-top: 5px;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     opacity: 0.8;
 }
 
@@ -414,9 +419,10 @@ body {
     padding: 10px 15px;
     border-radius: 3px;
     cursor: pointer;
-    font-size: 1rem;
+    font-size: 0.9rem;
     height: fit-content;
-    min-height: 40px;
+    min-height: 70px;
+    width: 100%;
 }
 
 .line-edit-btn:hover {
@@ -427,7 +433,8 @@ body {
     background-color: #28a745 !important;
     border-color: #28a745 !important;
     text-align: center !important;
-    max-width: 100%;
+    grid-column: 1 / -1;
+    max-width: 300px;
     margin: 0 auto;
     justify-content: center;
 }
@@ -440,9 +447,9 @@ body {
 .header-info {
     display: grid;
     grid-template-columns: 1fr;
-    gap: 15px;
-    font-size: 1.2rem;
-    padding: 20px;
+    gap: 10px;
+    font-size: clamp(1.2rem, 3vw, 1.8rem);
+    padding: 15px;
     margin-bottom: 20px;
     border-bottom: 3px solid #333;
     background-color: #1a1a1a;
@@ -451,7 +458,7 @@ body {
 }
 
 .header-info span {
-    padding: 10px 0;
+    padding: 8px 0;
 }
 
 /* Main Grid */
@@ -460,6 +467,7 @@ body {
     grid-template-columns: 1fr;
     gap: 15px;
     margin-bottom: 20px;
+    flex-grow: 1;
 }
 
 .grid-item {
@@ -471,46 +479,47 @@ body {
     align-items: center;
     justify-content: center;
     text-align: center;
-    min-height: 100px;
 }
 
 /* Primary Row */
 .label-primary {
     background-color: var(--bg-card);
     color: var(--text-light);
-    font-size: 1.4rem;
+    font-size: clamp(1.2rem, 3vw, 1.8rem);
     text-align: center;
 }
 
 .value-primary {
     background-color: var(--bg-dark);
     color: var(--primary-color);
-    font-size: 2.5rem;
-    line-height: 1.1;
+    font-size: clamp(2.5rem, 8vw, 6rem);
+    line-height: 1;
     padding: 20px;
     text-align: center;
     border: 2px solid #333;
     display: flex;
     align-items: center;
     justify-content: center;
+    font-weight: bold;
 }
 
 /* Secondary Row */
 .label-secondary {
     background-color: var(--bg-card);
     color: var(--text-light);
-    font-size: 1.4rem;
+    font-size: clamp(1.2rem, 3vw, 1.8rem);
     text-align: center;
 }
 
 .value-secondary {
-    font-size: 2rem;
-    line-height: 1.1;
+    font-size: clamp(2rem, 7vw, 5.5rem);
+    line-height: 1;
     text-align: center;
     border: 2px solid #333;
     display: flex;
     align-items: center;
     justify-content: center;
+    font-weight: bold;
 }
 
 .yellow-bg {
@@ -545,17 +554,17 @@ body {
 }
 
 .user-management-container h2 {
-    font-size: 1.5rem;
+    font-size: clamp(1.2rem, 3vw, 1.4rem);
     color: var(--primary-color);
-    margin-bottom: 20px;
+    margin-bottom: 15px;
     text-align: left;
 }
 
 .user-controls {
-    margin-bottom: 20px;
+    margin-bottom: 15px;
     display: flex;
     flex-direction: column;
-    gap: 15px;
+    gap: 10px;
 }
 
 /* Input Data Section untuk Operator */
@@ -567,9 +576,9 @@ body {
 }
 
 .input-data-container h2 {
-    font-size: 1.5rem;
+    font-size: clamp(1.2rem, 3vw, 1.4rem);
     color: var(--primary-color);
-    margin-bottom: 20px;
+    margin-bottom: 15px;
     text-align: left;
 }
 
@@ -577,7 +586,7 @@ body {
     margin-bottom: 20px;
     display: flex;
     flex-direction: column;
-    gap: 15px;
+    gap: 10px;
 }
 
 .hourly-input-section {
@@ -586,8 +595,8 @@ body {
 
 .hourly-input-section h3 {
     color: var(--primary-color);
-    margin-bottom: 20px;
-    font-size: 1.3rem;
+    margin-bottom: 15px;
+    font-size: clamp(1.1rem, 2.5vw, 1.2rem);
 }
 
 .hour-input-group {
@@ -602,7 +611,7 @@ body {
     font-weight: bold;
     margin-bottom: 10px;
     color: var(--text-light);
-    font-size: 1.2rem;
+    font-size: clamp(1rem, 2vw, 1.1rem);
 }
 
 .hour-inputs {
@@ -619,7 +628,7 @@ body {
 }
 
 .input-group label {
-    font-size: 1rem;
+    font-size: 0.95rem;
     color: var(--text-muted);
     font-weight: normal;
 }
@@ -652,23 +661,24 @@ body {
 
 .stat-item {
     background-color: var(--bg-element);
-    padding: 15px;
+    padding: 20px;
     border-radius: 5px;
     text-align: center;
 }
 
 .stat-label {
     display: block;
-    font-size: 1rem;
+    font-size: 0.95rem;
     color: var(--text-muted);
     margin-bottom: 8px;
 }
 
 .stat-value {
     display: block;
-    font-size: 1.8rem;
+    font-size: clamp(2rem, 6vw, 4.5rem);
     font-weight: bold;
     color: var(--primary-color);
+    line-height: 1;
 }
 
 /* Container Styles */
@@ -680,40 +690,42 @@ body {
 }
 
 .operator-data-container h2, .hourly-data-container h2 {
-    font-size: 1.5rem;
+    font-size: clamp(1.2rem, 3vw, 1.4rem);
     color: var(--primary-color);
-    margin-bottom: 20px;
+    margin-bottom: 15px;
     text-align: left;
 }
 
 .operator-controls {
-    margin-bottom: 20px;
+    margin-bottom: 15px;
     display: flex;
     flex-direction: column;
-    gap: 15px;
+    gap: 10px;
 }
 
 /* Table Styles */
+.table-responsive {
+    overflow-x: auto;
+    margin-top: 15px;
+}
+
 table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 1rem;
-    margin-top: 15px;
-    overflow-x: auto;
-    display: block;
+    font-size: 0.9rem;
+    min-width: 600px;
 }
 
 th, td {
     padding: 12px 15px;
     border: 1px solid #444;
     text-align: center;
-    white-space: nowrap;
 }
 
 th {
     background-color: var(--bg-dark);
     color: var(--text-light);
-    font-size: 1.1rem;
+    font-size: 1rem;
     font-weight: bold;
 }
 
@@ -729,37 +741,37 @@ tr:hover {
 .status-active {
     color: #00FF00;
     font-weight: bold;
-    font-size: 1rem;
+    font-size: 0.95rem;
 }
 
 .status-break {
     color: #FFA500;
     font-weight: bold;
-    font-size: 1rem;
+    font-size: 0.95rem;
 }
 
 .status-off {
     color: #FF0000;
     font-weight: bold;
-    font-size: 1rem;
+    font-size: 0.95rem;
 }
 
 .efficiency-high {
     color: #00FF00;
     font-weight: bold;
-    font-size: 1rem;
+    font-size: 0.95rem;
 }
 
 .efficiency-medium {
     color: #FFA500;
     font-weight: bold;
-    font-size: 1rem;
+    font-size: 0.95rem;
 }
 
 .efficiency-low {
     color: #FF0000;
     font-weight: bold;
-    font-size: 1rem;
+    font-size: 0.95rem;
 }
 
 /* Modal Styles */
@@ -778,10 +790,10 @@ tr:hover {
 .modal-content {
     background-color: var(--bg-element);
     margin: 5% auto;
-    padding: 25px;
+    padding: 20px;
     border: 1px solid #888;
-    width: 90%;
-    max-width: 500px;
+    width: 95%;
+    max-width: 600px;
     border-radius: 8px;
     color: var(--text-light);
     position: relative;
@@ -807,7 +819,7 @@ tr:hover {
 .modal-content h3 {
     color: var(--primary-color);
     margin-bottom: 20px;
-    font-size: 1.5rem;
+    font-size: clamp(1.2rem, 3vw, 1.4rem);
 }
 
 .form-actions {
@@ -825,15 +837,15 @@ tr:hover {
 
 .form-group label {
     display: block;
-    margin-bottom: 10px;
+    margin-bottom: 8px;
     color: var(--text-light);
     font-weight: 600;
-    font-size: 1.1rem;
+    font-size: 1rem;
 }
 
 .form-group input, .form-group select {
     width: 100%;
-    padding: 12px 15px;
+    padding: 15px 20px;
     background-color: #333;
     color: var(--text-light);
     border: 2px solid #555;
@@ -873,6 +885,70 @@ tr:hover {
     font-size: 1rem;
 }
 
+/* History Management Styles */
+.history-management-container {
+    padding: 20px;
+    background-color: var(--bg-element);
+    border-radius: 8px;
+}
+
+.history-management-container h2 {
+    font-size: clamp(1.2rem, 3vw, 1.4rem);
+    color: var(--primary-color);
+    margin-bottom: 15px;
+    text-align: left;
+}
+
+.history-controls {
+    margin-bottom: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.history-info {
+    background-color: #1a3a1a;
+    padding: 15px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+    text-align: center;
+    border-left: 4px solid #00ff00;
+    font-size: 1rem;
+}
+
+.history-info p {
+    margin: 0;
+    color: #90EE90;
+}
+
+.history-detail-content {
+    max-height: 70vh;
+    overflow-y: auto;
+    padding-right: 10px;
+}
+
+/* File size styling */
+.file-size {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    font-family: monospace;
+}
+
+/* Style untuk info target di input page */
+.hour-info {
+    margin-bottom: 10px;
+    padding: 8px;
+    background-color: #2a2a2a;
+    border-radius: 4px;
+    text-align: center;
+}
+
+.target-info {
+    color: var(--primary-color);
+    font-weight: bold;
+    font-size: 1rem;
+}
+
 /* Scrollbar Styling */
 ::-webkit-scrollbar {
     width: 8px;
@@ -891,27 +967,36 @@ tr:hover {
     background: #555;
 }
 
-/* Media Queries untuk Tablet */
+/* Mobile Navigation Controls */
+.mobile-controls {
+    display: flex;
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 1000;
+    gap: 10px;
+}
+
+.zoom-control {
+    background-color: var(--secondary-color);
+    color: #000;
+    border: none;
+    padding: 12px 18px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 1.1rem;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+}
+
+/* ========== TABLET STYLES (768px ke atas) ========== */
 @media (min-width: 768px) {
-    html {
-        font-size: 18px;
+    .desktop-container {
+        padding: 0 30px;
     }
     
-    .user-header {
-        flex-direction: row;
-        justify-content: space-between;
-    }
-    
-    .user-display {
-        text-align: left;
-    }
-    
-    .header-actions {
-        justify-content: flex-end;
-    }
-    
-    .management-tabs {
-        flex-direction: row;
+    .login-container {
+        width: 450px;
     }
     
     .line-buttons {
@@ -920,101 +1005,140 @@ tr:hover {
     
     .line-button-container {
         flex-direction: row;
+        align-items: center;
     }
     
-    .header-info {
-        grid-template-columns: repeat(2, 1fr);
+    .line-btn {
+        width: auto;
+    }
+    
+    .line-edit-btn {
+        width: auto;
     }
     
     .main-grid {
         grid-template-columns: repeat(2, 1fr);
     }
     
-    .data-section {
-        grid-template-columns: 1fr 1fr;
+    .header-info {
+        grid-template-columns: repeat(2, 1fr);
     }
     
-    .user-controls, .input-controls, .operator-controls {
-        flex-direction: row;
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
     }
     
     .hour-inputs {
         grid-template-columns: repeat(2, 1fr);
     }
     
-    .stats-grid {
-        grid-template-columns: repeat(2, 1fr);
+    .user-header {
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .management-tabs {
+        flex-direction: row;
+    }
+    
+    .btn-primary, .btn-secondary, .btn-login, .btn-logout, .tab-button {
+        width: auto;
+    }
+    
+    .btn-danger, .btn-edit, .btn-update {
+        width: auto;
+    }
+    
+    .input-controls, .user-controls, .history-controls, .operator-controls {
+        flex-direction: row;
+        flex-wrap: wrap;
     }
     
     .form-actions {
         flex-direction: row;
     }
     
-    table {
-        display: table;
+    .data-section {
+        grid-template-columns: 1fr 1fr;
     }
 }
 
-/* Media Queries untuk Desktop */
+/* ========== DESKTOP STYLES (1024px ke atas) ========== */
 @media (min-width: 1024px) {
-    .container {
-        padding: 0 30px;
-    }
-    
-    .dashboard-container {
-        padding: 30px;
+    .desktop-container {
+        padding: 0 50px;
     }
     
     .line-buttons {
-        grid-template-columns: repeat(4, 1fr);
-    }
-    
-    .header-info {
-        grid-template-columns: repeat(4, 1fr);
+        grid-template-columns: repeat(3, 1fr);
     }
     
     .main-grid {
         grid-template-columns: repeat(3, 1fr);
     }
     
-    .hour-inputs {
-        grid-template-columns: repeat(3, 1fr);
+    .header-info {
+        grid-template-columns: repeat(4, 1fr);
     }
     
     .stats-grid {
         grid-template-columns: repeat(3, 1fr);
     }
     
-    .btn-primary, .btn-secondary, .btn-logout {
-        width: auto;
+    .hour-inputs {
+        grid-template-columns: repeat(3, 1fr);
     }
 }
 
-/* Media Queries untuk Layar Besar */
+/* ========== DESKTOP BESAR (1200px ke atas) ========== */
 @media (min-width: 1200px) {
-    .login-container {
-        max-width: 600px;
-        padding: 40px;
+    .line-buttons {
+        grid-template-columns: repeat(4, 1fr);
     }
     
-    .login-header h1 {
-        font-size: 3rem;
+    .stats-grid {
+        grid-template-columns: repeat(4, 1fr);
     }
     
-    .login-header p {
-        font-size: 1.5rem;
+    .hour-inputs {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+/* Responsive adjustments untuk history modal */
+@media (max-width: 768px) {
+    .history-detail-content {
+        max-height: 60vh;
     }
     
-    .login-form-container h2 {
-        font-size: 2rem;
+    .modal-content[style*="max-width: 90%"] {
+        width: 95% !important;
+        margin: 2% auto;
+    }
+}
+
+/* Utility Classes untuk Responsif */
+.text-center-mobile {
+    text-align: center;
+}
+
+@media (min-width: 768px) {
+    .text-center-mobile {
+        text-align: left;
+    }
+}
+
+.hide-on-mobile {
+    display: none;
+}
+
+@media (min-width: 768px) {
+    .hide-on-mobile {
+        display: block;
     }
     
-    .form-group input {
-        padding: 18px;
-    }
-    
-    .btn-login {
-        padding: 18px;
-        font-size: 1.3rem;
+    .show-on-mobile {
+        display: none;
     }
 }

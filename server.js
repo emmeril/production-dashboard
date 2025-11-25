@@ -357,16 +357,19 @@ app.post('/api/update-hourly/:lineName', requireLogin, requireLineAccess, (req, 
   let totalOutput = 0;
   let totalDefect = 0;
   let totalQCChecked = 0;
+  let totalTarget = 0; // PERUBAHAN: Hitung total target dari target manual
 
   data.lines[lineName].hourly_data.forEach(hour => {
     totalOutput += hour.output || 0;
     totalDefect += hour.defect || 0;
     totalQCChecked += hour.qcChecked || 0;
+    totalTarget += hour.targetManual || 0; // PERUBAHAN: Jumlahkan target manual
   });
 
   data.lines[lineName].outputDay = totalOutput;
   data.lines[lineName].actualDefect = totalDefect;
   data.lines[lineName].qcChecking = totalQCChecked;
+  data.lines[lineName].target = totalTarget; // PERUBAHAN: Update target harian dari jumlah target manual
 
   // Hitung ulang persentase defect rate
   const defectRatePercentage = (totalQCChecked > 0) ? (totalDefect / totalQCChecked) * 100 : 0;
@@ -381,6 +384,7 @@ app.post('/api/update-hourly/:lineName', requireLogin, requireLineAccess, (req, 
       totalOutput: totalOutput,
       totalDefect: totalDefect,
       totalQCChecked: totalQCChecked,
+      totalTarget: totalTarget, // PERUBAHAN: Sertakan total target dalam response
       defectRate: defectRatePercentage.toFixed(2) + '%'
     }
   });
@@ -404,10 +408,18 @@ app.post('/api/update-target-manual/:lineName', requireLogin, requireLineAccess,
   data.lines[lineName].hourly_data[hourIndex].selisih = 
     data.lines[lineName].hourly_data[hourIndex].output - parseInt(targetManual);
 
+  // PERUBAHAN: Hitung ulang target harian dari jumlah target manual
+  let totalTarget = 0;
+  data.lines[lineName].hourly_data.forEach(hour => {
+    totalTarget += hour.targetManual || 0;
+  });
+  data.lines[lineName].target = totalTarget;
+
   writeProductionData(data);
   res.json({
     message: 'Target manual updated successfully.',
-    data: data.lines[lineName].hourly_data[hourIndex]
+    data: data.lines[lineName].hourly_data[hourIndex],
+    totalTarget: totalTarget // PERUBAHAN: Sertakan total target dalam response
   });
 });
 
@@ -439,16 +451,19 @@ app.post('/api/update-hourly-direct/:lineName', requireLogin, requireLineAccess,
   let totalOutput = 0;
   let totalDefect = 0;
   let totalQCChecked = 0;
+  let totalTarget = 0; // PERUBAHAN: Hitung total target dari target manual
 
   data.lines[lineName].hourly_data.forEach(hour => {
     totalOutput += hour.output || 0;
     totalDefect += hour.defect || 0;
     totalQCChecked += hour.qcChecked || 0;
+    totalTarget += hour.targetManual || 0; // PERUBAHAN: Jumlahkan target manual
   });
 
   data.lines[lineName].outputDay = totalOutput;
   data.lines[lineName].actualDefect = totalDefect;
   data.lines[lineName].qcChecking = totalQCChecked;
+  data.lines[lineName].target = totalTarget; // PERUBAHAN: Update target harian dari jumlah target manual
 
   // Hitung ulang persentase defect rate
   const defectRatePercentage = (totalQCChecked > 0) ? (totalDefect / totalQCChecked) * 100 : 0;
@@ -463,6 +478,7 @@ app.post('/api/update-hourly-direct/:lineName', requireLogin, requireLineAccess,
       totalOutput: totalOutput,
       totalDefect: totalDefect,
       totalQCChecked: totalQCChecked,
+      totalTarget: totalTarget, // PERUBAHAN: Sertakan total target dalam response
       defectRate: defectRatePercentage.toFixed(2) + '%'
     }
   });
@@ -746,7 +762,7 @@ app.post('/api/lines', requireLogin, requireAdmin, (req, res) => {
 
 app.put('/api/lines/:lineName', requireLogin, requireAdmin, (req, res) => {
   const lineName = req.params.lineName;
-  const { labelWeek, model, date, target } = req.body;
+  const { labelWeek, model, date } = req.body; // PERUBAHAN: Hapus target dari body
   const data = readProductionData();
 
   if (!data.lines[lineName]) {
@@ -755,7 +771,6 @@ app.put('/api/lines/:lineName', requireLogin, requireAdmin, (req, res) => {
 
   const oldDate = data.lines[lineName].date;
   const newDate = date || getToday();
-  const targetPerHour = Math.round(target / 8);
 
   // Jika tanggal berubah, reset semua data
   if (oldDate !== newDate) {
@@ -763,32 +778,21 @@ app.put('/api/lines/:lineName', requireLogin, requireAdmin, (req, res) => {
       ...data.lines[lineName],
       labelWeek,
       model,
-      date: newDate,
-      target: parseInt(target),
-      targetPerHour: targetPerHour
+      date: newDate
     });
   } else {
     // Jika tanggal sama, hanya update data dasar
     data.lines[lineName].labelWeek = labelWeek;
     data.lines[lineName].model = model;
-    data.lines[lineName].target = parseInt(target);
-    data.lines[lineName].targetPerHour = targetPerHour;
     
-    // Update target manual di hourly_data
-    data.lines[lineName].hourly_data = data.lines[lineName].hourly_data.map((hour, index) => ({
-      ...hour,
-      targetManual: hour.targetManual === 0 ? 0 : targetPerHour // Reset target manual jika 0, else keep existing
-    }));
+    // PERUBAHAN: Tidak update target karena sekarang dihitung dari target manual
+    // targetPerHour juga tidak diupdate karena tidak relevan lagi
   }
 
   writeProductionData(data);
   res.json({ 
     message: `Line ${lineName} updated successfully`, 
     data: data.lines[lineName],
-    calculated: {
-      targetPerHour: targetPerHour,
-      message: `Target per jam: ${targetPerHour} unit (Target: ${target} ÷ 8 jam)`
-    },
     reset: oldDate !== newDate ? 'Data telah direset karena perubahan tanggal.' : 'Tanggal tidak berubah, data tetap.'
   });
 });

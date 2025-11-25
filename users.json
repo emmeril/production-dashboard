@@ -11,8 +11,8 @@
     {
       "id": 2,
       "username": "qc1",
-      "password": "123",
-      "name": "Hafri",
+      "password": "1234",
+      "name": "Ami",
       "line": "LINE-1",
       "role": "operator"
     },
@@ -20,7 +20,7 @@
       "id": 3,
       "username": "leader1",
       "password": "1234",
-      "name": "Ana",
+      "name": "Emmeril Apps",
       "line": "LINE-1",
       "role": "leader"
     }

@@ -6,24 +6,24 @@
       "date": "2025-11-25",
       "target": 1500,
       "targetPerHour": 150,
-      "outputDay": 300,
-      "qcChecking": 20,
-      "actualDefect": 1,
-      "defectRatePercentage": 5,
+      "outputDay": 450,
+      "qcChecking": 100,
+      "actualDefect": 2,
+      "defectRatePercentage": 2,
       "hourly_data": [
         {
           "hour": "07:00 - 08:00",
-          "output": 100,
-          "defect": 1,
-          "qcChecked": 20,
+          "output": 150,
+          "defect": 2,
+          "qcChecked": 100,
           "cumulativeTarget": 145,
           "defectDetails": [],
-          "selisih": -50,
+          "selisih": 0,
           "targetManual": 150
         },
         {
           "hour": "08:00 - 09:00",
-          "output": 200,
+          "output": 150,
           "defect": 0,
           "qcChecked": 0,
           "cumulativeTarget": 290,
@@ -33,13 +33,13 @@
         },
         {
           "hour": "09:00 - 10:00",
-          "output": 0,
+          "output": 150,
           "defect": 0,
           "qcChecked": 0,
           "cumulativeTarget": 435,
           "defectDetails": [],
           "targetManual": 150,
-          "selisih": -200
+          "selisih": 0
         },
         {
           "hour": "10:00 - 11:00",

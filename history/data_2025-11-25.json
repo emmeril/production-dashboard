@@ -8,32 +8,16 @@
       "targetPerHour": 150,
       "outputDay": 300,
       "qcChecking": 20,
-      "actualDefect": 0,
-      "defectRatePercentage": 0,
+      "actualDefect": 1,
+      "defectRatePercentage": 5,
       "hourly_data": [
         {
           "hour": "07:00 - 08:00",
           "output": 100,
-          "defect": 0,
+          "defect": 1,
           "qcChecked": 20,
           "cumulativeTarget": 145,
-          "defectDetails": [
-            {
-              "type": "",
-              "area": "",
-              "notes": ""
-            },
-            {
-              "type": "",
-              "area": "",
-              "notes": ""
-            },
-            {
-              "type": "",
-              "area": "",
-              "notes": ""
-            }
-          ],
+          "defectDetails": [],
           "selisih": -50,
           "targetManual": 150
         },

@@ -69,6 +69,23 @@
             padding-left: 10px;
             margin-bottom: 8px;
         }
+        .defect-checkbox-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 8px;
+            margin-top: 8px;
+        }
+        .defect-category {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 12px;
+        }
+        .defect-category h5 {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #374151;
+        }
     </style>
 </head>
 <body class="bg-gray-100 font-sans" x-data="dashboard()" x-cloak>
@@ -459,7 +476,6 @@
                                                         <div class="defect-detail-item text-xs text-gray-600">
                                                             <div x-text="'Jenis: ' + (detail.type || '-')"></div>
                                                             <div x-text="'Area: ' + (detail.area || '-')"></div>
-                                                            <div x-show="detail.notes" x-text="'Keterangan: ' + detail.notes" class="truncate max-w-xs"></div>
                                                         </div>
                                                     </template>
                                                 </div>
@@ -598,59 +614,40 @@
                                     </div>
                                 </div>
                                 
-                                <!-- Defect Details -->
+                                <!-- Defect Details Checklist -->
                                 <div class="mb-6">
                                     <div class="flex justify-between items-center mb-4">
-                                        <h4 class="text-lg font-medium text-gray-900">Detail Defect</h4>
-                                        <button type="button" @click="addDefectDetail" class="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                                            </svg>
-                                            Tambah Defect
-                                        </button>
+                                        <h4 class="text-lg font-medium text-gray-900">Detail Defect (Checklist)</h4>
+                                        <div class="text-sm text-gray-500">
+                                            Total terpilih: <span x-text="getSelectedDefectCount()" class="font-semibold"></span>
+                                        </div>
                                     </div>
                                     
-                                    <template x-for="(defect, index) in inputForm.defectDetails" :key="index">
-                                        <div class="bg-gray-50 p-4 rounded-md mb-3">
-                                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
-                                                <div>
-                                                    <label class="block text-sm font-medium text-gray-700 mb-1">Jenis Defect</label>
-                                                    <select x-model="defect.type" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md" required>
-                                                        <option value="">Pilih Jenis</option>
-                                                        <template x-for="defectType in defectTypes" :key="defectType.id">
-                                                            <option :value="defectType.name" x-text="defectType.name"></option>
-                                                        </template>
-                                                    </select>
-                                                </div>
-                                                
-                                                <div>
-                                                    <label class="block text-sm font-medium text-gray-700 mb-1">Area Defect</label>
-                                                    <select x-model="defect.area" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md" required>
-                                                        <option value="">Pilih Area</option>
-                                                        <template x-for="defectArea in defectAreas" :key="defectArea.id">
-                                                            <option :value="defectArea.name" x-text="defectArea.name"></option>
-                                                        </template>
-                                                    </select>
-                                                </div>
-                                                
-                                                <div class="flex items-end">
-                                                    <button type="button" @click="removeDefectDetail(index)" class="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
-                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                                        </svg>
-                                                    </button>
+                                    <div class="defect-checkbox-grid">
+                                        <template x-for="defectType in defectTypes" :key="defectType.id">
+                                            <div class="defect-category">
+                                                <h5 x-text="defectType.name"></h5>
+                                                <div class="space-y-2">
+                                                    <template x-for="defectArea in defectAreas" :key="defectArea.id">
+                                                        <label class="flex items-center space-x-2 cursor-pointer">
+                                                            <input type="checkbox" 
+                                                                   :value="defectType.name + '|' + defectArea.name"
+                                                                   x-model="inputForm.selectedDefects"
+                                                                   class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                                            <span class="text-sm text-gray-700" x-text="defectArea.name"></span>
+                                                        </label>
+                                                    </template>
                                                 </div>
                                             </div>
-                                            
-                                            <div>
-                                                <label class="block text-sm font-medium text-gray-700 mb-1">Keterangan</label>
-                                                <textarea x-model="defect.notes" rows="2" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" placeholder="Keterangan tambahan tentang defect..."></textarea>
-                                            </div>
-                                        </div>
-                                    </template>
+                                        </template>
+                                    </div>
                                     
-                                    <div x-show="inputForm.defectDetails.length === 0" class="text-center py-4 text-gray-500">
-                                        Tidak ada defect detail yang ditambahkan
+                                    <div x-show="inputForm.selectedDefects.length === 0" class="text-center py-4 text-gray-500 border-2 border-dashed border-gray-300 rounded-lg mt-4">
+                                        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                        </svg>
+                                        <p class="mt-2">Belum ada defect yang dipilih</p>
+                                        <p class="text-sm">Centang defect yang ditemukan pada jam ini</p>
                                     </div>
                                 </div>
                                 
@@ -1017,69 +1014,50 @@
         </div>
     </div>
 
-    <!-- Defect Details Modal -->
+    <!-- Defect Details Modal (Updated dengan Checklist) -->
     <div x-show="defectDetailsModal.open" class="fixed inset-0 overflow-y-auto z-50" x-cloak>
         <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
             <div class="fixed inset-0 transition-opacity" aria-hidden="true">
                 <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
             </div>
             <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-            <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full">
+            <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
                 <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                     <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Defect Details - <span x-text="defectDetailsModal.hour"></span></h3>
                     
                     <div class="mb-4">
                         <div class="flex justify-between items-center mb-4">
-                            <h4 class="text-lg font-medium text-gray-900">Detail Defect</h4>
-                            <button type="button" @click="addDefectDetailToModal" class="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                                </svg>
-                                Tambah Defect
-                            </button>
+                            <h4 class="text-lg font-medium text-gray-900">Detail Defect (Checklist)</h4>
+                            <div class="text-sm text-gray-500">
+                                Total terpilih: <span x-text="defectDetailsModal.selectedDefects.length" class="font-semibold"></span>
+                            </div>
                         </div>
                         
-                        <template x-for="(defect, index) in defectDetailsModal.defectDetails" :key="index">
-                            <div class="bg-gray-50 p-4 rounded-md mb-3">
-                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-1">Jenis Defect</label>
-                                        <select x-model="defect.type" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md" required>
-                                            <option value="">Pilih Jenis</option>
-                                            <template x-for="defectType in defectTypes" :key="defectType.id">
-                                                <option :value="defectType.name" x-text="defectType.name"></option>
-                                            </template>
-                                        </select>
-                                    </div>
-                                    
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-1">Area Defect</label>
-                                        <select x-model="defect.area" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md" required>
-                                            <option value="">Pilih Area</option>
-                                            <template x-for="defectArea in defectAreas" :key="defectArea.id">
-                                                <option :value="defectArea.name" x-text="defectArea.name"></option>
-                                            </template>
-                                        </select>
-                                    </div>
-                                    
-                                    <div class="flex items-end">
-                                        <button type="button" @click="removeDefectDetailFromModal(index)" class="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                            </svg>
-                                        </button>
+                        <div class="defect-checkbox-grid">
+                            <template x-for="defectType in defectTypes" :key="defectType.id">
+                                <div class="defect-category">
+                                    <h5 x-text="defectType.name"></h5>
+                                    <div class="space-y-2">
+                                        <template x-for="defectArea in defectAreas" :key="defectArea.id">
+                                            <label class="flex items-center space-x-2 cursor-pointer">
+                                                <input type="checkbox" 
+                                                       :value="defectType.name + '|' + defectArea.name"
+                                                       x-model="defectDetailsModal.selectedDefects"
+                                                       class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                                <span class="text-sm text-gray-700" x-text="defectArea.name"></span>
+                                            </label>
+                                        </template>
                                     </div>
                                 </div>
-                                
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Keterangan</label>
-                                    <textarea x-model="defect.notes" rows="2" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" placeholder="Keterangan tambahan tentang defect..."></textarea>
-                                </div>
-                            </div>
-                        </template>
+                            </template>
+                        </div>
                         
-                        <div x-show="defectDetailsModal.defectDetails.length === 0" class="text-center py-4 text-gray-500">
-                            Tidak ada defect detail yang ditambahkan
+                        <div x-show="defectDetailsModal.selectedDefects.length === 0" class="text-center py-4 text-gray-500 border-2 border-dashed border-gray-300 rounded-lg mt-4">
+                            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            <p class="mt-2">Belum ada defect yang dipilih</p>
+                            <p class="text-sm">Centang defect yang ditemukan pada jam ini</p>
                         </div>
                     </div>
                 </div>
@@ -1171,7 +1149,7 @@
                     defect: 0,
                     qcChecked: 0,
                     targetManual: 0,
-                    defectDetails: []
+                    selectedDefects: [] // Changed from defectDetails to selectedDefects
                 },
                 
                 // Modals
@@ -1220,7 +1198,7 @@
                     lineName: '',
                     hourIndex: 0,
                     hour: '',
-                    defectDetails: []
+                    selectedDefects: [] // Changed from defectDetails to selectedDefects
                 },
                 
                 // Toast notification
@@ -1427,30 +1405,31 @@
                         defect: 0,
                         qcChecked: 0,
                         targetManual: 0,
-                        defectDetails: []
+                        selectedDefects: []
                     };
                 },
                 
-                addDefectDetail() {
-                    this.inputForm.defectDetails.push({
-                        type: '',
-                        area: '',
-                        notes: ''
-                    });
-                },
-                
-                removeDefectDetail(index) {
-                    this.inputForm.defectDetails.splice(index, 1);
+                getSelectedDefectCount() {
+                    return this.inputForm.selectedDefects.length;
                 },
                 
                 async submitHourlyData() {
                     try {
+                        // Convert selected defects to defectDetails format
+                        const defectDetails = this.inputForm.selectedDefects.map(defect => {
+                            const [type, area] = defect.split('|');
+                            return { type, area };
+                        });
+
                         const response = await fetch(`/api/update-hourly/${this.currentLine}`, {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json'
                             },
-                            body: JSON.stringify(this.inputForm)
+                            body: JSON.stringify({
+                                ...this.inputForm,
+                                defectDetails: defectDetails
+                            })
                         });
                         
                         if (response.ok) {
@@ -1536,24 +1515,26 @@
                     this.defectDetailsModal.lineName = lineName;
                     this.defectDetailsModal.hourIndex = hourIndex;
                     this.defectDetailsModal.hour = this.lineDetail.hourly_data[hourIndex].hour;
-                    this.defectDetailsModal.defectDetails = [...(this.lineDetail.hourly_data[hourIndex].defectDetails || [])];
+                    
+                    // Convert existing defectDetails to selectedDefects format
+                    const existingDefects = this.lineDetail.hourly_data[hourIndex].defectDetails || [];
+                    this.defectDetailsModal.selectedDefects = existingDefects.map(detail => 
+                        `${detail.type}|${detail.area}`
+                    );
+                    
                     this.defectDetailsModal.open = true;
-                },
-                
-                addDefectDetailToModal() {
-                    this.defectDetailsModal.defectDetails.push({
-                        type: '',
-                        area: '',
-                        notes: ''
-                    });
-                },
-                
-                removeDefectDetailFromModal(index) {
-                    this.defectDetailsModal.defectDetails.splice(index, 1);
                 },
                 
                 async saveDefectDetails() {
                     try {
+                        // Convert selectedDefects back to defectDetails format
+                        const defectDetails = this.defectDetailsModal.selectedDefects.map(defect => {
+                            const [type, area] = defect.split('|');
+                            return { type, area };
+                        });
+
+                        const hour = this.lineDetail.hourly_data[this.defectDetailsModal.hourIndex];
+                        
                         const response = await fetch(`/api/update-hourly/${this.defectDetailsModal.lineName}`, {
                             method: 'POST',
                             headers: {
@@ -1561,11 +1542,11 @@
                             },
                             body: JSON.stringify({
                                 hourIndex: this.defectDetailsModal.hourIndex,
-                                output: this.lineDetail.hourly_data[this.defectDetailsModal.hourIndex].output,
-                                defect: this.lineDetail.hourly_data[this.defectDetailsModal.hourIndex].defect,
-                                qcChecked: this.lineDetail.hourly_data[this.defectDetailsModal.hourIndex].qcChecked,
-                                targetManual: this.lineDetail.hourly_data[this.defectDetailsModal.hourIndex].targetManual,
-                                defectDetails: this.defectDetailsModal.defectDetails
+                                output: hour.output,
+                                defect: hour.defect,
+                                qcChecked: hour.qcChecked,
+                                targetManual: hour.targetManual,
+                                defectDetails: defectDetails
                             })
                         });
                         

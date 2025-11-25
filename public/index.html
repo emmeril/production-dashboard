@@ -18,22 +18,6 @@
         .card-shadow {
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
         }
-        .status-indicator {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            display: inline-block;
-            margin-right: 5px;
-        }
-        .status-active {
-            background-color: #10b981;
-        }
-        .status-break {
-            background-color: #f59e0b;
-        }
-        .status-off {
-            background-color: #ef4444;
-        }
         .defect-bar {
             height: 8px;
             border-radius: 4px;
@@ -63,28 +47,6 @@
             outline: none;
             border-color: #3b82f6;
             box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
-        }
-        .defect-detail-item {
-            border-left: 3px solid #ef4444;
-            padding-left: 10px;
-            margin-bottom: 8px;
-        }
-        .defect-checkbox-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 8px;
-            margin-top: 8px;
-        }
-        .defect-category {
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 6px;
-            padding: 12px;
-        }
-        .defect-category h5 {
-            font-weight: 600;
-            margin-bottom: 8px;
-            color: #374151;
         }
     </style>
 </head>
@@ -220,7 +182,7 @@
                     </div>
 
                     <!-- Summary Cards -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
                         <div class="bg-white rounded-lg shadow p-4 card-shadow">
                             <div class="flex items-center">
                                 <div class="rounded-full bg-blue-100 p-3 mr-4">
@@ -259,20 +221,6 @@
                                 <div>
                                     <p class="text-sm font-medium text-gray-500">Defect Rate</p>
                                     <p class="text-2xl font-bold text-gray-800" x-text="(dashboardData.defectRate || 0) + '%'"></p>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="bg-white rounded-lg shadow p-4 card-shadow">
-                            <div class="flex items-center">
-                                <div class="rounded-full bg-purple-100 p-3 mr-4">
-                                    <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
-                                    </svg>
-                                </div>
-                                <div>
-                                    <p class="text-sm font-medium text-gray-500">Operator Aktif</p>
-                                    <p class="text-2xl font-bold text-gray-800" x-text="dashboardData.activeOperators || 0"></p>
                                 </div>
                             </div>
                         </div>
@@ -434,7 +382,6 @@
                                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Defect</th>
                                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">QC Checked</th>
                                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Defect Rate</th>
-                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Defect Details</th>
                                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
                                     </tr>
                                 </thead>
@@ -466,84 +413,11 @@
                                                 :class="(hour.qcChecked > 0 ? (hour.defect / hour.qcChecked * 100) : 0) > 5 ? 'text-red-600' : 'text-green-600'">
                                                 <span x-text="(hour.qcChecked > 0 ? (hour.defect / hour.qcChecked * 100).toFixed(2) : 0) + '%'"></span>
                                             </td>
-                                            <td class="px-6 py-4 whitespace-nowrap">
-                                                <button @click="openDefectDetailsModal(lineDetail.line, index)" 
-                                                        class="text-blue-600 hover:text-blue-900 text-sm">
-                                                    <span x-text="hour.defectDetails ? hour.defectDetails.length : 0"></span> Details
-                                                </button>
-                                                <div x-show="hour.defectDetails && hour.defectDetails.length > 0" class="mt-1">
-                                                    <template x-for="(detail, detailIndex) in hour.defectDetails" :key="detailIndex">
-                                                        <div class="defect-detail-item text-xs text-gray-600">
-                                                            <div x-text="'Jenis: ' + (detail.type || '-')"></div>
-                                                            <div x-text="'Area: ' + (detail.area || '-')"></div>
-                                                        </div>
-                                                    </template>
-                                                </div>
-                                            </td>
                                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                                 <button @click="updateHourlyDataDirect(lineDetail.line, index)" 
                                                         class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 text-sm">
                                                     Simpan
                                                 </button>
-                                            </td>
-                                        </tr>
-                                    </template>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    <!-- Operators -->
-                    <div class="bg-white rounded-lg shadow overflow-hidden card-shadow">
-                        <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
-                            <h3 class="text-lg leading-6 font-medium text-gray-900">Data Operator</h3>
-                            <p class="mt-1 max-w-2xl text-sm text-gray-500">Performa operator di line ini</p>
-                        </div>
-                        <div class="overflow-x-auto">
-                            <table class="min-w-full divide-y divide-gray-200">
-                                <thead class="bg-gray-50">
-                                    <tr>
-                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama</th>
-                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Posisi</th>
-                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Target</th>
-                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Output</th>
-                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Defect</th>
-                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Efisiensi</th>
-                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="bg-white divide-y divide-gray-200">
-                                    <template x-for="operator in lineDetail.operators" :key="operator.id">
-                                        <tr>
-                                            <td class="px-6 py-4 whitespace-nowrap">
-                                                <div class="text-sm font-medium text-gray-900" x-text="operator.name"></div>
-                                            </td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500" x-text="operator.position"></td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500" x-text="operator.target"></td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900" x-text="operator.output"></td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-red-600" x-text="operator.defect"></td>
-                                            <td class="px-6 py-4 whitespace-nowrap">
-                                                <div class="flex items-center">
-                                                    <div class="w-16 bg-gray-200 rounded-full h-2 mr-2">
-                                                        <div class="defect-bar bg-green-500 h-2 rounded-full" :style="'width: ' + Math.min(operator.efficiency, 100) + '%;'"></div>
-                                                    </div>
-                                                    <span class="text-sm font-medium" :class="operator.efficiency >= 100 ? 'text-green-600' : operator.efficiency >= 80 ? 'text-yellow-600' : 'text-red-600'" x-text="operator.efficiency + '%'"></span>
-                                                </div>
-                                            </td>
-                                            <td class="px-6 py-4 whitespace-nowrap">
-                                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium" 
-                                                      :class="{
-                                                          'bg-green-100 text-green-800': operator.status === 'active',
-                                                          'bg-yellow-100 text-yellow-800': operator.status === 'break',
-                                                          'bg-red-100 text-red-800': operator.status === 'off'
-                                                      }">
-                                                    <span class="status-indicator" :class="{
-                                                        'status-active': operator.status === 'active',
-                                                        'status-break': operator.status === 'break',
-                                                        'status-off': operator.status === 'off'
-                                                    }"></span>
-                                                    <span x-text="operator.status === 'active' ? 'Aktif' : operator.status === 'break' ? 'Istirahat' : 'Off'"></span>
-                                                </span>
                                             </td>
                                         </tr>
                                     </template>
@@ -614,43 +488,6 @@
                                     </div>
                                 </div>
                                 
-                                <!-- Defect Details Checklist -->
-                                <div class="mb-6">
-                                    <div class="flex justify-between items-center mb-4">
-                                        <h4 class="text-lg font-medium text-gray-900">Detail Defect (Checklist)</h4>
-                                        <div class="text-sm text-gray-500">
-                                            Total terpilih: <span x-text="getSelectedDefectCount()" class="font-semibold"></span>
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="defect-checkbox-grid">
-                                        <template x-for="defectType in defectTypes" :key="defectType.id">
-                                            <div class="defect-category">
-                                                <h5 x-text="defectType.name"></h5>
-                                                <div class="space-y-2">
-                                                    <template x-for="defectArea in defectAreas" :key="defectArea.id">
-                                                        <label class="flex items-center space-x-2 cursor-pointer">
-                                                            <input type="checkbox" 
-                                                                   :value="defectType.name + '|' + defectArea.name"
-                                                                   x-model="inputForm.selectedDefects"
-                                                                   class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
-                                                            <span class="text-sm text-gray-700" x-text="defectArea.name"></span>
-                                                        </label>
-                                                    </template>
-                                                </div>
-                                            </div>
-                                        </template>
-                                    </div>
-                                    
-                                    <div x-show="inputForm.selectedDefects.length === 0" class="text-center py-4 text-gray-500 border-2 border-dashed border-gray-300 rounded-lg mt-4">
-                                        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                        </svg>
-                                        <p class="mt-2">Belum ada defect yang dipilih</p>
-                                        <p class="text-sm">Centang defect yang ditemukan pada jam ini</p>
-                                    </div>
-                                </div>
-                                
                                 <div class="flex justify-end">
                                     <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                                         Simpan Data
@@ -660,416 +497,7 @@
                         </div>
                     </div>
                 </div>
-
-                <!-- Admin Management Page -->
-                <div x-show="currentPage === 'admin-management'" x-init="loadAdminData()" class="fade-in">
-                    <div class="mb-6">
-                        <h1 class="text-2xl font-bold text-gray-800">Manajemen Admin</h1>
-                        <p class="text-gray-600">Kelola lines, users, dan konfigurasi sistem</p>
-                    </div>
-
-                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                        <!-- Line Management -->
-                        <div class="bg-white rounded-lg shadow overflow-hidden card-shadow">
-                            <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
-                                <h3 class="text-lg leading-6 font-medium text-gray-900">Manajemen Line</h3>
-                                <p class="mt-1 max-w-2xl text-sm text-gray-500">Tambah, edit, atau hapus line produksi</p>
-                            </div>
-                            <div class="p-4">
-                                <button @click="openLineModal()" class="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 mb-4">
-                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                                    </svg>
-                                    Tambah Line Baru
-                                </button>
-                                
-                                <div class="overflow-x-auto">
-                                    <table class="min-w-full divide-y divide-gray-200">
-                                        <thead class="bg-gray-50">
-                                            <tr>
-                                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Line</th>
-                                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Model</th>
-                                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Target</th>
-                                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody class="bg-white divide-y divide-gray-200">
-                                            <template x-for="line in lines" :key="line.name">
-                                                <tr>
-                                                    <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900" x-text="line.name"></td>
-                                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500" x-text="line.data.model"></td>
-                                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500" x-text="line.data.target"></td>
-                                                    <td class="px-4 py-3 whitespace-nowrap text-sm font-medium">
-                                                        <button @click="openLineModal(line)" class="text-blue-600 hover:text-blue-900 mr-2">Edit</button>
-                                                        <button @click="deleteLine(line.name)" class="text-red-600 hover:text-red-900">Hapus</button>
-                                                    </td>
-                                                </tr>
-                                            </template>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- User Management -->
-                        <div class="bg-white rounded-lg shadow overflow-hidden card-shadow">
-                            <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
-                                <h3 class="text-lg leading-6 font-medium text-gray-900">Manajemen User</h3>
-                                <p class="mt-1 max-w-2xl text-sm text-gray-500">Kelola pengguna sistem</p>
-                            </div>
-                            <div class="p-4">
-                                <button @click="openUserModal()" class="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 mb-4">
-                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                                    </svg>
-                                    Tambah User Baru
-                                </button>
-                                
-                                <div class="overflow-x-auto">
-                                    <table class="min-w-full divide-y divide-gray-200">
-                                        <thead class="bg-gray-50">
-                                            <tr>
-                                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Username</th>
-                                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama</th>
-                                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
-                                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody class="bg-white divide-y divide-gray-200">
-                                            <template x-for="user in users" :key="user.id">
-                                                <tr>
-                                                    <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900" x-text="user.username"></td>
-                                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500" x-text="user.name"></td>
-                                                    <td class="px-4 py-3 whitespace-nowrap">
-                                                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full" 
-                                                              :class="{
-                                                                  'bg-purple-100 text-purple-800': user.role === 'admin',
-                                                                  'bg-blue-100 text-blue-800': user.role === 'leader',
-                                                                  'bg-green-100 text-green-800': user.role === 'operator'
-                                                              }" 
-                                                              x-text="user.role"></span>
-                                                    </td>
-                                                    <td class="px-4 py-3 whitespace-nowrap text-sm font-medium">
-                                                        <button @click="openUserModal(user)" class="text-blue-600 hover:text-blue-900 mr-2">Edit</button>
-                                                        <button @click="deleteUser(user.id)" class="text-red-600 hover:text-red-900">Hapus</button>
-                                                    </td>
-                                                </tr>
-                                            </template>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Defect Management -->
-                    <div class="bg-white rounded-lg shadow overflow-hidden card-shadow mb-6">
-                        <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
-                            <h3 class="text-lg leading-6 font-medium text-gray-900">Manajemen Defect</h3>
-                            <p class="mt-1 max-w-2xl text-sm text-gray-500">Kelola jenis dan area defect</p>
-                        </div>
-                        <div class="p-4">
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <!-- Defect Types -->
-                                <div>
-                                    <div class="flex justify-between items-center mb-4">
-                                        <h4 class="text-lg font-medium text-gray-900">Jenis Defect</h4>
-                                        <button @click="openDefectTypeModal()" class="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                                            </svg>
-                                            Tambah
-                                        </button>
-                                    </div>
-                                    
-                                    <div class="space-y-2">
-                                        <template x-for="defectType in defectTypes" :key="defectType.id">
-                                            <div class="flex justify-between items-center p-3 bg-gray-50 rounded-md">
-                                                <span x-text="defectType.name"></span>
-                                                <div>
-                                                    <button @click="openDefectTypeModal(defectType)" class="text-blue-600 hover:text-blue-900 mr-2">Edit</button>
-                                                    <button @click="deleteDefectType(defectType.id)" class="text-red-600 hover:text-red-900">Hapus</button>
-                                                </div>
-                                            </div>
-                                        </template>
-                                    </div>
-                                </div>
-                                
-                                <!-- Defect Areas -->
-                                <div>
-                                    <div class="flex justify-between items-center mb-4">
-                                        <h4 class="text-lg font-medium text-gray-900">Area Defect</h4>
-                                        <button @click="openDefectAreaModal()" class="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                                            </svg>
-                                            Tambah
-                                        </button>
-                                    </div>
-                                    
-                                    <div class="space-y-2">
-                                        <template x-for="defectArea in defectAreas" :key="defectArea.id">
-                                            <div class="flex justify-between items-center p-3 bg-gray-50 rounded-md">
-                                                <span x-text="defectArea.name"></span>
-                                                <div>
-                                                    <button @click="openDefectAreaModal(defectArea)" class="text-blue-600 hover:text-blue-900 mr-2">Edit</button>
-                                                    <button @click="deleteDefectArea(defectArea.id)" class="text-red-600 hover:text-red-900">Hapus</button>
-                                                </div>
-                                            </div>
-                                        </template>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- System Actions -->
-                    <div class="bg-white rounded-lg shadow overflow-hidden card-shadow">
-                        <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
-                            <h3 class="text-lg leading-6 font-medium text-gray-900">Aksi Sistem</h3>
-                            <p class="mt-1 max-w-2xl text-sm text-gray-500">Backup dan sinkronisasi data</p>
-                        </div>
-                        <div class="p-4">
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <button @click="createBackup()" class="inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
-                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path>
-                                    </svg>
-                                    Buat Backup
-                                </button>
-                                
-                                <button @click="syncDates()" class="inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-                                    </svg>
-                                    Sinkronisasi Tanggal
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
             </main>
-        </div>
-    </div>
-
-    <!-- Modals -->
-    <!-- Line Modal -->
-    <div x-show="lineModal.open" class="fixed inset-0 overflow-y-auto z-50" x-cloak>
-        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <div class="fixed inset-0 transition-opacity" aria-hidden="true">
-                <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
-            </div>
-            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-            <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-                <form @submit.prevent="saveLine">
-                    <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                        <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4" x-text="lineModal.isEdit ? 'Edit Line' : 'Tambah Line Baru'"></h3>
-                        <div class="space-y-4">
-                            <div>
-                                <label for="line-name" class="block text-sm font-medium text-gray-700">Nama Line</label>
-                                <input type="text" id="line-name" x-model="lineModal.data.lineName" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" :readonly="lineModal.isEdit" required>
-                            </div>
-                            <div>
-                                <label for="label-week" class="block text-sm font-medium text-gray-700">Label/Week</label>
-                                <input type="text" id="label-week" x-model="lineModal.data.labelWeek" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" required>
-                            </div>
-                            <div>
-                                <label for="model" class="block text-sm font-medium text-gray-700">Model</label>
-                                <input type="text" id="model" x-model="lineModal.data.model" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" required>
-                            </div>
-                            <div>
-                                <label for="target" class="block text-sm font-medium text-gray-700">Target Harian</label>
-                                <input type="number" id="target" x-model="lineModal.data.target" min="1" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" required>
-                            </div>
-                            <div>
-                                <label for="date" class="block text-sm font-medium text-gray-700">Tanggal</label>
-                                <input type="date" id="date" x-model="lineModal.data.date" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" required>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                        <button type="submit" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm">
-                            Simpan
-                        </button>
-                        <button type="button" @click="lineModal.open = false" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
-                            Batal
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <!-- User Modal -->
-    <div x-show="userModal.open" class="fixed inset-0 overflow-y-auto z-50" x-cloak>
-        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <div class="fixed inset-0 transition-opacity" aria-hidden="true">
-                <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
-            </div>
-            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-            <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-                <form @submit.prevent="saveUser">
-                    <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                        <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4" x-text="userModal.isEdit ? 'Edit User' : 'Tambah User Baru'"></h3>
-                        <div class="space-y-4">
-                            <div>
-                                <label for="username" class="block text-sm font-medium text-gray-700">Username</label>
-                                <input type="text" id="username" x-model="userModal.data.username" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" required>
-                            </div>
-                            <div>
-                                <label for="password" class="block text-sm font-medium text-gray-700">Password</label>
-                                <input type="password" id="password" x-model="userModal.data.password" :placeholder="userModal.isEdit ? 'Kosongkan jika tidak diubah' : ''" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" :required="!userModal.isEdit">
-                            </div>
-                            <div>
-                                <label for="name" class="block text-sm font-medium text-gray-700">Nama Lengkap</label>
-                                <input type="text" id="name" x-model="userModal.data.name" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" required>
-                            </div>
-                            <div>
-                                <label for="role" class="block text-sm font-medium text-gray-700">Role</label>
-                                <select id="role" x-model="userModal.data.role" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md" required>
-                                    <option value="operator">Operator</option>
-                                    <option value="leader">Leader</option>
-                                    <option value="admin">Admin</option>
-                                </select>
-                            </div>
-                            <div x-show="userModal.data.role !== 'admin'">
-                                <label for="line" class="block text-sm font-medium text-gray-700">Line</label>
-                                <select id="line" x-model="userModal.data.line" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md" :required="userModal.data.role !== 'admin'">
-                                    <option value="">Pilih Line</option>
-                                    <template x-for="line in lines" :key="line.name">
-                                        <option :value="line.name" x-text="line.name"></option>
-                                    </template>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                        <button type="submit" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm">
-                            Simpan
-                        </button>
-                        <button type="button" @click="userModal.open = false" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
-                            Batal
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <!-- Defect Type Modal -->
-    <div x-show="defectTypeModal.open" class="fixed inset-0 overflow-y-auto z-50" x-cloak>
-        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <div class="fixed inset-0 transition-opacity" aria-hidden="true">
-                <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
-            </div>
-            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-            <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md sm:w-full">
-                <form @submit.prevent="saveDefectType">
-                    <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                        <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4" x-text="defectTypeModal.isEdit ? 'Edit Jenis Defect' : 'Tambah Jenis Defect'"></h3>
-                        <div>
-                            <label for="defect-type-name" class="block text-sm font-medium text-gray-700">Nama Jenis Defect</label>
-                            <input type="text" id="defect-type-name" x-model="defectTypeModal.data.name" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" required>
-                        </div>
-                    </div>
-                    <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                        <button type="submit" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm">
-                            Simpan
-                        </button>
-                        <button type="button" @click="defectTypeModal.open = false" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
-                            Batal
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <!-- Defect Area Modal -->
-    <div x-show="defectAreaModal.open" class="fixed inset-0 overflow-y-auto z-50" x-cloak>
-        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <div class="fixed inset-0 transition-opacity" aria-hidden="true">
-                <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
-            </div>
-            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-            <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md sm:w-full">
-                <form @submit.prevent="saveDefectArea">
-                    <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                        <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4" x-text="defectAreaModal.isEdit ? 'Edit Area Defect' : 'Tambah Area Defect'"></h3>
-                        <div>
-                            <label for="defect-area-name" class="block text-sm font-medium text-gray-700">Nama Area Defect</label>
-                            <input type="text" id="defect-area-name" x-model="defectAreaModal.data.name" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" required>
-                        </div>
-                    </div>
-                    <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                        <button type="submit" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm">
-                            Simpan
-                        </button>
-                        <button type="button" @click="defectAreaModal.open = false" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
-                            Batal
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <!-- Defect Details Modal (Updated dengan Checklist) -->
-    <div x-show="defectDetailsModal.open" class="fixed inset-0 overflow-y-auto z-50" x-cloak>
-        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <div class="fixed inset-0 transition-opacity" aria-hidden="true">
-                <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
-            </div>
-            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-            <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
-                <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                    <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Defect Details - <span x-text="defectDetailsModal.hour"></span></h3>
-                    
-                    <div class="mb-4">
-                        <div class="flex justify-between items-center mb-4">
-                            <h4 class="text-lg font-medium text-gray-900">Detail Defect (Checklist)</h4>
-                            <div class="text-sm text-gray-500">
-                                Total terpilih: <span x-text="defectDetailsModal.selectedDefects.length" class="font-semibold"></span>
-                            </div>
-                        </div>
-                        
-                        <div class="defect-checkbox-grid">
-                            <template x-for="defectType in defectTypes" :key="defectType.id">
-                                <div class="defect-category">
-                                    <h5 x-text="defectType.name"></h5>
-                                    <div class="space-y-2">
-                                        <template x-for="defectArea in defectAreas" :key="defectArea.id">
-                                            <label class="flex items-center space-x-2 cursor-pointer">
-                                                <input type="checkbox" 
-                                                       :value="defectType.name + '|' + defectArea.name"
-                                                       x-model="defectDetailsModal.selectedDefects"
-                                                       class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
-                                                <span class="text-sm text-gray-700" x-text="defectArea.name"></span>
-                                            </label>
-                                        </template>
-                                    </div>
-                                </div>
-                            </template>
-                        </div>
-                        
-                        <div x-show="defectDetailsModal.selectedDefects.length === 0" class="text-center py-4 text-gray-500 border-2 border-dashed border-gray-300 rounded-lg mt-4">
-                            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                            </svg>
-                            <p class="mt-2">Belum ada defect yang dipilih</p>
-                            <p class="text-sm">Centang defect yang ditemukan pada jam ini</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                    <button type="button" @click="saveDefectDetails" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm">
-                        Simpan
-                    </button>
-                    <button type="button" @click="defectDetailsModal.open = false" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
-                        Batal
-                    </button>
-                </div>
-            </div>
         </div>
     </div>
 
@@ -1138,9 +566,6 @@
                 lineDetail: {},
                 currentLine: '',
                 dashboardData: {},
-                users: [],
-                defectTypes: [],
-                defectAreas: [],
                 
                 // Forms
                 inputForm: {
@@ -1148,57 +573,7 @@
                     output: 0,
                     defect: 0,
                     qcChecked: 0,
-                    targetManual: 0,
-                    selectedDefects: [] // Changed from defectDetails to selectedDefects
-                },
-                
-                // Modals
-                lineModal: {
-                    open: false,
-                    isEdit: false,
-                    data: {
-                        lineName: '',
-                        labelWeek: '',
-                        model: '',
-                        target: 180,
-                        date: new Date().toISOString().split('T')[0]
-                    }
-                },
-                
-                userModal: {
-                    open: false,
-                    isEdit: false,
-                    data: {
-                        username: '',
-                        password: '',
-                        name: '',
-                        role: 'operator',
-                        line: ''
-                    }
-                },
-                
-                defectTypeModal: {
-                    open: false,
-                    isEdit: false,
-                    data: {
-                        name: ''
-                    }
-                },
-                
-                defectAreaModal: {
-                    open: false,
-                    isEdit: false,
-                    data: {
-                        name: ''
-                    }
-                },
-                
-                defectDetailsModal: {
-                    open: false,
-                    lineName: '',
-                    hourIndex: 0,
-                    hour: '',
-                    selectedDefects: [] // Changed from defectDetails to selectedDefects
+                    targetManual: 0
                 },
                 
                 // Toast notification
@@ -1214,7 +589,6 @@
                     this.setupNavigation();
                     await this.loadLines();
                     await this.loadDashboardData();
-                    await this.loadDefectConfig();
                 },
                 
                 // Authentication methods
@@ -1277,20 +651,9 @@
                 
                 // Navigation
                 setupNavigation() {
-                    const baseNav = [
+                    this.navigation = [
                         { name: 'Dashboard', page: 'dashboard' }
                     ];
-                    
-                    if (this.currentUser.role === 'admin') {
-                        this.navigation = [
-                            ...baseNav,
-                            { name: 'Manajemen Admin', page: 'admin-management' }
-                        ];
-                    } else if (this.currentUser.role === 'leader') {
-                        this.navigation = baseNav;
-                    } else {
-                        this.navigation = baseNav;
-                    }
                 },
                 
                 changePage(page) {
@@ -1355,46 +718,8 @@
                         totalOutput: this.lines.reduce((sum, line) => sum + line.data.outputDay, 0),
                         totalTarget: this.lines.reduce((sum, line) => sum + line.data.target, 0),
                         defectRate: this.lines.length > 0 ? 
-                            (this.lines.reduce((sum, line) => sum + line.data.defectRatePercentage, 0) / this.lines.length).toFixed(2) : 0,
-                        activeOperators: this.lines.reduce((sum, line) => {
-                            return sum + (line.data.operators ? line.data.operators.filter(op => op.status === 'active').length : 0);
-                        }, 0)
+                            (this.lines.reduce((sum, line) => sum + line.data.defectRatePercentage, 0) / this.lines.length).toFixed(2) : 0
                     };
-                },
-                
-                async loadAdminData() {
-                    await this.loadUsers();
-                    await this.loadDefectConfig();
-                },
-                
-                async loadUsers() {
-                    try {
-                        const response = await fetch('/api/users');
-                        if (response.ok) {
-                            this.users = await response.json();
-                        } else {
-                            console.error('Failed to load users');
-                        }
-                    } catch (error) {
-                        console.error('Error loading users:', error);
-                        this.showToast('Error loading users', 'error');
-                    }
-                },
-                
-                async loadDefectConfig() {
-                    try {
-                        const response = await fetch('/api/defect-config');
-                        if (response.ok) {
-                            const config = await response.json();
-                            this.defectTypes = config.defectTypes.filter(type => type.active);
-                            this.defectAreas = config.defectAreas.filter(area => area.active);
-                        } else {
-                            console.error('Failed to load defect config');
-                        }
-                    } catch (error) {
-                        console.error('Error loading defect config:', error);
-                        this.showToast('Error loading defect config', 'error');
-                    }
                 },
                 
                 // Input data methods
@@ -1404,32 +729,18 @@
                         output: 0,
                         defect: 0,
                         qcChecked: 0,
-                        targetManual: 0,
-                        selectedDefects: []
+                        targetManual: 0
                     };
-                },
-                
-                getSelectedDefectCount() {
-                    return this.inputForm.selectedDefects.length;
                 },
                 
                 async submitHourlyData() {
                     try {
-                        // Convert selected defects to defectDetails format
-                        const defectDetails = this.inputForm.selectedDefects.map(defect => {
-                            const [type, area] = defect.split('|');
-                            return { type, area };
-                        });
-
                         const response = await fetch(`/api/update-hourly/${this.currentLine}`, {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json'
                             },
-                            body: JSON.stringify({
-                                ...this.inputForm,
-                                defectDetails: defectDetails
-                            })
+                            body: JSON.stringify(this.inputForm)
                         });
                         
                         if (response.ok) {
@@ -1464,7 +775,7 @@
                         
                         if (response.ok) {
                             const data = await response.json();
-                            this.showToast('Target manual berhasil diupdate. Target harian: ' + data.totalTarget, 'success');
+                            this.showToast('Target manual berhasil diupdate', 'success');
                             await this.loadLineDetail(lineName);
                             await this.loadDashboardData();
                         } else {
@@ -1510,60 +821,6 @@
                     }
                 },
                 
-                // Defect details methods
-                openDefectDetailsModal(lineName, hourIndex) {
-                    this.defectDetailsModal.lineName = lineName;
-                    this.defectDetailsModal.hourIndex = hourIndex;
-                    this.defectDetailsModal.hour = this.lineDetail.hourly_data[hourIndex].hour;
-                    
-                    // Convert existing defectDetails to selectedDefects format
-                    const existingDefects = this.lineDetail.hourly_data[hourIndex].defectDetails || [];
-                    this.defectDetailsModal.selectedDefects = existingDefects.map(detail => 
-                        `${detail.type}|${detail.area}`
-                    );
-                    
-                    this.defectDetailsModal.open = true;
-                },
-                
-                async saveDefectDetails() {
-                    try {
-                        // Convert selectedDefects back to defectDetails format
-                        const defectDetails = this.defectDetailsModal.selectedDefects.map(defect => {
-                            const [type, area] = defect.split('|');
-                            return { type, area };
-                        });
-
-                        const hour = this.lineDetail.hourly_data[this.defectDetailsModal.hourIndex];
-                        
-                        const response = await fetch(`/api/update-hourly/${this.defectDetailsModal.lineName}`, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify({
-                                hourIndex: this.defectDetailsModal.hourIndex,
-                                output: hour.output,
-                                defect: hour.defect,
-                                qcChecked: hour.qcChecked,
-                                targetManual: hour.targetManual,
-                                defectDetails: defectDetails
-                            })
-                        });
-                        
-                        if (response.ok) {
-                            this.showToast('Defect details berhasil disimpan', 'success');
-                            this.defectDetailsModal.open = false;
-                            await this.loadLineDetail(this.defectDetailsModal.lineName);
-                        } else {
-                            const error = await response.json();
-                            this.showToast(error.error || 'Failed to save defect details', 'error');
-                        }
-                    } catch (error) {
-                        console.error('Error saving defect details:', error);
-                        this.showToast('Error saving defect details', 'error');
-                    }
-                },
-                
                 // Export methods
                 async exportLineExcel(lineName) {
                     try {
@@ -1586,343 +843,6 @@
                     } catch (error) {
                         console.error('Error exporting Excel:', error);
                         this.showToast('Error exporting Excel', 'error');
-                    }
-                },
-                
-                // Admin management methods
-                openLineModal(line = null) {
-                    if (line) {
-                        this.lineModal.isEdit = true;
-                        this.lineModal.data = {
-                            lineName: line.name,
-                            labelWeek: line.data.labelWeek,
-                            model: line.data.model,
-                            target: line.data.target,
-                            date: line.data.date
-                        };
-                    } else {
-                        this.lineModal.isEdit = false;
-                        this.lineModal.data = {
-                            lineName: '',
-                            labelWeek: '',
-                            model: '',
-                            target: 180,
-                            date: new Date().toISOString().split('T')[0]
-                        };
-                    }
-                    this.lineModal.open = true;
-                },
-                
-                async saveLine() {
-                    try {
-                        const url = this.lineModal.isEdit ? 
-                            `/api/lines/${this.lineModal.data.lineName}` : 
-                            '/api/lines';
-                        
-                        const method = this.lineModal.isEdit ? 'PUT' : 'POST';
-                        
-                        const response = await fetch(url, {
-                            method: method,
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify(this.lineModal.data)
-                        });
-                        
-                        if (response.ok) {
-                            this.showToast(`Line ${this.lineModal.isEdit ? 'updated' : 'created'} successfully`, 'success');
-                            this.lineModal.open = false;
-                            await this.loadLines();
-                            await this.loadDashboardData();
-                        } else {
-                            const error = await response.json();
-                            this.showToast(error.error || `Failed to ${this.lineModal.isEdit ? 'update' : 'create'} line`, 'error');
-                        }
-                    } catch (error) {
-                        console.error('Error saving line:', error);
-                        this.showToast('Error saving line', 'error');
-                    }
-                },
-                
-                async deleteLine(lineName) {
-                    if (!confirm(`Are you sure you want to delete line ${lineName}?`)) {
-                        return;
-                    }
-                    
-                    try {
-                        const response = await fetch(`/api/lines/${lineName}`, {
-                            method: 'DELETE'
-                        });
-                        
-                        if (response.ok) {
-                            this.showToast('Line deleted successfully', 'success');
-                            await this.loadLines();
-                            await this.loadDashboardData();
-                        } else {
-                            const error = await response.json();
-                            this.showToast(error.error || 'Failed to delete line', 'error');
-                        }
-                    } catch (error) {
-                        console.error('Error deleting line:', error);
-                        this.showToast('Error deleting line', 'error');
-                    }
-                },
-                
-                openUserModal(user = null) {
-                    if (user) {
-                        this.userModal.isEdit = true;
-                        this.userModal.data = {
-                            username: user.username,
-                            password: '',
-                            name: user.name,
-                            role: user.role,
-                            line: user.line
-                        };
-                    } else {
-                        this.userModal.isEdit = false;
-                        this.userModal.data = {
-                            username: '',
-                            password: '',
-                            name: '',
-                            role: 'operator',
-                            line: ''
-                        };
-                    }
-                    this.userModal.open = true;
-                },
-                
-                async saveUser() {
-                    try {
-                        const url = this.userModal.isEdit ? 
-                            `/api/users/${this.users.find(u => u.username === this.userModal.data.username)?.id}` : 
-                            '/api/users';
-                        
-                        const method = this.userModal.isEdit ? 'PUT' : 'POST';
-                        
-                        // Remove password if empty in edit mode
-                        const data = { ...this.userModal.data };
-                        if (this.userModal.isEdit && !data.password) {
-                            delete data.password;
-                        }
-                        
-                        const response = await fetch(url, {
-                            method: method,
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify(data)
-                        });
-                        
-                        if (response.ok) {
-                            this.showToast(`User ${this.userModal.isEdit ? 'updated' : 'created'} successfully`, 'success');
-                            this.userModal.open = false;
-                            await this.loadUsers();
-                        } else {
-                            const error = await response.json();
-                            this.showToast(error.error || `Failed to ${this.userModal.isEdit ? 'update' : 'create'} user`, 'error');
-                        }
-                    } catch (error) {
-                        console.error('Error saving user:', error);
-                        this.showToast('Error saving user', 'error');
-                    }
-                },
-                
-                async deleteUser(userId) {
-                    if (!confirm('Are you sure you want to delete this user?')) {
-                        return;
-                    }
-                    
-                    try {
-                        const response = await fetch(`/api/users/${userId}`, {
-                            method: 'DELETE'
-                        });
-                        
-                        if (response.ok) {
-                            this.showToast('User deleted successfully', 'success');
-                            await this.loadUsers();
-                        } else {
-                            const error = await response.json();
-                            this.showToast(error.error || 'Failed to delete user', 'error');
-                        }
-                    } catch (error) {
-                        console.error('Error deleting user:', error);
-                        this.showToast('Error deleting user', 'error');
-                    }
-                },
-                
-                openDefectTypeModal(defectType = null) {
-                    if (defectType) {
-                        this.defectTypeModal.isEdit = true;
-                        this.defectTypeModal.data = {
-                            name: defectType.name
-                        };
-                    } else {
-                        this.defectTypeModal.isEdit = false;
-                        this.defectTypeModal.data = {
-                            name: ''
-                        };
-                    }
-                    this.defectTypeModal.open = true;
-                },
-                
-                async saveDefectType() {
-                    try {
-                        const url = this.defectTypeModal.isEdit ? 
-                            `/api/defect-types/${this.defectTypes.find(t => t.name === this.defectTypeModal.data.name)?.id}` : 
-                            '/api/defect-types';
-                        
-                        const method = this.defectTypeModal.isEdit ? 'PUT' : 'POST';
-                        
-                        const response = await fetch(url, {
-                            method: method,
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify(this.defectTypeModal.data)
-                        });
-                        
-                        if (response.ok) {
-                            this.showToast(`Defect type ${this.defectTypeModal.isEdit ? 'updated' : 'created'} successfully`, 'success');
-                            this.defectTypeModal.open = false;
-                            await this.loadDefectConfig();
-                        } else {
-                            const error = await response.json();
-                            this.showToast(error.error || `Failed to ${this.defectTypeModal.isEdit ? 'update' : 'create'} defect type`, 'error');
-                        }
-                    } catch (error) {
-                        console.error('Error saving defect type:', error);
-                        this.showToast('Error saving defect type', 'error');
-                    }
-                },
-                
-                async deleteDefectType(typeId) {
-                    if (!confirm('Are you sure you want to delete this defect type?')) {
-                        return;
-                    }
-                    
-                    try {
-                        const response = await fetch(`/api/defect-types/${typeId}`, {
-                            method: 'DELETE'
-                        });
-                        
-                        if (response.ok) {
-                            this.showToast('Defect type deleted successfully', 'success');
-                            await this.loadDefectConfig();
-                        } else {
-                            const error = await response.json();
-                            this.showToast(error.error || 'Failed to delete defect type', 'error');
-                        }
-                    } catch (error) {
-                        console.error('Error deleting defect type:', error);
-                        this.showToast('Error deleting defect type', 'error');
-                    }
-                },
-                
-                openDefectAreaModal(defectArea = null) {
-                    if (defectArea) {
-                        this.defectAreaModal.isEdit = true;
-                        this.defectAreaModal.data = {
-                            name: defectArea.name
-                        };
-                    } else {
-                        this.defectAreaModal.isEdit = false;
-                        this.defectAreaModal.data = {
-                            name: ''
-                        };
-                    }
-                    this.defectAreaModal.open = true;
-                },
-                
-                async saveDefectArea() {
-                    try {
-                        const url = this.defectAreaModal.isEdit ? 
-                            `/api/defect-areas/${this.defectAreas.find(a => a.name === this.defectAreaModal.data.name)?.id}` : 
-                            '/api/defect-areas';
-                        
-                        const method = this.defectAreaModal.isEdit ? 'PUT' : 'POST';
-                        
-                        const response = await fetch(url, {
-                            method: method,
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify(this.defectAreaModal.data)
-                        });
-                        
-                        if (response.ok) {
-                            this.showToast(`Defect area ${this.defectAreaModal.isEdit ? 'updated' : 'created'} successfully`, 'success');
-                            this.defectAreaModal.open = false;
-                            await this.loadDefectConfig();
-                        } else {
-                            const error = await response.json();
-                            this.showToast(error.error || `Failed to ${this.defectAreaModal.isEdit ? 'update' : 'create'} defect area`, 'error');
-                        }
-                    } catch (error) {
-                        console.error('Error saving defect area:', error);
-                        this.showToast('Error saving defect area', 'error');
-                    }
-                },
-                
-                async deleteDefectArea(areaId) {
-                    if (!confirm('Are you sure you want to delete this defect area?')) {
-                        return;
-                    }
-                    
-                    try {
-                        const response = await fetch(`/api/defect-areas/${areaId}`, {
-                            method: 'DELETE'
-                        });
-                        
-                        if (response.ok) {
-                            this.showToast('Defect area deleted successfully', 'success');
-                            await this.loadDefectConfig();
-                        } else {
-                            const error = await response.json();
-                            this.showToast(error.error || 'Failed to delete defect area', 'error');
-                        }
-                    } catch (error) {
-                        console.error('Error deleting defect area:', error);
-                        this.showToast('Error deleting defect area', 'error');
-                    }
-                },
-                
-                // System actions
-                async createBackup() {
-                    try {
-                        const response = await fetch('/api/backup/now', {
-                            method: 'POST'
-                        });
-                        
-                        if (response.ok) {
-                            this.showToast('Backup created successfully', 'success');
-                        } else {
-                            const error = await response.json();
-                            this.showToast(error.error || 'Failed to create backup', 'error');
-                        }
-                    } catch (error) {
-                        console.error('Error creating backup:', error);
-                        this.showToast('Error creating backup', 'error');
-                    }
-                },
-                
-                async syncDates() {
-                    try {
-                        const response = await fetch('/api/sync-dates', {
-                            method: 'POST'
-                        });
-                        
-                        if (response.ok) {
-                            const data = await response.json();
-                            this.showToast(data.message, 'success');
-                            await this.loadLines();
-                            await this.loadDashboardData();
-                        } else {
-                            const error = await response.json();
-                            this.showToast(error.error || 'Failed to sync dates', 'error');
-                        }
-                    } catch (error) {
-                        console.error('Error syncing dates:', error);
-                        this.showToast('Error syncing dates', 'error');
                     }
                 },
                 

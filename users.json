@@ -18,11 +18,11 @@
     },
     {
       "id": 3,
-      "username": "leader1",
+      "username": "sewing",
       "password": "1234",
-      "name": "Emmeril Apps",
-      "line": "LINE-1",
-      "role": "leader"
+      "name": "Ami",
+      "line": "",
+      "role": "admin_operator"
     }
   ]
 }

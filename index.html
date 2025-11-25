@@ -305,7 +305,8 @@
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                                 <button @click="viewLine(line.name)" class="text-blue-600 hover:text-blue-900 mr-3">Lihat</button>
-                                                <button @click="inputData(line.name)" class="text-green-600 hover:text-green-900">Input</button>
+                                                <!-- Tombol Input hanya untuk operator dan admin, bukan admin_operator -->
+                                                <button x-show="currentUser.role !== 'admin_operator'" @click="inputData(line.name)" class="text-green-600 hover:text-green-900">Input</button>
                                             </td>
                                         </tr>
                                     </template>
@@ -422,29 +423,30 @@
                                             <td class="px-6 py-4 whitespace-nowrap">
                                                 <input type="number" x-model="hour.targetManual" 
                                                        @change="updateTargetManual(lineDetail.line, index, hour.targetManual)"
-                                                       class="input-cell">
+                                                       class="input-cell" :disabled="currentUser.role === 'admin_operator'">
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap">
                                                 <input type="number" x-model="hour.output" 
-                                                       class="input-cell">
+                                                       class="input-cell" :disabled="currentUser.role === 'admin_operator'">
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium" 
                                                 :class="hour.output - hour.targetManual >= 0 ? 'text-green-600' : 'text-red-600'"
                                                 x-text="hour.output - hour.targetManual"></td>
                                             <td class="px-6 py-4 whitespace-nowrap">
                                                 <input type="number" x-model="hour.defect" 
-                                                       class="input-cell">
+                                                       class="input-cell" :disabled="currentUser.role === 'admin_operator'">
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap">
                                                 <input type="number" x-model="hour.qcChecked" 
-                                                       class="input-cell">
+                                                       class="input-cell" :disabled="currentUser.role === 'admin_operator'">
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium" 
                                                 :class="(hour.qcChecked > 0 ? (hour.defect / hour.qcChecked * 100) : 0) > 5 ? 'text-red-600' : 'text-green-600'">
                                                 <span x-text="(hour.qcChecked > 0 ? (hour.defect / hour.qcChecked * 100).toFixed(2) : 0) + '%'"></span>
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                                <button @click="updateHourlyDataDirect(lineDetail.line, index)" 
+                                                <!-- Tombol Simpan hanya untuk operator dan admin, bukan admin_operator -->
+                                                <button x-show="currentUser.role !== 'admin_operator'" @click="updateHourlyDataDirect(lineDetail.line, index)" 
                                                         class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 text-sm">
                                                     Simpan
                                                 </button>
@@ -459,8 +461,8 @@
                   
                 </div>
 
-                <!-- Input Data Page -->
-                <div x-show="currentPage === 'input-data'" class="fade-in">
+                <!-- Input Data Page - Hanya untuk operator dan admin, bukan admin_operator -->
+                <div x-show="currentPage === 'input-data' && currentUser.role !== 'admin_operator'" class="fade-in">
                     <div class="mb-6 flex justify-between items-center">
                         <div>
                             <h1 class="text-2xl font-bold text-gray-800" x-text="'Input Data - Line ' + currentLine"></h1>
@@ -530,174 +532,233 @@
                     </div>
                 </div>
 
+                <!-- Pesan Akses Ditolak untuk Admin Operator di Halaman Input Data -->
+                <div x-show="currentPage === 'input-data' && currentUser.role === 'admin_operator'" class="fade-in">
+                    <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <svg class="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <h3 class="text-sm font-medium text-yellow-800">
+                                    Akses Dibatasi
+                                </h3>
+                                <div class="mt-2 text-sm text-yellow-700">
+                                    <p>
+                                        Anda login sebagai <span class="font-semibold">Admin Operator</span>. Role ini hanya memiliki akses untuk:
+                                    </p>
+                                    <ul class="list-disc list-inside mt-1">
+                                        <li>Melihat dashboard produksi</li>
+                                        <li>Mengelola line produksi (tambah, edit, hapus)</li>
+                                        <li>Melihat laporan berdasarkan tanggal</li>
+                                    </ul>
+                                    <p class="mt-2">
+                                        Untuk input data produksi, silakan login sebagai <span class="font-semibold">Operator</span> atau <span class="font-semibold">Admin</span>.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="text-center">
+                        <button @click="currentPage = 'dashboard'" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                            Kembali ke Dashboard
+                        </button>
+                    </div>
+                </div>
+
                 <!-- Admin Management Page -->
-               <!-- Admin Management Page -->
-<div x-show="currentPage === 'admin-management'" x-init="loadAdminData()" class="fade-in">
-    <div class="mb-6">
-        <h1 class="text-2xl font-bold text-gray-800" x-text="currentUser.role === 'admin_operator' ? 'Manajemen Line & Laporan' : 'Manajemen Admin'"></h1>
-        <p class="text-gray-600" x-text="currentUser.role === 'admin_operator' ? 'Kelola lines dan lihat laporan produksi' : 'Kelola lines, users, dan konfigurasi sistem'"></p>
-    </div>
+                <div x-show="currentPage === 'admin-management'" x-init="loadAdminData()" class="fade-in">
+                    <div class="mb-6">
+                        <h1 class="text-2xl font-bold text-gray-800" x-text="currentUser.role === 'admin_operator' ? 'Manajemen Line & Laporan' : 'Manajemen Admin'"></h1>
+                        <p class="text-gray-600" x-text="currentUser.role === 'admin_operator' ? 'Kelola lines dan lihat laporan produksi' : 'Kelola lines, users, dan konfigurasi sistem'"></p>
+                    </div>
 
-    <!-- Line Management - Untuk admin dan admin_operator -->
-    <div class="bg-white rounded-lg shadow overflow-hidden card-shadow mb-6">
-        <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
-            <h3 class="text-lg leading-6 font-medium text-gray-900">Manajemen Line</h3>
-            <p class="mt-1 max-w-2xl text-sm text-gray-500">Tambah, edit, atau hapus line produksi</p>
-        </div>
-        <div class="p-4">
-            <button @click="openLineModal()" class="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 mb-4">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                </svg>
-                Tambah Line Baru
-            </button>
-            
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Line</th>
-                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Model</th>
-                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Target</th>
-                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody class="bg-white divide-y divide-gray-200">
-                        <template x-for="line in lines" :key="line.name">
-                            <tr>
-                                <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900" x-text="line.name"></td>
-                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500" x-text="line.data.model"></td>
-                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500" x-text="line.data.target"></td>
-                                <td class="px-4 py-3 whitespace-nowrap text-sm font-medium">
-                                    <button @click="openLineModal(line)" class="text-blue-600 hover:text-blue-900 mr-2">Edit</button>
-                                    <button @click="deleteLine(line.name)" class="text-red-600 hover:text-red-900">Hapus</button>
-                                </td>
-                            </tr>
-                        </template>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
+                    <!-- Line Management - Untuk admin dan admin_operator -->
+                    <div class="bg-white rounded-lg shadow overflow-hidden card-shadow mb-6">
+                        <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+                            <h3 class="text-lg leading-6 font-medium text-gray-900">Manajemen Line</h3>
+                            <p class="mt-1 max-w-2xl text-sm text-gray-500">Tambah, edit, atau hapus line produksi</p>
+                        </div>
+                        <div class="p-4">
+                            <button @click="openLineModal()" class="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 mb-4">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                </svg>
+                                Tambah Line Baru
+                            </button>
+                            
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Line</th>
+                                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Model</th>
+                                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Target</th>
+                                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="bg-white divide-y divide-gray-200">
+                                        <template x-for="line in lines" :key="line.name">
+                                            <tr>
+                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900" x-text="line.name"></td>
+                                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500" x-text="line.data.model"></td>
+                                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500" x-text="line.data.target"></td>
+                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-medium">
+                                                    <button @click="openLineModal(line)" class="text-blue-600 hover:text-blue-900 mr-2">Edit</button>
+                                                    <button @click="deleteLine(line.name)" class="text-red-600 hover:text-red-900">Hapus</button>
+                                                </td>
+                                            </tr>
+                                        </template>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
 
-    <!-- User Management - Hanya untuk Admin -->
-    <div x-show="currentUser.role === 'admin'" class="bg-white rounded-lg shadow overflow-hidden card-shadow mb-6">
-        <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
-            <h3 class="text-lg leading-6 font-medium text-gray-900">Manajemen User</h3>
-            <p class="mt-1 max-w-2xl text-sm text-gray-500">Kelola pengguna sistem</p>
-        </div>
-        <div class="p-4">
-            <button @click="openUserModal()" class="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 mb-4">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                </svg>
-                Tambah User Baru
-            </button>
-            
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Username</th>
-                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama</th>
-                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
-                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody class="bg-white divide-y divide-gray-200">
-                        <template x-for="user in users" :key="user.id">
-                            <tr>
-                                <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900" x-text="user.username"></td>
-                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500" x-text="user.name"></td>
-                                <td class="px-4 py-3 whitespace-nowrap">
-                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full" 
-                                          :class="{
-                                              'bg-purple-100 text-purple-800': user.role === 'admin',
-                                              'bg-blue-100 text-blue-800': user.role === 'admin_operator',
-                                              'bg-green-100 text-green-800': user.role === 'operator'
-                                          }" 
-                                          x-text="user.role"></span>
-                                </td>
-                                <td class="px-4 py-3 whitespace-nowrap text-sm font-medium">
-                                    <button @click="openUserModal(user)" class="text-blue-600 hover:text-blue-900 mr-2">Edit</button>
-                                    <button @click="deleteUser(user.id)" class="text-red-600 hover:text-red-900">Hapus</button>
-                                </td>
-                            </tr>
-                        </template>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
+                    <!-- User Management - Hanya untuk Admin -->
+                    <div x-show="currentUser.role === 'admin'" class="bg-white rounded-lg shadow overflow-hidden card-shadow mb-6">
+                        <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+                            <h3 class="text-lg leading-6 font-medium text-gray-900">Manajemen User</h3>
+                            <p class="mt-1 max-w-2xl text-sm text-gray-500">Kelola pengguna sistem</p>
+                        </div>
+                        <div class="p-4">
+                            <button @click="openUserModal()" class="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 mb-4">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                </svg>
+                                Tambah User Baru
+                            </button>
+                            
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Username</th>
+                                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama</th>
+                                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
+                                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="bg-white divide-y divide-gray-200">
+                                        <template x-for="user in users" :key="user.id">
+                                            <tr>
+                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900" x-text="user.username"></td>
+                                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500" x-text="user.name"></td>
+                                                <td class="px-4 py-3 whitespace-nowrap">
+                                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full" 
+                                                          :class="{
+                                                              'bg-purple-100 text-purple-800': user.role === 'admin',
+                                                              'bg-blue-100 text-blue-800': user.role === 'admin_operator',
+                                                              'bg-green-100 text-green-800': user.role === 'operator'
+                                                          }" 
+                                                          x-text="user.role"></span>
+                                                </td>
+                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-medium">
+                                                    <button @click="openUserModal(user)" class="text-blue-600 hover:text-blue-900 mr-2">Edit</button>
+                                                    <button @click="deleteUser(user.id)" class="text-red-600 hover:text-red-900">Hapus</button>
+                                                </td>
+                                            </tr>
+                                        </template>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
 
-    <!-- Date-based Reports - Untuk admin dan admin_operator -->
-    <div class="bg-white rounded-lg shadow overflow-hidden card-shadow mb-6">
-        <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
-            <h3 class="text-lg leading-6 font-medium text-gray-900">Laporan Berdasarkan Tanggal</h3>
-            <p class="mt-1 max-w-2xl text-sm text-gray-500">Lihat rekap data produksi berdasarkan tanggal tertentu</p>
-        </div>
-        <div class="p-4">
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                <div>
-                    <label for="report-date" class="block text-sm font-medium text-gray-700 mb-2">Pilih Tanggal</label>
-                    <input type="date" id="report-date" x-model="reportDate" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
+                    <!-- Date-based Reports - Untuk admin dan admin_operator -->
+                    <div class="bg-white rounded-lg shadow overflow-hidden card-shadow mb-6">
+                        <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+                            <h3 class="text-lg leading-6 font-medium text-gray-900">Laporan Berdasarkan Tanggal</h3>
+                            <p class="mt-1 max-w-2xl text-sm text-gray-500">Lihat rekap data produksi berdasarkan tanggal tertentu</p>
+                        </div>
+                        <div class="p-4">
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                                <div>
+                                    <label for="report-date" class="block text-sm font-medium text-gray-700 mb-2">Pilih Tanggal</label>
+                                    <input type="date" id="report-date" x-model="reportDate" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
+                                </div>
+                                <div class="flex items-end">
+                                    <button @click="loadDateReport()" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                        </svg>
+                                        Lihat Laporan
+                                    </button>
+                                </div>
+                                <div class="flex items-end">
+                                    <button @click="exportDateReport()" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                        </svg>
+                                        Export Excel
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Date Report Results -->
+                            <div x-show="dateReport && dateReport.length > 0" class="mt-4">
+                                <h4 class="text-lg font-medium text-gray-900 mb-2">Hasil Laporan Tanggal: <span x-text="reportDate"></span></h4>
+                                <div class="overflow-x-auto">
+                                    <table class="min-w-full divide-y divide-gray-200">
+                                        <thead class="bg-gray-50">
+                                            <tr>
+                                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Line</th>
+                                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Model</th>
+                                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Target</th>
+                                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Output</th>
+                                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Defect</th>
+                                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">QC Checked</th>
+                                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Defect Rate</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="bg-white divide-y divide-gray-200">
+                                            <template x-for="line in dateReport" :key="line.name">
+                                                <tr>
+                                                    <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900" x-text="line.name"></td>
+                                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500" x-text="line.model"></td>
+                                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500" x-text="line.target"></td>
+                                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500" x-text="line.output"></td>
+                                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500" x-text="line.defect"></td>
+                                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500" x-text="line.qcChecked"></td>
+                                                    <td class="px-4 py-3 whitespace-nowrap text-sm font-medium" 
+                                                        :class="line.defectRate > 5 ? 'text-red-600' : 'text-green-600'"
+                                                        x-text="line.defectRate + '%'"></td>
+                                                </tr>
+                                            </template>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- System Actions - Hanya untuk Admin -->
+                    <div x-show="currentUser.role === 'admin'" class="bg-white rounded-lg shadow overflow-hidden card-shadow">
+                        <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+                            <h3 class="text-lg leading-6 font-medium text-gray-900">Aksi Sistem</h3>
+                            <p class="mt-1 max-w-2xl text-sm text-gray-500">Backup dan sinkronisasi data</p>
+                        </div>
+                        <div class="p-4">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <button @click="createBackup()" class="inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path>
+                                    </svg>
+                                    Buat Backup
+                                </button>
+                                
+                                <button @click="syncDates()" class="inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                    </svg>
+                                    Sinkronisasi Tanggal
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="flex items-end">
-                    <button @click="loadDateReport()" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                        </svg>
-                        Lihat Laporan
-                    </button>
-                </div>
-                <div class="flex items-end">
-                    <button @click="exportDateReport()" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
-                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                        </svg>
-                        Export Excel
-                    </button>
-                </div>
-            </div>
-
-            <!-- Date Report Results -->
-            <div x-show="dateReport && dateReport.length > 0" class="mt-4">
-                <h4 class="text-lg font-medium text-gray-900 mb-2">Hasil Laporan Tanggal: <span x-text="reportDate"></span></h4>
-                <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200">
-                        <thead class="bg-gray-50">
-                            <tr>
-                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Line</th>
-                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Model</th>
-                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Target</th>
-                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Output</th>
-                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Defect</th>
-                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">QC Checked</th>
-                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Defect Rate</th>
-                            </tr>
-                        </thead>
-                        <tbody class="bg-white divide-y divide-gray-200">
-                            <template x-for="line in dateReport" :key="line.name">
-                                <tr>
-                                    <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900" x-text="line.name"></td>
-                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500" x-text="line.model"></td>
-                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500" x-text="line.target"></td>
-                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500" x-text="line.output"></td>
-                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500" x-text="line.defect"></td>
-                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500" x-text="line.qcChecked"></td>
-                                    <td class="px-4 py-3 whitespace-nowrap text-sm font-medium" 
-                                        :class="line.defectRate > 5 ? 'text-red-600' : 'text-green-600'"
-                                        x-text="line.defectRate + '%'"></td>
-                                </tr>
-                            </template>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-
-
             </main>
         </div>
     </div>
@@ -1012,6 +1073,12 @@
                 },
                 
                 inputData(lineName) {
+                    // Cek jika user adalah admin_operator, maka tidak boleh input data
+                    if (this.currentUser.role === 'admin_operator') {
+                        this.showToast('Anda tidak memiliki akses untuk input data', 'error');
+                        return;
+                    }
+                    
                     this.currentLine = lineName;
                     this.loadLineDetail(lineName);
                     this.resetInputForm();
@@ -1148,6 +1215,12 @@
                 },
                 
                 async submitHourlyData() {
+                    // Cek jika user adalah admin_operator, maka tidak boleh input data
+                    if (this.currentUser.role === 'admin_operator') {
+                        this.showToast('Anda tidak memiliki akses untuk input data', 'error');
+                        return;
+                    }
+                    
                     try {
                         const response = await fetch(`/api/update-hourly/${this.currentLine}`, {
                             method: 'POST',
@@ -1175,6 +1248,12 @@
                 
                 // Methods for target manual
                 async updateTargetManual(lineName, hourIndex, targetManual) {
+                    // Cek jika user adalah admin_operator, maka tidak boleh input data
+                    if (this.currentUser.role === 'admin_operator') {
+                        this.showToast('Anda tidak memiliki akses untuk input data', 'error');
+                        return;
+                    }
+                    
                     try {
                         const response = await fetch(`/api/update-target-manual/${lineName}`, {
                             method: 'POST',
@@ -1204,6 +1283,12 @@
 
                 // Update data langsung dari tabel
                 async updateHourlyDataDirect(lineName, hourIndex) {
+                    // Cek jika user adalah admin_operator, maka tidak boleh input data
+                    if (this.currentUser.role === 'admin_operator') {
+                        this.showToast('Anda tidak memiliki akses untuk input data', 'error');
+                        return;
+                    }
+                    
                     const hour = this.lineDetail.hourly_data[hourIndex];
                     
                     try {

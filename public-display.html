@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Production Line Display - TV Monitor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%);
+            color: #e2e8f0;
+            height: 100vh;
+            overflow: hidden;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(30, 41, 59, 0.7);
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(100, 116, 139, 0.3);
+        }
+        
+        .line-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+        }
+        
+        .line-box {
+            flex: 1;
+            padding: 15px;
+            background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+            border-radius: 10px;
+            margin: 0 10px;
+            box-shadow: 0 4px 15px rgba(124, 58, 237, 0.3);
+        }
+        
+        .model-box {
+            flex: 1;
+            padding: 15px;
+            background: linear-gradient(135deg, #0ea5e9 0%, #0369a1 100%);
+            border-radius: 10px;
+            margin: 0 10px;
+            box-shadow: 0 4px 15px rgba(14, 165, 233, 0.3);
+        }
+        
+        .week-box {
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            border-radius: 10px;
+            width: 250px;
+            margin: 0 auto;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+        }
+        
+        .label {
+            font-size: 1.8rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #f1f5f9;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+        }
+        
+        .value {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: white;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        .main-content {
+            display: flex;
+            flex: 1;
+            gap: 30px;
+        }
+        
+        .target-section {
+            flex: 2;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .defect-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .section-title {
+            font-size: 2.2rem;
+            text-align: center;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: rgba(30, 41, 59, 0.7);
+            border-radius: 10px;
+            border: 1px solid rgba(100, 116, 139, 0.3);
+            color: #f8fafc;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+        }
+        
+        .data-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 20px;
+            flex: 1;
+        }
+        
+        .data-box {
+            background: rgba(30, 41, 59, 0.7);
+            border-radius: 15px;
+            padding: 25px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+            border: 1px solid rgba(100, 116, 139, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .data-box::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 5px;
+        }
+        
+        .data-box:nth-child(1)::before {
+            background: linear-gradient(90deg, #8b5cf6 0%, #7c3aed 100%);
+        }
+        
+        .data-box:nth-child(2)::before {
+            background: linear-gradient(90deg, #0ea5e9 0%, #0369a1 100%);
+        }
+        
+        .data-box:nth-child(3)::before {
+            background: linear-gradient(90deg, #10b981 0%, #059669 100%);
+        }
+        
+        .data-box:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+        }
+        
+        .data-label {
+            font-size: 1.8rem;
+            margin-bottom: 15px;
+            text-align: center;
+            color: #cbd5e1;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+        }
+        
+        .data-value {
+            font-size: 3.5rem;
+            font-weight: bold;
+            text-align: center;
+            color: white;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        .percentage {
+            font-size: 2.2rem;
+            margin-top: 10px;
+            font-weight: 600;
+        }
+        
+        .percentage.positive {
+            color: #34d399;
+        }
+        
+        .percentage.negative {
+            color: #f87171;
+        }
+        
+        .percentage.neutral {
+            color: #60a5fa;
+        }
+        
+        .defect-container {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            gap: 30px;
+        }
+        
+        .defect-box {
+            background: rgba(30, 41, 59, 0.7);
+            border-radius: 15px;
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            flex: 1;
+            border: 1px solid rgba(100, 116, 139, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .defect-box::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 5px;
+            background: linear-gradient(90deg, #ef4444 0%, #dc2626 100%);
+        }
+        
+        .defect-box:last-child::before {
+            background: linear-gradient(90deg, #f59e0b 0%, #d97706 100%);
+        }
+        
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding: 15px;
+            font-size: 1.5rem;
+            color: #cbd5e1;
+            background: rgba(30, 41, 59, 0.7);
+            border-radius: 10px;
+            border: 1px solid rgba(100, 116, 139, 0.3);
+        }
+        
+        .datetime {
+            font-size: 1.8rem;
+            text-align: center;
+            margin-top: 10px;
+            color: #e2e8f0;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+        }
+        
+        /* Animasi untuk nilai yang berubah */
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        .pulse {
+            animation: pulse 1s ease;
+        }
+        
+        /* Media queries untuk TV 43 inch */
+        @media (min-width: 1920px) {
+            .container {
+                max-width: 1600px;
+            }
+            
+            .value {
+                font-size: 3.2rem;
+            }
+            
+            .data-value {
+                font-size: 4.5rem;
+            }
+            
+            .section-title {
+                font-size: 2.8rem;
+            }
+        }
+        
+        /* Status indicator */
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+        }
+        
+        .status-active {
+            background-color: #10b981;
+        }
+        
+        .status-break {
+            background-color: #f59e0b;
+        }
+        
+        .status-off {
+            background-color: #ef4444;
+        }
+        
+        .auto-refresh-indicator {
+            animation: pulse 2s infinite;
+        }
+        
+        /* Custom select styling */
+        select {
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid rgba(100, 116, 139, 0.5);
+            color: #e2e8f0;
+            border-radius: 5px;
+            padding: 5px 10px;
+        }
+        
+        /* Error message styling */
+        .error-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(15, 23, 42, 0.95);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+        
+        .error-content {
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            border-radius: 15px;
+            padding: 30px;
+            max-width: 500px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(100, 116, 139, 0.5);
+        }
+        
+        .error-title {
+            font-size: 2rem;
+            color: #f87171;
+            margin-bottom: 15px;
+        }
+        
+        .error-message {
+            font-size: 1.2rem;
+            margin-bottom: 20px;
+            color: #cbd5e1;
+        }
+        
+        .error-button {
+            background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .error-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(124, 58, 237, 0.4);
+        }
+    </style>
+</head>
+<body x-data="publicDisplay()" x-cloak>
+    <div class="container">
+        <div class="header">
+            <div class="line-info">
+                <div class="line-box">
+                    <div class="label">LINE</div>
+                    <div class="value" x-text="lineData.name || 'Loading...'"></div>
+                </div>
+                <div class="model-box">
+                    <div class="label">MODEL</div>
+                    <div class="value" x-text="lineData.data.model || 'Loading...'"></div>
+                </div>
+            </div>
+            <div class="week-box">
+                <div class="label">WEEK</div>
+                <div class="value" x-text="lineData.data.labelWeek || 'Loading...'"></div>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <div class="target-section">
+                <div class="section-title">PRODUCTION DATA</div>
+                <div class="data-grid">
+                    <div class="data-box">
+                        <div class="data-label">TARGET / JAM</div>
+                        <div class="data-value" x-text="lineData.data.targetPerHour || 0" :class="{'pulse': dataUpdated}"></div>
+                        <div class="percentage neutral" x-text="calculateTargetPercentage() + '%'"></div>
+                    </div>
+                    <div class="data-box">
+                        <div class="data-label">SELISIH AKUMULATIF</div>
+                        <div class="data-value" 
+                             x-text="calculateAccumulatedDifference()" 
+                             :class="{
+                                 'pulse': dataUpdated,
+                                 'text-green-400': calculateAccumulatedDifference() >= 0,
+                                 'text-red-400': calculateAccumulatedDifference() < 0
+                             }"></div>
+                        <div class="percentage" 
+                             :class="calculateAccumulatedDifference() >= 0 ? 'positive' : 'negative'"
+                             x-text="calculateDifferencePercentage() + '%'"></div>
+                    </div>
+                    <div class="data-box">
+                        <div class="data-label">OUTPUT AKUMULATIF</div>
+                        <div class="data-value" x-text="lineData.data.outputDay || 0" :class="{'pulse': dataUpdated}"></div>
+                        <div class="percentage" 
+                             :class="calculateOutputPercentage() >= 100 ? 'positive' : (calculateOutputPercentage() >= 80 ? 'neutral' : 'negative')"
+                             x-text="calculateOutputPercentage() + '%'"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="defect-section">
+                <div class="section-title">QUALITY DATA</div>
+                <div class="defect-container">
+                    <div class="defect-box">
+                        <div class="data-label">DEFECT</div>
+                        <div class="data-value" x-text="lineData.data.actualDefect || 0" :class="{'pulse': dataUpdated}"></div>
+                    </div>
+                    <div class="defect-box">
+                        <div class="data-label">DEFECT RATE</div>
+                        <div class="data-value" 
+                             :class="{'pulse': dataUpdated, 'text-green-400': (lineData.data.defectRatePercentage || 0) <= 5, 'text-yellow-400': (lineData.data.defectRatePercentage || 0) > 5 && (lineData.data.defectRatePercentage || 0) <= 10, 'text-red-400': (lineData.data.defectRatePercentage || 0) > 10}"
+                             x-text="(lineData.data.defectRatePercentage || 0) + '%'"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <div>PRODUCTION MONITORING SYSTEM</div>
+            <div class="datetime" id="current-datetime">Loading...</div>
+            <div class="flex items-center justify-center mt-2">
+                <div class="auto-refresh-indicator bg-green-400 rounded-full w-3 h-3 mr-2"></div>
+                <span>Auto Refresh: </span>
+                <select x-model="refreshInterval" @change="changeRefreshInterval" class="ml-2">
+                    <option value="0">Mati</option>
+                    <option value="5000">5 Detik</option>
+                    <option value="10000">10 Detik</option>
+                    <option value="30000">30 Detik</option>
+                    <option value="60000">1 Menit</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- Error Overlay -->
+    <template x-if="errorMessage">
+        <div class="error-overlay">
+            <div class="error-content">
+                <h2 class="error-title">Error</h2>
+                <p class="error-message" x-text="errorMessage"></p>
+                <button class="error-button" @click="errorMessage = ''">Tutup</button>
+            </div>
+        </div>
+    </template>
+
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <script>
+        function publicDisplay() {
+            return {
+                lineData: {
+                    name: '',
+                    data: {
+                        labelWeek: '',
+                        model: '',
+                        date: '',
+                        target: 0,
+                        targetPerHour: 0,
+                        outputDay: 0,
+                        qcChecking: 0,
+                        actualDefect: 0,
+                        defectRatePercentage: 0,
+                        hourly_data: [],
+                        operators: []
+                    }
+                },
+                errorMessage: '',
+                refreshInterval: 10000, // Default 10 detik
+                refreshTimer: null,
+                dataUpdated: false,
+
+                async init() {
+                    // Get line name from URL parameter
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const lineName = urlParams.get('line');
+                    
+                    if (!lineName) {
+                        this.errorMessage = 'Parameter line tidak ditemukan. Gunakan format: public-display.html?line=NAMA_LINE';
+                        return;
+                    }
+
+                    this.lineData.name = lineName;
+                    await this.loadLineData();
+                    
+                    // Setup auto refresh
+                    this.setupAutoRefresh();
+                    
+                    // Update waktu real-time
+                    this.updateDateTime();
+                    setInterval(() => {
+                        this.updateDateTime();
+                    }, 1000);
+                },
+
+                async loadLineData() {
+                    try {
+                        // Coba endpoint public yang baru
+                        let response = await fetch(`/api/public/line/${this.lineData.name}`);
+                        
+                        // Jika endpoint public tidak ada, coba endpoint biasa (mungkin butuh auth)
+                        if (!response.ok) {
+                            response = await fetch(`/api/line/${this.lineData.name}`);
+                        }
+                        
+                        if (response.ok) {
+                            const data = await response.json();
+                            this.lineData.data = data;
+                            this.errorMessage = '';
+                            
+                            // Trigger animation
+                            this.dataUpdated = true;
+                            setTimeout(() => {
+                                this.dataUpdated = false;
+                            }, 1000);
+                        } else {
+                            const error = await response.json();
+                            this.errorMessage = error.error || 'Gagal memuat data line';
+                        }
+                    } catch (error) {
+                        console.error('Error loading line data:', error);
+                        this.errorMessage = 'Terjadi kesalahan saat memuat data';
+                    }
+                },
+
+                setupAutoRefresh() {
+                    if (this.refreshTimer) {
+                        clearInterval(this.refreshTimer);
+                    }
+
+                    if (this.refreshInterval > 0) {
+                        this.refreshTimer = setInterval(() => {
+                            this.loadLineData();
+                        }, this.refreshInterval);
+                    }
+                },
+
+                changeRefreshInterval() {
+                    this.setupAutoRefresh();
+                },
+                
+                updateDateTime() {
+                    const now = new Date();
+                    const options = { 
+                        weekday: 'long', 
+                        year: 'numeric', 
+                        month: 'long', 
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit'
+                    };
+                    document.getElementById('current-datetime').textContent = now.toLocaleDateString('id-ID', options);
+                },
+                
+                // Calculation methods
+                calculateTargetPercentage() {
+                    if (!this.lineData.data.targetPerHour || this.lineData.data.targetPerHour === 0) return '0.0';
+                    return ((this.lineData.data.outputDay || 0) / this.lineData.data.targetPerHour * 100).toFixed(1);
+                },
+                
+                calculateAccumulatedDifference() {
+                    return (this.lineData.data.outputDay || 0) - (this.lineData.data.target || 0);
+                },
+                
+                calculateDifferencePercentage() {
+                    if (!this.lineData.data.target || this.lineData.data.target === 0) return '0.0';
+                    return (Math.abs(this.calculateAccumulatedDifference()) / this.lineData.data.target * 100).toFixed(1);
+                },
+                
+                calculateOutputPercentage() {
+                    if (!this.lineData.data.target || this.lineData.data.target === 0) return '0.0';
+                    return ((this.lineData.data.outputDay || 0) / this.lineData.data.target * 100).toFixed(1);
+                }
+            }
+        }
+        
+        // Inisialisasi saat halaman dimuat
+        document.addEventListener('DOMContentLoaded', function() {
+            // Auto-init Alpine.js jika belum
+            if (typeof Alpine === 'undefined') {
+                console.error('Alpine.js tidak terdeteksi. Pastikan sudah dimuat.');
+            }
+        });
+    </script>
+</body>
+</html>

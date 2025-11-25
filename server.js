@@ -47,7 +47,6 @@ function resetLineData(line) {
       { hour: "14:00 - 15:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
       { hour: "15:00 - 16:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
       { hour: "16:00 - 17:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
-      { hour: "17:00 - 18:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 }
     ],
     operators: line.operators ? line.operators.map(operator => ({
       ...operator,
@@ -86,7 +85,6 @@ function initializeDataFiles() {
             { "hour": "14:00 - 15:00", "output": 0, "defect": 0, "qcChecked": 0, "targetManual": targetPerHour, "selisih": 0 },
             { "hour": "15:00 - 16:00", "output": 0, "defect": 0, "qcChecked": 0, "targetManual": targetPerHour, "selisih": 0 },
             { "hour": "16:00 - 17:00", "output": 0, "defect": 0, "qcChecked": 0, "targetManual": targetPerHour, "selisih": 0 },
-            { "hour": "17:00 - 18:00", "output": 0, "defect": 0, "qcChecked": 0, "targetManual": targetPerHour, "selisih": 0 }
           ],
           "operators": [
             {
@@ -697,7 +695,6 @@ app.post('/api/lines', requireLogin, requireLineManagementAccess, (req, res) => 
       { hour: "14:00 - 15:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
       { hour: "15:00 - 16:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
       { hour: "16:00 - 17:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
-      { hour: "17:00 - 18:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 }
     ],
     operators: []
   };
@@ -1135,6 +1132,29 @@ app.get('/api/export/:lineName', requireLogin, requireLineAccess, (req, res) => 
     console.error('Export error:', error);
     res.status(500).json({ error: 'Failed to generate Excel file' });
   }
+});
+
+// Public API Routes (No authentication required)
+app.get('/api/public/line/:lineName', (req, res) => {
+  const lineName = req.params.lineName;
+  const data = readProductionData();
+  const lineData = data.lines[lineName];
+
+  if (lineData) {
+    // Hitung target per jam jika belum ada
+    if (!lineData.targetPerHour) {
+      lineData.targetPerHour = Math.round(lineData.target / 8);
+    }
+    
+    res.json(lineData);
+  } else {
+    res.status(404).json({ error: 'Line not found' });
+  }
+});
+
+// Route untuk halaman public display
+app.get('/public-display', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public-display.html'));
 });
 
 // Page Routes

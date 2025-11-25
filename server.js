@@ -563,16 +563,18 @@ app.get('/api/history/:filename/export', requireLogin, requireAdmin, (req, res) 
         ['Defect Rate (%)', line.defectRatePercentage],
         [],
         ['HOURLY DATA'],
-        ['Jam', 'Target Manual', 'Output', 'Selisih', 'Defect', 'QC Checked', 'Defect Rate (%)']
+        ['Jam', 'Target Manual', 'Output', 'Selisih (Target - Output)', 'Defect', 'QC Checked', 'Defect Rate (%)']
       ];
 
       line.hourly_data.forEach(hour => {
         const defectRate = hour.qcChecked > 0 ? ((hour.defect / hour.qcChecked) * 100).toFixed(2) : '0.00';
+        // PERUBAHAN DI SINI: Selisih = Target - Output
+        const selisih = hour.targetManual - hour.output;
         lineData.push([
           hour.hour, 
           hour.targetManual,
           hour.output, 
-          hour.selisih,
+          selisih, // Menggunakan perhitungan baru
           hour.defect, 
           hour.qcChecked, 
           defectRate
@@ -1070,20 +1072,22 @@ function generateExcelData(lineData, lineName) {
   const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
   XLSX.utils.book_append_sheet(workbook, summarySheet, 'Summary');
   
-  // Sheet 2: Hourly Data dengan target manual dan selisih
+  // Sheet 2: Hourly Data dengan target manual dan selisih (Target - Output)
   const hourlyData = [
     ['HOURLY PRODUCTION DATA'],
     [],
-    ['Jam', 'Target Manual', 'Output', 'Selisih', 'Defect', 'QC Checked', 'Defect Rate (%)']
+    ['Jam', 'Target Manual', 'Output', 'Selisih (Target - Output)', 'Defect', 'QC Checked', 'Defect Rate (%)']
   ];
 
   lineData.hourly_data.forEach(hour => {
     const defectRate = hour.qcChecked > 0 ? ((hour.defect / hour.qcChecked) * 100).toFixed(2) : '0.00';
+    // PERUBAHAN DI SINI: Selisih = Target - Output
+    const selisih = hour.targetManual - hour.output;
     hourlyData.push([
       hour.hour, 
       hour.targetManual,
       hour.output, 
-      hour.selisih,
+      selisih, // Menggunakan perhitungan baru
       hour.defect, 
       hour.qcChecked, 
       defectRate

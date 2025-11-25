@@ -19,6 +19,11 @@
       "id": 4,
       "name": "LAIN LAIN",
       "active": true
+    },
+    {
+      "id": 5,
+      "name": "gfhgfhgfh",
+      "active": false
     }
   ],
   "defectAreas": [

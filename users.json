@@ -1,7 +1,7 @@
 {
   "users": [
     {
-      "id": 4,
+      "id": 1,
       "username": "admin",
       "password": "admin123",
       "name": "Administrator",
@@ -15,6 +15,14 @@
       "name": "Hafri",
       "line": "LINE-1",
       "role": "operator"
+    },
+    {
+      "id": 3,
+      "username": "leader1",
+      "password": "1234",
+      "name": "Ana",
+      "line": "LINE-1",
+      "role": "leader"
     }
   ]
 }

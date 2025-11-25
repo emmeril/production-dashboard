@@ -68,6 +68,16 @@
             border-left: 3px solid #ef4444;
             padding-left: 10px;
             margin-bottom: 8px;
+            background-color: #fef2f2;
+            padding: 8px;
+            border-radius: 4px;
+        }
+        .defect-card {
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 12px;
+            background-color: #f9fafb;
         }
     </style>
 </head>
@@ -414,10 +424,10 @@
                                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Target Manual</th>
                                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Output</th>
                                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Selisih</th>
-                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Defect</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Defect</th>
                                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">QC Checked</th>
                                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Defect Rate</th>
-                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Defect Details</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Detail Defect</th>
                                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
                                     </tr>
                                 </thead>
@@ -439,7 +449,8 @@
                                                 x-text="hour.output - hour.targetManual"></td>
                                             <td class="px-6 py-4 whitespace-nowrap">
                                                 <input type="number" x-model="hour.defect" 
-                                                       class="input-cell">
+                                                       class="input-cell" readonly>
+                                                <div class="text-xs text-gray-500" x-text="'Dari ' + (hour.defectDetails ? hour.defectDetails.length : 0) + ' item'"></div>
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap">
                                                 <input type="number" x-model="hour.qcChecked" 
@@ -457,6 +468,7 @@
                                                 <div x-show="hour.defectDetails && hour.defectDetails.length > 0" class="mt-1">
                                                     <template x-for="(detail, detailIndex) in hour.defectDetails" :key="detailIndex">
                                                         <div class="defect-detail-item text-xs text-gray-600">
+                                                            <div class="font-medium" x-text="'Defect ' + (detailIndex + 1)"></div>
                                                             <div x-text="'Jenis: ' + (detail.type || '-')"></div>
                                                             <div x-text="'Area: ' + (detail.area || '-')"></div>
                                                             <div x-show="detail.notes" x-text="'Keterangan: ' + detail.notes" class="truncate max-w-xs"></div>
@@ -580,11 +592,6 @@
                                     </div>
                                     
                                     <div>
-                                        <label for="defect" class="block text-sm font-medium text-gray-700 mb-2">Defect</label>
-                                        <input type="number" id="defect" x-model="inputForm.defect" min="0" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" required>
-                                    </div>
-                                    
-                                    <div>
                                         <label for="qc-checked" class="block text-sm font-medium text-gray-700 mb-2">QC Checked</label>
                                         <input type="number" id="qc-checked" x-model="inputForm.qcChecked" min="0" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" required>
                                     </div>
@@ -595,6 +602,12 @@
                                                :placeholder="lineDetail.hourly_data[inputForm.hourIndex]?.targetManual"
                                                class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" required>
                                         <p class="text-xs text-gray-500 mt-1" x-text="'Current: ' + (lineDetail.hourly_data[inputForm.hourIndex]?.targetManual || 0)"></p>
+                                    </div>
+                                    
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Total Defect</label>
+                                        <p class="text-lg font-semibold text-red-600" x-text="inputForm.defectDetails.length"></p>
+                                        <p class="text-xs text-gray-500">Jumlah defect berdasarkan detail di bawah</p>
                                     </div>
                                 </div>
                                 
@@ -611,8 +624,17 @@
                                     </div>
                                     
                                     <template x-for="(defect, index) in inputForm.defectDetails" :key="index">
-                                        <div class="bg-gray-50 p-4 rounded-md mb-3">
-                                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
+                                        <div class="defect-card">
+                                            <div class="flex justify-between items-start mb-3">
+                                                <h5 class="font-medium text-gray-900">Defect <span x-text="index + 1"></span></h5>
+                                                <button type="button" @click="removeDefectDetail(index)" class="text-red-600 hover:text-red-800">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                            
+                                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
                                                 <div>
                                                     <label class="block text-sm font-medium text-gray-700 mb-1">Jenis Defect</label>
                                                     <select x-model="defect.type" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md" required>
@@ -632,14 +654,6 @@
                                                         </template>
                                                     </select>
                                                 </div>
-                                                
-                                                <div class="flex items-end">
-                                                    <button type="button" @click="removeDefectDetail(index)" class="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
-                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                                        </svg>
-                                                    </button>
-                                                </div>
                                             </div>
                                             
                                             <div>
@@ -649,8 +663,12 @@
                                         </div>
                                     </template>
                                     
-                                    <div x-show="inputForm.defectDetails.length === 0" class="text-center py-4 text-gray-500">
-                                        Tidak ada defect detail yang ditambahkan
+                                    <div x-show="inputForm.defectDetails.length === 0" class="text-center py-4 text-gray-500 border-2 border-dashed border-gray-300 rounded-lg">
+                                        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                        </svg>
+                                        <p class="mt-2">Tidak ada defect detail yang ditambahkan</p>
+                                        <p class="text-sm">Klik "Tambah Defect" untuk menambahkan detail defect</p>
                                     </div>
                                 </div>
                                 
@@ -1026,7 +1044,7 @@
             <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
             <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full">
                 <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                    <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Defect Details - <span x-text="defectDetailsModal.hour"></span></h3>
+                    <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Detail Defect - <span x-text="defectDetailsModal.hour"></span></h3>
                     
                     <div class="mb-4">
                         <div class="flex justify-between items-center mb-4">
@@ -1040,8 +1058,17 @@
                         </div>
                         
                         <template x-for="(defect, index) in defectDetailsModal.defectDetails" :key="index">
-                            <div class="bg-gray-50 p-4 rounded-md mb-3">
-                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
+                            <div class="defect-card">
+                                <div class="flex justify-between items-start mb-3">
+                                    <h5 class="font-medium text-gray-900">Defect <span x-text="index + 1"></span></h5>
+                                    <button type="button" @click="removeDefectDetailFromModal(index)" class="text-red-600 hover:text-red-800">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                        </svg>
+                                    </button>
+                                </div>
+                                
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
                                     <div>
                                         <label class="block text-sm font-medium text-gray-700 mb-1">Jenis Defect</label>
                                         <select x-model="defect.type" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md" required>
@@ -1061,14 +1088,6 @@
                                             </template>
                                         </select>
                                     </div>
-                                    
-                                    <div class="flex items-end">
-                                        <button type="button" @click="removeDefectDetailFromModal(index)" class="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                            </svg>
-                                        </button>
-                                    </div>
                                 </div>
                                 
                                 <div>
@@ -1078,8 +1097,12 @@
                             </div>
                         </template>
                         
-                        <div x-show="defectDetailsModal.defectDetails.length === 0" class="text-center py-4 text-gray-500">
-                            Tidak ada defect detail yang ditambahkan
+                        <div x-show="defectDetailsModal.defectDetails.length === 0" class="text-center py-4 text-gray-500 border-2 border-dashed border-gray-300 rounded-lg">
+                            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            <p class="mt-2">Tidak ada defect detail yang ditambahkan</p>
+                            <p class="text-sm">Klik "Tambah Defect" untuk menambahkan detail defect</p>
                         </div>
                     </div>
                 </div>
@@ -1445,12 +1468,19 @@
                 
                 async submitHourlyData() {
                     try {
+                        // Calculate total defect from defect details
+                        const totalDefect = this.inputForm.defectDetails.length;
+                        
                         const response = await fetch(`/api/update-hourly/${this.currentLine}`, {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json'
                             },
-                            body: JSON.stringify(this.inputForm)
+                            body: JSON.stringify({
+                                ...this.inputForm,
+                                defect: totalDefect,
+                                defectDetails: this.inputForm.defectDetails
+                            })
                         });
                         
                         if (response.ok) {
@@ -1554,6 +1584,9 @@
                 
                 async saveDefectDetails() {
                     try {
+                        // Calculate total defect from defect details
+                        const totalDefect = this.defectDetailsModal.defectDetails.length;
+                        
                         const response = await fetch(`/api/update-hourly/${this.defectDetailsModal.lineName}`, {
                             method: 'POST',
                             headers: {
@@ -1562,7 +1595,7 @@
                             body: JSON.stringify({
                                 hourIndex: this.defectDetailsModal.hourIndex,
                                 output: this.lineDetail.hourly_data[this.defectDetailsModal.hourIndex].output,
-                                defect: this.lineDetail.hourly_data[this.defectDetailsModal.hourIndex].defect,
+                                defect: totalDefect,
                                 qcChecked: this.lineDetail.hourly_data[this.defectDetailsModal.hourIndex].qcChecked,
                                 targetManual: this.lineDetail.hourly_data[this.defectDetailsModal.hourIndex].targetManual,
                                 defectDetails: this.defectDetailsModal.defectDetails

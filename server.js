@@ -39,22 +39,22 @@ function resetLineData(line) {
     defectRatePercentage: 0,
     hourly_data: [
       // Jam kerja pagi (4 jam)
-      { hour: "07:00 - 08:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 1, defectDetails: [] },
-      { hour: "08:00 - 09:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 2, defectDetails: [] },
-      { hour: "09:00 - 10:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 3, defectDetails: [] },
-      { hour: "10:00 - 11:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 4, defectDetails: [] },
+      { hour: "07:00 - 08:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0, defectDetails: [] },
+      { hour: "08:00 - 09:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0, defectDetails: [] },
+      { hour: "09:00 - 10:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0, defectDetails: [] },
+      { hour: "10:00 - 11:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0, defectDetails: [] },
       
-      // Istirahat panjang 11:00-13:00 (2 jam) - cumulative target tetap sama
-      { hour: "11:00 - 13:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 4, defectDetails: [] },
+      // Istirahat panjang 11:00-13:00 (2 jam) - target manual 0
+      { hour: "11:00 - 13:00", output: 0, defect: 0, qcChecked: 0, targetManual: 0, selisih: 0, defectDetails: [] },
       
       // Jam kerja siang (4 jam)
-      { hour: "13:00 - 14:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 5, defectDetails: [] },
-      { hour: "14:00 - 15:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 6, defectDetails: [] },
-      { hour: "15:00 - 16:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 7, defectDetails: [] },
-      { hour: "16:00 - 17:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 8, defectDetails: [] },
+      { hour: "13:00 - 14:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0, defectDetails: [] },
+      { hour: "14:00 - 15:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0, defectDetails: [] },
+      { hour: "15:00 - 16:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0, defectDetails: [] },
+      { hour: "16:00 - 17:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0, defectDetails: [] },
       
-      // Overtime atau jam tambahan - cumulative target tetap maksimal
-      { hour: "17:00 - 18:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 8, defectDetails: [] }
+      // Overtime atau jam tambahan
+      { hour: "17:00 - 18:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0, defectDetails: [] }
     ],
     operators: line.operators ? line.operators.map(operator => ({
       ...operator,
@@ -85,16 +85,16 @@ function initializeDataFiles() {
           "actualDefect": 0,
           "defectRatePercentage": 0,
           "hourly_data": [
-            { "hour": "07:00 - 08:00", "output": 0, "defect": 0, "qcChecked": 0, "cumulativeTarget": targetPerHour * 1, "defectDetails": [] },
-            { "hour": "08:00 - 09:00", "output": 0, "defect": 0, "qcChecked": 0, "cumulativeTarget": targetPerHour * 2, "defectDetails": [] },
-            { "hour": "09:00 - 10:00", "output": 0, "defect": 0, "qcChecked": 0, "cumulativeTarget": targetPerHour * 3, "defectDetails": [] },
-            { "hour": "10:00 - 11:00", "output": 0, "defect": 0, "qcChecked": 0, "cumulativeTarget": targetPerHour * 4, "defectDetails": [] },
-            { "hour": "11:00 - 12:00", "output": 0, "defect": 0, "qcChecked": 0, "cumulativeTarget": targetPerHour * 5, "defectDetails": [] },
-            { "hour": "12:00 - 13:00", "output": 0, "defect": 0, "qcChecked": 0, "cumulativeTarget": targetPerHour * 6, "defectDetails": [] },
-            { "hour": "13:00 - 14:00", "output": 0, "defect": 0, "qcChecked": 0, "cumulativeTarget": targetPerHour * 7, "defectDetails": [] },
-            { "hour": "14:00 - 15:00", "output": 0, "defect": 0, "qcChecked": 0, "cumulativeTarget": targetPerHour * 8, "defectDetails": [] },
-            { "hour": "15:00 - 16:00", "output": 0, "defect": 0, "qcChecked": 0, "cumulativeTarget": targetPerHour * 8, "defectDetails": [] },
-            { "hour": "16:00 - 17:00", "output": 0, "defect": 0, "qcChecked": 0, "cumulativeTarget": targetPerHour * 8, "defectDetails": [] }
+            { "hour": "07:00 - 08:00", "output": 0, "defect": 0, "qcChecked": 0, "targetManual": targetPerHour, "selisih": 0, "defectDetails": [] },
+            { "hour": "08:00 - 09:00", "output": 0, "defect": 0, "qcChecked": 0, "targetManual": targetPerHour, "selisih": 0, "defectDetails": [] },
+            { "hour": "09:00 - 10:00", "output": 0, "defect": 0, "qcChecked": 0, "targetManual": targetPerHour, "selisih": 0, "defectDetails": [] },
+            { "hour": "10:00 - 11:00", "output": 0, "defect": 0, "qcChecked": 0, "targetManual": targetPerHour, "selisih": 0, "defectDetails": [] },
+            { "hour": "11:00 - 13:00", "output": 0, "defect": 0, "qcChecked": 0, "targetManual": 0, "selisih": 0, "defectDetails": [] },
+            { "hour": "13:00 - 14:00", "output": 0, "defect": 0, "qcChecked": 0, "targetManual": targetPerHour, "selisih": 0, "defectDetails": [] },
+            { "hour": "14:00 - 15:00", "output": 0, "defect": 0, "qcChecked": 0, "targetManual": targetPerHour, "selisih": 0, "defectDetails": [] },
+            { "hour": "15:00 - 16:00", "output": 0, "defect": 0, "qcChecked": 0, "targetManual": targetPerHour, "selisih": 0, "defectDetails": [] },
+            { "hour": "16:00 - 17:00", "output": 0, "defect": 0, "qcChecked": 0, "targetManual": targetPerHour, "selisih": 0, "defectDetails": [] },
+            { "hour": "17:00 - 18:00", "output": 0, "defect": 0, "qcChecked": 0, "targetManual": targetPerHour, "selisih": 0, "defectDetails": [] }
           ],
           "operators": [
             {
@@ -487,10 +487,10 @@ app.delete('/api/defect-areas/:id', requireLogin, requireAdmin, (req, res) => {
   res.json({ message: 'Area defect berhasil dihapus' });
 });
 
-// Update hourly data dengan defect details per defect
+// Update hourly data dengan target manual dan selisih
 app.post('/api/update-hourly/:lineName', requireLogin, requireLineAccess, (req, res) => {
   const lineName = req.params.lineName;
-  const { hourIndex, output, defect, qcChecked, defectDetails } = req.body;
+  const { hourIndex, output, defect, qcChecked, defectDetails, targetManual } = req.body;
 
   const data = readProductionData();
 
@@ -498,13 +498,100 @@ app.post('/api/update-hourly/:lineName', requireLogin, requireLineAccess, (req, 
     return res.status(404).json({ error: 'Line or hourly data not found' });
   }
 
+  // Hitung selisih
+  const selisih = parseInt(output) - parseInt(targetManual);
+
   // Update data per jam
   data.lines[lineName].hourly_data[hourIndex] = {
     ...data.lines[lineName].hourly_data[hourIndex],
     output: parseInt(output),
     defect: parseInt(defect),
     qcChecked: parseInt(qcChecked),
+    targetManual: parseInt(targetManual) || data.lines[lineName].hourly_data[hourIndex].targetManual,
+    selisih: selisih,
     defectDetails: defectDetails || []
+  };
+
+  // Hitung ulang total harian
+  let totalOutput = 0;
+  let totalDefect = 0;
+  let totalQCChecked = 0;
+
+  data.lines[lineName].hourly_data.forEach(hour => {
+    totalOutput += hour.output || 0;
+    totalDefect += hour.defect || 0;
+    totalQCChecked += hour.qcChecked || 0;
+  });
+
+  data.lines[lineName].outputDay = totalOutput;
+  data.lines[lineName].actualDefect = totalDefect;
+  data.lines[lineName].qcChecking = totalQCChecked;
+
+  // Hitung ulang persentase defect rate
+  const defectRatePercentage = (totalQCChecked > 0) ? (totalDefect / totalQCChecked) * 100 : 0;
+
+  data.lines[lineName].defectRatePercentage = parseFloat(defectRatePercentage.toFixed(2));
+
+  writeProductionData(data);
+  res.json({
+    message: 'Hourly data updated successfully.',
+    data: data.lines[lineName],
+    summary: {
+      totalOutput: totalOutput,
+      totalDefect: totalDefect,
+      totalQCChecked: totalQCChecked,
+      defectRate: defectRatePercentage.toFixed(2) + '%'
+    }
+  });
+});
+
+// Update target manual untuk jam tertentu
+app.post('/api/update-target-manual/:lineName', requireLogin, requireLineAccess, (req, res) => {
+  const lineName = req.params.lineName;
+  const { hourIndex, targetManual } = req.body;
+
+  const data = readProductionData();
+
+  if (!data.lines[lineName] || !data.lines[lineName].hourly_data) {
+    return res.status(404).json({ error: 'Line or hourly data not found' });
+  }
+
+  // Update target manual
+  data.lines[lineName].hourly_data[hourIndex].targetManual = parseInt(targetManual);
+  
+  // Hitung ulang selisih
+  data.lines[lineName].hourly_data[hourIndex].selisih = 
+    data.lines[lineName].hourly_data[hourIndex].output - parseInt(targetManual);
+
+  writeProductionData(data);
+  res.json({
+    message: 'Target manual updated successfully.',
+    data: data.lines[lineName].hourly_data[hourIndex]
+  });
+});
+
+// Update langsung data per jam dari tabel
+app.post('/api/update-hourly-direct/:lineName', requireLogin, requireLineAccess, (req, res) => {
+  const lineName = req.params.lineName;
+  const { hourIndex, output, defect, qcChecked, targetManual } = req.body;
+
+  const data = readProductionData();
+
+  if (!data.lines[lineName] || !data.lines[lineName].hourly_data) {
+    return res.status(404).json({ error: 'Line or hourly data not found' });
+  }
+
+  // Hitung selisih
+  const selisih = parseInt(output) - parseInt(targetManual);
+
+  // Update data per jam
+  data.lines[lineName].hourly_data[hourIndex] = {
+    ...data.lines[lineName].hourly_data[hourIndex],
+    output: parseInt(output),
+    defect: parseInt(defect),
+    qcChecked: parseInt(qcChecked),
+    targetManual: parseInt(targetManual),
+    selisih: selisih
   };
 
   // Hitung ulang total harian
@@ -635,15 +722,16 @@ app.get('/api/history/:filename/export', requireLogin, requireAdmin, (req, res) 
         ['Defect Rate (%)', line.defectRatePercentage],
         [],
         ['HOURLY DATA'],
-        ['Jam', 'Target Kumulatif', 'Output', 'Defect', 'QC Checked', 'Defect Rate (%)']
+        ['Jam', 'Target Manual', 'Output', 'Selisih', 'Defect', 'QC Checked', 'Defect Rate (%)']
       ];
 
       line.hourly_data.forEach(hour => {
         const defectRate = hour.qcChecked > 0 ? ((hour.defect / hour.qcChecked) * 100).toFixed(2) : '0.00';
         lineData.push([
           hour.hour, 
-          hour.cumulativeTarget, 
+          hour.targetManual,
           hour.output, 
+          hour.selisih,
           hour.defect, 
           hour.qcChecked, 
           defectRate
@@ -651,18 +739,20 @@ app.get('/api/history/:filename/export', requireLogin, requireAdmin, (req, res) 
 
         // Add defect details if available
         if (hour.defectDetails && hour.defectDetails.length > 0) {
-          lineData.push(['', '', 'Detail Defect:', '', '', '']);
+          lineData.push(['', '', '', '', '', 'Detail Defect:', '', '']);
           hour.defectDetails.forEach((detail, index) => {
             lineData.push([
               '',
               '',
+              '',
+              '',
+              '',
               `Defect ${index + 1}:`,
               `Jenis: ${detail.type || '-'}`,
-              `Area: ${detail.area || '-'}`,
-              `Keterangan: ${detail.notes || '-'}`
+              `Area: ${detail.area || '-'}`
             ]);
           });
-          lineData.push(['', '', '', '', '', '']);
+          lineData.push(['', '', '', '', '', '', '', '']);
         }
       });
 
@@ -798,22 +888,22 @@ app.post('/api/lines', requireLogin, requireAdmin, (req, res) => {
     defectRatePercentage: 0,
     hourly_data: [
       // Jam kerja pagi (4 jam)
-      { hour: "07:00 - 08:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 1, defectDetails: [] },
-      { hour: "08:00 - 09:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 2, defectDetails: [] },
-      { hour: "09:00 - 10:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 3, defectDetails: [] },
-      { hour: "10:00 - 11:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 4, defectDetails: [] },
+      { hour: "07:00 - 08:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0, defectDetails: [] },
+      { hour: "08:00 - 09:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0, defectDetails: [] },
+      { hour: "09:00 - 10:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0, defectDetails: [] },
+      { hour: "10:00 - 11:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0, defectDetails: [] },
       
-      // Istirahat panjang 11:00-13:00 (2 jam) - cumulative target tetap sama
-      { hour: "11:00 - 13:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 4, defectDetails: [] },
+      // Istirahat panjang 11:00-13:00 (2 jam) - target manual 0
+      { hour: "11:00 - 13:00", output: 0, defect: 0, qcChecked: 0, targetManual: 0, selisih: 0, defectDetails: [] },
       
       // Jam kerja siang (4 jam)
-      { hour: "13:00 - 14:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 5, defectDetails: [] },
-      { hour: "14:00 - 15:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 6, defectDetails: [] },
-      { hour: "15:00 - 16:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 7, defectDetails: [] },
-      { hour: "16:00 - 17:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 8, defectDetails: [] },
+      { hour: "13:00 - 14:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0, defectDetails: [] },
+      { hour: "14:00 - 15:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0, defectDetails: [] },
+      { hour: "15:00 - 16:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0, defectDetails: [] },
+      { hour: "16:00 - 17:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0, defectDetails: [] },
       
-      // Overtime atau jam tambahan - cumulative target tetap maksimal
-      { hour: "17:00 - 18:00", output: 0, defect: 0, qcChecked: 0, cumulativeTarget: targetPerHour * 8, defectDetails: [] }
+      // Overtime atau jam tambahan
+      { hour: "17:00 - 18:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0, defectDetails: [] }
     ],
     operators: []
   };
@@ -859,10 +949,10 @@ app.put('/api/lines/:lineName', requireLogin, requireAdmin, (req, res) => {
     data.lines[lineName].target = parseInt(target);
     data.lines[lineName].targetPerHour = targetPerHour;
     
-    // Update cumulative target di hourly_data
+    // Update target manual di hourly_data
     data.lines[lineName].hourly_data = data.lines[lineName].hourly_data.map((hour, index) => ({
       ...hour,
-      cumulativeTarget: targetPerHour * (index + 1)
+      targetManual: hour.targetManual === 0 ? 0 : targetPerHour // Reset target manual jika 0, else keep existing
     }));
   }
 
@@ -1157,19 +1247,20 @@ function generateExcelData(lineData, lineName) {
   const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
   XLSX.utils.book_append_sheet(workbook, summarySheet, 'Summary');
   
-  // Sheet 2: Hourly Data dengan defect details
+  // Sheet 2: Hourly Data dengan target manual dan selisih
   const hourlyData = [
     ['HOURLY PRODUCTION DATA'],
     [],
-    ['Jam', 'Target Kumulatif', 'Output', 'Defect', 'QC Checked', 'Defect Rate (%)']
+    ['Jam', 'Target Manual', 'Output', 'Selisih', 'Defect', 'QC Checked', 'Defect Rate (%)']
   ];
 
   lineData.hourly_data.forEach(hour => {
     const defectRate = hour.qcChecked > 0 ? ((hour.defect / hour.qcChecked) * 100).toFixed(2) : '0.00';
     hourlyData.push([
       hour.hour, 
-      hour.cumulativeTarget, 
+      hour.targetManual,
       hour.output, 
+      hour.selisih,
       hour.defect, 
       hour.qcChecked, 
       defectRate
@@ -1177,24 +1268,25 @@ function generateExcelData(lineData, lineName) {
 
     // Add defect details if available
     if (hour.defectDetails && hour.defectDetails.length > 0) {
-      hourlyData.push(['', '', 'Detail Defect:', '', '', '']);
+      hourlyData.push(['', '', '', '', '', 'Detail Defect:', '']);
       hour.defectDetails.forEach((detail, index) => {
         hourlyData.push([
           '',
           '',
+          '',
+          '',
+          '',
           `Defect ${index + 1}:`,
-          `Jenis: ${detail.type || '-'}`,
-          `Area: ${detail.area || '-'}`,
-          `Keterangan: ${detail.notes || '-'}`
+          `Jenis: ${detail.type || '-'}, Area: ${detail.area || '-'}`
         ]);
       });
-      hourlyData.push(['', '', '', '', '', '']);
+      hourlyData.push(['', '', '', '', '', '', '']);
     }
   });
   
   // Add totals
   hourlyData.push([]);
-  hourlyData.push(['TOTAL', lineData.target, lineData.outputDay, lineData.actualDefect, lineData.qcChecking, lineData.defectRatePercentage + '%', '', '', '']);
+  hourlyData.push(['TOTAL', lineData.target, lineData.outputDay, '', lineData.actualDefect, lineData.qcChecking, lineData.defectRatePercentage + '%']);
   
   const hourlySheet = XLSX.utils.aoa_to_sheet(hourlyData);
   XLSX.utils.book_append_sheet(workbook, hourlySheet, 'Hourly Data');
@@ -1401,11 +1493,10 @@ app.listen(port, () => {
   console.log(`Production Dashboard System`);
   console.log(`Server berjalan di http://localhost:${port}`);
   console.log(`=================================`);
-  console.log(`Fitur Algoritma Baru telah diimplementasikan`);
-  console.log(`- Target kumulatif per jam`);
-  console.log(`- QC Checking & Actual Defect`);
-  console.log(`- Defect Rate berdasarkan QC Checking`);
-  console.log(`- Defect Types & Areas Management`);
-  console.log(`- Multiple Defect Details per Jam`);
+  console.log(`Fitur Update telah diimplementasikan`);
+  console.log(`- Hapus target kumulatif`);
+  console.log(`- Input langsung di tabel Data Per Jam`);
+  console.log(`- Target berdasarkan manual input saja`);
+  console.log(`- Defect details terintegrasi`);
   console.log(`=================================`);
 });

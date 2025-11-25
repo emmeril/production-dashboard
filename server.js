@@ -29,7 +29,7 @@ function getToday() {
 }
 
 function resetLineData(line) {
-  const targetPerHour = Math.round(line.target / 8); // 8 jam kerja efektif
+  const targetPerHour = Math.round(line.target / 8);
   
   return {
     ...line,
@@ -38,30 +38,17 @@ function resetLineData(line) {
     actualDefect: 0,
     defectRatePercentage: 0,
     hourly_data: [
-      // Jam kerja pagi (4 jam)
-      { hour: "07:00 - 08:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0, defectDetails: [] },
-      { hour: "08:00 - 09:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0, defectDetails: [] },
-      { hour: "09:00 - 10:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0, defectDetails: [] },
-      { hour: "10:00 - 11:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0, defectDetails: [] },
-      
-      // Istirahat panjang 11:00-13:00 (2 jam) - target manual 0
-      { hour: "11:00 - 13:00", output: 0, defect: 0, qcChecked: 0, targetManual: 0, selisih: 0, defectDetails: [] },
-      
-      // Jam kerja siang (4 jam)
-      { hour: "13:00 - 14:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0, defectDetails: [] },
-      { hour: "14:00 - 15:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0, defectDetails: [] },
-      { hour: "15:00 - 16:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0, defectDetails: [] },
-      { hour: "16:00 - 17:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0, defectDetails: [] },
-      
-      // Overtime atau jam tambahan
-      { hour: "17:00 - 18:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0, defectDetails: [] }
-    ],
-    operators: line.operators ? line.operators.map(operator => ({
-      ...operator,
-      output: 0,
-      defect: 0,
-      efficiency: 0
-    })) : []
+      { hour: "07:00 - 08:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
+      { hour: "08:00 - 09:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
+      { hour: "09:00 - 10:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
+      { hour: "10:00 - 11:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
+      { hour: "11:00 - 13:00", output: 0, defect: 0, qcChecked: 0, targetManual: 0, selisih: 0 },
+      { hour: "13:00 - 14:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
+      { hour: "14:00 - 15:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
+      { hour: "15:00 - 16:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
+      { hour: "16:00 - 17:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
+      { hour: "17:00 - 18:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 }
+    ]
   };
 }
 
@@ -85,28 +72,16 @@ function initializeDataFiles() {
           "actualDefect": 0,
           "defectRatePercentage": 0,
           "hourly_data": [
-            { "hour": "07:00 - 08:00", "output": 0, "defect": 0, "qcChecked": 0, "targetManual": targetPerHour, "selisih": 0, "defectDetails": [] },
-            { "hour": "08:00 - 09:00", "output": 0, "defect": 0, "qcChecked": 0, "targetManual": targetPerHour, "selisih": 0, "defectDetails": [] },
-            { "hour": "09:00 - 10:00", "output": 0, "defect": 0, "qcChecked": 0, "targetManual": targetPerHour, "selisih": 0, "defectDetails": [] },
-            { "hour": "10:00 - 11:00", "output": 0, "defect": 0, "qcChecked": 0, "targetManual": targetPerHour, "selisih": 0, "defectDetails": [] },
-            { "hour": "11:00 - 13:00", "output": 0, "defect": 0, "qcChecked": 0, "targetManual": 0, "selisih": 0, "defectDetails": [] },
-            { "hour": "13:00 - 14:00", "output": 0, "defect": 0, "qcChecked": 0, "targetManual": targetPerHour, "selisih": 0, "defectDetails": [] },
-            { "hour": "14:00 - 15:00", "output": 0, "defect": 0, "qcChecked": 0, "targetManual": targetPerHour, "selisih": 0, "defectDetails": [] },
-            { "hour": "15:00 - 16:00", "output": 0, "defect": 0, "qcChecked": 0, "targetManual": targetPerHour, "selisih": 0, "defectDetails": [] },
-            { "hour": "16:00 - 17:00", "output": 0, "defect": 0, "qcChecked": 0, "targetManual": targetPerHour, "selisih": 0, "defectDetails": [] },
-            { "hour": "17:00 - 18:00", "output": 0, "defect": 0, "qcChecked": 0, "targetManual": targetPerHour, "selisih": 0, "defectDetails": [] }
-          ],
-          "operators": [
-            {
-              "id": 1,
-              "name": "Ahmad Susanto",
-              "position": "Operator Mesin",
-              "target": 100,
-              "output": 0,
-              "defect": 0,
-              "efficiency": 0,
-              "status": "active"
-            }
+            { "hour": "07:00 - 08:00", "output": 0, "defect": 0, "qcChecked": 0, "targetManual": targetPerHour, "selisih": 0 },
+            { "hour": "08:00 - 09:00", "output": 0, "defect": 0, "qcChecked": 0, "targetManual": targetPerHour, "selisih": 0 },
+            { "hour": "09:00 - 10:00", "output": 0, "defect": 0, "qcChecked": 0, "targetManual": targetPerHour, "selisih": 0 },
+            { "hour": "10:00 - 11:00", "output": 0, "defect": 0, "qcChecked": 0, "targetManual": targetPerHour, "selisih": 0 },
+            { "hour": "11:00 - 13:00", "output": 0, "defect": 0, "qcChecked": 0, "targetManual": 0, "selisih": 0 },
+            { "hour": "13:00 - 14:00", "output": 0, "defect": 0, "qcChecked": 0, "targetManual": targetPerHour, "selisih": 0 },
+            { "hour": "14:00 - 15:00", "output": 0, "defect": 0, "qcChecked": 0, "targetManual": targetPerHour, "selisih": 0 },
+            { "hour": "15:00 - 16:00", "output": 0, "defect": 0, "qcChecked": 0, "targetManual": targetPerHour, "selisih": 0 },
+            { "hour": "16:00 - 17:00", "output": 0, "defect": 0, "qcChecked": 0, "targetManual": targetPerHour, "selisih": 0 },
+            { "hour": "17:00 - 18:00", "output": 0, "defect": 0, "qcChecked": 0, "targetManual": targetPerHour, "selisih": 0 }
           ]
         }
       },
@@ -135,46 +110,11 @@ function initializeDataFiles() {
           "name": "Administrator",
           "line": "all",
           "role": "admin"
-        },
-        {
-          "id": 5,
-          "username": "leader1",
-          "password": "leader123",
-          "name": "Team Leader A",
-          "line": "F1-5A,F1-5B",
-          "role": "leader"
         }
       ]
     };
     fs.writeFileSync(path.join(__dirname, 'users.json'), JSON.stringify(initialUsers, null, 2));
     console.log('Users file created successfully');
-  }
-
-  // Initialize defect types and areas if doesn't exist
-  if (!fs.existsSync(path.join(__dirname, 'defect-config.json'))) {
-    const initialDefectConfig = {
-      "defectTypes": [
-        { "id": 1, "name": "Cacat Penampilan", "active": true },
-        { "id": 2, "name": "Cacat Dimensi", "active": true },
-        { "id": 3, "name": "Cacat Fungsi", "active": true },
-        { "id": 4, "name": "Cacat Material", "active": true }
-      ],
-      "defectAreas": [
-        { "id": 1, "name": "Area A - Assembly", "active": true },
-        { "id": 2, "name": "Area B - Quality Control", "active": true },
-        { "id": 3, "name": "Area C - Packaging", "active": true },
-        { "id": 4, "name": "Area D - Finishing", "active": true }
-      ]
-    };
-    fs.writeFileSync(path.join(__dirname, 'defect-config.json'), JSON.stringify(initialDefectConfig, null, 2));
-    console.log('Defect config file created successfully');
-  }
-
-  // Create history directory if doesn't exist
-  const historyDir = path.join(__dirname, 'history');
-  if (!fs.existsSync(historyDir)) {
-    fs.mkdirSync(historyDir);
-    console.log('History directory created successfully');
   }
 }
 
@@ -206,73 +146,6 @@ function readUsersData() {
   }
 }
 
-function readDefectConfig() {
-  try {
-    const data = fs.readFileSync(path.join(__dirname, 'defect-config.json'), 'utf8');
-    return JSON.parse(data);
-  } catch (error) {
-    console.error('ERROR: Gagal membaca defect-config.json:', error.message);
-    return { defectTypes: [], defectAreas: [] };
-  }
-}
-
-function writeDefectConfig(data) {
-  try {
-    fs.writeFileSync(path.join(__dirname, 'defect-config.json'), JSON.stringify(data, null, 2));
-  } catch (error) {
-    console.error('ERROR: Gagal menulis ke defect-config.json:', error.message);
-  }
-}
-
-// History Functions
-function saveDailyBackup() {
-  try {
-    const data = readProductionData();
-    const today = new Date().toISOString().split('T')[0];
-    const backupFile = path.join(__dirname, 'history', `data_${today}.json`);
-    
-    fs.writeFileSync(backupFile, JSON.stringify(data, null, 2));
-    console.log(`Daily backup saved: data_${today}.json`);
-  } catch (error) {
-    console.error('Error saving daily backup:', error);
-  }
-}
-
-function getHistoryFiles() {
-  try {
-    const historyDir = path.join(__dirname, 'history');
-    const files = fs.readdirSync(historyDir)
-      .filter(file => file.startsWith('data_') && file.endsWith('.json'))
-      .map(file => {
-        const filePath = path.join(historyDir, file);
-        const stats = fs.statSync(filePath);
-        return {
-          filename: file,
-          date: file.replace('data_', '').replace('.json', ''),
-          size: stats.size,
-          created: stats.birthtime
-        };
-      })
-      .sort((a, b) => new Date(b.date) - new Date(a.date));
-    
-    return files;
-  } catch (error) {
-    console.error('Error reading history files:', error);
-    return [];
-  }
-}
-
-function readHistoryData(filename) {
-  try {
-    const filePath = path.join(__dirname, 'history', filename);
-    const data = fs.readFileSync(filePath, 'utf8');
-    return JSON.parse(data);
-  } catch (error) {
-    console.error('Error reading history file:', error);
-    return null;
-  }
-}
-
 // Authentication Middleware
 function requireLogin(req, res, next) {
   if (req.session.user) {
@@ -290,16 +163,6 @@ function requireAdmin(req, res, next) {
   }
 }
 
-// Middleware untuk Leader
-function requireLeader(req, res, next) {
-  if (req.session.user && (req.session.user.role === 'leader' || req.session.user.role === 'admin')) {
-    next();
-  } else {
-    res.status(403).json({ error: 'Forbidden - Leader or Admin access required' });
-  }
-}
-
-// Middleware untuk mengakses line tertentu
 function requireLineAccess(req, res, next) {
   const user = req.session.user;
   const lineName = req.params.lineName;
@@ -308,22 +171,10 @@ function requireLineAccess(req, res, next) {
     return res.status(401).json({ error: 'Unauthorized - Please login' });
   }
 
-  // Admin bisa akses semua line
   if (user.role === 'admin') {
     return next();
   }
 
-  // Leader bisa akses line yang ditugaskan
-  if (user.role === 'leader') {
-    const assignedLines = user.line.split(',');
-    if (assignedLines.includes(lineName)) {
-      return next();
-    } else {
-      return res.status(403).json({ error: 'Access denied to this line' });
-    }
-  }
-
-  // Operator hanya bisa akses line-nya sendiri
   if (user.role === 'operator' && user.line === lineName) {
     return next();
   }
@@ -367,130 +218,10 @@ app.get('/api/current-user', (req, res) => {
   }
 });
 
-// Defect Configuration Routes
-app.get('/api/defect-config', requireLogin, (req, res) => {
-  const defectConfig = readDefectConfig();
-  res.json(defectConfig);
-});
-
-app.get('/api/defect-types', requireLogin, (req, res) => {
-  const defectConfig = readDefectConfig();
-  res.json(defectConfig.defectTypes.filter(type => type.active));
-});
-
-app.get('/api/defect-areas', requireLogin, (req, res) => {
-  const defectConfig = readDefectConfig();
-  res.json(defectConfig.defectAreas.filter(area => area.active));
-});
-
-app.post('/api/defect-types', requireLogin, requireAdmin, (req, res) => {
-  const { name } = req.body;
-  const defectConfig = readDefectConfig();
-  
-  const newType = {
-    id: defectConfig.defectTypes.length > 0 ? Math.max(...defectConfig.defectTypes.map(t => t.id)) + 1 : 1,
-    name,
-    active: true
-  };
-  
-  defectConfig.defectTypes.push(newType);
-  writeDefectConfig(defectConfig);
-  
-  res.json({ message: 'Jenis defect berhasil ditambahkan', defectType: newType });
-});
-
-app.post('/api/defect-areas', requireLogin, requireAdmin, (req, res) => {
-  const { name } = req.body;
-  const defectConfig = readDefectConfig();
-  
-  const newArea = {
-    id: defectConfig.defectAreas.length > 0 ? Math.max(...defectConfig.defectAreas.map(a => a.id)) + 1 : 1,
-    name,
-    active: true
-  };
-  
-  defectConfig.defectAreas.push(newArea);
-  writeDefectConfig(defectConfig);
-  
-  res.json({ message: 'Area defect berhasil ditambahkan', defectArea: newArea });
-});
-
-app.put('/api/defect-types/:id', requireLogin, requireAdmin, (req, res) => {
-  const typeId = parseInt(req.params.id);
-  const { name, active } = req.body;
-  const defectConfig = readDefectConfig();
-  
-  const typeIndex = defectConfig.defectTypes.findIndex(t => t.id === typeId);
-  if (typeIndex === -1) {
-    return res.status(404).json({ error: 'Jenis defect tidak ditemukan' });
-  }
-  
-  defectConfig.defectTypes[typeIndex] = {
-    ...defectConfig.defectTypes[typeIndex],
-    name,
-    active: active !== undefined ? active : defectConfig.defectTypes[typeIndex].active
-  };
-  
-  writeDefectConfig(defectConfig);
-  res.json({ message: 'Jenis defect berhasil diupdate', defectType: defectConfig.defectTypes[typeIndex] });
-});
-
-app.put('/api/defect-areas/:id', requireLogin, requireAdmin, (req, res) => {
-  const areaId = parseInt(req.params.id);
-  const { name, active } = req.body;
-  const defectConfig = readDefectConfig();
-  
-  const areaIndex = defectConfig.defectAreas.findIndex(a => a.id === areaId);
-  if (areaIndex === -1) {
-    return res.status(404).json({ error: 'Area defect tidak ditemukan' });
-  }
-  
-  defectConfig.defectAreas[areaIndex] = {
-    ...defectConfig.defectAreas[areaIndex],
-    name,
-    active: active !== undefined ? active : defectConfig.defectAreas[areaIndex].active
-  };
-  
-  writeDefectConfig(defectConfig);
-  res.json({ message: 'Area defect berhasil diupdate', defectArea: defectConfig.defectAreas[areaIndex] });
-});
-
-app.delete('/api/defect-types/:id', requireLogin, requireAdmin, (req, res) => {
-  const typeId = parseInt(req.params.id);
-  const defectConfig = readDefectConfig();
-  
-  const typeIndex = defectConfig.defectTypes.findIndex(t => t.id === typeId);
-  if (typeIndex === -1) {
-    return res.status(404).json({ error: 'Jenis defect tidak ditemukan' });
-  }
-  
-  // Soft delete - set active to false
-  defectConfig.defectTypes[typeIndex].active = false;
-  writeDefectConfig(defectConfig);
-  
-  res.json({ message: 'Jenis defect berhasil dihapus' });
-});
-
-app.delete('/api/defect-areas/:id', requireLogin, requireAdmin, (req, res) => {
-  const areaId = parseInt(req.params.id);
-  const defectConfig = readDefectConfig();
-  
-  const areaIndex = defectConfig.defectAreas.findIndex(a => a.id === areaId);
-  if (areaIndex === -1) {
-    return res.status(404).json({ error: 'Area defect tidak ditemukan' });
-  }
-  
-  // Soft delete - set active to false
-  defectConfig.defectAreas[areaIndex].active = false;
-  writeDefectConfig(defectConfig);
-  
-  res.json({ message: 'Area defect berhasil dihapus' });
-});
-
-// Update hourly data dengan target manual dan selisih
+// Update hourly data
 app.post('/api/update-hourly/:lineName', requireLogin, requireLineAccess, (req, res) => {
   const lineName = req.params.lineName;
-  const { hourIndex, output, defect, qcChecked, defectDetails, targetManual } = req.body;
+  const { hourIndex, output, defect, qcChecked, targetManual } = req.body;
 
   const data = readProductionData();
 
@@ -498,21 +229,17 @@ app.post('/api/update-hourly/:lineName', requireLogin, requireLineAccess, (req, 
     return res.status(404).json({ error: 'Line or hourly data not found' });
   }
 
-  // Hitung selisih
   const selisih = parseInt(output) - parseInt(targetManual);
 
-  // Update data per jam
   data.lines[lineName].hourly_data[hourIndex] = {
     ...data.lines[lineName].hourly_data[hourIndex],
     output: parseInt(output),
     defect: parseInt(defect),
     qcChecked: parseInt(qcChecked),
     targetManual: parseInt(targetManual) || data.lines[lineName].hourly_data[hourIndex].targetManual,
-    selisih: selisih,
-    defectDetails: defectDetails || []
+    selisih: selisih
   };
 
-  // Hitung ulang total harian
   let totalOutput = 0;
   let totalDefect = 0;
   let totalQCChecked = 0;
@@ -527,9 +254,7 @@ app.post('/api/update-hourly/:lineName', requireLogin, requireLineAccess, (req, 
   data.lines[lineName].actualDefect = totalDefect;
   data.lines[lineName].qcChecking = totalQCChecked;
 
-  // Hitung ulang persentase defect rate
   const defectRatePercentage = (totalQCChecked > 0) ? (totalDefect / totalQCChecked) * 100 : 0;
-
   data.lines[lineName].defectRatePercentage = parseFloat(defectRatePercentage.toFixed(2));
 
   writeProductionData(data);
@@ -545,7 +270,7 @@ app.post('/api/update-hourly/:lineName', requireLogin, requireLineAccess, (req, 
   });
 });
 
-// Update target manual untuk jam tertentu
+// Update target manual
 app.post('/api/update-target-manual/:lineName', requireLogin, requireLineAccess, (req, res) => {
   const lineName = req.params.lineName;
   const { hourIndex, targetManual } = req.body;
@@ -556,10 +281,7 @@ app.post('/api/update-target-manual/:lineName', requireLogin, requireLineAccess,
     return res.status(404).json({ error: 'Line or hourly data not found' });
   }
 
-  // Update target manual
   data.lines[lineName].hourly_data[hourIndex].targetManual = parseInt(targetManual);
-  
-  // Hitung ulang selisih
   data.lines[lineName].hourly_data[hourIndex].selisih = 
     data.lines[lineName].hourly_data[hourIndex].output - parseInt(targetManual);
 
@@ -581,10 +303,8 @@ app.post('/api/update-hourly-direct/:lineName', requireLogin, requireLineAccess,
     return res.status(404).json({ error: 'Line or hourly data not found' });
   }
 
-  // Hitung selisih
   const selisih = parseInt(output) - parseInt(targetManual);
 
-  // Update data per jam
   data.lines[lineName].hourly_data[hourIndex] = {
     ...data.lines[lineName].hourly_data[hourIndex],
     output: parseInt(output),
@@ -594,7 +314,6 @@ app.post('/api/update-hourly-direct/:lineName', requireLogin, requireLineAccess,
     selisih: selisih
   };
 
-  // Hitung ulang total harian
   let totalOutput = 0;
   let totalDefect = 0;
   let totalQCChecked = 0;
@@ -609,9 +328,7 @@ app.post('/api/update-hourly-direct/:lineName', requireLogin, requireLineAccess,
   data.lines[lineName].actualDefect = totalDefect;
   data.lines[lineName].qcChecking = totalQCChecked;
 
-  // Hitung ulang persentase defect rate
   const defectRatePercentage = (totalQCChecked > 0) ? (totalDefect / totalQCChecked) * 100 : 0;
-
   data.lines[lineName].defectRatePercentage = parseFloat(defectRatePercentage.toFixed(2));
 
   writeProductionData(data);
@@ -627,232 +344,15 @@ app.post('/api/update-hourly-direct/:lineName', requireLogin, requireLineAccess,
   });
 });
 
-// History Data Routes
-app.get('/api/history/files', requireLogin, requireAdmin, (req, res) => {
-  try {
-    const historyFiles = getHistoryFiles();
-    res.json(historyFiles);
-  } catch (error) {
-    console.error('Error getting history files:', error);
-    res.status(500).json({ error: 'Failed to get history files' });
-  }
-});
-
-app.get('/api/history/:filename', requireLogin, requireAdmin, (req, res) => {
-  const { filename } = req.params;
-  
-  // Security check to prevent directory traversal
-  if (!filename.startsWith('data_') || !filename.endsWith('.json')) {
-    return res.status(400).json({ error: 'Invalid filename' });
-  }
-
-  try {
-    const historyData = readHistoryData(filename);
-    if (!historyData) {
-      return res.status(404).json({ error: 'History file not found' });
-    }
-    res.json(historyData);
-  } catch (error) {
-    console.error('Error reading history file:', error);
-    res.status(500).json({ error: 'Failed to read history data' });
-  }
-});
-
-app.get('/api/history/:filename/export', requireLogin, requireAdmin, (req, res) => {
-  const { filename } = req.params;
-  
-  // Security check
-  if (!filename.startsWith('data_') || !filename.endsWith('.json')) {
-    return res.status(400).json({ error: 'Invalid filename' });
-  }
-
-  try {
-    const historyData = readHistoryData(filename);
-    if (!historyData) {
-      return res.status(404).json({ error: 'History file not found' });
-    }
-
-    const date = filename.replace('data_', '').replace('.json', '');
-    
-    // Create Excel workbook
-    const workbook = XLSX.utils.book_new();
-    
-    // Add summary sheet for all lines
-    const summaryData = [
-      ['HISTORICAL PRODUCTION REPORT SUMMARY'],
-      ['Generated from backup:', date],
-      [],
-      ['Line', 'Label/Week', 'Model', 'Date', 'Target', 'Output', 'QC Checking', 'Actual Defect', 'Defect Rate%']
-    ];
-
-    Object.keys(historyData.lines).forEach(lineName => {
-      const line = historyData.lines[lineName];
-      summaryData.push([
-        lineName,
-        line.labelWeek,
-        line.model,
-        line.date,
-        line.target,
-        line.outputDay,
-        line.qcChecking,
-        line.actualDefect,
-        line.defectRatePercentage
-      ]);
-    });
-
-    const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
-    XLSX.utils.book_append_sheet(workbook, summarySheet, 'Summary');
-
-    // Add sheets for each line
-    Object.keys(historyData.lines).forEach(lineName => {
-      const line = historyData.lines[lineName];
-      
-      // Line details
-      const lineData = [
-        [`PRODUCTION REPORT - ${lineName}`],
-        [],
-        ['Label/Week', line.labelWeek],
-        ['Model', line.model],
-        ['Date', line.date],
-        ['Target', line.target],
-        ['Target per Hour', line.targetPerHour],
-        ['Output/Hari', line.outputDay],
-        ['QC Checking', line.qcChecking],
-        ['Actual Defect', line.actualDefect],
-        ['Defect Rate (%)', line.defectRatePercentage],
-        [],
-        ['HOURLY DATA'],
-        ['Jam', 'Target Manual', 'Output', 'Selisih', 'Defect', 'QC Checked', 'Defect Rate (%)']
-      ];
-
-      line.hourly_data.forEach(hour => {
-        const defectRate = hour.qcChecked > 0 ? ((hour.defect / hour.qcChecked) * 100).toFixed(2) : '0.00';
-        lineData.push([
-          hour.hour, 
-          hour.targetManual,
-          hour.output, 
-          hour.selisih,
-          hour.defect, 
-          hour.qcChecked, 
-          defectRate
-        ]);
-
-        // Add defect details if available
-        if (hour.defectDetails && hour.defectDetails.length > 0) {
-          lineData.push(['', '', '', '', '', 'Detail Defect:', '', '']);
-          hour.defectDetails.forEach((detail, index) => {
-            lineData.push([
-              '',
-              '',
-              '',
-              '',
-              '',
-              `Defect ${index + 1}:`,
-              `Jenis: ${detail.type || '-'}`,
-              `Area: ${detail.area || '-'}`
-            ]);
-          });
-          lineData.push(['', '', '', '', '', '', '', '']);
-        }
-      });
-
-      // Operator data
-      if (line.operators && line.operators.length > 0) {
-        lineData.push([], ['OPERATOR DATA']);
-        lineData.push(['No', 'Nama', 'Posisi', 'Target', 'Output', 'Defect', 'Efisiensi%', 'Status']);
-        
-        line.operators.forEach((operator, index) => {
-          lineData.push([
-            index + 1,
-            operator.name,
-            operator.position,
-            operator.target,
-            operator.output,
-            operator.defect,
-            operator.efficiency,
-            operator.status === 'active' ? 'Aktif' : operator.status === 'break' ? 'Istirahat' : 'Off'
-          ]);
-        });
-      }
-
-      const lineSheet = XLSX.utils.aoa_to_sheet(lineData);
-      XLSX.utils.book_append_sheet(workbook, lineSheet, lineName);
-    });
-
-    // Generate buffer
-    const excelBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
-    
-    // Set headers
-    const downloadFilename = `Historical_Production_Report_${date}.xlsx`;
-    res.setHeader('Content-Disposition', `attachment; filename="${downloadFilename}"`);
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    
-    res.send(excelBuffer);
-  } catch (error) {
-    console.error('Export history error:', error);
-    res.status(500).json({ error: 'Failed to export history data' });
-  }
-});
-
-// Manual backup endpoint
-app.post('/api/backup/now', requireLogin, requireAdmin, (req, res) => {
-  try {
-    saveDailyBackup();
-    res.json({ message: 'Backup created successfully' });
-  } catch (error) {
-    console.error('Error creating backup:', error);
-    res.status(500).json({ error: 'Failed to create backup' });
-  }
-});
-
-// Sync dates endpoint
-app.post('/api/sync-dates', requireLogin, requireAdmin, (req, res) => {
-  const data = readProductionData();
-  const today = getToday();
-  let updatedLines = [];
-
-  Object.keys(data.lines).forEach(lineName => {
-    const line = data.lines[lineName];
-    if (line.date !== today) {
-      data.lines[lineName] = resetLineData({
-        ...line,
-        date: today
-      });
-      updatedLines.push(lineName);
-    }
-  });
-
-  writeProductionData(data);
-  res.json({ 
-    message: `Sinkronisasi tanggal selesai`, 
-    updatedLines: updatedLines,
-    today: today
-  });
-});
-
 // Line Management Routes
 app.get('/api/lines', requireLogin, (req, res) => {
   const user = req.session.user;
   const data = readProductionData();
   
-  // Admin bisa melihat semua line
   if (user.role === 'admin') {
     return res.json(data.lines || {});
   }
   
-  // Leader hanya bisa melihat line yang ditugaskan
-  if (user.role === 'leader') {
-    const assignedLines = user.line.split(',');
-    const leaderLines = {};
-    assignedLines.forEach(lineName => {
-      if (data.lines[lineName]) {
-        leaderLines[lineName] = data.lines[lineName];
-      }
-    });
-    return res.json(leaderLines);
-  }
-  
-  // Operator hanya bisa melihat line-nya sendiri
   if (user.role === 'operator') {
     const operatorLine = {};
     if (data.lines[user.line]) {
@@ -862,123 +362,6 @@ app.get('/api/lines', requireLogin, (req, res) => {
   }
   
   res.status(403).json({ error: 'Access denied' });
-});
-
-app.post('/api/lines', requireLogin, requireAdmin, (req, res) => {
-  const { lineName, labelWeek, model, date, target } = req.body;
-  const data = readProductionData();
-
-  if (data.lines[lineName]) {
-    return res.status(400).json({ error: 'Line already exists' });
-  }
-
-  // Gunakan tanggal hari ini jika tidak disediakan
-  const lineDate = date || getToday();
-  const targetPerHour = Math.round(target / 8); // 8 jam kerja efektif
-
-  data.lines[lineName] = {
-    labelWeek,
-    model,
-    date: lineDate,
-    target: parseInt(target),
-    targetPerHour: targetPerHour,
-    outputDay: 0,
-    qcChecking: 0,
-    actualDefect: 0,
-    defectRatePercentage: 0,
-    hourly_data: [
-      // Jam kerja pagi (4 jam)
-      { hour: "07:00 - 08:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0, defectDetails: [] },
-      { hour: "08:00 - 09:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0, defectDetails: [] },
-      { hour: "09:00 - 10:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0, defectDetails: [] },
-      { hour: "10:00 - 11:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0, defectDetails: [] },
-      
-      // Istirahat panjang 11:00-13:00 (2 jam) - target manual 0
-      { hour: "11:00 - 13:00", output: 0, defect: 0, qcChecked: 0, targetManual: 0, selisih: 0, defectDetails: [] },
-      
-      // Jam kerja siang (4 jam)
-      { hour: "13:00 - 14:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0, defectDetails: [] },
-      { hour: "14:00 - 15:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0, defectDetails: [] },
-      { hour: "15:00 - 16:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0, defectDetails: [] },
-      { hour: "16:00 - 17:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0, defectDetails: [] },
-      
-      // Overtime atau jam tambahan
-      { hour: "17:00 - 18:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0, defectDetails: [] }
-    ],
-    operators: []
-  };
-
-  writeProductionData(data);
-  res.json({ 
-    message: `Line ${lineName} created successfully`, 
-    data: data.lines[lineName],
-    calculated: {
-      targetPerHour: targetPerHour,
-      message: `Target per jam: ${targetPerHour} unit (Target: ${target} ÷ 8 jam efektif)`
-    }
-  });
-});
-
-app.put('/api/lines/:lineName', requireLogin, requireAdmin, (req, res) => {
-  const lineName = req.params.lineName;
-  const { labelWeek, model, date, target } = req.body;
-  const data = readProductionData();
-
-  if (!data.lines[lineName]) {
-    return res.status(404).json({ error: 'Line not found' });
-  }
-
-  const oldDate = data.lines[lineName].date;
-  const newDate = date || getToday();
-  const targetPerHour = Math.round(target / 8);
-
-  // Jika tanggal berubah, reset semua data
-  if (oldDate !== newDate) {
-    data.lines[lineName] = resetLineData({
-      ...data.lines[lineName],
-      labelWeek,
-      model,
-      date: newDate,
-      target: parseInt(target),
-      targetPerHour: targetPerHour
-    });
-  } else {
-    // Jika tanggal sama, hanya update data dasar
-    data.lines[lineName].labelWeek = labelWeek;
-    data.lines[lineName].model = model;
-    data.lines[lineName].target = parseInt(target);
-    data.lines[lineName].targetPerHour = targetPerHour;
-    
-    // Update target manual di hourly_data
-    data.lines[lineName].hourly_data = data.lines[lineName].hourly_data.map((hour, index) => ({
-      ...hour,
-      targetManual: hour.targetManual === 0 ? 0 : targetPerHour // Reset target manual jika 0, else keep existing
-    }));
-  }
-
-  writeProductionData(data);
-  res.json({ 
-    message: `Line ${lineName} updated successfully`, 
-    data: data.lines[lineName],
-    calculated: {
-      targetPerHour: targetPerHour,
-      message: `Target per jam: ${targetPerHour} unit (Target: ${target} ÷ 8 jam)`
-    },
-    reset: oldDate !== newDate ? 'Data telah direset karena perubahan tanggal.' : 'Tanggal tidak berubah, data tetap.'
-  });
-});
-
-app.delete('/api/lines/:lineName', requireLogin, requireAdmin, (req, res) => {
-  const lineName = req.params.lineName;
-  const data = readProductionData();
-
-  if (!data.lines[lineName]) {
-    return res.status(404).json({ error: 'Line not found' });
-  }
-
-  delete data.lines[lineName];
-  writeProductionData(data);
-  res.json({ message: `Line ${lineName} deleted successfully` });
 });
 
 // Data Routes
@@ -992,234 +375,6 @@ app.get('/api/line/:lineName', requireLogin, requireLineAccess, (req, res) => {
   } else {
     res.status(404).json({ error: 'Line not found' });
   }
-});
-
-app.post('/api/update-line/:lineName', requireLogin, requireLineAccess, (req, res) => {
-  const lineName = req.params.lineName;
-  const newData = req.body;
-
-  const data = readProductionData();
-
-  if (!data.lines[lineName]) {
-    return res.status(404).json({ error: 'Line not found' });
-  }
-
-  // Update line data
-  data.lines[lineName] = { ...data.lines[lineName], ...newData };
-
-  // Recalculate percentages
-  const line = data.lines[lineName];
-  const qcChecking = line.qcChecking || 0;
-  const actualDefect = line.actualDefect || 0;
-
-  let defectRatePercentage = (qcChecking > 0) ? (actualDefect / qcChecking) * 100 : 0;
-
-  line.defectRatePercentage = parseFloat(defectRatePercentage.toFixed(2));
-
-  writeProductionData(data);
-  res.json({ message: `Line ${lineName} updated successfully.`, data: line });
-});
-
-// Operator Routes - Leader bisa mengelola operator di line yang ditugaskan
-app.get('/api/operators/:lineName', requireLogin, requireLineAccess, (req, res) => {
-  const lineName = req.params.lineName;
-  const data = readProductionData();
-  
-  if (data.lines[lineName]) {
-    res.json(data.lines[lineName].operators || []);
-  } else {
-    res.status(404).json({ error: 'Line not found' });
-  }
-});
-
-// Leader bisa menambah operator
-app.post('/api/operators/:lineName', requireLogin, requireLineAccess, requireLeader, (req, res) => {
-  const data = readProductionData();
-  const lineName = req.params.lineName;
-  const newOperator = req.body;
-
-  if (!data.lines[lineName]) {
-    return res.status(404).json({ error: 'Line not found' });
-  }
-
-  if (!data.lines[lineName].operators) {
-    data.lines[lineName].operators = [];
-  }
-
-  // Generate ID
-  const maxId = data.lines[lineName].operators.reduce((max, op) => Math.max(max, op.id), 0);
-  newOperator.id = maxId + 1;
-  
-  // Create username from name (lowercase, no spaces)
-  const username = newOperator.name.toLowerCase().replace(/\s/g, '');
-  
-  // Calculate efficiency
-  newOperator.efficiency = ((newOperator.output / newOperator.target) * 100).toFixed(1);
-
-  data.lines[lineName].operators.push(newOperator);
-
-  // Create user account automatically
-  const usersData = readUsersData();
-  const newUser = {
-    id: usersData.users.length + 1,
-    username: username,
-    password: "password123", // default password
-    name: newOperator.name,
-    line: lineName,
-    role: "operator"
-  };
-  
-  usersData.users.push(newUser);
-  fs.writeFileSync(path.join(__dirname, 'users.json'), JSON.stringify(usersData, null, 2));
-
-  writeProductionData(data);
-  res.json({ 
-    message: 'Operator added successfully.', 
-    operator: newOperator,
-    userAccount: {
-      username: username,
-      password: "password123",
-      message: "Akun operator telah dibuat secara otomatis"
-    }
-  });
-});
-
-// Leader bisa mengupdate operator
-app.put('/api/operators/:lineName/:id', requireLogin, requireLineAccess, requireLeader, (req, res) => {
-  const data = readProductionData();
-  const lineName = req.params.lineName;
-  const operatorId = parseInt(req.params.id);
-  const updatedData = req.body;
-
-  if (!data.lines[lineName] || !data.lines[lineName].operators) {
-    return res.status(404).json({ error: 'Line or operators not found' });
-  }
-
-  const operatorIndex = data.lines[lineName].operators.findIndex(op => op.id === operatorId);
-
-  if (operatorIndex === -1) {
-    return res.status(404).json({ error: 'Operator not found' });
-  }
-
-  // Update operator data
-  data.lines[lineName].operators[operatorIndex] = {
-    ...data.lines[lineName].operators[operatorIndex],
-    ...updatedData
-  };
-
-  // Recalculate efficiency
-  data.lines[lineName].operators[operatorIndex].efficiency = (
-    (data.lines[lineName].operators[operatorIndex].output / data.lines[lineName].operators[operatorIndex].target) * 100
-  ).toFixed(1);
-
-  writeProductionData(data);
-  res.json({ message: 'Operator updated successfully.', operator: data.lines[lineName].operators[operatorIndex] });
-});
-
-// Leader bisa menghapus operator
-app.delete('/api/operators/:lineName/:id', requireLogin, requireLineAccess, requireLeader, (req, res) => {
-  const data = readProductionData();
-  const lineName = req.params.lineName;
-  const operatorId = parseInt(req.params.id);
-
-  if (!data.lines[lineName] || !data.lines[lineName].operators) {
-    return res.status(404).json({ error: 'Line or operators not found' });
-  }
-
-  data.lines[lineName].operators = data.lines[lineName].operators.filter(op => op.id !== operatorId);
-  writeProductionData(data);
-
-  res.json({ message: 'Operator deleted successfully.' });
-});
-
-// User Management Routes - Admin only
-app.get('/api/users', requireLogin, requireAdmin, (req, res) => {
-  const usersData = readUsersData();
-  res.json(usersData.users || []);
-});
-
-app.post('/api/users', requireLogin, requireAdmin, (req, res) => {
-  const { username, password, name, line, role } = req.body;
-  const usersData = readUsersData();
-
-  // Check if username already exists
-  if (usersData.users.find(u => u.username === username)) {
-    return res.status(400).json({ error: 'Username already exists' });
-  }
-
-  const newUser = {
-    id: usersData.users.length + 1,
-    username,
-    password,
-    name,
-    line,
-    role
-  };
-
-  usersData.users.push(newUser);
-  fs.writeFileSync(path.join(__dirname, 'users.json'), JSON.stringify(usersData, null, 2));
-
-  res.json({ 
-    message: 'User created successfully',
-    user: newUser
-  });
-});
-
-app.put('/api/users/:id', requireLogin, requireAdmin, (req, res) => {
-  const userId = parseInt(req.params.id);
-  const { username, password, name, line, role } = req.body;
-  const usersData = readUsersData();
-
-  const userIndex = usersData.users.findIndex(u => u.id === userId);
-  if (userIndex === -1) {
-    return res.status(404).json({ error: 'User not found' });
-  }
-
-  // Check if username already exists (excluding current user)
-  if (usersData.users.find(u => u.username === username && u.id !== userId)) {
-    return res.status(400).json({ error: 'Username already exists' });
-  }
-
-  // Update user
-  usersData.users[userIndex] = {
-    ...usersData.users[userIndex],
-    username,
-    // Only update password if provided
-    ...(password && { password }),
-    name,
-    line,
-    role
-  };
-
-  fs.writeFileSync(path.join(__dirname, 'users.json'), JSON.stringify(usersData, null, 2));
-
-  res.json({ 
-    message: 'User updated successfully',
-    user: usersData.users[userIndex]
-  });
-});
-
-app.delete('/api/users/:id', requireLogin, requireAdmin, (req, res) => {
-  const userId = parseInt(req.params.id);
-  const usersData = readUsersData();
-
-  const userIndex = usersData.users.findIndex(u => u.id === userId);
-  if (userIndex === -1) {
-    return res.status(404).json({ error: 'User not found' });
-  }
-
-  // Prevent deletion of own account
-  if (req.session.user.id === userId) {
-    return res.status(400).json({ error: 'Cannot delete your own account' });
-  }
-
-  const deletedUser = usersData.users.splice(userIndex, 1)[0];
-  fs.writeFileSync(path.join(__dirname, 'users.json'), JSON.stringify(usersData, null, 2));
-
-  res.json({ 
-    message: 'User deleted successfully',
-    user: deletedUser
-  });
 });
 
 // Export Excel Function
@@ -1247,7 +402,7 @@ function generateExcelData(lineData, lineName) {
   const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
   XLSX.utils.book_append_sheet(workbook, summarySheet, 'Summary');
   
-  // Sheet 2: Hourly Data dengan target manual dan selisih
+  // Sheet 2: Hourly Data
   const hourlyData = [
     ['HOURLY PRODUCTION DATA'],
     [],
@@ -1265,23 +420,6 @@ function generateExcelData(lineData, lineName) {
       hour.qcChecked, 
       defectRate
     ]);
-
-    // Add defect details if available
-    if (hour.defectDetails && hour.defectDetails.length > 0) {
-      hourlyData.push(['', '', '', '', '', 'Detail Defect:', '']);
-      hour.defectDetails.forEach((detail, index) => {
-        hourlyData.push([
-          '',
-          '',
-          '',
-          '',
-          '',
-          `Defect ${index + 1}:`,
-          `Jenis: ${detail.type || '-'}, Area: ${detail.area || '-'}`
-        ]);
-      });
-      hourlyData.push(['', '', '', '', '', '', '']);
-    }
   });
   
   // Add totals
@@ -1290,31 +428,6 @@ function generateExcelData(lineData, lineName) {
   
   const hourlySheet = XLSX.utils.aoa_to_sheet(hourlyData);
   XLSX.utils.book_append_sheet(workbook, hourlySheet, 'Hourly Data');
-  
-  // Sheet 3: Operator Data
-  if (lineData.operators && lineData.operators.length > 0) {
-    const operatorData = [
-      ['OPERATOR PERFORMANCE'],
-      [],
-      ['No', 'Nama Operator', 'Posisi', 'Target', 'Output', 'Defect', 'Efisiensi (%)', 'Status']
-    ];
-    
-    lineData.operators.forEach((operator, index) => {
-      operatorData.push([
-        index + 1,
-        operator.name,
-        operator.position,
-        operator.target,
-        operator.output,
-        operator.defect,
-        operator.efficiency,
-        operator.status === 'active' ? 'Aktif' : operator.status === 'break' ? 'Istirahat' : 'Off'
-      ]);
-    });
-    
-    const operatorSheet = XLSX.utils.aoa_to_sheet(operatorData);
-    XLSX.utils.book_append_sheet(workbook, operatorSheet, 'Operator Data');
-  }
   
   return workbook;
 }
@@ -1333,10 +446,8 @@ app.get('/api/export/:lineName', requireLogin, requireLineAccess, (req, res) => 
   try {
     const workbook = generateExcelData(lineData, lineName);
     
-    // Generate buffer
     const excelBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
     
-    // Set headers
     const fileName = `Production_Report_${lineName}_${new Date().toISOString().split('T')[0]}.xlsx`;
     res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -1353,8 +464,6 @@ app.get('/', (req, res) => {
   if (req.session.user) {
     if (req.session.user.role === 'admin') {
       res.sendFile(path.join(__dirname, 'public', 'admin.html'));
-    } else if (req.session.user.role === 'leader') {
-      res.sendFile(path.join(__dirname, 'public', 'leader.html'));
     } else {
       res.redirect(`/line/${req.session.user.line}`);
     }
@@ -1368,26 +477,9 @@ app.get('/admin', (req, res) => {
     return res.redirect('/');
   }
   if (req.session.user.role !== 'admin') {
-    if (req.session.user.role === 'leader') {
-      return res.redirect('/leader');
-    }
     return res.redirect(`/line/${req.session.user.line}`);
   }
   res.sendFile(path.join(__dirname, 'public', 'admin.html'));
-});
-
-// Route untuk Leader Dashboard
-app.get('/leader', (req, res) => {
-  if (!req.session.user) {
-    return res.redirect('/');
-  }
-  if (req.session.user.role !== 'leader') {
-    if (req.session.user.role === 'admin') {
-      return res.redirect('/admin');
-    }
-    return res.redirect(`/line/${req.session.user.line}`);
-  }
-  res.sendFile(path.join(__dirname, 'public', 'leader.html'));
 });
 
 app.get('/line/:lineName', (req, res) => {
@@ -1397,15 +489,11 @@ app.get('/line/:lineName', (req, res) => {
 
   const lineName = req.params.lineName;
   
-  // Check line access
   const user = req.session.user;
   let hasAccess = false;
   
   if (user.role === 'admin') {
     hasAccess = true;
-  } else if (user.role === 'leader') {
-    const assignedLines = user.line.split(',');
-    hasAccess = assignedLines.includes(lineName);
   } else if (user.role === 'operator') {
     hasAccess = user.line === lineName;
   }
@@ -1424,15 +512,11 @@ app.get('/input/:lineName', (req, res) => {
 
   const lineName = req.params.lineName;
   
-  // Check line access
   const user = req.session.user;
   let hasAccess = false;
   
   if (user.role === 'admin') {
     hasAccess = true;
-  } else if (user.role === 'leader') {
-    const assignedLines = user.line.split(',');
-    hasAccess = assignedLines.includes(lineName);
   } else if (user.role === 'operator') {
     hasAccess = user.line === lineName;
   }
@@ -1449,21 +533,12 @@ app.get('/style.css', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'style.css'));
 });
 
-app.get('/all.css', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'all.css'));
-});
-
 app.get('/login.js', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'login.js'));
 });
 
 app.get('/admin.js', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin.js'));
-});
-
-// Leader JavaScript
-app.get('/leader.js', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'leader.js'));
 });
 
 app.get('/operator.js', (req, res) => {
@@ -1474,29 +549,17 @@ app.get('/input.js', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'input.js'));
 });
 
-// Schedule daily backup at midnight
-setInterval(() => {
-  const now = new Date();
-  if (now.getHours() === 0 && now.getMinutes() === 0) {
-    saveDailyBackup();
-  }
-}, 60000); // Check every minute
-
 // Initialize and Start Server
 initializeDataFiles();
-
-// Create initial backup
-setTimeout(saveDailyBackup, 5000);
 
 app.listen(port, () => {
   console.log(`=================================`);
   console.log(`Production Dashboard System`);
   console.log(`Server berjalan di http://localhost:${port}`);
   console.log(`=================================`);
-  console.log(`Fitur Update telah diimplementasikan`);
-  console.log(`- Hapus target kumulatif`);
+  console.log(`Fitur yang tersedia:`);
   console.log(`- Input langsung di tabel Data Per Jam`);
-  console.log(`- Target berdasarkan manual input saja`);
-  console.log(`- Defect details terintegrasi`);
+  console.log(`- Target berdasarkan manual input`);
+  console.log(`- Export Excel`);
   console.log(`=================================`);
 });

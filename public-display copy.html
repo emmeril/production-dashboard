@@ -80,9 +80,8 @@
             box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
         }
         
-        /* PERUBAHAN: Font LINE dan MODEL lebih kecil */
         .label {
-            font-size: calc(1rem * var(--scale-factor));
+            font-size: calc(1.4rem * var(--scale-factor));
             font-weight: bold;
             margin-bottom: 4px;
             color: #f1f5f9;
@@ -90,7 +89,7 @@
         }
         
         .value {
-            font-size: calc(1rem * var(--scale-factor));
+            font-size: calc(2rem * var(--scale-factor));
             font-weight: bold;
             color: white;
             text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
@@ -136,7 +135,7 @@
         .data-box {
             background: rgba(30, 41, 59, 0.7);
             border-radius: 12px;
-            padding: 10px;
+            padding: 20px;
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -169,18 +168,16 @@
             background: linear-gradient(90deg, #10b981 0%, #059669 100%);
         }
         
-        /* PERUBAHAN: Font TARGET / JAM, SELISIH AKUMULATIF, OUTPUT AKUMULATIF lebih besar */
         .data-label {
-            font-size: calc(2rem * var(--scale-factor));
+            font-size: calc(1.4rem * var(--scale-factor));
             margin-bottom: 12px;
             text-align: center;
             color: #cbd5e1;
             text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-            font-weight: bold;
         }
         
         .data-value {
-            font-size: calc(7rem * var(--scale-factor));
+            font-size: calc(2.8rem * var(--scale-factor));
             font-weight: bold;
             text-align: center;
             color: white;
@@ -188,7 +185,7 @@
         }
         
         .percentage {
-            font-size: calc(4rem * var(--scale-factor));
+            font-size: calc(1.8rem * var(--scale-factor));
             margin-top: 8px;
             font-weight: 600;
         }
@@ -215,7 +212,7 @@
         .defect-box {
             background: rgba(30, 41, 59, 0.7);
             border-radius: 12px;
-            padding: 10px;
+            padding: 25px;
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -431,12 +428,12 @@
         <div class="header">
             <div class="line-info">
                 <div class="line-box">
-                    <!-- <div class="label">LINE</div> -->
+                    <div class="label">LINE</div>
                     <div class="value" x-text="lineData.name || 'Loading...'"></div>
                     <div class="value" x-text="lineData.data.labelWeek || 'Loading...'"></div>
                 </div>
                 <div class="model-box">
-                    <!-- <div class="label">MODEL</div> -->
+                    <div class="label">MODEL</div>
                     <div class="value" x-text="lineData.data.model || 'Loading...'"></div>
                 </div>
             </div>
@@ -494,7 +491,7 @@
             </div>
         </div>
         
-        <!-- <div class="footer">
+        <div class="footer">
             <div>PRODUCTION MONITORING SYSTEM</div>
             <div class="datetime" id="current-datetime">Loading...</div>
             <div class="flex items-center justify-center mt-2">
@@ -508,7 +505,7 @@
                     <option value="60000">1 Menit</option>
                 </select>
             </div>
-        </div> -->
+        </div>
     </div>
 
     <!-- Error Overlay -->

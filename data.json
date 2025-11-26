@@ -6,7 +6,7 @@
       "date": "2025-11-26",
       "target": 1000,
       "targetPerHour": 125,
-      "outputDay": 125,
+      "outputDay": 250,
       "qcChecking": 0,
       "actualDefect": 0,
       "defectRatePercentage": 0,
@@ -21,11 +21,11 @@
         },
         {
           "hour": "08:00 - 09:00",
-          "output": 0,
+          "output": 125,
           "defect": 0,
           "qcChecked": 0,
           "targetManual": 125,
-          "selisih": -125
+          "selisih": 0
         },
         {
           "hour": "09:00 - 10:00",

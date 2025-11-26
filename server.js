@@ -981,19 +981,28 @@ app.post('/api/update-line/:lineName/:modelId', requireLogin, requireLineAccess,
   res.json({ message: `Model ${modelId} in line ${lineName} updated successfully.`, data: model });
 });
 
-// Date-based Report Routes
+// PERBAIKAN: Date-based Report Routes - Diperbaiki
 app.get('/api/date-report/:date', requireLogin, requireDateReportAccess, (req, res) => {
   const date = req.params.date;
   
+  // Validasi format tanggal
+  if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return res.status(400).json({ error: 'Format tanggal tidak valid. Gunakan format: YYYY-MM-DD' });
+  }
+  
   try {
+    // Coba baca dari backup terlebih dahulu
     const backupFile = path.join(__dirname, 'history', `data_${date}.json`);
     let data;
     
     if (fs.existsSync(backupFile)) {
+      console.log(`Mengambil data dari backup: ${backupFile}`);
       data = JSON.parse(fs.readFileSync(backupFile, 'utf8'));
     } else {
+      console.log(`Backup tidak ditemukan, menggunakan data.json untuk tanggal: ${date}`);
       data = readProductionData();
       
+      // Filter data berdasarkan tanggal
       const filteredLines = {};
       Object.keys(data.lines).forEach(lineName => {
         const line = data.lines[lineName];
@@ -1017,6 +1026,7 @@ app.get('/api/date-report/:date', requireLogin, requireDateReportAccess, (req, r
       data.lines = filteredLines;
     }
     
+    // Format data untuk response
     const reportData = [];
     Object.keys(data.lines).forEach(lineName => {
       const line = data.lines[lineName];
@@ -1028,34 +1038,45 @@ app.get('/api/date-report/:date', requireLogin, requireDateReportAccess, (req, r
           labelWeek: model.labelWeek,
           model: model.model,
           date: model.date,
-          target: model.target,
-          output: model.outputDay,
-          defect: model.actualDefect,
-          qcChecked: model.qcChecking,
-          defectRate: model.defectRatePercentage.toFixed(2)
+          target: model.target || 0,
+          output: model.outputDay || 0,
+          defect: model.actualDefect || 0,
+          qcChecked: model.qcChecking || 0,
+          defectRate: model.defectRatePercentage || 0
         });
       });
     });
     
+    console.log(`Laporan tanggal ${date} berhasil dibuat. Jumlah data: ${reportData.length}`);
     res.json(reportData);
   } catch (error) {
     console.error('Error generating date report:', error);
-    res.status(500).json({ error: 'Failed to generate date report' });
+    res.status(500).json({ error: 'Failed to generate date report: ' + error.message });
   }
 });
 
+// PERBAIKAN: Export Date Report - Diperbaiki
 app.get('/api/export-date-report/:date', requireLogin, requireDateReportAccess, (req, res) => {
   const date = req.params.date;
   
+  // Validasi format tanggal
+  if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return res.status(400).json({ error: 'Format tanggal tidak valid. Gunakan format: YYYY-MM-DD' });
+  }
+  
   try {
+    // Coba baca dari backup terlebih dahulu
     const backupFile = path.join(__dirname, 'history', `data_${date}.json`);
     let data;
     
     if (fs.existsSync(backupFile)) {
+      console.log(`Mengambil data dari backup untuk export: ${backupFile}`);
       data = JSON.parse(fs.readFileSync(backupFile, 'utf8'));
     } else {
+      console.log(`Backup tidak ditemukan, menggunakan data.json untuk export tanggal: ${date}`);
       data = readProductionData();
       
+      // Filter data berdasarkan tanggal
       const filteredLines = {};
       Object.keys(data.lines).forEach(lineName => {
         const line = data.lines[lineName];
@@ -1079,8 +1100,10 @@ app.get('/api/export-date-report/:date', requireLogin, requireDateReportAccess, 
       data.lines = filteredLines;
     }
     
+    // Buat workbook Excel
     const workbook = XLSX.utils.book_new();
     
+    // Sheet Summary
     const summaryData = [
       ['PRODUCTION REPORT SUMMARY'],
       ['Tanggal:', date],
@@ -1089,40 +1112,51 @@ app.get('/api/export-date-report/:date', requireLogin, requireDateReportAccess, 
       ['Line', 'Model ID', 'Label/Week', 'Model', 'Target', 'Output', 'Defect', 'QC Checked', 'Defect Rate%']
     ];
 
+    let totalTarget = 0;
+    let totalOutput = 0;
+    let totalDefect = 0;
+    let totalQCChecked = 0;
+
     Object.keys(data.lines).forEach(lineName => {
       const line = data.lines[lineName];
       Object.keys(line.models).forEach(modelId => {
         const model = line.models[modelId];
+        const target = model.target || 0;
+        const output = model.outputDay || 0;
+        const defect = model.actualDefect || 0;
+        const qcChecked = model.qcChecking || 0;
+        const defectRate = model.defectRatePercentage || 0;
+        
         summaryData.push([
           lineName,
           modelId,
-          model.labelWeek,
-          model.model,
-          model.target,
-          model.outputDay,
-          model.actualDefect,
-          model.qcChecking,
-          model.defectRatePercentage + '%'
+          model.labelWeek || '',
+          model.model || '',
+          target,
+          output,
+          defect,
+          qcChecked,
+          defectRate + '%'
         ]);
+        
+        totalTarget += target;
+        totalOutput += output;
+        totalDefect += defect;
+        totalQCChecked += qcChecked;
       });
     });
 
-    const totalTarget = Object.values(data.lines).reduce((sum, line) => 
-      sum + Object.values(line.models).reduce((modelSum, model) => modelSum + model.target, 0), 0);
-    const totalOutput = Object.values(data.lines).reduce((sum, line) => 
-      sum + Object.values(line.models).reduce((modelSum, model) => modelSum + model.outputDay, 0), 0);
-    const totalDefect = Object.values(data.lines).reduce((sum, line) => 
-      sum + Object.values(line.models).reduce((modelSum, model) => modelSum + model.actualDefect, 0), 0);
-    const totalQCChecked = Object.values(data.lines).reduce((sum, line) => 
-      sum + Object.values(line.models).reduce((modelSum, model) => modelSum + model.qcChecking, 0), 0);
-    const avgDefectRate = totalQCChecked > 0 ? (totalDefect / totalQCChecked * 100).toFixed(2) : 0;
-
+    // Tambahkan total
     summaryData.push([]);
-    summaryData.push(['TOTAL', '', '', '', totalTarget, totalOutput, totalDefect, totalQCChecked, avgDefectRate + '%']);
+    summaryData.push(['TOTAL', '', '', '', totalTarget, totalOutput, totalDefect, totalQCChecked, '']);
+    
+    const totalDefectRate = totalQCChecked > 0 ? ((totalDefect / totalQCChecked) * 100).toFixed(2) : 0;
+    summaryData.push(['', '', '', '', '', '', '', 'Defect Rate Total:', totalDefectRate + '%']);
 
     const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
     XLSX.utils.book_append_sheet(workbook, summarySheet, 'Summary');
 
+    // Sheet untuk setiap line dan model
     Object.keys(data.lines).forEach(lineName => {
       const line = data.lines[lineName];
       
@@ -1132,38 +1166,45 @@ app.get('/api/export-date-report/:date', requireLogin, requireDateReportAccess, 
         const lineData = [
           [`PRODUCTION REPORT - ${lineName} - ${modelId}`],
           [],
-          ['Label/Week', model.labelWeek],
-          ['Model', model.model],
-          ['Date', model.date],
-          ['Target', model.target],
-          ['Output/Hari', model.outputDay],
-          ['QC Checking', model.qcChecking],
-          ['Actual Defect', model.actualDefect],
-          ['Defect Rate (%)', model.defectRatePercentage],
+          ['Label/Week', model.labelWeek || ''],
+          ['Model', model.model || ''],
+          ['Date', model.date || ''],
+          ['Target', model.target || 0],
+          ['Output/Hari', model.outputDay || 0],
+          ['QC Checking', model.qcChecking || 0],
+          ['Actual Defect', model.actualDefect || 0],
+          ['Defect Rate (%)', (model.defectRatePercentage || 0) + '%'],
           [],
           ['HOURLY DATA'],
           ['Jam', 'Target Manual', 'Output', 'Selisih (Target - Output)', 'Defect', 'QC Checked', 'Defect Rate (%)']
         ];
 
-        model.hourly_data.forEach(hour => {
-          const defectRate = hour.qcChecked > 0 ? ((hour.defect / hour.qcChecked) * 100).toFixed(2) : '0.00';
-          const selisih = hour.targetManual - hour.output;
-          lineData.push([
-            hour.hour, 
-            hour.targetManual,
-            hour.output, 
-            selisih,
-            hour.defect, 
-            hour.qcChecked, 
-            defectRate
-          ]);
-        });
+        if (model.hourly_data && model.hourly_data.length > 0) {
+          model.hourly_data.forEach(hour => {
+            const defectRate = hour.qcChecked > 0 ? ((hour.defect / hour.qcChecked) * 100).toFixed(2) : '0.00';
+            const selisih = (hour.targetManual || 0) - (hour.output || 0);
+            lineData.push([
+              hour.hour, 
+              hour.targetManual || 0,
+              hour.output || 0, 
+              selisih,
+              hour.defect || 0, 
+              hour.qcChecked || 0, 
+              defectRate + '%'
+            ]);
+          });
+        } else {
+          lineData.push(['Tidak ada data hourly']);
+        }
 
+        // Batasi panjang nama sheet (max 31 karakter untuk Excel)
+        const sheetName = `${lineName}_${modelId}`.substring(0, 31);
         const lineSheet = XLSX.utils.aoa_to_sheet(lineData);
-        XLSX.utils.book_append_sheet(workbook, lineSheet, `${lineName}_${modelId}`);
+        XLSX.utils.book_append_sheet(workbook, lineSheet, sheetName);
       });
     });
 
+    // Kirim file Excel
     const excelBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
     
     const downloadFilename = `Production_Report_${date}.xlsx`;
@@ -1171,9 +1212,10 @@ app.get('/api/export-date-report/:date', requireLogin, requireDateReportAccess, 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     
     res.send(excelBuffer);
+    console.log(`Export Excel untuk tanggal ${date} berhasil`);
   } catch (error) {
     console.error('Export date report error:', error);
-    res.status(500).json({ error: 'Failed to export date report' });
+    res.status(500).json({ error: 'Failed to export date report: ' + error.message });
   }
 });
 
@@ -1444,7 +1486,7 @@ app.listen(port, () => {
   console.log(`- Role: Admin, Admin Operator, Operator`);
   console.log(`- Input langsung di tabel Data Per Jam`);
   console.log(`- Target berdasarkan manual input`);
-  console.log(`- Laporan berdasarkan tanggal`);
+  console.log(`- Laporan berdasarkan tanggal (FIXED)`);
   console.log(`- Backup dan History System`);
   console.log(`- Export Excel`);
   console.log(`=================================`);

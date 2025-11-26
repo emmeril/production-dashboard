@@ -9,14 +9,14 @@
           "date": "2025-11-26",
           "target": 1000,
           "targetPerHour": 125,
-          "outputDay": 0,
+          "outputDay": 125,
           "qcChecking": 0,
           "actualDefect": 0,
           "defectRatePercentage": 0,
           "hourly_data": [
             {
               "hour": "07:00 - 08:00",
-              "output": 0,
+              "output": 125,
               "defect": 0,
               "qcChecked": 0,
               "targetManual": 125,
@@ -28,7 +28,7 @@
               "defect": 0,
               "qcChecked": 0,
               "targetManual": 125,
-              "selisih": 0
+              "selisih": -125
             },
             {
               "hour": "09:00 - 10:00",
@@ -36,7 +36,7 @@
               "defect": 0,
               "qcChecked": 0,
               "targetManual": 125,
-              "selisih": 0
+              "selisih": -125
             },
             {
               "hour": "10:00 - 11:00",
@@ -44,7 +44,7 @@
               "defect": 0,
               "qcChecked": 0,
               "targetManual": 125,
-              "selisih": 0
+              "selisih": -125
             },
             {
               "hour": "11:00 - 13:00",
@@ -60,7 +60,7 @@
               "defect": 0,
               "qcChecked": 0,
               "targetManual": 125,
-              "selisih": 0
+              "selisih": -125
             },
             {
               "hour": "14:00 - 15:00",
@@ -68,7 +68,7 @@
               "defect": 0,
               "qcChecked": 0,
               "targetManual": 125,
-              "selisih": 0
+              "selisih": -125
             },
             {
               "hour": "15:00 - 16:00",
@@ -76,7 +76,7 @@
               "defect": 0,
               "qcChecked": 0,
               "targetManual": 125,
-              "selisih": 0
+              "selisih": -125
             },
             {
               "hour": "16:00 - 17:00",
@@ -84,14 +84,14 @@
               "defect": 0,
               "qcChecked": 0,
               "targetManual": 125,
-              "selisih": 0
+              "selisih": -125
             }
           ],
           "operators": []
         },
         "model2": {
           "id": "model2",
-          "labelWeek": "EU / 2548-1",
+          "labelWeek": "EU / 2549-1",
           "model": "BLAHAJ NNN SFT TOY SHARK",
           "date": "2025-11-26",
           "target": 1000,
@@ -177,7 +177,7 @@
           "operators": []
         }
       },
-      "activeModel": "model2"
+      "activeModel": "model1"
     }
   },
   "activeLine": "F1-5A"

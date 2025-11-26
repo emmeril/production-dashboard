@@ -82,7 +82,7 @@
         
         /* PERUBAHAN: Font LINE dan MODEL lebih kecil */
         .label {
-            font-size: calc(1rem * var(--scale-factor));
+            font-size: calc(2rem * var(--scale-factor));
             font-weight: bold;
             margin-bottom: 4px;
             color: #f1f5f9;
@@ -90,7 +90,7 @@
         }
         
         .value {
-            font-size: calc(1rem * var(--scale-factor));
+            font-size: calc(2rem * var(--scale-factor));
             font-weight: bold;
             color: white;
             text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
@@ -444,18 +444,18 @@
         
         <div class="main-content">
             <div class="target-section">
-                <div class="section-title">PRODUCTION DATA</div>
+                <!-- <div class="section-title">PRODUCTION DATA</div> -->
                 <div class="data-grid">
                     <div class="data-box">
-                        <div class="data-label">TARGET / JAM</div>
-                        <div class="data-value" x-text="calculateCumulativeTarget()" :class="{'pulse': dataUpdated}"></div>
+                        <div class="data-label">TARGET</div>
+                        <div class="data-value" x-text="getCurrentHourTarget()" :class="{'pulse': dataUpdated}"></div>
                         <div class="percentage neutral" x-text="calculateTargetProgressPercentage() + '%'"></div>
                         <div class="progress-container">
                             <div class="progress-bar" :style="'width: ' + Math.min(calculateTargetProgressPercentage(), 100) + '%;'"></div>
                         </div>
                     </div>
                     <div class="data-box">
-                        <div class="data-label">SELISIH AKUMULATIF</div>
+                        <div class="data-label">BALANCE</div>
                         <div class="data-value" 
                              x-text="calculateAccumulatedDifference()" 
                              :class="{
@@ -468,7 +468,7 @@
                              x-text="calculateDifferencePercentage() + '%'"></div>
                     </div>
                     <div class="data-box">
-                        <div class="data-label">OUTPUT AKUMULATIF</div>
+                        <div class="data-label">PRODUCTIVTY</div>
                         <div class="data-value" x-text="lineData.data.outputDay || 0" :class="{'pulse': dataUpdated}"></div>
                         <div class="percentage" 
                              :class="calculateOutputPercentage() >= 100 ? 'positive' : (calculateOutputPercentage() >= 80 ? 'neutral' : 'negative')"
@@ -478,7 +478,7 @@
             </div>
             
             <div class="defect-section">
-                <div class="section-title">QUALITY DATA</div>
+                <!-- <div class="section-title">QUALITY DATA</div> -->
                 <div class="defect-container">
                     <div class="defect-box">
                         <div class="data-label">DEFECT</div>
@@ -659,6 +659,35 @@
                     
                     updateScale();
                     window.addEventListener('resize', updateScale);
+                },
+                
+                // FUNGSI BARU: Mendapatkan target untuk jam yang sedang berjalan
+                getCurrentHourTarget() {
+                    if (!this.lineData.data.hourly_data || this.lineData.data.hourly_data.length === 0) return 0;
+                    
+                    const now = new Date();
+                    const currentTime = now.getHours() * 60 + now.getMinutes(); // dalam menit
+                    
+                    let currentHourTarget = 0;
+                    
+                    // Cari jam yang sedang berjalan
+                    for (let hour of this.lineData.data.hourly_data) {
+                        const hourStart = hour.hour.split(' - ')[0];
+                        const [startHour, startMinute] = hourStart.split(':').map(Number);
+                        const hourStartTime = startHour * 60 + startMinute;
+                        
+                        const hourEnd = hour.hour.split(' - ')[1];
+                        const [endHour, endMinute] = hourEnd.split(':').map(Number);
+                        const hourEndTime = endHour * 60 + endMinute;
+                        
+                        // Jika waktu sekarang berada dalam rentang jam ini
+                        if (currentTime >= hourStartTime && currentTime < hourEndTime) {
+                            currentHourTarget = hour.targetManual || 0;
+                            break;
+                        }
+                    }
+                    
+                    return currentHourTarget;
                 },
                 
                 // FUNGSI UTAMA: Persentase progres kumulatif target per jam terhadap target harian

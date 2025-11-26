@@ -66,44 +66,50 @@ function initializeDataFiles() {
     const initialData = {
       "lines": {
         "F1-5A": {
-          "labelWeek": "AP/14-2550",
-          "model": "GOSIG GOLDEN SOFT TOY 40 PDS/GOLDEN RETRIEVER",
-          "date": today,
-          "target": 180,
-          "targetPerHour": targetPerHour,
-          "outputDay": 0,
-          "qcChecking": 0,
-          "actualDefect": 0,
-          "defectRatePercentage": 0,
-          "hourly_data": [
-            { "hour": "07:00 - 08:00", "output": 0, "defect": 0, "qcChecked": 0, "targetManual": targetPerHour, "selisih": 0 },
-            { "hour": "08:00 - 09:00", "output": 0, "defect": 0, "qcChecked": 0, "targetManual": targetPerHour, "selisih": 0 },
-            { "hour": "09:00 - 10:00", "output": 0, "defect": 0, "qcChecked": 0, "targetManual": targetPerHour, "selisih": 0 },
-            { "hour": "10:00 - 11:00", "output": 0, "defect": 0, "qcChecked": 0, "targetManual": targetPerHour, "selisih": 0 },
-            { "hour": "11:00 - 13:00", "output": 0, "defect": 0, "qcChecked": 0, "targetManual": 0, "selisih": 0 },
-            { "hour": "13:00 - 14:00", "output": 0, "defect": 0, "qcChecked": 0, "targetManual": targetPerHour, "selisih": 0 },
-            { "hour": "14:00 - 15:00", "output": 0, "defect": 0, "qcChecked": 0, "targetManual": targetPerHour, "selisih": 0 },
-            { "hour": "15:00 - 16:00", "output": 0, "defect": 0, "qcChecked": 0, "targetManual": targetPerHour, "selisih": 0 },
-            { "hour": "16:00 - 17:00", "output": 0, "defect": 0, "qcChecked": 0, "targetManual": targetPerHour, "selisih": 0 },
-          ],
-          "operators": [
-            {
-              "id": 1,
-              "name": "Ahmad Susanto",
-              "position": "Operator Mesin",
-              "target": 100,
-              "output": 0,
-              "defect": 0,
-              "efficiency": 0,
-              "status": "active"
+          "models": {
+            "model1": {
+              "id": "model1",
+              "labelWeek": "AP/14-2550",
+              "model": "GOSIG GOLDEN SOFT TOY 40 PDS/GOLDEN RETRIEVER",
+              "date": today,
+              "target": 180,
+              "targetPerHour": targetPerHour,
+              "outputDay": 0,
+              "qcChecking": 0,
+              "actualDefect": 0,
+              "defectRatePercentage": 0,
+              "hourly_data": [
+                { "hour": "07:00 - 08:00", "output": 0, "defect": 0, "qcChecked": 0, "targetManual": targetPerHour, "selisih": 0 },
+                { "hour": "08:00 - 09:00", "output": 0, "defect": 0, "qcChecked": 0, "targetManual": targetPerHour, "selisih": 0 },
+                { "hour": "09:00 - 10:00", "output": 0, "defect": 0, "qcChecked": 0, "targetManual": targetPerHour, "selisih": 0 },
+                { "hour": "10:00 - 11:00", "output": 0, "defect": 0, "qcChecked": 0, "targetManual": targetPerHour, "selisih": 0 },
+                { "hour": "11:00 - 13:00", "output": 0, "defect": 0, "qcChecked": 0, "targetManual": 0, "selisih": 0 },
+                { "hour": "13:00 - 14:00", "output": 0, "defect": 0, "qcChecked": 0, "targetManual": targetPerHour, "selisih": 0 },
+                { "hour": "14:00 - 15:00", "output": 0, "defect": 0, "qcChecked": 0, "targetManual": targetPerHour, "selisih": 0 },
+                { "hour": "15:00 - 16:00", "output": 0, "defect": 0, "qcChecked": 0, "targetManual": targetPerHour, "selisih": 0 },
+                { "hour": "16:00 - 17:00", "output": 0, "defect": 0, "qcChecked": 0, "targetManual": targetPerHour, "selisih": 0 },
+              ],
+              "operators": [
+                {
+                  "id": 1,
+                  "name": "Ahmad Susanto",
+                  "position": "Operator Mesin",
+                  "target": 100,
+                  "output": 0,
+                  "defect": 0,
+                  "efficiency": 0,
+                  "status": "active"
+                }
+              ]
             }
-          ]
+          },
+          "activeModel": "model1"
         }
       },
       "activeLine": "F1-5A"
     };
     fs.writeFileSync(path.join(__dirname, 'data.json'), JSON.stringify(initialData, null, 2));
-    console.log('Data file created successfully with today\'s date:', today);
+    console.log('Data file created successfully with multi-model support');
   }
 
   if (!fs.existsSync(path.join(__dirname, 'users.json'))) {
@@ -240,7 +246,6 @@ function requireAdmin(req, res, next) {
   }
 }
 
-// Middleware untuk Admin dan Admin Operator
 function requireAdminOrAdminOperator(req, res, next) {
   if (req.session.user && (req.session.user.role === 'admin' || req.session.user.role === 'admin_operator')) {
     next();
@@ -249,7 +254,6 @@ function requireAdminOrAdminOperator(req, res, next) {
   }
 }
 
-// Middleware khusus untuk line management (admin dan admin_operator)
 function requireLineManagementAccess(req, res, next) {
   if (req.session.user && (req.session.user.role === 'admin' || req.session.user.role === 'admin_operator')) {
     next();
@@ -258,7 +262,6 @@ function requireLineManagementAccess(req, res, next) {
   }
 }
 
-// Middleware khusus untuk date reports (admin dan admin_operator)
 function requireDateReportAccess(req, res, next) {
   if (req.session.user && (req.session.user.role === 'admin' || req.session.user.role === 'admin_operator')) {
     next();
@@ -267,7 +270,6 @@ function requireDateReportAccess(req, res, next) {
   }
 }
 
-// Middleware untuk mengakses line tertentu
 function requireLineAccess(req, res, next) {
   const user = req.session.user;
   const lineName = req.params.lineName;
@@ -324,24 +326,24 @@ app.get('/api/current-user', (req, res) => {
 });
 
 // Update hourly data
-app.post('/api/update-hourly/:lineName', requireLogin, requireLineAccess, (req, res) => {
-  const lineName = req.params.lineName;
+app.post('/api/update-hourly/:lineName/:modelId', requireLogin, requireLineAccess, (req, res) => {
+  const { lineName, modelId } = req.params;
   const { hourIndex, output, defect, qcChecked, targetManual } = req.body;
 
   const data = readProductionData();
 
-  if (!data.lines[lineName] || !data.lines[lineName].hourly_data) {
-    return res.status(404).json({ error: 'Line or hourly data not found' });
+  if (!data.lines[lineName] || !data.lines[lineName].models[modelId] || !data.lines[lineName].models[modelId].hourly_data) {
+    return res.status(404).json({ error: 'Line, model or hourly data not found' });
   }
 
   const selisih = parseInt(output) - parseInt(targetManual);
 
-  data.lines[lineName].hourly_data[hourIndex] = {
-    ...data.lines[lineName].hourly_data[hourIndex],
+  data.lines[lineName].models[modelId].hourly_data[hourIndex] = {
+    ...data.lines[lineName].models[modelId].hourly_data[hourIndex],
     output: parseInt(output),
     defect: parseInt(defect),
     qcChecked: parseInt(qcChecked),
-    targetManual: parseInt(targetManual) || data.lines[lineName].hourly_data[hourIndex].targetManual,
+    targetManual: parseInt(targetManual) || data.lines[lineName].models[modelId].hourly_data[hourIndex].targetManual,
     selisih: selisih
   };
 
@@ -350,26 +352,26 @@ app.post('/api/update-hourly/:lineName', requireLogin, requireLineAccess, (req, 
   let totalQCChecked = 0;
   let totalTarget = 0;
 
-  data.lines[lineName].hourly_data.forEach(hour => {
+  data.lines[lineName].models[modelId].hourly_data.forEach(hour => {
     totalOutput += hour.output || 0;
     totalDefect += hour.defect || 0;
     totalQCChecked += hour.qcChecked || 0;
     totalTarget += hour.targetManual || 0;
   });
 
-  data.lines[lineName].outputDay = totalOutput;
-  data.lines[lineName].actualDefect = totalDefect;
-  data.lines[lineName].qcChecking = totalQCChecked;
-  data.lines[lineName].target = totalTarget;
+  data.lines[lineName].models[modelId].outputDay = totalOutput;
+  data.lines[lineName].models[modelId].actualDefect = totalDefect;
+  data.lines[lineName].models[modelId].qcChecking = totalQCChecked;
+  data.lines[lineName].models[modelId].target = totalTarget;
 
   const defectRatePercentage = (totalQCChecked > 0) ? (totalDefect / totalQCChecked) * 100 : 0;
 
-  data.lines[lineName].defectRatePercentage = parseFloat(defectRatePercentage.toFixed(2));
+  data.lines[lineName].models[modelId].defectRatePercentage = parseFloat(defectRatePercentage.toFixed(2));
 
   writeProductionData(data);
   res.json({
     message: 'Hourly data updated successfully.',
-    data: data.lines[lineName],
+    data: data.lines[lineName].models[modelId],
     summary: {
       totalOutput: totalOutput,
       totalDefect: totalDefect,
@@ -381,50 +383,50 @@ app.post('/api/update-hourly/:lineName', requireLogin, requireLineAccess, (req, 
 });
 
 // Update target manual
-app.post('/api/update-target-manual/:lineName', requireLogin, requireLineAccess, (req, res) => {
-  const lineName = req.params.lineName;
+app.post('/api/update-target-manual/:lineName/:modelId', requireLogin, requireLineAccess, (req, res) => {
+  const { lineName, modelId } = req.params;
   const { hourIndex, targetManual } = req.body;
 
   const data = readProductionData();
 
-  if (!data.lines[lineName] || !data.lines[lineName].hourly_data) {
-    return res.status(404).json({ error: 'Line or hourly data not found' });
+  if (!data.lines[lineName] || !data.lines[lineName].models[modelId] || !data.lines[lineName].models[modelId].hourly_data) {
+    return res.status(404).json({ error: 'Line, model or hourly data not found' });
   }
 
-  data.lines[lineName].hourly_data[hourIndex].targetManual = parseInt(targetManual);
+  data.lines[lineName].models[modelId].hourly_data[hourIndex].targetManual = parseInt(targetManual);
   
-  data.lines[lineName].hourly_data[hourIndex].selisih = 
-    data.lines[lineName].hourly_data[hourIndex].output - parseInt(targetManual);
+  data.lines[lineName].models[modelId].hourly_data[hourIndex].selisih = 
+    data.lines[lineName].models[modelId].hourly_data[hourIndex].output - parseInt(targetManual);
 
   let totalTarget = 0;
-  data.lines[lineName].hourly_data.forEach(hour => {
+  data.lines[lineName].models[modelId].hourly_data.forEach(hour => {
     totalTarget += hour.targetManual || 0;
   });
-  data.lines[lineName].target = totalTarget;
+  data.lines[lineName].models[modelId].target = totalTarget;
 
   writeProductionData(data);
   res.json({
     message: 'Target manual updated successfully.',
-    data: data.lines[lineName].hourly_data[hourIndex],
+    data: data.lines[lineName].models[modelId].hourly_data[hourIndex],
     totalTarget: totalTarget
   });
 });
 
 // Update langsung data per jam dari tabel
-app.post('/api/update-hourly-direct/:lineName', requireLogin, requireLineAccess, (req, res) => {
-  const lineName = req.params.lineName;
+app.post('/api/update-hourly-direct/:lineName/:modelId', requireLogin, requireLineAccess, (req, res) => {
+  const { lineName, modelId } = req.params;
   const { hourIndex, output, defect, qcChecked, targetManual } = req.body;
 
   const data = readProductionData();
 
-  if (!data.lines[lineName] || !data.lines[lineName].hourly_data) {
-    return res.status(404).json({ error: 'Line or hourly data not found' });
+  if (!data.lines[lineName] || !data.lines[lineName].models[modelId] || !data.lines[lineName].models[modelId].hourly_data) {
+    return res.status(404).json({ error: 'Line, model or hourly data not found' });
   }
 
   const selisih = parseInt(output) - parseInt(targetManual);
 
-  data.lines[lineName].hourly_data[hourIndex] = {
-    ...data.lines[lineName].hourly_data[hourIndex],
+  data.lines[lineName].models[modelId].hourly_data[hourIndex] = {
+    ...data.lines[lineName].models[modelId].hourly_data[hourIndex],
     output: parseInt(output),
     defect: parseInt(defect),
     qcChecked: parseInt(qcChecked),
@@ -437,26 +439,26 @@ app.post('/api/update-hourly-direct/:lineName', requireLogin, requireLineAccess,
   let totalQCChecked = 0;
   let totalTarget = 0;
 
-  data.lines[lineName].hourly_data.forEach(hour => {
+  data.lines[lineName].models[modelId].hourly_data.forEach(hour => {
     totalOutput += hour.output || 0;
     totalDefect += hour.defect || 0;
     totalQCChecked += hour.qcChecked || 0;
     totalTarget += hour.targetManual || 0;
   });
 
-  data.lines[lineName].outputDay = totalOutput;
-  data.lines[lineName].actualDefect = totalDefect;
-  data.lines[lineName].qcChecking = totalQCChecked;
-  data.lines[lineName].target = totalTarget;
+  data.lines[lineName].models[modelId].outputDay = totalOutput;
+  data.lines[lineName].models[modelId].actualDefect = totalDefect;
+  data.lines[lineName].models[modelId].qcChecking = totalQCChecked;
+  data.lines[lineName].models[modelId].target = totalTarget;
 
   const defectRatePercentage = (totalQCChecked > 0) ? (totalDefect / totalQCChecked) * 100 : 0;
 
-  data.lines[lineName].defectRatePercentage = parseFloat(defectRatePercentage.toFixed(2));
+  data.lines[lineName].models[modelId].defectRatePercentage = parseFloat(defectRatePercentage.toFixed(2));
 
   writeProductionData(data);
   res.json({
     message: 'Hourly data updated successfully.',
-    data: data.lines[lineName],
+    data: data.lines[lineName].models[modelId],
     summary: {
       totalOutput: totalOutput,
       totalDefect: totalDefect,
@@ -467,7 +469,7 @@ app.post('/api/update-hourly-direct/:lineName', requireLogin, requireLineAccess,
   });
 });
 
-// History Data Routes - Hanya untuk admin
+// History Data Routes
 app.get('/api/history/files', requireLogin, requireAdmin, (req, res) => {
   try {
     const historyFiles = getHistoryFiles();
@@ -518,22 +520,26 @@ app.get('/api/history/:filename/export', requireLogin, requireAdmin, (req, res) 
       ['HISTORICAL PRODUCTION REPORT SUMMARY'],
       ['Generated from backup:', date],
       [],
-      ['Line', 'Label/Week', 'Model', 'Date', 'Target', 'Output', 'QC Checking', 'Actual Defect', 'Defect Rate%']
+      ['Line', 'Model ID', 'Label/Week', 'Model', 'Date', 'Target', 'Output', 'QC Checking', 'Actual Defect', 'Defect Rate%']
     ];
 
     Object.keys(historyData.lines).forEach(lineName => {
       const line = historyData.lines[lineName];
-      summaryData.push([
-        lineName,
-        line.labelWeek,
-        line.model,
-        line.date,
-        line.target,
-        line.outputDay,
-        line.qcChecking,
-        line.actualDefect,
-        line.defectRatePercentage
-      ]);
+      Object.keys(line.models).forEach(modelId => {
+        const model = line.models[modelId];
+        summaryData.push([
+          lineName,
+          modelId,
+          model.labelWeek,
+          model.model,
+          model.date,
+          model.target,
+          model.outputDay,
+          model.qcChecking,
+          model.actualDefect,
+          model.defectRatePercentage
+        ]);
+      });
     });
 
     const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
@@ -542,57 +548,61 @@ app.get('/api/history/:filename/export', requireLogin, requireAdmin, (req, res) 
     Object.keys(historyData.lines).forEach(lineName => {
       const line = historyData.lines[lineName];
       
-      const lineData = [
-        [`PRODUCTION REPORT - ${lineName}`],
-        [],
-        ['Label/Week', line.labelWeek],
-        ['Model', line.model],
-        ['Date', line.date],
-        ['Target', line.target],
-        ['Target per Hour', line.targetPerHour],
-        ['Output/Hari', line.outputDay],
-        ['QC Checking', line.qcChecking],
-        ['Actual Defect', line.actualDefect],
-        ['Defect Rate (%)', line.defectRatePercentage],
-        [],
-        ['HOURLY DATA'],
-        ['Jam', 'Target Manual', 'Output', 'Selisih (Target - Output)', 'Defect', 'QC Checked', 'Defect Rate (%)']
-      ];
-
-      line.hourly_data.forEach(hour => {
-        const defectRate = hour.qcChecked > 0 ? ((hour.defect / hour.qcChecked) * 100).toFixed(2) : '0.00';
-        const selisih = hour.targetManual - hour.output;
-        lineData.push([
-          hour.hour, 
-          hour.targetManual,
-          hour.output, 
-          selisih,
-          hour.defect, 
-          hour.qcChecked, 
-          defectRate
-        ]);
-      });
-
-      if (line.operators && line.operators.length > 0) {
-        lineData.push([], ['OPERATOR DATA']);
-        lineData.push(['No', 'Nama', 'Posisi', 'Target', 'Output', 'Defect', 'Efisiensi%', 'Status']);
+      Object.keys(line.models).forEach(modelId => {
+        const model = line.models[modelId];
         
-        line.operators.forEach((operator, index) => {
+        const lineData = [
+          [`PRODUCTION REPORT - ${lineName} - ${modelId}`],
+          [],
+          ['Label/Week', model.labelWeek],
+          ['Model', model.model],
+          ['Date', model.date],
+          ['Target', model.target],
+          ['Target per Hour', model.targetPerHour],
+          ['Output/Hari', model.outputDay],
+          ['QC Checking', model.qcChecking],
+          ['Actual Defect', model.actualDefect],
+          ['Defect Rate (%)', model.defectRatePercentage],
+          [],
+          ['HOURLY DATA'],
+          ['Jam', 'Target Manual', 'Output', 'Selisih (Target - Output)', 'Defect', 'QC Checked', 'Defect Rate (%)']
+        ];
+
+        model.hourly_data.forEach(hour => {
+          const defectRate = hour.qcChecked > 0 ? ((hour.defect / hour.qcChecked) * 100).toFixed(2) : '0.00';
+          const selisih = hour.targetManual - hour.output;
           lineData.push([
-            index + 1,
-            operator.name,
-            operator.position,
-            operator.target,
-            operator.output,
-            operator.defect,
-            operator.efficiency,
-            operator.status === 'active' ? 'Aktif' : operator.status === 'break' ? 'Istirahat' : 'Off'
+            hour.hour, 
+            hour.targetManual,
+            hour.output, 
+            selisih,
+            hour.defect, 
+            hour.qcChecked, 
+            defectRate
           ]);
         });
-      }
 
-      const lineSheet = XLSX.utils.aoa_to_sheet(lineData);
-      XLSX.utils.book_append_sheet(workbook, lineSheet, lineName);
+        if (model.operators && model.operators.length > 0) {
+          lineData.push([], ['OPERATOR DATA']);
+          lineData.push(['No', 'Nama', 'Posisi', 'Target', 'Output', 'Defect', 'Efisiensi%', 'Status']);
+          
+          model.operators.forEach((operator, index) => {
+            lineData.push([
+              index + 1,
+              operator.name,
+              operator.position,
+              operator.target,
+              operator.output,
+              operator.defect,
+              operator.efficiency,
+              operator.status === 'active' ? 'Aktif' : operator.status === 'break' ? 'Istirahat' : 'Off'
+            ]);
+          });
+        }
+
+        const lineSheet = XLSX.utils.aoa_to_sheet(lineData);
+        XLSX.utils.book_append_sheet(workbook, lineSheet, `${lineName}_${modelId}`);
+      });
     });
 
     const excelBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
@@ -608,7 +618,7 @@ app.get('/api/history/:filename/export', requireLogin, requireAdmin, (req, res) 
   }
 });
 
-// Manual backup endpoint - Hanya untuk admin
+// Manual backup endpoint
 app.post('/api/backup/now', requireLogin, requireAdmin, (req, res) => {
   try {
     saveDailyBackup();
@@ -619,32 +629,35 @@ app.post('/api/backup/now', requireLogin, requireAdmin, (req, res) => {
   }
 });
 
-// Sync dates endpoint - Hanya untuk admin
+// Sync dates endpoint
 app.post('/api/sync-dates', requireLogin, requireAdmin, (req, res) => {
   const data = readProductionData();
   const today = getToday();
-  let updatedLines = [];
+  let updatedModels = [];
 
   Object.keys(data.lines).forEach(lineName => {
     const line = data.lines[lineName];
-    if (line.date !== today) {
-      data.lines[lineName] = resetLineData({
-        ...line,
-        date: today
-      });
-      updatedLines.push(lineName);
-    }
+    Object.keys(line.models).forEach(modelId => {
+      const model = line.models[modelId];
+      if (model.date !== today) {
+        data.lines[lineName].models[modelId] = resetLineData({
+          ...model,
+          date: today
+        });
+        updatedModels.push(`${lineName} - ${modelId}`);
+      }
+    });
   });
 
   writeProductionData(data);
   res.json({ 
     message: `Sinkronisasi tanggal selesai`, 
-    updatedLines: updatedLines,
+    updatedModels: updatedModels,
     today: today
   });
 });
 
-// Line Management Routes - Untuk admin dan admin_operator
+// Line Management Routes
 app.get('/api/lines', requireLogin, (req, res) => {
   const user = req.session.user;
   const data = readProductionData();
@@ -664,6 +677,19 @@ app.get('/api/lines', requireLogin, (req, res) => {
   res.status(403).json({ error: 'Access denied' });
 });
 
+// Get models for a specific line
+app.get('/api/lines/:lineName/models', requireLogin, requireLineAccess, (req, res) => {
+  const { lineName } = req.params;
+  const data = readProductionData();
+
+  if (!data.lines[lineName]) {
+    return res.status(404).json({ error: 'Line not found' });
+  }
+
+  res.json(data.lines[lineName].models || {});
+});
+
+// Create new line
 app.post('/api/lines', requireLogin, requireLineManagementAccess, (req, res) => {
   const { lineName, labelWeek, model, date, target } = req.body;
   const data = readProductionData();
@@ -674,8 +700,68 @@ app.post('/api/lines', requireLogin, requireLineManagementAccess, (req, res) => 
 
   const lineDate = date || getToday();
   const targetPerHour = Math.round(target / 8);
+  const modelId = 'model1'; // Default first model
 
   data.lines[lineName] = {
+    models: {
+      [modelId]: {
+        id: modelId,
+        labelWeek,
+        model,
+        date: lineDate,
+        target: parseInt(target),
+        targetPerHour: targetPerHour,
+        outputDay: 0,
+        qcChecking: 0,
+        actualDefect: 0,
+        defectRatePercentage: 0,
+        hourly_data: [
+          { hour: "07:00 - 08:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
+          { hour: "08:00 - 09:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
+          { hour: "09:00 - 10:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
+          { hour: "10:00 - 11:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
+          { hour: "11:00 - 13:00", output: 0, defect: 0, qcChecked: 0, targetManual: 0, selisih: 0 },
+          { hour: "13:00 - 14:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
+          { hour: "14:00 - 15:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
+          { hour: "15:00 - 16:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
+          { hour: "16:00 - 17:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
+        ],
+        operators: []
+      }
+    },
+    activeModel: modelId
+  };
+
+  writeProductionData(data);
+  res.json({ 
+    message: `Line ${lineName} created successfully`, 
+    data: data.lines[lineName],
+    calculated: {
+      targetPerHour: targetPerHour,
+      message: `Target per jam: ${targetPerHour} unit (Target: ${target} ÷ 8 jam efektif)`
+    }
+  });
+});
+
+// Add new model to existing line
+app.post('/api/lines/:lineName/models', requireLogin, requireLineManagementAccess, (req, res) => {
+  const { lineName } = req.params;
+  const { labelWeek, model, date, target } = req.body;
+  const data = readProductionData();
+
+  if (!data.lines[lineName]) {
+    return res.status(404).json({ error: 'Line not found' });
+  }
+
+  const lineDate = date || getToday();
+  const targetPerHour = Math.round(target / 8);
+  
+  // Generate new model ID
+  const modelCount = Object.keys(data.lines[lineName].models).length;
+  const modelId = `model${modelCount + 1}`;
+
+  data.lines[lineName].models[modelId] = {
+    id: modelId,
     labelWeek,
     model,
     date: lineDate,
@@ -701,69 +787,102 @@ app.post('/api/lines', requireLogin, requireLineManagementAccess, (req, res) => 
 
   writeProductionData(data);
   res.json({ 
-    message: `Line ${lineName} created successfully`, 
-    data: data.lines[lineName],
-    calculated: {
-      targetPerHour: targetPerHour,
-      message: `Target per jam: ${targetPerHour} unit (Target: ${target} ÷ 8 jam efektif)`
-    }
+    message: `Model ${modelId} added to line ${lineName} successfully`, 
+    data: data.lines[lineName].models[modelId],
+    modelId: modelId
   });
 });
 
-// PERBAIKAN: Endpoint ini sekarang akan mengupdate target dengan benar
+// Update line or model
 app.put('/api/lines/:lineName', requireLogin, requireLineManagementAccess, (req, res) => {
   const lineName = req.params.lineName;
-  const { labelWeek, model, date, target } = req.body; // TAMBAHKAN target di sini
+  const { labelWeek, model, date, target, modelId } = req.body;
   const data = readProductionData();
 
   if (!data.lines[lineName]) {
     return res.status(404).json({ error: 'Line not found' });
   }
 
-  const oldDate = data.lines[lineName].date;
+  const targetModelId = modelId || data.lines[lineName].activeModel;
+  if (!data.lines[lineName].models[targetModelId]) {
+    return res.status(404).json({ error: 'Model not found' });
+  }
+
+  const oldDate = data.lines[lineName].models[targetModelId].date;
   const newDate = date || getToday();
   const newTarget = parseInt(target);
 
   if (oldDate !== newDate) {
     // Reset data karena perubahan tanggal
-    data.lines[lineName] = resetLineData({
-      ...data.lines[lineName],
+    data.lines[lineName].models[targetModelId] = resetLineData({
+      ...data.lines[lineName].models[targetModelId],
       labelWeek,
       model,
       date: newDate,
-      target: newTarget // UPDATE target di sini
+      target: newTarget
     });
   } else {
     // Update tanpa reset data
-    data.lines[lineName].labelWeek = labelWeek;
-    data.lines[lineName].model = model;
-    data.lines[lineName].target = newTarget; // UPDATE target di sini
-    data.lines[lineName].targetPerHour = Math.round(newTarget / 8);
+    data.lines[lineName].models[targetModelId].labelWeek = labelWeek;
+    data.lines[lineName].models[targetModelId].model = model;
+    data.lines[lineName].models[targetModelId].target = newTarget;
+    data.lines[lineName].models[targetModelId].targetPerHour = Math.round(newTarget / 8);
 
     // Update targetManual untuk semua jam (kecuali jam istirahat)
-    data.lines[lineName].hourly_data.forEach(hour => {
+    data.lines[lineName].models[targetModelId].hourly_data.forEach(hour => {
       if (hour.hour !== "11:00 - 13:00") {
-        hour.targetManual = data.lines[lineName].targetPerHour;
+        hour.targetManual = data.lines[lineName].models[targetModelId].targetPerHour;
         hour.selisih = hour.output - hour.targetManual;
       }
     });
 
     // Hitung ulang total target dari targetManual
     let totalTarget = 0;
-    data.lines[lineName].hourly_data.forEach(hour => {
+    data.lines[lineName].models[targetModelId].hourly_data.forEach(hour => {
       totalTarget += hour.targetManual || 0;
     });
-    data.lines[lineName].target = totalTarget;
+    data.lines[lineName].models[targetModelId].target = totalTarget;
   }
 
   writeProductionData(data);
   res.json({ 
-    message: `Line ${lineName} updated successfully`, 
-    data: data.lines[lineName],
+    message: `Model ${targetModelId} in line ${lineName} updated successfully`, 
+    data: data.lines[lineName].models[targetModelId],
     reset: oldDate !== newDate ? 'Data telah direset karena perubahan tanggal.' : 'Tanggal tidak berubah, data diperbarui.'
   });
 });
 
+// Delete model from line
+app.delete('/api/lines/:lineName/models/:modelId', requireLogin, requireLineManagementAccess, (req, res) => {
+  const { lineName, modelId } = req.params;
+  const data = readProductionData();
+
+  if (!data.lines[lineName]) {
+    return res.status(404).json({ error: 'Line not found' });
+  }
+
+  if (!data.lines[lineName].models[modelId]) {
+    return res.status(404).json({ error: 'Model not found' });
+  }
+
+  // Cannot delete the last model
+  if (Object.keys(data.lines[lineName].models).length === 1) {
+    return res.status(400).json({ error: 'Cannot delete the last model in a line' });
+  }
+
+  delete data.lines[lineName].models[modelId];
+
+  // If deleted model was active, set another model as active
+  if (data.lines[lineName].activeModel === modelId) {
+    const remainingModels = Object.keys(data.lines[lineName].models);
+    data.lines[lineName].activeModel = remainingModels[0];
+  }
+
+  writeProductionData(data);
+  res.json({ message: `Model ${modelId} deleted from line ${lineName} successfully` });
+});
+
+// Delete entire line
 app.delete('/api/lines/:lineName', requireLogin, requireLineManagementAccess, (req, res) => {
   const lineName = req.params.lineName;
   const data = readProductionData();
@@ -777,44 +896,92 @@ app.delete('/api/lines/:lineName', requireLogin, requireLineManagementAccess, (r
   res.json({ message: `Line ${lineName} deleted successfully` });
 });
 
-// Data Routes
-app.get('/api/line/:lineName', requireLogin, requireLineAccess, (req, res) => {
-  const lineName = req.params.lineName;
-  const data = readProductionData();
-  const lineData = data.lines[lineName];
-
-  if (lineData) {
-    res.json({ line: lineName, ...lineData });
-  } else {
-    res.status(404).json({ error: 'Line not found' });
-  }
-});
-
-app.post('/api/update-line/:lineName', requireLogin, requireLineAccess, (req, res) => {
-  const lineName = req.params.lineName;
-  const newData = req.body;
-
+// Set active model for a line
+app.post('/api/lines/:lineName/active-model', requireLogin, requireLineManagementAccess, (req, res) => {
+  const { lineName } = req.params;
+  const { modelId } = req.body;
   const data = readProductionData();
 
   if (!data.lines[lineName]) {
     return res.status(404).json({ error: 'Line not found' });
   }
 
-  data.lines[lineName] = { ...data.lines[lineName], ...newData };
+  if (!data.lines[lineName].models[modelId]) {
+    return res.status(404).json({ error: 'Model not found' });
+  }
 
-  const line = data.lines[lineName];
-  const qcChecking = line.qcChecking || 0;
-  const actualDefect = line.actualDefect || 0;
+  data.lines[lineName].activeModel = modelId;
+  writeProductionData(data);
+  res.json({ 
+    message: `Active model for line ${lineName} set to ${modelId}`,
+    activeModel: modelId
+  });
+});
+
+// Data Routes
+app.get('/api/line/:lineName/:modelId', requireLogin, requireLineAccess, (req, res) => {
+  const { lineName, modelId } = req.params;
+  const data = readProductionData();
+  
+  if (!data.lines[lineName] || !data.lines[lineName].models[modelId]) {
+    return res.status(404).json({ error: 'Line or model not found' });
+  }
+
+  const modelData = data.lines[lineName].models[modelId];
+  res.json({ 
+    line: lineName,
+    modelId: modelId,
+    ...modelData 
+  });
+});
+
+// Get active model for a line
+app.get('/api/line/:lineName', requireLogin, requireLineAccess, (req, res) => {
+  const { lineName } = req.params;
+  const data = readProductionData();
+  
+  if (!data.lines[lineName]) {
+    return res.status(404).json({ error: 'Line not found' });
+  }
+
+  const activeModelId = data.lines[lineName].activeModel;
+  if (!activeModelId || !data.lines[lineName].models[activeModelId]) {
+    return res.status(404).json({ error: 'Active model not found' });
+  }
+
+  const modelData = data.lines[lineName].models[activeModelId];
+  res.json({ 
+    line: lineName,
+    modelId: activeModelId,
+    ...modelData 
+  });
+});
+
+app.post('/api/update-line/:lineName/:modelId', requireLogin, requireLineAccess, (req, res) => {
+  const { lineName, modelId } = req.params;
+  const newData = req.body;
+
+  const data = readProductionData();
+
+  if (!data.lines[lineName] || !data.lines[lineName].models[modelId]) {
+    return res.status(404).json({ error: 'Line or model not found' });
+  }
+
+  data.lines[lineName].models[modelId] = { ...data.lines[lineName].models[modelId], ...newData };
+
+  const model = data.lines[lineName].models[modelId];
+  const qcChecking = model.qcChecking || 0;
+  const actualDefect = model.actualDefect || 0;
 
   let defectRatePercentage = (qcChecking > 0) ? (actualDefect / qcChecking) * 100 : 0;
 
-  line.defectRatePercentage = parseFloat(defectRatePercentage.toFixed(2));
+  model.defectRatePercentage = parseFloat(defectRatePercentage.toFixed(2));
 
   writeProductionData(data);
-  res.json({ message: `Line ${lineName} updated successfully.`, data: line });
+  res.json({ message: `Model ${modelId} in line ${lineName} updated successfully.`, data: model });
 });
 
-// Date-based Report Routes - Untuk admin dan admin_operator
+// Date-based Report Routes
 app.get('/api/date-report/:date', requireLogin, requireDateReportAccess, (req, res) => {
   const date = req.params.date;
   
@@ -829,27 +996,45 @@ app.get('/api/date-report/:date', requireLogin, requireDateReportAccess, (req, r
       
       const filteredLines = {};
       Object.keys(data.lines).forEach(lineName => {
-        if (data.lines[lineName].date === date) {
-          filteredLines[lineName] = data.lines[lineName];
+        const line = data.lines[lineName];
+        const filteredModels = {};
+        
+        Object.keys(line.models).forEach(modelId => {
+          const model = line.models[modelId];
+          if (model.date === date) {
+            filteredModels[modelId] = model;
+          }
+        });
+        
+        if (Object.keys(filteredModels).length > 0) {
+          filteredLines[lineName] = {
+            ...line,
+            models: filteredModels
+          };
         }
       });
       
       data.lines = filteredLines;
     }
     
-    const reportData = Object.keys(data.lines).map(lineName => {
+    const reportData = [];
+    Object.keys(data.lines).forEach(lineName => {
       const line = data.lines[lineName];
-      return {
-        name: lineName,
-        labelWeek: line.labelWeek,
-        model: line.model,
-        date: line.date,
-        target: line.target,
-        output: line.outputDay,
-        defect: line.actualDefect,
-        qcChecked: line.qcChecking,
-        defectRate: line.defectRatePercentage.toFixed(2)
-      };
+      Object.keys(line.models).forEach(modelId => {
+        const model = line.models[modelId];
+        reportData.push({
+          line: lineName,
+          modelId: modelId,
+          labelWeek: model.labelWeek,
+          model: model.model,
+          date: model.date,
+          target: model.target,
+          output: model.outputDay,
+          defect: model.actualDefect,
+          qcChecked: model.qcChecking,
+          defectRate: model.defectRatePercentage.toFixed(2)
+        });
+      });
     });
     
     res.json(reportData);
@@ -873,8 +1058,21 @@ app.get('/api/export-date-report/:date', requireLogin, requireDateReportAccess, 
       
       const filteredLines = {};
       Object.keys(data.lines).forEach(lineName => {
-        if (data.lines[lineName].date === date) {
-          filteredLines[lineName] = data.lines[lineName];
+        const line = data.lines[lineName];
+        const filteredModels = {};
+        
+        Object.keys(line.models).forEach(modelId => {
+          const model = line.models[modelId];
+          if (model.date === date) {
+            filteredModels[modelId] = model;
+          }
+        });
+        
+        if (Object.keys(filteredModels).length > 0) {
+          filteredLines[lineName] = {
+            ...line,
+            models: filteredModels
+          };
         }
       });
       
@@ -888,31 +1086,39 @@ app.get('/api/export-date-report/:date', requireLogin, requireDateReportAccess, 
       ['Tanggal:', date],
       ['Generated at:', new Date().toLocaleString('id-ID')],
       [],
-      ['Line', 'Label/Week', 'Model', 'Target', 'Output', 'Defect', 'QC Checked', 'Defect Rate%']
+      ['Line', 'Model ID', 'Label/Week', 'Model', 'Target', 'Output', 'Defect', 'QC Checked', 'Defect Rate%']
     ];
 
     Object.keys(data.lines).forEach(lineName => {
       const line = data.lines[lineName];
-      summaryData.push([
-        lineName,
-        line.labelWeek,
-        line.model,
-        line.target,
-        line.outputDay,
-        line.actualDefect,
-        line.qcChecking,
-        line.defectRatePercentage + '%'
-      ]);
+      Object.keys(line.models).forEach(modelId => {
+        const model = line.models[modelId];
+        summaryData.push([
+          lineName,
+          modelId,
+          model.labelWeek,
+          model.model,
+          model.target,
+          model.outputDay,
+          model.actualDefect,
+          model.qcChecking,
+          model.defectRatePercentage + '%'
+        ]);
+      });
     });
 
-    const totalTarget = Object.values(data.lines).reduce((sum, line) => sum + line.target, 0);
-    const totalOutput = Object.values(data.lines).reduce((sum, line) => sum + line.outputDay, 0);
-    const totalDefect = Object.values(data.lines).reduce((sum, line) => sum + line.actualDefect, 0);
-    const totalQCChecked = Object.values(data.lines).reduce((sum, line) => sum + line.qcChecking, 0);
+    const totalTarget = Object.values(data.lines).reduce((sum, line) => 
+      sum + Object.values(line.models).reduce((modelSum, model) => modelSum + model.target, 0), 0);
+    const totalOutput = Object.values(data.lines).reduce((sum, line) => 
+      sum + Object.values(line.models).reduce((modelSum, model) => modelSum + model.outputDay, 0), 0);
+    const totalDefect = Object.values(data.lines).reduce((sum, line) => 
+      sum + Object.values(line.models).reduce((modelSum, model) => modelSum + model.actualDefect, 0), 0);
+    const totalQCChecked = Object.values(data.lines).reduce((sum, line) => 
+      sum + Object.values(line.models).reduce((modelSum, model) => modelSum + model.qcChecking, 0), 0);
     const avgDefectRate = totalQCChecked > 0 ? (totalDefect / totalQCChecked * 100).toFixed(2) : 0;
 
     summaryData.push([]);
-    summaryData.push(['TOTAL', '', '', totalTarget, totalOutput, totalDefect, totalQCChecked, avgDefectRate + '%']);
+    summaryData.push(['TOTAL', '', '', '', totalTarget, totalOutput, totalDefect, totalQCChecked, avgDefectRate + '%']);
 
     const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
     XLSX.utils.book_append_sheet(workbook, summarySheet, 'Summary');
@@ -920,38 +1126,42 @@ app.get('/api/export-date-report/:date', requireLogin, requireDateReportAccess, 
     Object.keys(data.lines).forEach(lineName => {
       const line = data.lines[lineName];
       
-      const lineData = [
-        [`PRODUCTION REPORT - ${lineName}`],
-        [],
-        ['Label/Week', line.labelWeek],
-        ['Model', line.model],
-        ['Date', line.date],
-        ['Target', line.target],
-        ['Output/Hari', line.outputDay],
-        ['QC Checking', line.qcChecking],
-        ['Actual Defect', line.actualDefect],
-        ['Defect Rate (%)', line.defectRatePercentage],
-        [],
-        ['HOURLY DATA'],
-        ['Jam', 'Target Manual', 'Output', 'Selisih (Target - Output)', 'Defect', 'QC Checked', 'Defect Rate (%)']
-      ];
+      Object.keys(line.models).forEach(modelId => {
+        const model = line.models[modelId];
+        
+        const lineData = [
+          [`PRODUCTION REPORT - ${lineName} - ${modelId}`],
+          [],
+          ['Label/Week', model.labelWeek],
+          ['Model', model.model],
+          ['Date', model.date],
+          ['Target', model.target],
+          ['Output/Hari', model.outputDay],
+          ['QC Checking', model.qcChecking],
+          ['Actual Defect', model.actualDefect],
+          ['Defect Rate (%)', model.defectRatePercentage],
+          [],
+          ['HOURLY DATA'],
+          ['Jam', 'Target Manual', 'Output', 'Selisih (Target - Output)', 'Defect', 'QC Checked', 'Defect Rate (%)']
+        ];
 
-      line.hourly_data.forEach(hour => {
-        const defectRate = hour.qcChecked > 0 ? ((hour.defect / hour.qcChecked) * 100).toFixed(2) : '0.00';
-        const selisih = hour.targetManual - hour.output;
-        lineData.push([
-          hour.hour, 
-          hour.targetManual,
-          hour.output, 
-          selisih,
-          hour.defect, 
-          hour.qcChecked, 
-          defectRate
-        ]);
+        model.hourly_data.forEach(hour => {
+          const defectRate = hour.qcChecked > 0 ? ((hour.defect / hour.qcChecked) * 100).toFixed(2) : '0.00';
+          const selisih = hour.targetManual - hour.output;
+          lineData.push([
+            hour.hour, 
+            hour.targetManual,
+            hour.output, 
+            selisih,
+            hour.defect, 
+            hour.qcChecked, 
+            defectRate
+          ]);
+        });
+
+        const lineSheet = XLSX.utils.aoa_to_sheet(lineData);
+        XLSX.utils.book_append_sheet(workbook, lineSheet, `${lineName}_${modelId}`);
       });
-
-      const lineSheet = XLSX.utils.aoa_to_sheet(lineData);
-      XLSX.utils.book_append_sheet(workbook, lineSheet, lineName);
     });
 
     const excelBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
@@ -967,7 +1177,7 @@ app.get('/api/export-date-report/:date', requireLogin, requireDateReportAccess, 
   }
 });
 
-// User Management Routes - Hanya untuk admin
+// User Management Routes
 app.get('/api/users', requireLogin, requireAdmin, (req, res) => {
   const usersData = readUsersData();
   res.json(usersData.users || []);
@@ -1053,22 +1263,23 @@ app.delete('/api/users/:id', requireLogin, requireAdmin, (req, res) => {
 });
 
 // Export Excel Function
-function generateExcelData(lineData, lineName) {
+function generateExcelData(modelData, lineName, modelId) {
   const workbook = XLSX.utils.book_new();
   
   const summaryData = [
     ['PRODUCTION REPORT SUMMARY'],
     [],
     ['Line', lineName],
-    ['Label/Week', lineData.labelWeek],
-    ['Model', lineData.model],
-    ['Date', lineData.date],
-    ['Target', lineData.target],
-    ['Target per Hour', lineData.targetPerHour],
-    ['Output/Hari', lineData.outputDay],
-    ['QC Checking', lineData.qcChecking],
-    ['Actual Defect', lineData.actualDefect],
-    ['Defect Rate (%)', lineData.defectRatePercentage],
+    ['Model ID', modelId],
+    ['Label/Week', modelData.labelWeek],
+    ['Model', modelData.model],
+    ['Date', modelData.date],
+    ['Target', modelData.target],
+    ['Target per Hour', modelData.targetPerHour],
+    ['Output/Hari', modelData.outputDay],
+    ['QC Checking', modelData.qcChecking],
+    ['Actual Defect', modelData.actualDefect],
+    ['Defect Rate (%)', modelData.defectRatePercentage],
     [],
     ['Generated at', new Date().toLocaleString('id-ID')]
   ];
@@ -1082,7 +1293,7 @@ function generateExcelData(lineData, lineName) {
     ['Jam', 'Target Manual', 'Output', 'Selisih (Target - Output)', 'Defect', 'QC Checked', 'Defect Rate (%)']
   ];
 
-  lineData.hourly_data.forEach(hour => {
+  modelData.hourly_data.forEach(hour => {
     const defectRate = hour.qcChecked > 0 ? ((hour.defect / hour.qcChecked) * 100).toFixed(2) : '0.00';
     const selisih = hour.targetManual - hour.output;
     hourlyData.push([
@@ -1097,19 +1308,19 @@ function generateExcelData(lineData, lineName) {
   });
   
   hourlyData.push([]);
-  hourlyData.push(['TOTAL', lineData.target, lineData.outputDay, '', lineData.actualDefect, lineData.qcChecking, lineData.defectRatePercentage + '%']);
+  hourlyData.push(['TOTAL', modelData.target, modelData.outputDay, '', modelData.actualDefect, modelData.qcChecking, modelData.defectRatePercentage + '%']);
   
   const hourlySheet = XLSX.utils.aoa_to_sheet(hourlyData);
   XLSX.utils.book_append_sheet(workbook, hourlySheet, 'Hourly Data');
   
-  if (lineData.operators && lineData.operators.length > 0) {
+  if (modelData.operators && modelData.operators.length > 0) {
     const operatorData = [
       ['OPERATOR PERFORMANCE'],
       [],
       ['No', 'Nama Operator', 'Posisi', 'Target', 'Output', 'Defect', 'Efisiensi (%)', 'Status']
     ];
     
-    lineData.operators.forEach((operator, index) => {
+    modelData.operators.forEach((operator, index) => {
       operatorData.push([
         index + 1,
         operator.name,
@@ -1130,22 +1341,23 @@ function generateExcelData(lineData, lineName) {
 }
 
 // Export Excel Endpoint
-app.get('/api/export/:lineName', requireLogin, requireLineAccess, (req, res) => {
-  const lineName = req.params.lineName;
+app.get('/api/export/:lineName/:modelId', requireLogin, requireLineAccess, (req, res) => {
+  const { lineName, modelId } = req.params;
 
   const data = readProductionData();
-  const lineData = data.lines[lineName];
-
-  if (!lineData) {
-    return res.status(404).json({ error: 'Line not found' });
+  
+  if (!data.lines[lineName] || !data.lines[lineName].models[modelId]) {
+    return res.status(404).json({ error: 'Line or model not found' });
   }
 
+  const modelData = data.lines[lineName].models[modelId];
+
   try {
-    const workbook = generateExcelData(lineData, lineName);
+    const workbook = generateExcelData(modelData, lineName, modelId);
     
     const excelBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
     
-    const fileName = `Production_Report_${lineName}_${new Date().toISOString().split('T')[0]}.xlsx`;
+    const fileName = `Production_Report_${lineName}_${modelId}_${new Date().toISOString().split('T')[0]}.xlsx`;
     res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     
@@ -1160,18 +1372,42 @@ app.get('/api/export/:lineName', requireLogin, requireLineAccess, (req, res) => 
 app.get('/api/public/line/:lineName', (req, res) => {
   const lineName = req.params.lineName;
   const data = readProductionData();
-  const lineData = data.lines[lineName];
-
-  if (lineData) {
-    // Hitung target per jam jika belum ada
-    if (!lineData.targetPerHour) {
-      lineData.targetPerHour = Math.round(lineData.target / 8);
-    }
-    
-    res.json(lineData);
-  } else {
-    res.status(404).json({ error: 'Line not found' });
+  
+  if (!data.lines[lineName]) {
+    return res.status(404).json({ error: 'Line not found' });
   }
+
+  const activeModelId = data.lines[lineName].activeModel;
+  if (!activeModelId || !data.lines[lineName].models[activeModelId]) {
+    return res.status(404).json({ error: 'Active model not found' });
+  }
+
+  const modelData = data.lines[lineName].models[activeModelId];
+  
+  // Hitung target per jam jika belum ada
+  if (!modelData.targetPerHour) {
+    modelData.targetPerHour = Math.round(modelData.target / 8);
+  }
+  
+  res.json(modelData);
+});
+
+app.get('/api/public/line/:lineName/:modelId', (req, res) => {
+  const { lineName, modelId } = req.params;
+  const data = readProductionData();
+  
+  if (!data.lines[lineName] || !data.lines[lineName].models[modelId]) {
+    return res.status(404).json({ error: 'Line or model not found' });
+  }
+
+  const modelData = data.lines[lineName].models[modelId];
+  
+  // Hitung target per jam jika belum ada
+  if (!modelData.targetPerHour) {
+    modelData.targetPerHour = Math.round(modelData.target / 8);
+  }
+  
+  res.json(modelData);
 });
 
 // Route untuk halaman public display
@@ -1203,6 +1439,7 @@ app.listen(port, () => {
   console.log(`Server berjalan di http://localhost:${port}`);
   console.log(`=================================`);
   console.log(`Fitur yang tersedia:`);
+  console.log(`- Multi-Model Support per Line`);
   console.log(`- Manajemen Line, User, dan Operator`);
   console.log(`- Role: Admin, Admin Operator, Operator`);
   console.log(`- Input langsung di tabel Data Per Jam`);

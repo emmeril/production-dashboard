@@ -64,6 +64,12 @@
             border-color: #3b82f6;
             box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
         }
+        .model-badge {
+            font-size: 0.7rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-left: 8px;
+        }
     </style>
 </head>
 <body class="bg-gray-100 font-sans" x-data="dashboard()" x-cloak>
@@ -260,13 +266,13 @@
                     <div class="bg-white rounded-lg shadow overflow-hidden card-shadow">
                         <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
                             <h3 class="text-lg leading-6 font-medium text-gray-900">Ringkasan Line Produksi</h3>
-                            <p class="mt-1 max-w-2xl text-sm text-gray-500">Status produksi per line</p>
+                            <p class="mt-1 max-w-2xl text-sm text-gray-500">Status produksi per line dan model</p>
                         </div>
                         <div class="overflow-x-auto">
                             <table class="min-w-full divide-y divide-gray-200">
                                 <thead class="bg-gray-50">
                                     <tr>
-                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Line</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Line & Model</th>
                                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Model</th>
                                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Target</th>
                                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Output</th>
@@ -276,10 +282,13 @@
                                     </tr>
                                 </thead>
                                 <tbody class="bg-white divide-y divide-gray-200">
-                                    <template x-for="line in lines" :key="line.name">
+                                    <template x-for="line in linesWithModels" :key="line.key">
                                         <tr>
                                             <td class="px-6 py-4 whitespace-nowrap">
-                                                <div class="text-sm font-medium text-gray-900" x-text="line.name"></div>
+                                                <div class="flex items-center">
+                                                    <div class="text-sm font-medium text-gray-900" x-text="line.lineName"></div>
+                                                    <span class="model-badge bg-blue-100 text-blue-800" x-text="line.modelId"></span>
+                                                </div>
                                                 <div class="text-sm text-gray-500" x-text="line.data.labelWeek"></div>
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap">
@@ -288,7 +297,6 @@
                                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500" x-text="line.data.target"></td>
                                             <td class="px-6 py-4 whitespace-nowrap">
                                                 <div class="text-sm text-gray-900" x-text="line.data.outputDay"></div>
-                                                
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap">
                                                 <div class="flex items-center">
@@ -304,9 +312,9 @@
                                                 <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800" x-show="line.data.outputDay === 0">No Data</span>
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                                <button @click="viewLine(line.name)" class="text-blue-600 hover:text-blue-900 mr-3">Lihat</button>
+                                                <button @click="viewLine(line.lineName, line.modelId)" class="text-blue-600 hover:text-blue-900 mr-3">Lihat</button>
                                                 <!-- Tombol Input hanya untuk operator dan admin, bukan admin_operator -->
-                                                <button x-show="currentUser.role !== 'admin_operator'" @click="inputData(line.name)" class="text-green-600 hover:text-green-900">Input</button>
+                                                <button x-show="currentUser.role !== 'admin_operator'" @click="inputData(line.lineName, line.modelId)" class="text-green-600 hover:text-green-900">Input</button>
                                             </td>
                                         </tr>
                                     </template>
@@ -320,11 +328,11 @@
                 <div x-show="currentPage === 'line-detail'" class="fade-in">
                     <div class="mb-6 flex justify-between items-center">
                         <div>
-                            <h1 class="text-2xl font-bold text-gray-800" x-text="'Line ' + currentLine"></h1>
+                            <h1 class="text-2xl font-bold text-gray-800" x-text="'Line ' + currentLine + ' - ' + currentModelId"></h1>
                             <p class="text-gray-600" x-text="lineDetail.labelWeek + ' - ' + lineDetail.model"></p>
                         </div>
                         <div class="flex space-x-2">
-                            <button @click="exportLineExcel(currentLine)" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                            <button @click="exportLineExcel(currentLine, currentModelId)" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
                                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                                 </svg>
@@ -343,7 +351,6 @@
                                 <div>
                                     <p class="text-sm font-medium text-gray-500">Target Harian</p>
                                     <p class="text-2xl font-bold text-gray-800" x-text="lineDetail.target"></p>
-                                    
                                 </div>
                                 <div class="rounded-full bg-blue-100 p-3">
                                     <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -422,7 +429,7 @@
                                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900" x-text="hour.hour"></td>
                                             <td class="px-6 py-4 whitespace-nowrap">
                                                 <input type="number" x-model="hour.targetManual" 
-                                                       @change="updateTargetManual(lineDetail.line, index, hour.targetManual)"
+                                                       @change="updateTargetManual(currentLine, currentModelId, index, hour.targetManual)"
                                                        class="input-cell" :disabled="currentUser.role === 'admin_operator'">
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap">
@@ -446,7 +453,7 @@
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                                 <!-- Tombol Simpan hanya untuk operator dan admin, bukan admin_operator -->
-                                                <button x-show="currentUser.role !== 'admin_operator'" @click="updateHourlyDataDirect(lineDetail.line, index)" 
+                                                <button x-show="currentUser.role !== 'admin_operator'" @click="updateHourlyDataDirect(currentLine, currentModelId, index)" 
                                                         class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 text-sm">
                                                     Simpan
                                                 </button>
@@ -457,15 +464,13 @@
                             </table>
                         </div>
                     </div>
-
-                  
                 </div>
 
-                <!-- Input Data Page - Hanya untuk operator dan admin, bukan admin_operator -->
+                <!-- Input Data Page -->
                 <div x-show="currentPage === 'input-data' && currentUser.role !== 'admin_operator'" class="fade-in">
                     <div class="mb-6 flex justify-between items-center">
                         <div>
-                            <h1 class="text-2xl font-bold text-gray-800" x-text="'Input Data - Line ' + currentLine"></h1>
+                            <h1 class="text-2xl font-bold text-gray-800" x-text="'Input Data - Line ' + currentLine + ' - ' + currentModelId"></h1>
                             <p class="text-gray-600" x-text="lineDetail.labelWeek + ' - ' + lineDetail.model"></p>
                         </div>
                         <button @click="currentPage = 'dashboard'" class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
@@ -578,36 +583,59 @@
                     <!-- Line Management - Untuk admin dan admin_operator -->
                     <div class="bg-white rounded-lg shadow overflow-hidden card-shadow mb-6">
                         <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
-                            <h3 class="text-lg leading-6 font-medium text-gray-900">Manajemen Line</h3>
-                            <p class="mt-1 max-w-2xl text-sm text-gray-500">Tambah, edit, atau hapus line produksi</p>
+                            <h3 class="text-lg leading-6 font-medium text-gray-900">Manajemen Line & Model</h3>
+                            <p class="mt-1 max-w-2xl text-sm text-gray-500">Tambah, edit, atau hapus line produksi dan model</p>
                         </div>
                         <div class="p-4">
-                            <button @click="openLineModal()" class="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 mb-4">
-                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                                </svg>
-                                Tambah Line Baru
-                            </button>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                <button @click="openLineModal()" class="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                    </svg>
+                                    Tambah Line Baru
+                                </button>
+                                
+                                <button @click="openModelModal()" class="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                    </svg>
+                                    Tambah Model ke Line
+                                </button>
+                            </div>
                             
                             <div class="overflow-x-auto">
                                 <table class="min-w-full divide-y divide-gray-200">
                                     <thead class="bg-gray-50">
                                         <tr>
                                             <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Line</th>
+                                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Model ID</th>
+                                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Label/Week</th>
                                             <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Model</th>
                                             <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Target</th>
+                                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                                             <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
                                         </tr>
                                     </thead>
                                     <tbody class="bg-white divide-y divide-gray-200">
-                                        <template x-for="line in lines" :key="line.name">
+                                        <template x-for="line in linesWithModels" :key="line.key">
                                             <tr>
-                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900" x-text="line.name"></td>
+                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900" x-text="line.lineName"></td>
+                                                <td class="px-4 py-3 whitespace-nowrap">
+                                                    <span class="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded" x-text="line.modelId"></span>
+                                                    <span x-show="line.data.lineActiveModel === line.modelId" class="ml-1 px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded">Aktif</span>
+                                                </td>
+                                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500" x-text="line.data.labelWeek"></td>
                                                 <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500" x-text="line.data.model"></td>
                                                 <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500" x-text="line.data.target"></td>
+                                                <td class="px-4 py-3 whitespace-nowrap">
+                                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800" x-show="line.data.outputDay >= line.data.target">On Target</span>
+                                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800" x-show="line.data.outputDay < line.data.target && line.data.outputDay > 0">Behind</span>
+                                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800" x-show="line.data.outputDay === 0">No Data</span>
+                                                </td>
                                                 <td class="px-4 py-3 whitespace-nowrap text-sm font-medium">
                                                     <button @click="openLineModal(line)" class="text-blue-600 hover:text-blue-900 mr-2">Edit</button>
-                                                    <button @click="deleteLine(line.name)" class="text-red-600 hover:text-red-900">Hapus</button>
+                                                    <button @click="setActiveModel(line.lineName, line.modelId)" class="text-green-600 hover:text-green-900 mr-2">Set Aktif</button>
+                                                    <button @click="deleteModel(line.lineName, line.modelId)" class="text-red-600 hover:text-red-900" x-show="!line.data.lineActiveModel || line.data.lineActiveModel !== line.modelId">Hapus</button>
                                                 </td>
                                             </tr>
                                         </template>
@@ -705,6 +733,7 @@
                                         <thead class="bg-gray-50">
                                             <tr>
                                                 <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Line</th>
+                                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Model ID</th>
                                                 <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Model</th>
                                                 <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Target</th>
                                                 <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Output</th>
@@ -714,9 +743,10 @@
                                             </tr>
                                         </thead>
                                         <tbody class="bg-white divide-y divide-gray-200">
-                                            <template x-for="line in dateReport" :key="line.name">
+                                            <template x-for="line in dateReport" :key="line.line + '-' + line.modelId">
                                                 <tr>
-                                                    <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900" x-text="line.name"></td>
+                                                    <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900" x-text="line.line"></td>
+                                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500" x-text="line.modelId"></td>
                                                     <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500" x-text="line.model"></td>
                                                     <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500" x-text="line.target"></td>
                                                     <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500" x-text="line.output"></td>
@@ -774,11 +804,15 @@
             <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
                 <form @submit.prevent="saveLine">
                     <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                        <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4" x-text="lineModal.isEdit ? 'Edit Line' : 'Tambah Line Baru'"></h3>
+                        <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4" x-text="lineModal.isEdit ? 'Edit Line/Model' : 'Tambah Line Baru'"></h3>
                         <div class="space-y-4">
                             <div>
                                 <label for="line-name" class="block text-sm font-medium text-gray-700">Nama Line</label>
                                 <input type="text" id="line-name" x-model="lineModal.data.lineName" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" :readonly="lineModal.isEdit" required>
+                            </div>
+                            <div x-show="lineModal.isEdit">
+                                <label for="model-id" class="block text-sm font-medium text-gray-700">Model ID</label>
+                                <input type="text" id="model-id" x-model="lineModal.data.modelId" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" readonly>
                             </div>
                             <div>
                                 <label for="label-week" class="block text-sm font-medium text-gray-700">Label/Week</label>
@@ -803,6 +837,58 @@
                             Simpan
                         </button>
                         <button type="button" @click="lineModal.open = false" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                            Batal
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Model Modal -->
+    <div x-show="modelModal.open" class="fixed inset-0 overflow-y-auto z-50" x-cloak>
+        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div class="fixed inset-0 transition-opacity" aria-hidden="true">
+                <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
+            </div>
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+            <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+                <form @submit.prevent="saveModel">
+                    <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                        <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Tambah Model ke Line</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label for="model-line-name" class="block text-sm font-medium text-gray-700">Pilih Line</label>
+                                <select id="model-line-name" x-model="modelModal.data.lineName" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md" required>
+                                    <option value="">Pilih Line</option>
+                                    <template x-for="line in lines" :key="line.name">
+                                        <option :value="line.name" x-text="line.name"></option>
+                                    </template>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="model-label-week" class="block text-sm font-medium text-gray-700">Label/Week</label>
+                                <input type="text" id="model-label-week" x-model="modelModal.data.labelWeek" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" required>
+                            </div>
+                            <div>
+                                <label for="model-name" class="block text-sm font-medium text-gray-700">Model</label>
+                                <input type="text" id="model-name" x-model="modelModal.data.model" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" required>
+                            </div>
+                            <div>
+                                <label for="model-target" class="block text-sm font-medium text-gray-700">Target Harian</label>
+                                <input type="number" id="model-target" x-model="modelModal.data.target" min="1" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" required>
+                            </div>
+                            <div>
+                                <label for="model-date" class="block text-sm font-medium text-gray-700">Tanggal</label>
+                                <input type="date" id="model-date" x-model="modelModal.data.date" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" required>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                        <button type="submit" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm">
+                            Tambah Model
+                        </button>
+                        <button type="button" @click="modelModal.open = false" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
                             Batal
                         </button>
                     </div>
@@ -929,8 +1015,10 @@
                 
                 // Data
                 lines: [],
+                linesWithModels: [],
                 lineDetail: {},
                 currentLine: '',
+                currentModelId: '',
                 dashboardData: {},
                 users: [],
                 dateReport: [],
@@ -949,6 +1037,18 @@
                 lineModal: {
                     open: false,
                     isEdit: false,
+                    data: {
+                        lineName: '',
+                        modelId: '',
+                        labelWeek: '',
+                        model: '',
+                        target: 180,
+                        date: new Date().toISOString().split('T')[0]
+                    }
+                },
+                
+                modelModal: {
+                    open: false,
                     data: {
                         lineName: '',
                         labelWeek: '',
@@ -1066,13 +1166,14 @@
                     }
                 },
                 
-                viewLine(lineName) {
+                viewLine(lineName, modelId) {
                     this.currentLine = lineName;
-                    this.loadLineDetail(lineName);
+                    this.currentModelId = modelId;
+                    this.loadLineDetail(lineName, modelId);
                     this.currentPage = 'line-detail';
                 },
                 
-                inputData(lineName) {
+                inputData(lineName, modelId) {
                     // Cek jika user adalah admin_operator, maka tidak boleh input data
                     if (this.currentUser.role === 'admin_operator') {
                         this.showToast('Anda tidak memiliki akses untuk input data', 'error');
@@ -1080,7 +1181,8 @@
                     }
                     
                     this.currentLine = lineName;
-                    this.loadLineDetail(lineName);
+                    this.currentModelId = modelId;
+                    this.loadLineDetail(lineName, modelId);
                     this.resetInputForm();
                     this.currentPage = 'input-data';
                 },
@@ -1095,6 +1197,25 @@
                                 name: key,
                                 data: data[key]
                             }));
+                            
+                            // Process lines with models for display
+                            this.linesWithModels = [];
+                            Object.keys(data).forEach(lineName => {
+                                const line = data[lineName];
+                                if (line.models) {
+                                    Object.keys(line.models).forEach(modelId => {
+                                        this.linesWithModels.push({
+                                            key: `${lineName}-${modelId}`,
+                                            lineName: lineName,
+                                            modelId: modelId,
+                                            data: {
+                                                ...line.models[modelId],
+                                                lineActiveModel: line.activeModel
+                                            }
+                                        });
+                                    });
+                                }
+                            });
                         } else {
                             console.error('Failed to load lines');
                         }
@@ -1104,11 +1225,21 @@
                     }
                 },
                 
-                async loadLineDetail(lineName) {
+                async loadLineDetail(lineName, modelId) {
                     try {
-                        const response = await fetch(`/api/line/${lineName}`);
+                        let url;
+                        if (modelId) {
+                            url = `/api/line/${lineName}/${modelId}`;
+                        } else {
+                            url = `/api/line/${lineName}`;
+                        }
+                        
+                        const response = await fetch(url);
                         if (response.ok) {
                             this.lineDetail = await response.json();
+                            if (!modelId && this.lineDetail.modelId) {
+                                this.currentModelId = this.lineDetail.modelId;
+                            }
                         } else {
                             console.error('Failed to load line detail');
                             this.showToast('Failed to load line detail', 'error');
@@ -1122,15 +1253,30 @@
                 async loadDashboardData() {
                     await this.loadLines();
                     
-                    // Calculate dashboard totals
+                    // Calculate dashboard totals from all models
+                    let totalOutput = 0;
+                    let totalTarget = 0;
+                    let totalDefectRate = 0;
+                    let activeOperators = 0;
+                    let modelCount = 0;
+
+                    this.linesWithModels.forEach(line => {
+                        totalOutput += line.data.outputDay || 0;
+                        totalTarget += line.data.target || 0;
+                        totalDefectRate += line.data.defectRatePercentage || 0;
+                        modelCount++;
+                        
+                        // Count active operators
+                        if (line.data.operators) {
+                            activeOperators += line.data.operators.filter(op => op.status === 'active').length;
+                        }
+                    });
+
                     this.dashboardData = {
-                        totalOutput: this.lines.reduce((sum, line) => sum + line.data.outputDay, 0),
-                        totalTarget: this.lines.reduce((sum, line) => sum + line.data.target, 0),
-                        defectRate: this.lines.length > 0 ? 
-                            (this.lines.reduce((sum, line) => sum + line.data.defectRatePercentage, 0) / this.lines.length).toFixed(2) : 0,
-                        activeOperators: this.lines.reduce((sum, line) => {
-                            return sum + (line.data.operators ? line.data.operators.filter(op => op.status === 'active').length : 0);
-                        }, 0)
+                        totalOutput: totalOutput,
+                        totalTarget: totalTarget,
+                        defectRate: modelCount > 0 ? (totalDefectRate / modelCount).toFixed(2) : 0,
+                        activeOperators: activeOperators
                     };
                 },
                 
@@ -1222,7 +1368,7 @@
                     }
                     
                     try {
-                        const response = await fetch(`/api/update-hourly/${this.currentLine}`, {
+                        const response = await fetch(`/api/update-hourly/${this.currentLine}/${this.currentModelId}`, {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json'
@@ -1234,7 +1380,7 @@
                             const data = await response.json();
                             this.showToast('Data berhasil disimpan', 'success');
                             this.resetInputForm();
-                            await this.loadLineDetail(this.currentLine);
+                            await this.loadLineDetail(this.currentLine, this.currentModelId);
                             await this.loadDashboardData();
                         } else {
                             const error = await response.json();
@@ -1247,7 +1393,7 @@
                 },
                 
                 // Methods for target manual
-                async updateTargetManual(lineName, hourIndex, targetManual) {
+                async updateTargetManual(lineName, modelId, hourIndex, targetManual) {
                     // Cek jika user adalah admin_operator, maka tidak boleh input data
                     if (this.currentUser.role === 'admin_operator') {
                         this.showToast('Anda tidak memiliki akses untuk input data', 'error');
@@ -1255,7 +1401,7 @@
                     }
                     
                     try {
-                        const response = await fetch(`/api/update-target-manual/${lineName}`, {
+                        const response = await fetch(`/api/update-target-manual/${lineName}/${modelId}`, {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json'
@@ -1269,7 +1415,7 @@
                         if (response.ok) {
                             const data = await response.json();
                             this.showToast('Target manual berhasil diupdate', 'success');
-                            await this.loadLineDetail(lineName);
+                            await this.loadLineDetail(lineName, modelId);
                             await this.loadDashboardData();
                         } else {
                             const error = await response.json();
@@ -1282,7 +1428,7 @@
                 },
 
                 // Update data langsung dari tabel
-                async updateHourlyDataDirect(lineName, hourIndex) {
+                async updateHourlyDataDirect(lineName, modelId, hourIndex) {
                     // Cek jika user adalah admin_operator, maka tidak boleh input data
                     if (this.currentUser.role === 'admin_operator') {
                         this.showToast('Anda tidak memiliki akses untuk input data', 'error');
@@ -1292,7 +1438,7 @@
                     const hour = this.lineDetail.hourly_data[hourIndex];
                     
                     try {
-                        const response = await fetch(`/api/update-hourly-direct/${lineName}`, {
+                        const response = await fetch(`/api/update-hourly-direct/${lineName}/${modelId}`, {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json'
@@ -1308,7 +1454,7 @@
                         
                         if (response.ok) {
                             this.showToast('Data berhasil disimpan', 'success');
-                            await this.loadLineDetail(lineName);
+                            await this.loadLineDetail(lineName, modelId);
                             await this.loadDashboardData();
                         } else {
                             const error = await response.json();
@@ -1321,15 +1467,15 @@
                 },
                 
                 // Export methods
-                async exportLineExcel(lineName) {
+                async exportLineExcel(lineName, modelId) {
                     try {
-                        const response = await fetch(`/api/export/${lineName}`);
+                        const response = await fetch(`/api/export/${lineName}/${modelId}`);
                         if (response.ok) {
                             const blob = await response.blob();
                             const url = window.URL.createObjectURL(blob);
                             const a = document.createElement('a');
                             a.href = url;
-                            a.download = `Production_Report_${lineName}_${new Date().toISOString().split('T')[0]}.xlsx`;
+                            a.download = `Production_Report_${lineName}_${modelId}_${new Date().toISOString().split('T')[0]}.xlsx`;
                             document.body.appendChild(a);
                             a.click();
                             window.URL.revokeObjectURL(url);
@@ -1350,7 +1496,8 @@
                     if (line) {
                         this.lineModal.isEdit = true;
                         this.lineModal.data = {
-                            lineName: line.name,
+                            lineName: line.lineName,
+                            modelId: line.modelId,
                             labelWeek: line.data.labelWeek,
                             model: line.data.model,
                             target: line.data.target,
@@ -1360,6 +1507,7 @@
                         this.lineModal.isEdit = false;
                         this.lineModal.data = {
                             lineName: '',
+                            modelId: '',
                             labelWeek: '',
                             model: '',
                             target: 180,
@@ -1369,20 +1517,40 @@
                     this.lineModal.open = true;
                 },
                 
+                openModelModal() {
+                    this.modelModal.data = {
+                        lineName: '',
+                        labelWeek: '',
+                        model: '',
+                        target: 180,
+                        date: new Date().toISOString().split('T')[0]
+                    };
+                    this.modelModal.open = true;
+                },
+                
                 async saveLine() {
                     try {
-                        const url = this.lineModal.isEdit ? 
-                            `/api/lines/${this.lineModal.data.lineName}` : 
-                            '/api/lines';
+                        let url, method, bodyData;
                         
-                        const method = this.lineModal.isEdit ? 'PUT' : 'POST';
+                        if (this.lineModal.isEdit) {
+                            url = `/api/lines/${this.lineModal.data.lineName}`;
+                            method = 'PUT';
+                            bodyData = {
+                                ...this.lineModal.data,
+                                modelId: this.lineModal.data.modelId
+                            };
+                        } else {
+                            url = '/api/lines';
+                            method = 'POST';
+                            bodyData = this.lineModal.data;
+                        }
                         
                         const response = await fetch(url, {
                             method: method,
                             headers: {
                                 'Content-Type': 'application/json'
                             },
-                            body: JSON.stringify(this.lineModal.data)
+                            body: JSON.stringify(bodyData)
                         });
                         
                         if (response.ok) {
@@ -1397,6 +1565,78 @@
                     } catch (error) {
                         console.error('Error saving line:', error);
                         this.showToast('Error saving line', 'error');
+                    }
+                },
+                
+                async saveModel() {
+                    try {
+                        const response = await fetch(`/api/lines/${this.modelModal.data.lineName}/models`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(this.modelModal.data)
+                        });
+                        
+                        if (response.ok) {
+                            this.showToast('Model added successfully', 'success');
+                            this.modelModal.open = false;
+                            await this.loadLines();
+                            await this.loadDashboardData();
+                        } else {
+                            const error = await response.json();
+                            this.showToast(error.error || 'Failed to add model', 'error');
+                        }
+                    } catch (error) {
+                        console.error('Error saving model:', error);
+                        this.showToast('Error saving model', 'error');
+                    }
+                },
+                
+                async deleteModel(lineName, modelId) {
+                    if (!confirm(`Are you sure you want to delete model ${modelId} from line ${lineName}?`)) {
+                        return;
+                    }
+                    
+                    try {
+                        const response = await fetch(`/api/lines/${lineName}/models/${modelId}`, {
+                            method: 'DELETE'
+                        });
+                        
+                        if (response.ok) {
+                            this.showToast('Model deleted successfully', 'success');
+                            await this.loadLines();
+                            await this.loadDashboardData();
+                        } else {
+                            const error = await response.json();
+                            this.showToast(error.error || 'Failed to delete model', 'error');
+                        }
+                    } catch (error) {
+                        console.error('Error deleting model:', error);
+                        this.showToast('Error deleting model', 'error');
+                    }
+                },
+                
+                async setActiveModel(lineName, modelId) {
+                    try {
+                        const response = await fetch(`/api/lines/${lineName}/active-model`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ modelId: modelId })
+                        });
+                        
+                        if (response.ok) {
+                            this.showToast(`Active model set to ${modelId}`, 'success');
+                            await this.loadLines();
+                        } else {
+                            const error = await response.json();
+                            this.showToast(error.error || 'Failed to set active model', 'error');
+                        }
+                    } catch (error) {
+                        console.error('Error setting active model:', error);
+                        this.showToast('Error setting active model', 'error');
                     }
                 },
                 

@@ -1,0 +1,91 @@
+{
+  "lines": {
+    "LINE-1": {
+      "labelWeek": "EU / 2546-1",
+      "model": "BLAHAJ N SOFT TOY 55 BABY SHARK",
+      "date": "2025-11-26",
+      "target": 1000,
+      "targetPerHour": 125,
+      "outputDay": 500,
+      "qcChecking": 0,
+      "actualDefect": 0,
+      "defectRatePercentage": 0,
+      "hourly_data": [
+        {
+          "hour": "07:00 - 08:00",
+          "output": 125,
+          "defect": 0,
+          "qcChecked": 0,
+          "targetManual": 125,
+          "selisih": 0
+        },
+        {
+          "hour": "08:00 - 09:00",
+          "output": 125,
+          "defect": 0,
+          "qcChecked": 0,
+          "targetManual": 125,
+          "selisih": 0
+        },
+        {
+          "hour": "09:00 - 10:00",
+          "output": 125,
+          "defect": 0,
+          "qcChecked": 0,
+          "targetManual": 125,
+          "selisih": 0
+        },
+        {
+          "hour": "10:00 - 11:00",
+          "output": 125,
+          "defect": 0,
+          "qcChecked": 0,
+          "targetManual": 125,
+          "selisih": 0
+        },
+        {
+          "hour": "11:00 - 13:00",
+          "output": 0,
+          "defect": 0,
+          "qcChecked": 0,
+          "targetManual": 0,
+          "selisih": 0
+        },
+        {
+          "hour": "13:00 - 14:00",
+          "output": 0,
+          "defect": 0,
+          "qcChecked": 0,
+          "targetManual": 125,
+          "selisih": -125
+        },
+        {
+          "hour": "14:00 - 15:00",
+          "output": 0,
+          "defect": 0,
+          "qcChecked": 0,
+          "targetManual": 125,
+          "selisih": -125
+        },
+        {
+          "hour": "15:00 - 16:00",
+          "output": 0,
+          "defect": 0,
+          "qcChecked": 0,
+          "targetManual": 125,
+          "selisih": -125
+        },
+        {
+          "hour": "16:00 - 17:00",
+          "output": 0,
+          "defect": 0,
+          "qcChecked": 0,
+          "targetManual": 125,
+          "selisih": -125
+        }
+      ],
+      "operators": []
+    }
+  },
+  "activeLine": "F1-5A"
+}

@@ -80,7 +80,6 @@
             box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
         }
         
-        /* PERUBAHAN: Font LINE dan MODEL lebih kecil */
         .label {
             font-size: calc(2rem * var(--scale-factor));
             font-weight: bold;
@@ -169,7 +168,6 @@
             background: linear-gradient(90deg, #10b981 0%, #059669 100%);
         }
         
-        /* PERUBAHAN: Font TARGET / JAM, SELISIH AKUMULATIF, OUTPUT AKUMULATIF lebih besar */
         .data-label {
             font-size: calc(2rem * var(--scale-factor));
             margin-bottom: 12px;
@@ -260,7 +258,6 @@
             text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
         }
         
-        /* Animasi untuk nilai yang berubah */
         @keyframes pulse {
             0% { transform: scale(1); }
             50% { transform: scale(1.05); }
@@ -275,7 +272,6 @@
             animation: pulse 2s infinite;
         }
         
-        /* Custom select styling */
         select {
             background: rgba(30, 41, 59, 0.8);
             border: 1px solid rgba(100, 116, 139, 0.5);
@@ -285,7 +281,6 @@
             font-size: calc(1rem * var(--scale-factor));
         }
         
-        /* Error message styling */
         .error-overlay {
             position: fixed;
             top: 0;
@@ -332,7 +327,6 @@
             transition: all 0.3s ease;
         }
         
-        /* Progress bar styling */
         .progress-container {
             width: 100%;
             height: 10px;
@@ -349,7 +343,6 @@
             transition: width 0.5s ease;
         }
         
-        /* Responsive design untuk berbagai ukuran layar */
         @media (max-width: 480px) {
             :root {
                 --scale-factor: 0.5;
@@ -386,7 +379,6 @@
             }
         }
         
-        /* Untuk layar portrait (tegak) */
         @media (orientation: portrait) {
             .main-content {
                 flex-direction: column;
@@ -405,7 +397,6 @@
             }
         }
         
-        /* Untuk layar dengan rasio aspek yang sangat tinggi (seperti tablet) */
         @media (max-aspect-ratio: 4/5) {
             :root {
                 --scale-factor: 0.7;
@@ -420,9 +411,17 @@
             }
         }
         
-        /* Fallback untuk browser yang tidak mendukung CSS variables */
         .no-css-vars .container {
             transform: scale(0.8);
+        }
+        
+        .model-badge {
+            font-size: calc(1rem * var(--scale-factor));
+            padding: 4px 8px;
+            border-radius: 4px;
+            margin-left: 8px;
+            background: rgba(59, 130, 246, 0.2);
+            color: #93c5fd;
         }
     </style>
 </head>
@@ -431,20 +430,18 @@
         <div class="header">
             <div class="line-info">
                 <div class="line-box">
-                    <!-- <div class="label">LINE</div> -->
                     <div class="value" x-text="lineData.name || 'Loading...'"></div>
                     <div class="value" x-text="lineData.data.labelWeek || 'Loading...'"></div>
                 </div>
                 <div class="model-box">
-                    <!-- <div class="label">MODEL</div> -->
                     <div class="value" x-text="lineData.data.model || 'Loading...'"></div>
+                    <div x-show="currentModelId" class="model-badge" x-text="'Model: ' + currentModelId"></div>
                 </div>
             </div>
         </div>
         
         <div class="main-content">
             <div class="target-section">
-                <!-- <div class="section-title">PRODUCTION DATA</div> -->
                 <div class="data-grid">
                     <div class="data-box">
                         <div class="data-label">TARGET</div>
@@ -478,7 +475,6 @@
             </div>
             
             <div class="defect-section">
-                <!-- <div class="section-title">QUALITY DATA</div> -->
                 <div class="defect-container">
                     <div class="defect-box">
                         <div class="data-label">DEFECT</div>
@@ -494,8 +490,8 @@
             </div>
         </div>
         
-        <!-- <div class="footer">
-            <div>PRODUCTION MONITORING SYSTEM</div>
+        <div class="footer">
+            <div>PRODUCTION MONITORING SYSTEM - MULTI-MODEL SUPPORT</div>
             <div class="datetime" id="current-datetime">Loading...</div>
             <div class="flex items-center justify-center mt-2">
                 <div class="auto-refresh-indicator bg-green-400 rounded-full w-3 h-3 mr-2"></div>
@@ -508,7 +504,7 @@
                     <option value="60000">1 Menit</option>
                 </select>
             </div>
-        </div> -->
+        </div>
     </div>
 
     <!-- Error Overlay -->
@@ -542,45 +538,49 @@
                         operators: []
                     }
                 },
+                currentModelId: '',
                 errorMessage: '',
-                refreshInterval: 10000, // Default 10 detik
+                refreshInterval: 10000,
                 refreshTimer: null,
                 dataUpdated: false,
 
                 async init() {
-                    // Get line name from URL parameter
                     const urlParams = new URLSearchParams(window.location.search);
                     const lineName = urlParams.get('line');
+                    const modelId = urlParams.get('model');
                     
                     if (!lineName) {
-                        this.errorMessage = 'Parameter line tidak ditemukan. Gunakan format: public-display.html?line=NAMA_LINE';
+                        this.errorMessage = 'Parameter line tidak ditemukan. Gunakan format: public-display.html?line=NAMA_LINE&model=MODEL_ID';
                         return;
                     }
 
                     this.lineData.name = lineName;
+                    this.currentModelId = modelId || '';
                     await this.loadLineData();
                     
-                    // Setup auto refresh
                     this.setupAutoRefresh();
                     
-                    // Update waktu real-time
                     this.updateDateTime();
                     setInterval(() => {
                         this.updateDateTime();
                     }, 1000);
                     
-                    // Setup responsive scaling
                     this.setupResponsiveScaling();
                 },
 
                 async loadLineData() {
                     try {
-                        // Coba endpoint public yang baru
-                        let response = await fetch(`/api/public/line/${this.lineData.name}`);
+                        let url;
+                        if (this.currentModelId) {
+                            url = `/api/public/line/${this.lineData.name}/${this.currentModelId}`;
+                        } else {
+                            url = `/api/public/line/${this.lineData.name}`;
+                        }
                         
-                        // Jika endpoint public tidak ada, coba endpoint biasa (mungkin butuh auth)
+                        let response = await fetch(url);
+                        
                         if (!response.ok) {
-                            response = await fetch(`/api/line/${this.lineData.name}`);
+                            response = await fetch(`/api/line/${this.lineData.name}${this.currentModelId ? '/' + this.currentModelId : ''}`);
                         }
                         
                         if (response.ok) {
@@ -588,7 +588,6 @@
                             this.lineData.data = data;
                             this.errorMessage = '';
                             
-                            // Trigger animation
                             this.dataUpdated = true;
                             setTimeout(() => {
                                 this.dataUpdated = false;
@@ -634,12 +633,10 @@
                 },
                 
                 setupResponsiveScaling() {
-                    // Update scale factor based on screen size
                     const updateScale = () => {
                         const width = window.innerWidth;
                         const height = window.innerHeight;
                         
-                        // Calculate optimal scale based on screen dimensions
                         let scale = 1;
                         
                         if (width < 480) scale = 0.5;
@@ -649,7 +646,6 @@
                         else if (width < 1920) scale = 1;
                         else scale = 1.1;
                         
-                        // Adjust for portrait orientation
                         if (height > width) {
                             scale = Math.min(scale, 0.7);
                         }
@@ -661,16 +657,14 @@
                     window.addEventListener('resize', updateScale);
                 },
                 
-                // FUNGSI BARU: Mendapatkan target untuk jam yang sedang berjalan
                 getCurrentHourTarget() {
                     if (!this.lineData.data.hourly_data || this.lineData.data.hourly_data.length === 0) return 0;
                     
                     const now = new Date();
-                    const currentTime = now.getHours() * 60 + now.getMinutes(); // dalam menit
+                    const currentTime = now.getHours() * 60 + now.getMinutes();
                     
                     let currentHourTarget = 0;
                     
-                    // Cari jam yang sedang berjalan
                     for (let hour of this.lineData.data.hourly_data) {
                         const hourStart = hour.hour.split(' - ')[0];
                         const [startHour, startMinute] = hourStart.split(':').map(Number);
@@ -680,7 +674,6 @@
                         const [endHour, endMinute] = hourEnd.split(':').map(Number);
                         const hourEndTime = endHour * 60 + endMinute;
                         
-                        // Jika waktu sekarang berada dalam rentang jam ini
                         if (currentTime >= hourStartTime && currentTime < hourEndTime) {
                             currentHourTarget = hour.targetManual || 0;
                             break;
@@ -690,7 +683,6 @@
                     return currentHourTarget;
                 },
                 
-                // FUNGSI UTAMA: Persentase progres kumulatif target per jam terhadap target harian
                 calculateTargetProgressPercentage() {
                     if (!this.lineData.data.target || this.lineData.data.target === 0) return '0.0';
                     
@@ -708,13 +700,11 @@
                     
                     let cumulativeTarget = 0;
                     
-                    // Hitung target kumulatif dari semua jam yang sudah dimulai
                     this.lineData.data.hourly_data.forEach(hour => {
                         const hourStart = hour.hour.split(' - ')[0];
                         const [startHour, startMinute] = hourStart.split(':').map(Number);
                         const hourStartTime = startHour * 60 + startMinute;
                         
-                        // Jika jam ini sudah dimulai (waktu sekarang >= jam mulai), tambahkan targetnya
                         if (currentTime >= hourStartTime) {
                             cumulativeTarget += hour.targetManual || 0;
                         }
@@ -739,9 +729,7 @@
             }
         }
         
-        // Inisialisasi saat halaman dimuat
         document.addEventListener('DOMContentLoaded', function() {
-            // Auto-init Alpine.js jika belum
             if (typeof Alpine === 'undefined') {
                 console.error('Alpine.js tidak terdeteksi. Pastikan sudah dimuat.');
             }

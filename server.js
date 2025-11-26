@@ -710,9 +710,10 @@ app.post('/api/lines', requireLogin, requireLineManagementAccess, (req, res) => 
   });
 });
 
+// PERBAIKAN: Endpoint ini sekarang akan mengupdate target dengan benar
 app.put('/api/lines/:lineName', requireLogin, requireLineManagementAccess, (req, res) => {
   const lineName = req.params.lineName;
-  const { labelWeek, model, date } = req.body;
+  const { labelWeek, model, date, target } = req.body; // TAMBAHKAN target di sini
   const data = readProductionData();
 
   if (!data.lines[lineName]) {
@@ -721,24 +722,45 @@ app.put('/api/lines/:lineName', requireLogin, requireLineManagementAccess, (req,
 
   const oldDate = data.lines[lineName].date;
   const newDate = date || getToday();
+  const newTarget = parseInt(target);
 
   if (oldDate !== newDate) {
+    // Reset data karena perubahan tanggal
     data.lines[lineName] = resetLineData({
       ...data.lines[lineName],
       labelWeek,
       model,
-      date: newDate
+      date: newDate,
+      target: newTarget // UPDATE target di sini
     });
   } else {
+    // Update tanpa reset data
     data.lines[lineName].labelWeek = labelWeek;
     data.lines[lineName].model = model;
+    data.lines[lineName].target = newTarget; // UPDATE target di sini
+    data.lines[lineName].targetPerHour = Math.round(newTarget / 8);
+
+    // Update targetManual untuk semua jam (kecuali jam istirahat)
+    data.lines[lineName].hourly_data.forEach(hour => {
+      if (hour.hour !== "11:00 - 13:00") {
+        hour.targetManual = data.lines[lineName].targetPerHour;
+        hour.selisih = hour.output - hour.targetManual;
+      }
+    });
+
+    // Hitung ulang total target dari targetManual
+    let totalTarget = 0;
+    data.lines[lineName].hourly_data.forEach(hour => {
+      totalTarget += hour.targetManual || 0;
+    });
+    data.lines[lineName].target = totalTarget;
   }
 
   writeProductionData(data);
   res.json({ 
     message: `Line ${lineName} updated successfully`, 
     data: data.lines[lineName],
-    reset: oldDate !== newDate ? 'Data telah direset karena perubahan tanggal.' : 'Tanggal tidak berubah, data tetap.'
+    reset: oldDate !== newDate ? 'Data telah direset karena perubahan tanggal.' : 'Tanggal tidak berubah, data diperbarui.'
   });
 });
 

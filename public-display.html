@@ -369,6 +369,43 @@
             transform: translateY(-2px);
             box-shadow: 0 5px 15px rgba(124, 58, 237, 0.4);
         }
+        
+        /* Progress bar styling */
+        .progress-container {
+            width: 100%;
+            height: 12px;
+            background-color: rgba(100, 116, 139, 0.3);
+            border-radius: 6px;
+            margin-top: 10px;
+            overflow: hidden;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #8b5cf6 0%, #7c3aed 100%);
+            border-radius: 6px;
+            transition: width 0.5s ease;
+        }
+        
+        .progress-text {
+            font-size: 1.2rem;
+            margin-top: 5px;
+            color: #cbd5e1;
+        }
+        
+        .current-hour-info {
+            font-size: 1.4rem;
+            margin-top: 8px;
+            color: #94a3b8;
+            text-align: center;
+        }
+        
+        .target-progress-info {
+            font-size: 1.3rem;
+            margin-top: 5px;
+            color: #cbd5e1;
+            text-align: center;
+        }
     </style>
 </head>
 <body x-data="publicDisplay()" x-cloak>
@@ -378,15 +415,12 @@
                 <div class="line-box">
                     <div class="label">LINE</div>
                     <div class="value" x-text="lineData.name || 'Loading...'"></div>
+                    <div class="value" x-text="lineData.data.labelWeek || 'Loading...'"></div>
                 </div>
                 <div class="model-box">
                     <div class="label">MODEL</div>
                     <div class="value" x-text="lineData.data.model || 'Loading...'"></div>
                 </div>
-            </div>
-            <div class="week-box">
-                <div class="label">WEEK</div>
-                <div class="value" x-text="lineData.data.labelWeek || 'Loading...'"></div>
             </div>
         </div>
         
@@ -396,8 +430,14 @@
                 <div class="data-grid">
                     <div class="data-box">
                         <div class="data-label">TARGET / JAM</div>
-                        <div class="data-value" x-text="lineData.data.targetPerHour || 0" :class="{'pulse': dataUpdated}"></div>
-                        <div class="percentage neutral" x-text="calculateTargetPercentage() + '%'"></div>
+                        <div class="data-value" x-text="calculateCumulativeTarget()" :class="{'pulse': dataUpdated}"></div>
+                        <div class="percentage neutral" x-text="calculateTargetProgressPercentage() + '%'"></div>
+                        <div class="progress-container">
+                            <div class="progress-bar" :style="'width: ' + Math.min(calculateTargetProgressPercentage(), 100) + '%;'"></div>
+                        </div>
+                        <!-- <div class="progress-text" x-text="'Kumulatif: ' + calculateCumulativeTarget() + ' / ' + (lineData.data.target || 0)"></div>
+                        <div class="target-progress-info" x-text="'Target Harian: ' + (lineData.data.target || 0)"></div>
+                        <div class="current-hour-info" x-text="'Progress: ' + getCurrentProgressInfo()"></div> -->
                     </div>
                     <div class="data-box">
                         <div class="data-label">SELISIH AKUMULATIF</div>
@@ -575,10 +615,75 @@
                     document.getElementById('current-datetime').textContent = now.toLocaleDateString('id-ID', options);
                 },
                 
-                // Calculation methods
-                calculateTargetPercentage() {
-                    if (!this.lineData.data.targetPerHour || this.lineData.data.targetPerHour === 0) return '0.0';
-                    return ((this.lineData.data.outputDay || 0) / this.lineData.data.targetPerHour * 100).toFixed(1);
+                // FUNGSI UTAMA: Persentase progres kumulatif target per jam terhadap target harian
+                calculateTargetProgressPercentage() {
+                    if (!this.lineData.data.target || this.lineData.data.target === 0) return '0.0';
+                    
+                    const cumulativeTarget = this.calculateCumulativeTarget();
+                    const percentage = (cumulativeTarget / this.lineData.data.target) * 100;
+                    
+                    return percentage > 100 ? '100.0' : percentage.toFixed(1);
+                },
+                
+                calculateCumulativeTarget() {
+                    if (!this.lineData.data.hourly_data || this.lineData.data.hourly_data.length === 0) return 0;
+                    
+                    const now = new Date();
+                    const currentTime = now.getHours() * 60 + now.getMinutes();
+                    
+                    let cumulativeTarget = 0;
+                    
+                    // Hitung target kumulatif dari semua jam yang sudah dimulai
+                    this.lineData.data.hourly_data.forEach(hour => {
+                        const hourStart = hour.hour.split(' - ')[0];
+                        const [startHour, startMinute] = hourStart.split(':').map(Number);
+                        const hourStartTime = startHour * 60 + startMinute;
+                        
+                        // Jika jam ini sudah dimulai (waktu sekarang >= jam mulai), tambahkan targetnya
+                        if (currentTime >= hourStartTime) {
+                            cumulativeTarget += hour.targetManual || 0;
+                        }
+                    });
+                    
+                    return cumulativeTarget;
+                },
+                
+                getCurrentProgressInfo() {
+                    if (!this.lineData.data.hourly_data || this.lineData.data.hourly_data.length === 0) return '';
+                    
+                    const now = new Date();
+                    const currentTime = now.getHours() * 60 + now.getMinutes();
+                    
+                    let currentHour = '';
+                    let hoursCompleted = 0;
+                    let totalHours = 0;
+                    
+                    this.lineData.data.hourly_data.forEach(hour => {
+                        totalHours++;
+                        const hourStart = hour.hour.split(' - ')[0];
+                        const [startHour, startMinute] = hourStart.split(':').map(Number);
+                        const hourStartTime = startHour * 60 + startMinute;
+                        
+                        if (currentTime >= hourStartTime) {
+                            hoursCompleted++;
+                            // Cari jam yang sedang berjalan
+                            const hourEnd = hour.hour.split(' - ')[1];
+                            const [endHour, endMinute] = hourEnd.split(':').map(Number);
+                            const hourEndTime = endHour * 60 + endMinute;
+                            
+                            if (currentTime < hourEndTime) {
+                                currentHour = hour.hour;
+                            }
+                        }
+                    });
+                    
+                    if (currentHour) {
+                        return currentHour + ' (' + hoursCompleted + '/' + totalHours + ' jam)';
+                    } else if (hoursCompleted === totalHours) {
+                        return 'Selesai (' + hoursCompleted + '/' + totalHours + ' jam)';
+                    } else {
+                        return 'Menunggu (' + hoursCompleted + '/' + totalHours + ' jam)';
+                    }
                 },
                 
                 calculateAccumulatedDifference() {

@@ -4,20 +4,20 @@
       "labelWeek": "EU / 2546-1",
       "model": "BLAHAJ N SOFT TOY 55 BABY SHARK",
       "date": "2025-11-26",
-      "target": 1125,
+      "target": 1000,
       "targetPerHour": 125,
-      "outputDay": 0,
+      "outputDay": 125,
       "qcChecking": 0,
       "actualDefect": 0,
       "defectRatePercentage": 0,
       "hourly_data": [
         {
           "hour": "07:00 - 08:00",
-          "output": 0,
+          "output": 125,
           "defect": 0,
           "qcChecked": 0,
           "targetManual": 125,
-          "selisih": -125
+          "selisih": 0
         },
         {
           "hour": "08:00 - 09:00",
@@ -77,14 +77,6 @@
         },
         {
           "hour": "16:00 - 17:00",
-          "output": 0,
-          "defect": 0,
-          "qcChecked": 0,
-          "targetManual": 125,
-          "selisih": 0
-        },
-        {
-          "hour": "17:00 - 18:00",
           "output": 0,
           "defect": 0,
           "qcChecked": 0,

@@ -467,7 +467,7 @@
                                 </svg>
                                 Export Excel
                             </button>
-                            <button @click="currentPage = 'dashboard'" class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                            <button @click="changePage('dashboard')" class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                                 Kembali
                             </button>
                         </div>
@@ -602,7 +602,7 @@
                             <h1 class="text-2xl font-bold text-gray-800" x-text="'Input Data - Line ' + currentLine + ' - ' + currentModelId"></h1>
                             <p class="text-gray-600" x-text="lineDetail.labelWeek + ' - ' + lineDetail.model"></p>
                         </div>
-                        <button @click="currentPage = 'dashboard'" class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        <button @click="changePage('dashboard')" class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                             Kembali
                         </button>
                     </div>
@@ -696,7 +696,7 @@
                         </div>
                     </div>
                     <div class="text-center">
-                        <button @click="currentPage = 'dashboard'" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        <button @click="changePage('dashboard')" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                             Kembali ke Dashboard
                         </button>
                     </div>
@@ -1390,6 +1390,7 @@
                 async init() {
                     await this.checkAuth();
                     this.setupNavigation();
+                    this.restorePageState();
                     await this.loadLines();
                     await this.loadDashboardData();
                 },
@@ -1426,6 +1427,7 @@
                             this.isAuthenticated = true;
                             this.loginError = '';
                             this.setupNavigation();
+                            this.restorePageState();
                             await this.loadLines();
                             await this.loadDashboardData();
                         } else {
@@ -1449,6 +1451,8 @@
                         this.isAuthenticated = false;
                         this.currentUser = {};
                         this.currentPage = 'dashboard';
+                        // Clear saved page state on logout
+                        localStorage.removeItem('dashboardPageState');
                     }
                 },
                 
@@ -1470,6 +1474,7 @@
                 
                 changePage(page) {
                     this.currentPage = page;
+                    this.savePageState();
                     if (page === 'dashboard') {
                         this.loadDashboardData();
                     }
@@ -1479,7 +1484,7 @@
                     this.currentLine = lineName;
                     this.currentModelId = modelId;
                     this.loadLineDetail(lineName, modelId);
-                    this.currentPage = 'line-detail';
+                    this.changePage('line-detail');
                 },
                 
                 inputData(lineName, modelId) {
@@ -1493,7 +1498,53 @@
                     this.currentModelId = modelId;
                     this.loadLineDetail(lineName, modelId);
                     this.resetInputForm();
-                    this.currentPage = 'input-data';
+                    this.changePage('input-data');
+                },
+
+                // Save and restore page state
+                savePageState() {
+                    if (this.isAuthenticated) {
+                        const pageState = {
+                            currentPage: this.currentPage,
+                            currentLine: this.currentLine,
+                            currentModelId: this.currentModelId
+                        };
+                        localStorage.setItem('dashboardPageState', JSON.stringify(pageState));
+                    }
+                },
+
+                restorePageState() {
+                    if (this.isAuthenticated) {
+                        const savedState = localStorage.getItem('dashboardPageState');
+                        if (savedState) {
+                            try {
+                                const state = JSON.parse(savedState);
+                                
+                                // Check if the saved page is allowed for current user
+                                const allowedPages = this.navigation.map(item => item.page);
+                                if (allowedPages.includes(state.currentPage)) {
+                                    this.currentPage = state.currentPage;
+                                    this.currentLine = state.currentLine || '';
+                                    this.currentModelId = state.currentModelId || '';
+                                    
+                                    // If we're on line-detail or input-data page, load the line detail
+                                    if ((this.currentPage === 'line-detail' || this.currentPage === 'input-data') && 
+                                        this.currentLine && this.currentModelId) {
+                                        this.loadLineDetail(this.currentLine, this.currentModelId);
+                                    }
+                                    
+                                    // If we're on admin-management page, load admin data
+                                    if (this.currentPage === 'admin-management') {
+                                        this.loadAdminData();
+                                    }
+                                }
+                            } catch (error) {
+                                console.error('Error restoring page state:', error);
+                                // If there's an error, default to dashboard
+                                this.currentPage = 'dashboard';
+                            }
+                        }
+                    }
                 },
                 
                 // Data loading methods

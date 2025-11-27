@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const session = require('express-session');
 const XLSX = require('xlsx');
+const ExcelJS = require('exceljs');
 
 const app = express();
 const port = 3000;
@@ -108,15 +109,15 @@ function initializeDataFiles() {
               "actualDefect": 0,
               "defectRatePercentage": 0,
               "hourly_data": [
-                { "hour": "07:00 - 08:00", "output": 0, "defect": 0, "qcChecked": 0, "targetManual": targetPerHour, "selisih": 0 },
-                { "hour": "08:00 - 09:00", "output": 0, "defect": 0, "qcChecked": 0, "targetManual": targetPerHour, "selisih": 0 },
-                { "hour": "09:00 - 10:00", "output": 0, "defect": 0, "qcChecked": 0, "targetManual": targetPerHour, "selisih": 0 },
-                { "hour": "10:00 - 11:00", "output": 0, "defect": 0, "qcChecked": 0, "targetManual": targetPerHour, "selisih": 0 },
-                { "hour": "11:00 - 13:00", "output": 0, "defect": 0, "qcChecked": 0, "targetManual": 0, "selisih": 0 },
-                { "hour": "13:00 - 14:00", "output": 0, "defect": 0, "qcChecked": 0, "targetManual": targetPerHour, "selisih": 0 },
-                { "hour": "14:00 - 15:00", "output": 0, "defect": 0, "qcChecked": 0, "targetManual": targetPerHour, "selisih": 0 },
-                { "hour": "15:00 - 16:00", "output": 0, "defect": 0, "qcChecked": 0, "targetManual": targetPerHour, "selisih": 0 },
-                { "hour": "16:00 - 17:00", "output": 0, "defect": 0, "qcChecked": 0, "targetManual": targetPerHour, "selisih": 0 },
+                { hour: "07:00 - 08:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
+                { hour: "08:00 - 09:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
+                { hour: "09:00 - 10:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
+                { hour: "10:00 - 11:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
+                { hour: "11:00 - 13:00", output: 0, defect: 0, qcChecked: 0, targetManual: 0, selisih: 0 },
+                { hour: "13:00 - 14:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
+                { hour: "14:00 - 15:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
+                { hour: "15:00 - 16:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
+                { hour: "16:00 - 17:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
               ],
               "operators": [
                 {
@@ -1061,8 +1062,395 @@ app.get('/api/date-report/:date', requireLogin, requireDateReportAccess, autoChe
   }
 });
 
-// Export Date Report - DITAMBAHKAN autoCheckDateReset
-app.get('/api/export-date-report/:date', requireLogin, requireDateReportAccess, autoCheckDateReset, (req, res) => {
+// Fungsi untuk generate Excel dengan styling untuk laporan berdasarkan tanggal
+async function generateStyledDateReportExcel(data, date) {
+  const workbook = new ExcelJS.Workbook();
+  
+  // Setup properties workbook
+  workbook.creator = 'Production Dashboard System';
+  workbook.lastModifiedBy = 'Production Dashboard System';
+  workbook.created = new Date();
+  workbook.modified = new Date();
+  
+  // Style definitions
+  const headerStyle = {
+    font: { bold: true, color: { argb: 'FFFFFF' } },
+    fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: '4472C4' } },
+    alignment: { horizontal: 'center', vertical: 'middle' },
+    border: {
+      top: { style: 'thin', color: { argb: '000000' } },
+      left: { style: 'thin', color: { argb: '000000' } },
+      bottom: { style: 'thin', color: { argb: '000000' } },
+      right: { style: 'thin', color: { argb: '000000' } }
+    }
+  };
+  
+  const titleStyle = {
+    font: { bold: true, size: 16, color: { argb: '1F4E78' } },
+    alignment: { horizontal: 'center', vertical: 'middle' }
+  };
+  
+  const dataStyle = {
+    font: { size: 11 },
+    border: {
+      top: { style: 'thin', color: { argb: 'D9D9D9' } },
+      left: { style: 'thin', color: { argb: 'D9D9D9' } },
+      bottom: { style: 'thin', color: { argb: 'D9D9D9' } },
+      right: { style: 'thin', color: { argb: 'D9D9D9' } }
+    }
+  };
+  
+  const totalStyle = {
+    font: { bold: true, color: { argb: 'FFFFFF' } },
+    fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: '70AD47' } },
+    border: {
+      top: { style: 'thin', color: { argb: '000000' } },
+      left: { style: 'thin', color: { argb: '000000' } },
+      bottom: { style: 'thin', color: { argb: '000000' } },
+      right: { style: 'thin', color: { argb: '000000' } }
+    }
+  };
+  
+  const highlightStyle = {
+    font: { bold: true, color: { argb: 'FFFFFF' } },
+    fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFC000' } },
+    border: {
+      top: { style: 'thin', color: { argb: '000000' } },
+      left: { style: 'thin', color: { argb: '000000' } },
+      bottom: { style: 'thin', color: { argb: '000000' } },
+      right: { style: 'thin', color: { argb: '000000' } }
+    }
+  };
+
+  // ===== SHEET: SUMMARY =====
+  const summarySheet = workbook.addWorksheet('SUMMARY');
+  
+  // Judul
+  summarySheet.mergeCells('A1:J1');
+  const titleCell = summarySheet.getCell('A1');
+  titleCell.value = 'PRODUCTION REPORT SUMMARY - ' + date;
+  titleCell.style = titleStyle;
+  
+  // Informasi laporan
+  summarySheet.getCell('A3').value = 'Generated Date';
+  summarySheet.getCell('B3').value = new Date().toLocaleString('id-ID');
+  summarySheet.getCell('A4').value = 'Report Date';
+  summarySheet.getCell('B4').value = date;
+  summarySheet.getCell('A5').value = 'Total Lines';
+  summarySheet.getCell('B5').value = Object.keys(data.lines).length;
+  
+  // Header tabel
+  const headers = ['Line', 'Model ID', 'Label/Week', 'Model', 'Target', 'Output', 'Achievement %', 'Defect', 'QC Checked', 'Defect Rate %'];
+  summarySheet.getRow(7).values = headers;
+  summarySheet.getRow(7).eachCell((cell) => {
+    cell.style = headerStyle;
+  });
+  
+  // Data lines
+  let rowIndex = 8;
+  let totalTarget = 0;
+  let totalOutput = 0;
+  let totalDefect = 0;
+  let totalQCChecked = 0;
+  
+  Object.keys(data.lines).forEach(lineName => {
+    const line = data.lines[lineName];
+    Object.keys(line.models).forEach(modelId => {
+      const model = line.models[modelId];
+      const achievement = model.target > 0 ? ((model.outputDay || 0) / model.target * 100).toFixed(2) + '%' : '0%';
+      
+      const row = summarySheet.getRow(rowIndex);
+      row.values = [
+        lineName,
+        modelId,
+        model.labelWeek || '',
+        model.model || '',
+        model.target || 0,
+        model.outputDay || 0,
+        achievement,
+        model.actualDefect || 0,
+        model.qcChecking || 0,
+        (model.defectRatePercentage || 0) + '%'
+      ];
+      
+      // Beri warna pada achievement
+      const achievementCell = row.getCell(7);
+      const achievementValue = parseFloat(achievement);
+      if (achievementValue >= 100) {
+        achievementCell.font = { color: { argb: '00B050' }, bold: true };
+      } else if (achievementValue >= 80) {
+        achievementCell.font = { color: { argb: 'FFC000' }, bold: true };
+      } else {
+        achievementCell.font = { color: { argb: 'FF0000' }, bold: true };
+      }
+      
+      // Beri warna pada defect rate
+      const defectRateCell = row.getCell(10);
+      const defectRateValue = model.defectRatePercentage || 0;
+      if (defectRateValue <= 5) {
+        defectRateCell.font = { color: { argb: '00B050' }, bold: true };
+      } else if (defectRateValue <= 10) {
+        defectRateCell.font = { color: { argb: 'FFC000' }, bold: true };
+      } else {
+        defectRateCell.font = { color: { argb: 'FF0000' }, bold: true };
+      }
+      
+      row.eachCell((cell) => {
+        cell.style = dataStyle;
+      });
+      
+      totalTarget += model.target || 0;
+      totalOutput += model.outputDay || 0;
+      totalDefect += model.actualDefect || 0;
+      totalQCChecked += model.qcChecking || 0;
+      
+      rowIndex++;
+    });
+  });
+  
+  // Baris total
+  const totalAchievement = totalTarget > 0 ? ((totalOutput / totalTarget) * 100).toFixed(2) + '%' : '0%';
+  const totalDefectRate = totalQCChecked > 0 ? ((totalDefect / totalQCChecked) * 100).toFixed(2) + '%' : '0%';
+  
+  const totalRow = summarySheet.getRow(rowIndex);
+  totalRow.values = [
+    'TOTAL',
+    '',
+    '',
+    '',
+    totalTarget,
+    totalOutput,
+    totalAchievement,
+    totalDefect,
+    totalQCChecked,
+    totalDefectRate
+  ];
+  totalRow.eachCell((cell) => {
+    cell.style = totalStyle;
+  });
+  
+  // Auto adjust column widths
+  summarySheet.columns = [
+    { width: 15 },
+    { width: 12 },
+    { width: 15 },
+    { width: 30 },
+    { width: 12 },
+    { width: 12 },
+    { width: 15 },
+    { width: 12 },
+    { width: 15 },
+    { width: 15 }
+  ];
+
+  // ===== SHEET: DETAIL PER LINE =====
+  Object.keys(data.lines).forEach(lineName => {
+    const line = data.lines[lineName];
+    const lineSheet = workbook.addWorksheet(lineName.substring(0, 31)); // Batasi nama sheet
+    
+    // Judul untuk setiap line
+    lineSheet.mergeCells('A1:G1');
+    const lineTitle = lineSheet.getCell('A1');
+    lineTitle.value = `PRODUCTION DETAIL - ${lineName} - ${date}`;
+    lineTitle.style = titleStyle;
+    
+    Object.keys(line.models).forEach(modelId => {
+      const model = line.models[modelId];
+      let currentRow = 3;
+      
+      // Informasi model
+      lineSheet.getCell(`A${currentRow}`).value = 'Model ID';
+      lineSheet.getCell(`B${currentRow}`).value = modelId;
+      currentRow++;
+      
+      lineSheet.getCell(`A${currentRow}`).value = 'Label/Week';
+      lineSheet.getCell(`B${currentRow}`).value = model.labelWeek || '';
+      currentRow++;
+      
+      lineSheet.getCell(`A${currentRow}`).value = 'Model';
+      lineSheet.getCell(`B${currentRow}`).value = model.model || '';
+      currentRow++;
+      
+      lineSheet.getCell(`A${currentRow}`).value = 'Target';
+      lineSheet.getCell(`B${currentRow}`).value = model.target || 0;
+      currentRow++;
+      
+      lineSheet.getCell(`A${currentRow}`).value = 'Output';
+      lineSheet.getCell(`B${currentRow}`).value = model.outputDay || 0;
+      currentRow++;
+      
+      lineSheet.getCell(`A${currentRow}`).value = 'Defect Rate';
+      lineSheet.getCell(`B${currentRow}`).value = (model.defectRatePercentage || 0) + '%';
+      currentRow += 2;
+      
+      // Header hourly data
+      const hourlyHeaders = ['Jam', 'Target Manual', 'Output', 'Selisih', 'Defect', 'QC Checked', 'Defect Rate %'];
+      lineSheet.getRow(currentRow).values = hourlyHeaders;
+      lineSheet.getRow(currentRow).eachCell((cell) => {
+        cell.style = headerStyle;
+      });
+      currentRow++;
+      
+      // Data hourly
+      if (model.hourly_data && model.hourly_data.length > 0) {
+        model.hourly_data.forEach(hour => {
+          const defectRate = hour.qcChecked > 0 ? ((hour.defect / hour.qcChecked) * 100).toFixed(2) : '0.00';
+          const selisih = (hour.output || 0) - (hour.targetManual || 0);
+          
+          const row = lineSheet.getRow(currentRow);
+          row.values = [
+            hour.hour,
+            hour.targetManual || 0,
+            hour.output || 0,
+            selisih,
+            hour.defect || 0,
+            hour.qcChecked || 0,
+            defectRate + '%'
+          ];
+          
+          // Styling conditional untuk selisih
+          const selisihCell = row.getCell(4);
+          if (selisih >= 0) {
+            selisihCell.font = { color: { argb: '00B050' }, bold: true };
+          } else {
+            selisihCell.font = { color: { argb: 'FF0000' }, bold: true };
+          }
+          
+          // Styling conditional untuk defect rate
+          const defectRateCell = row.getCell(7);
+          const defectRateValue = parseFloat(defectRate);
+          if (defectRateValue <= 5) {
+            defectRateCell.font = { color: { argb: '00B050' }, bold: true };
+          } else if (defectRateValue <= 10) {
+            defectRateCell.font = { color: { argb: 'FFC000' }, bold: true };
+          } else {
+            defectRateCell.font = { color: { argb: 'FF0000' }, bold: true };
+          }
+          
+          row.eachCell((cell) => {
+            cell.style = dataStyle;
+          });
+          
+          currentRow++;
+        });
+      }
+      
+      currentRow += 2;
+    });
+    
+    // Auto adjust column widths untuk line sheet
+    lineSheet.columns = [
+      { width: 15 },
+      { width: 15 },
+      { width: 12 },
+      { width: 12 },
+      { width: 12 },
+      { width: 15 },
+      { width: 15 }
+    ];
+  });
+
+  // ===== SHEET: PERFORMANCE OVERVIEW =====
+  const performanceSheet = workbook.addWorksheet('PERFORMANCE');
+  
+  // Judul
+  performanceSheet.mergeCells('A1:E1');
+  const performanceTitle = performanceSheet.getCell('A1');
+  performanceTitle.value = 'PERFORMANCE OVERVIEW - ' + date;
+  performanceTitle.style = titleStyle;
+  
+  // Header
+  const performanceHeaders = ['Line', 'Total Target', 'Total Output', 'Achievement %', 'Overall Status'];
+  performanceSheet.getRow(3).values = performanceHeaders;
+  performanceSheet.getRow(3).eachCell((cell) => {
+    cell.style = headerStyle;
+  });
+  
+  // Data performance per line
+  let perfRowIndex = 4;
+  Object.keys(data.lines).forEach(lineName => {
+    const line = data.lines[lineName];
+    let lineTarget = 0;
+    let lineOutput = 0;
+    
+    Object.keys(line.models).forEach(modelId => {
+      const model = line.models[modelId];
+      lineTarget += model.target || 0;
+      lineOutput += model.outputDay || 0;
+    });
+    
+    const achievement = lineTarget > 0 ? ((lineOutput / lineTarget) * 100).toFixed(2) + '%' : '0%';
+    const status = lineOutput >= lineTarget ? 'ON TARGET' : 'BELOW TARGET';
+    
+    const row = performanceSheet.getRow(perfRowIndex);
+    row.values = [
+      lineName,
+      lineTarget,
+      lineOutput,
+      achievement,
+      status
+    ];
+    
+    // Styling conditional untuk achievement
+    const achievementCell = row.getCell(4);
+    const achievementValue = parseFloat(achievement);
+    if (achievementValue >= 100) {
+      achievementCell.font = { color: { argb: '00B050' }, bold: true };
+    } else if (achievementValue >= 80) {
+      achievementCell.font = { color: { argb: 'FFC000' }, bold: true };
+    } else {
+      achievementCell.font = { color: { argb: 'FF0000' }, bold: true };
+    }
+    
+    // Styling conditional untuk status
+    const statusCell = row.getCell(5);
+    if (status === 'ON TARGET') {
+      statusCell.font = { color: { argb: '00B050' }, bold: true };
+      statusCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'C6EFCE' } };
+    } else {
+      statusCell.font = { color: { argb: 'FF0000' }, bold: true };
+      statusCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFC7CE' } };
+    }
+    
+    row.eachCell((cell) => {
+      if (cell.value !== status) { // Jangan timpa styling status cell
+        cell.style = dataStyle;
+      }
+    });
+    
+    perfRowIndex++;
+  });
+  
+  // Total performance
+  const totalAchievementPerf = totalTarget > 0 ? ((totalOutput / totalTarget) * 100).toFixed(2) + '%' : '0%';
+  const overallStatus = totalOutput >= totalTarget ? 'ON TARGET' : 'BELOW TARGET';
+  
+  const totalPerfRow = performanceSheet.getRow(perfRowIndex);
+  totalPerfRow.values = [
+    'TOTAL',
+    totalTarget,
+    totalOutput,
+    totalAchievementPerf,
+    overallStatus
+  ];
+  totalPerfRow.eachCell((cell) => {
+    cell.style = totalStyle;
+  });
+  
+  // Auto adjust column widths untuk performance sheet
+  performanceSheet.columns = [
+    { width: 15 },
+    { width: 15 },
+    { width: 15 },
+    { width: 15 },
+    { width: 20 }
+  ];
+  
+  return workbook;
+}
+
+// Export Date Report dengan styling - DITAMBAHKAN autoCheckDateReset
+app.get('/api/export-date-report/:date', requireLogin, requireDateReportAccess, autoCheckDateReset, async (req, res) => {
   const date = req.params.date;
   
   // Validasi format tanggal
@@ -1106,119 +1494,15 @@ app.get('/api/export-date-report/:date', requireLogin, requireDateReportAccess, 
       data.lines = filteredLines;
     }
     
-    // Buat workbook Excel
-    const workbook = XLSX.utils.book_new();
-    
-    // Sheet Summary
-    const summaryData = [
-      ['PRODUCTION REPORT SUMMARY'],
-      ['Tanggal:', date],
-      ['Generated at:', new Date().toLocaleString('id-ID')],
-      [],
-      ['Line', 'Model ID', 'Label/Week', 'Model', 'Target', 'Output', 'Defect', 'QC Checked', 'Defect Rate%']
-    ];
-
-    let totalTarget = 0;
-    let totalOutput = 0;
-    let totalDefect = 0;
-    let totalQCChecked = 0;
-
-    Object.keys(data.lines).forEach(lineName => {
-      const line = data.lines[lineName];
-      Object.keys(line.models).forEach(modelId => {
-        const model = line.models[modelId];
-        const target = model.target || 0;
-        const output = model.outputDay || 0;
-        const defect = model.actualDefect || 0;
-        const qcChecked = model.qcChecking || 0;
-        const defectRate = model.defectRatePercentage || 0;
-        
-        summaryData.push([
-          lineName,
-          modelId,
-          model.labelWeek || '',
-          model.model || '',
-          target,
-          output,
-          defect,
-          qcChecked,
-          defectRate + '%'
-        ]);
-        
-        totalTarget += target;
-        totalOutput += output;
-        totalDefect += defect;
-        totalQCChecked += qcChecked;
-      });
-    });
-
-    // Tambahkan total
-    summaryData.push([]);
-    summaryData.push(['TOTAL', '', '', '', totalTarget, totalOutput, totalDefect, totalQCChecked, '']);
-    
-    const totalDefectRate = totalQCChecked > 0 ? ((totalDefect / totalQCChecked) * 100).toFixed(2) : 0;
-    summaryData.push(['', '', '', '', '', '', '', 'Defect Rate Total:', totalDefectRate + '%']);
-
-    const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
-    XLSX.utils.book_append_sheet(workbook, summarySheet, 'Summary');
-
-    // Sheet untuk setiap line dan model
-    Object.keys(data.lines).forEach(lineName => {
-      const line = data.lines[lineName];
-      
-      Object.keys(line.models).forEach(modelId => {
-        const model = line.models[modelId];
-        
-        const lineData = [
-          [`PRODUCTION REPORT - ${lineName} - ${modelId}`],
-          [],
-          ['Label/Week', model.labelWeek || ''],
-          ['Model', model.model || ''],
-          ['Date', model.date || ''],
-          ['Target', model.target || 0],
-          ['Output/Hari', model.outputDay || 0],
-          ['QC Checking', model.qcChecking || 0],
-          ['Actual Defect', model.actualDefect || 0],
-          ['Defect Rate (%)', (model.defectRatePercentage || 0) + '%'],
-          [],
-          ['HOURLY DATA'],
-          ['Jam', 'Target Manual', 'Output', 'Selisih (Target - Output)', 'Defect', 'QC Checked', 'Defect Rate (%)']
-        ];
-
-        if (model.hourly_data && model.hourly_data.length > 0) {
-          model.hourly_data.forEach(hour => {
-            const defectRate = hour.qcChecked > 0 ? ((hour.defect / hour.qcChecked) * 100).toFixed(2) : '0.00';
-            const selisih = (hour.targetManual || 0) - (hour.output || 0);
-            lineData.push([
-              hour.hour, 
-              hour.targetManual || 0,
-              hour.output || 0, 
-              selisih,
-              hour.defect || 0, 
-              hour.qcChecked || 0, 
-              defectRate + '%'
-            ]);
-          });
-        } else {
-          lineData.push(['Tidak ada data hourly']);
-        }
-
-        // Batasi panjang nama sheet (max 31 karakter untuk Excel)
-        const sheetName = `${lineName}_${modelId}`.substring(0, 31);
-        const lineSheet = XLSX.utils.aoa_to_sheet(lineData);
-        XLSX.utils.book_append_sheet(workbook, lineSheet, sheetName);
-      });
-    });
-
-    // Kirim file Excel
-    const excelBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+    // Generate Excel dengan styling
+    const workbook = await generateStyledDateReportExcel(data, date);
     
     const downloadFilename = `Production_Report_${date}.xlsx`;
     res.setHeader('Content-Disposition', `attachment; filename="${downloadFilename}"`);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     
-    res.send(excelBuffer);
-    console.log(`Export Excel untuk tanggal ${date} berhasil`);
+    await workbook.xlsx.write(res);
+    console.log(`Export Excel dengan styling untuk tanggal ${date} berhasil`);
   } catch (error) {
     console.error('Export date report error:', error);
     res.status(500).json({ error: 'Failed to export date report: ' + error.message });
@@ -1310,66 +1594,254 @@ app.delete('/api/users/:id', requireLogin, requireAdmin, (req, res) => {
   });
 });
 
-// Export Excel Function
-function generateExcelData(modelData, lineName, modelId) {
-  const workbook = XLSX.utils.book_new();
+// Export Excel Function dengan styling yang lebih baik
+async function generateStyledExcelData(modelData, lineName, modelId) {
+  const workbook = new ExcelJS.Workbook();
   
-  const summaryData = [
-    ['PRODUCTION REPORT SUMMARY'],
-    [],
-    ['Line', lineName],
-    ['Model ID', modelId],
-    ['Label/Week', modelData.labelWeek],
-    ['Model', modelData.model],
-    ['Date', modelData.date],
-    ['Target', modelData.target],
-    ['Target per Hour', modelData.targetPerHour],
-    ['Output/Hari', modelData.outputDay],
-    ['QC Checking', modelData.qcChecking],
-    ['Actual Defect', modelData.actualDefect],
-    ['Defect Rate (%)', modelData.defectRatePercentage],
-    [],
-    ['Generated at', new Date().toLocaleString('id-ID')]
-  ];
+  // Setup properties workbook
+  workbook.creator = 'Production Dashboard System';
+  workbook.lastModifiedBy = 'Production Dashboard System';
+  workbook.created = new Date();
+  workbook.modified = new Date();
   
-  const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
-  XLSX.utils.book_append_sheet(workbook, summarySheet, 'Summary');
+  // Style untuk header
+  const headerStyle = {
+    font: { bold: true, color: { argb: 'FFFFFF' } },
+    fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: '4472C4' } },
+    alignment: { horizontal: 'center', vertical: 'middle' },
+    border: {
+      top: { style: 'thin', color: { argb: '000000' } },
+      left: { style: 'thin', color: { argb: '000000' } },
+      bottom: { style: 'thin', color: { argb: '000000' } },
+      right: { style: 'thin', color: { argb: '000000' } }
+    }
+  };
   
-  const hourlyData = [
-    ['HOURLY PRODUCTION DATA'],
-    [],
-    ['Jam', 'Target Manual', 'Output', 'Selisih (Target - Output)', 'Defect', 'QC Checked', 'Defect Rate (%)']
-  ];
-
-  modelData.hourly_data.forEach(hour => {
-    const defectRate = hour.qcChecked > 0 ? ((hour.defect / hour.qcChecked) * 100).toFixed(2) : '0.00';
-    const selisih = hour.targetManual - hour.output;
-    hourlyData.push([
-      hour.hour, 
-      hour.targetManual,
-      hour.output, 
-      selisih,
-      hour.defect, 
-      hour.qcChecked, 
-      defectRate
-    ]);
+  // Style untuk judul
+  const titleStyle = {
+    font: { bold: true, size: 16, color: { argb: '1F4E78' } },
+    alignment: { horizontal: 'center', vertical: 'middle' }
+  };
+  
+  // Style untuk data
+  const dataStyle = {
+    font: { size: 11 },
+    border: {
+      top: { style: 'thin', color: { argb: 'D9D9D9' } },
+      left: { style: 'thin', color: { argb: 'D9D9D9' } },
+      bottom: { style: 'thin', color: { argb: 'D9D9D9' } },
+      right: { style: 'thin', color: { argb: 'D9D9D9' } }
+    }
+  };
+  
+  // Style untuk total
+  const totalStyle = {
+    font: { bold: true, color: { argb: 'FFFFFF' } },
+    fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: '70AD47' } },
+    border: {
+      top: { style: 'thin', color: { argb: '000000' } },
+      left: { style: 'thin', color: { argb: '000000' } },
+      bottom: { style: 'thin', color: { argb: '000000' } },
+      right: { style: 'thin', color: { argb: '000000' } }
+    }
+  };
+  
+  // ===== SHEET: SUMMARY =====
+  const summarySheet = workbook.addWorksheet('SUMMARY');
+  
+  // Judul
+  summarySheet.mergeCells('A1:H1');
+  const titleCell = summarySheet.getCell('A1');
+  titleCell.value = 'PRODUCTION REPORT SUMMARY';
+  titleCell.style = titleStyle;
+  
+  // Informasi dasar
+  summarySheet.getCell('A3').value = 'Line';
+  summarySheet.getCell('B3').value = lineName;
+  summarySheet.getCell('A4').value = 'Model ID';
+  summarySheet.getCell('B4').value = modelId;
+  summarySheet.getCell('A5').value = 'Label/Week';
+  summarySheet.getCell('B5').value = modelData.labelWeek || '';
+  summarySheet.getCell('A6').value = 'Model';
+  summarySheet.getCell('B6').value = modelData.model || '';
+  summarySheet.getCell('A7').value = 'Date';
+  summarySheet.getCell('B7').value = modelData.date || '';
+  
+  // Header tabel data
+  const headers = ['Metric', 'Value', 'Target per Hour', 'Output/Hari', 'QC Checking', 'Actual Defect', 'Defect Rate (%)'];
+  summarySheet.getRow(9).values = headers;
+  summarySheet.getRow(9).eachCell((cell) => {
+    cell.style = headerStyle;
   });
   
-  hourlyData.push([]);
-  hourlyData.push(['TOTAL', modelData.target, modelData.outputDay, '', modelData.actualDefect, modelData.qcChecking, modelData.defectRatePercentage + '%']);
+  // Data utama
+  const dataRow1 = summarySheet.getRow(10);
+  dataRow1.values = [
+    'Production Data',
+    modelData.target || 0,
+    modelData.targetPerHour || 0,
+    modelData.outputDay || 0,
+    modelData.qcChecking || 0,
+    modelData.actualDefect || 0,
+    (modelData.defectRatePercentage || 0) + '%'
+  ];
+  dataRow1.eachCell((cell) => {
+    cell.style = dataStyle;
+  });
   
-  const hourlySheet = XLSX.utils.aoa_to_sheet(hourlyData);
-  XLSX.utils.book_append_sheet(workbook, hourlySheet, 'Hourly Data');
+  // Hitung persentase achievement
+  const achievement = modelData.target > 0 ? ((modelData.outputDay || 0) / modelData.target * 100).toFixed(2) + '%' : '0%';
   
+  const dataRow2 = summarySheet.getRow(11);
+  dataRow2.values = [
+    'Performance',
+    achievement,
+    '',
+    '',
+    '',
+    '',
+    ''
+  ];
+  dataRow2.eachCell((cell) => {
+    cell.style = dataStyle;
+  });
+  
+  // Auto adjust column widths
+  summarySheet.columns = [
+    { width: 20 },
+    { width: 15 },
+    { width: 15 },
+    { width: 15 },
+    { width: 15 },
+    { width: 15 },
+    { width: 15 }
+  ];
+  
+  // ===== SHEET: HOURLY DATA =====
+  const hourlySheet = workbook.addWorksheet('HOURLY DATA');
+  
+  // Judul
+  hourlySheet.mergeCells('A1:G1');
+  const hourlyTitle = hourlySheet.getCell('A1');
+  hourlyTitle.value = 'HOURLY PRODUCTION DATA';
+  hourlyTitle.style = titleStyle;
+  
+  // Header
+  const hourlyHeaders = ['Jam', 'Target Manual', 'Output', 'Selisih (Output - Target)', 'Defect', 'QC Checked', 'Defect Rate (%)'];
+  hourlySheet.getRow(3).values = hourlyHeaders;
+  hourlySheet.getRow(3).eachCell((cell) => {
+    cell.style = headerStyle;
+  });
+  
+  // Data per jam
+  let rowIndex = 4;
+  let totalTargetManual = 0;
+  let totalOutput = 0;
+  let totalDefect = 0;
+  let totalQCChecked = 0;
+  
+  if (modelData.hourly_data && modelData.hourly_data.length > 0) {
+    modelData.hourly_data.forEach(hour => {
+      const defectRate = hour.qcChecked > 0 ? ((hour.defect / hour.qcChecked) * 100).toFixed(2) : '0.00';
+      const selisih = (hour.output || 0) - (hour.targetManual || 0);
+      
+      const row = hourlySheet.getRow(rowIndex);
+      row.values = [
+        hour.hour,
+        hour.targetManual || 0,
+        hour.output || 0,
+        selisih,
+        hour.defect || 0,
+        hour.qcChecked || 0,
+        defectRate + '%'
+      ];
+      
+      // Beri warna pada selisih berdasarkan nilai
+      const selisihCell = row.getCell(4);
+      if (selisih >= 0) {
+        selisihCell.font = { color: { argb: '00B050' }, bold: true }; // Hijau untuk positif
+      } else {
+        selisihCell.font = { color: { argb: 'FF0000' }, bold: true }; // Merah untuk negatif
+      }
+      
+      // Beri warna pada defect rate berdasarkan nilai
+      const defectRateCell = row.getCell(7);
+      const defectRateValue = parseFloat(defectRate);
+      if (defectRateValue <= 5) {
+        defectRateCell.font = { color: { argb: '00B050' }, bold: true }; // Hijau untuk <= 5%
+      } else if (defectRateValue <= 10) {
+        defectRateCell.font = { color: { argb: 'FFC000' }, bold: true }; // Kuning untuk 5-10%
+      } else {
+        defectRateCell.font = { color: { argb: 'FF0000' }, bold: true }; // Merah untuk > 10%
+      }
+      
+      row.eachCell((cell) => {
+        cell.style = dataStyle;
+      });
+      
+      totalTargetManual += hour.targetManual || 0;
+      totalOutput += hour.output || 0;
+      totalDefect += hour.defect || 0;
+      totalQCChecked += hour.qcChecked || 0;
+      
+      rowIndex++;
+    });
+  }
+  
+  // Baris total
+  const totalDefectRate = totalQCChecked > 0 ? ((totalDefect / totalQCChecked) * 100).toFixed(2) : '0.00';
+  const totalSelisih = totalOutput - totalTargetManual;
+  
+  const totalRow = hourlySheet.getRow(rowIndex);
+  totalRow.values = [
+    'TOTAL',
+    totalTargetManual,
+    totalOutput,
+    totalSelisih,
+    totalDefect,
+    totalQCChecked,
+    totalDefectRate + '%'
+  ];
+  totalRow.eachCell((cell) => {
+    cell.style = totalStyle;
+  });
+  
+  // Auto adjust column widths
+  hourlySheet.columns = [
+    { width: 15 },
+    { width: 15 },
+    { width: 12 },
+    { width: 20 },
+    { width: 12 },
+    { width: 15 },
+    { width: 15 }
+  ];
+  
+  // ===== SHEET: OPERATOR DATA (jika ada) =====
   if (modelData.operators && modelData.operators.length > 0) {
-    const operatorData = [
-      ['OPERATOR PERFORMANCE'],
-      [],
-      ['No', 'Nama Operator', 'Posisi', 'Target', 'Output', 'Defect', 'Efisiensi (%)', 'Status']
-    ];
+    const operatorSheet = workbook.addWorksheet('OPERATOR DATA');
     
+    // Judul
+    operatorSheet.mergeCells('A1:H1');
+    const operatorTitle = operatorSheet.getCell('A1');
+    operatorTitle.value = 'OPERATOR PERFORMANCE';
+    operatorTitle.style = titleStyle;
+    
+    // Header
+    const operatorHeaders = ['No', 'Nama Operator', 'Posisi', 'Target', 'Output', 'Defect', 'Efisiensi (%)', 'Status'];
+    operatorSheet.getRow(3).values = operatorHeaders;
+    operatorSheet.getRow(3).eachCell((cell) => {
+      cell.style = headerStyle;
+    });
+    
+    // Data operator
+    let opRowIndex = 4;
     modelData.operators.forEach((operator, index) => {
-      operatorData.push([
+      const statusText = operator.status === 'active' ? 'Aktif' : 
+                        operator.status === 'break' ? 'Istirahat' : 'Off';
+      
+      const row = operatorSheet.getRow(opRowIndex);
+      row.values = [
         index + 1,
         operator.name,
         operator.position,
@@ -1377,19 +1849,54 @@ function generateExcelData(modelData, lineName, modelId) {
         operator.output,
         operator.defect,
         operator.efficiency,
-        operator.status === 'active' ? 'Aktif' : operator.status === 'break' ? 'Istirahat' : 'Off'
-      ]);
+        statusText
+      ];
+      
+      // Beri warna pada status
+      const statusCell = row.getCell(8);
+      if (operator.status === 'active') {
+        statusCell.font = { color: { argb: '00B050' }, bold: true }; // Hijau untuk aktif
+      } else if (operator.status === 'break') {
+        statusCell.font = { color: { argb: 'FFC000' }, bold: true }; // Kuning untuk istirahat
+      } else {
+        statusCell.font = { color: { argb: 'FF0000' }, bold: true }; // Merah untuk off
+      }
+      
+      // Beri warna pada efisiensi
+      const efficiencyCell = row.getCell(7);
+      if (operator.efficiency >= 100) {
+        efficiencyCell.font = { color: { argb: '00B050' }, bold: true }; // Hijau untuk >= 100%
+      } else if (operator.efficiency >= 80) {
+        efficiencyCell.font = { color: { argb: 'FFC000' }, bold: true }; // Kuning untuk 80-99%
+      } else {
+        efficiencyCell.font = { color: { argb: 'FF0000' }, bold: true }; // Merah untuk < 80%
+      }
+      
+      row.eachCell((cell) => {
+        cell.style = dataStyle;
+      });
+      
+      opRowIndex++;
     });
     
-    const operatorSheet = XLSX.utils.aoa_to_sheet(operatorData);
-    XLSX.utils.book_append_sheet(workbook, operatorSheet, 'Operator Data');
+    // Auto adjust column widths
+    operatorSheet.columns = [
+      { width: 8 },
+      { width: 25 },
+      { width: 20 },
+      { width: 12 },
+      { width: 12 },
+      { width: 12 },
+      { width: 15 },
+      { width: 12 }
+    ];
   }
   
   return workbook;
 }
 
-// Export Excel Endpoint - DITAMBAHKAN autoCheckDateReset
-app.get('/api/export/:lineName/:modelId', requireLogin, requireLineAccess, autoCheckDateReset, (req, res) => {
+// Export Excel Endpoint dengan styling - DITAMBAHKAN autoCheckDateReset
+app.get('/api/export/:lineName/:modelId', requireLogin, requireLineAccess, autoCheckDateReset, async (req, res) => {
   const { lineName, modelId } = req.params;
 
   const data = readProductionData();
@@ -1401,15 +1908,14 @@ app.get('/api/export/:lineName/:modelId', requireLogin, requireLineAccess, autoC
   const modelData = data.lines[lineName].models[modelId];
 
   try {
-    const workbook = generateExcelData(modelData, lineName, modelId);
-    
-    const excelBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+    const workbook = await generateStyledExcelData(modelData, lineName, modelId);
     
     const fileName = `Production_Report_${lineName}_${modelId}_${new Date().toISOString().split('T')[0]}.xlsx`;
     res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     
-    res.send(excelBuffer);
+    await workbook.xlsx.write(res);
+    console.log(`Export Excel dengan styling untuk ${lineName}-${modelId} berhasil`);
   } catch (error) {
     console.error('Export error:', error);
     res.status(500).json({ error: 'Failed to generate Excel file' });
@@ -1514,7 +2020,7 @@ app.listen(port, () => {
   console.log(`- AUTO RESET DATA SETIAP HARI BARU`);
   console.log(`- Laporan berdasarkan tanggal (FIXED)`);
   console.log(`- Backup dan History System`);
-  console.log(`- Export Excel`);
+  console.log(`- Export Excel DENGAN STYLING LANJUTAN`);
   console.log(`=================================`);
   console.log(`Default Users:`);
   console.log(`- Admin: admin / admin123`);

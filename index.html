@@ -70,6 +70,34 @@
             border-radius: 4px;
             margin-left: 8px;
         }
+        .pagination-btn {
+            padding: 6px 12px;
+            margin: 0 2px;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            background-color: white;
+            cursor: pointer;
+        }
+        .pagination-btn:hover:not(.disabled) {
+            background-color: #f3f4f6;
+        }
+        .pagination-btn.active {
+            background-color: #3b82f6;
+            color: white;
+            border-color: #3b82f6;
+        }
+        .pagination-btn.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .progress-ring {
+            transform: rotate(-90deg);
+        }
+        .progress-ring-circle {
+            transition: stroke-dashoffset 0.35s;
+            transform: rotate(90deg);
+            transform-origin: 50% 50%;
+        }
     </style>
 </head>
 <body class="bg-gray-100 font-sans" x-data="dashboard()" x-cloak>
@@ -265,8 +293,34 @@
                     <!-- Lines Overview -->
                     <div class="bg-white rounded-lg shadow overflow-hidden card-shadow">
                         <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
-                            <h3 class="text-lg leading-6 font-medium text-gray-900">Ringkasan Line Produksi</h3>
-                            <p class="mt-1 max-w-2xl text-sm text-gray-500">Status produksi per line dan model</p>
+                            <div class="flex flex-col md:flex-row md:items-center md:justify-between">
+                                <div>
+                                    <h3 class="text-lg leading-6 font-medium text-gray-900">Ringkasan Line Produksi</h3>
+                                    <p class="mt-1 max-w-2xl text-sm text-gray-500">Status produksi per line dan model</p>
+                                </div>
+                                <div class="mt-4 md:mt-0 flex flex-col md:flex-row md:items-center space-y-2 md:space-y-0 md:space-x-2">
+                                    <div class="flex items-center">
+                                        <input type="text" x-model="dashboardSearchTerm" placeholder="Cari line atau model..." class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-full md:w-auto">
+                                    </div>
+                                    <div class="flex items-center">
+                                        <select x-model="dashboardStatusFilter" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-full md:w-auto">
+                                            <option value="">Semua Status</option>
+                                            <option value="on-target">On Target</option>
+                                            <option value="behind">Behind</option>
+                                            <option value="no-data">No Data</option>
+                                        </select>
+                                    </div>
+                                    <div class="flex items-center">
+                                        <span class="text-sm text-gray-600 mr-2">Tampilkan:</span>
+                                        <select x-model="dashboardItemsPerPage" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-full md:w-auto">
+                                            <option value="5">5</option>
+                                            <option value="10">10</option>
+                                            <option value="20">20</option>
+                                            <option value="50">50</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                         <div class="overflow-x-auto">
                             <table class="min-w-full divide-y divide-gray-200">
@@ -276,13 +330,14 @@
                                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Model</th>
                                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Target</th>
                                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Output</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Progress</th>
                                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Defect Rate</th>
                                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody class="bg-white divide-y divide-gray-200">
-                                    <template x-for="line in linesWithModels" :key="line.key">
+                                    <template x-for="line in paginatedDashboardLines" :key="line.key">
                                         <tr>
                                             <td class="px-6 py-4 whitespace-nowrap">
                                                 <div class="flex items-center">
@@ -300,16 +355,54 @@
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap">
                                                 <div class="flex items-center">
-                                                    <div class="w-16 bg-gray-200 rounded-full h-2 mr-2">
-                                                        <div class="defect-bar bg-red-500 h-2 rounded-full" :style="'width: ' + Math.min(line.data.defectRatePercentage, 100) + '%;'"></div>
+                                                    <div class="relative w-10 h-10 mr-3">
+                                                        <svg class="w-10 h-10 progress-ring" viewBox="0 0 36 36">
+                                                            <circle class="text-gray-200" stroke-width="3" fill="transparent" r="16" cx="18" cy="18"/>
+                                                            <circle class="progress-ring-circle" 
+                                                                    :class="{
+                                                                        'text-green-500': (line.data.outputDay || 0) / (line.data.target || 1) >= 1,
+                                                                        'text-yellow-500': (line.data.outputDay || 0) / (line.data.target || 1) >= 0.5 && (line.data.outputDay || 0) / (line.data.target || 1) < 1,
+                                                                        'text-red-500': (line.data.outputDay || 0) / (line.data.target || 1) < 0.5
+                                                                    }"
+                                                                    stroke-width="3" 
+                                                                    stroke-dasharray="100" 
+                                                                    :stroke-dashoffset="100 - Math.min((line.data.outputDay || 0) / (line.data.target || 1) * 100, 100)" 
+                                                                    fill="transparent" 
+                                                                    r="16" 
+                                                                    cx="18" 
+                                                                    cy="18"/>
+                                                        </svg>
+                                                        <div class="absolute inset-0 flex items-center justify-center">
+                                                            <span class="text-xs font-bold" 
+                                                                  :class="{
+                                                                      'text-green-700': (line.data.outputDay || 0) / (line.data.target || 1) >= 1,
+                                                                      'text-yellow-700': (line.data.outputDay || 0) / (line.data.target || 1) >= 0.5 && (line.data.outputDay || 0) / (line.data.target || 1) < 1,
+                                                                      'text-red-700': (line.data.outputDay || 0) / (line.data.target || 1) < 0.5
+                                                                  }"
+                                                                  x-text="Math.min(Math.round((line.data.outputDay || 0) / (line.data.target || 1) * 100), 100) + '%'"></span>
+                                                        </div>
                                                     </div>
-                                                    <span class="text-sm font-medium" :class="line.data.defectRatePercentage > 5 ? 'text-red-600' : 'text-green-600'" x-text="line.data.defectRatePercentage + '%'"></span>
                                                 </div>
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap">
-                                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800" x-show="line.data.outputDay >= line.data.target">On Target</span>
-                                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800" x-show="line.data.outputDay < line.data.target && line.data.outputDay > 0">Behind</span>
-                                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800" x-show="line.data.outputDay === 0">No Data</span>
+                                                <div class="flex items-center">
+                                                    <div class="w-16 bg-gray-200 rounded-full h-2 mr-2">
+                                                        <div class="defect-bar h-2 rounded-full" 
+                                                             :class="line.data.defectRatePercentage > 10 ? 'bg-red-500' : line.data.defectRatePercentage > 5 ? 'bg-yellow-500' : 'bg-green-500'"
+                                                             :style="'width: ' + Math.min(line.data.defectRatePercentage, 100) + '%;'"></div>
+                                                    </div>
+                                                    <span class="text-sm font-medium" 
+                                                          :class="line.data.defectRatePercentage > 10 ? 'text-red-600' : line.data.defectRatePercentage > 5 ? 'text-yellow-600' : 'text-green-600'"
+                                                          x-text="line.data.defectRatePercentage + '%'"></span>
+                                                </div>
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap">
+                                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800" 
+                                                      x-show="line.data.outputDay >= line.data.target">On Target</span>
+                                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800" 
+                                                      x-show="line.data.outputDay < line.data.target && line.data.outputDay > 0">Behind</span>
+                                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800" 
+                                                      x-show="line.data.outputDay === 0">No Data</span>
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                                 <button @click="viewLine(line.lineName, line.modelId)" class="text-blue-600 hover:text-blue-900 mr-3">Lihat</button>
@@ -320,6 +413,42 @@
                                     </template>
                                 </tbody>
                             </table>
+                        </div>
+                        <!-- Pagination Controls for Dashboard -->
+                        <div class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+                            <div class="flex-1 flex justify-between items-center">
+                                <div class="text-sm text-gray-700">
+                                    Menampilkan <span x-text="(dashboardCurrentPage - 1) * dashboardItemsPerPage + 1"></span> sampai 
+                                    <span x-text="Math.min(dashboardCurrentPage * dashboardItemsPerPage, filteredDashboardLines.length)"></span> dari 
+                                    <span x-text="filteredDashboardLines.length"></span> hasil
+                                </div>
+                                <div class="flex space-x-1">
+                                    <button @click="dashboardCurrentPage = 1" :disabled="dashboardCurrentPage === 1" 
+                                            :class="{'pagination-btn disabled': dashboardCurrentPage === 1, 'pagination-btn': dashboardCurrentPage !== 1}">
+                                        &laquo;
+                                    </button>
+                                    <button @click="dashboardCurrentPage--" :disabled="dashboardCurrentPage === 1" 
+                                            :class="{'pagination-btn disabled': dashboardCurrentPage === 1, 'pagination-btn': dashboardCurrentPage !== 1}">
+                                        &lsaquo;
+                                    </button>
+                                    
+                                    <template x-for="page in dashboardPages" :key="page">
+                                        <button @click="dashboardCurrentPage = page" 
+                                                :class="{'pagination-btn active': page === dashboardCurrentPage, 'pagination-btn': page !== dashboardCurrentPage}"
+                                                x-text="page">
+                                        </button>
+                                    </template>
+                                    
+                                    <button @click="dashboardCurrentPage++" :disabled="dashboardCurrentPage >= totalDashboardPages" 
+                                            :class="{'pagination-btn disabled': dashboardCurrentPage >= totalDashboardPages, 'pagination-btn': dashboardCurrentPage < totalDashboardPages}">
+                                        &rsaquo;
+                                    </button>
+                                    <button @click="dashboardCurrentPage = totalDashboardPages" :disabled="dashboardCurrentPage >= totalDashboardPages" 
+                                            :class="{'pagination-btn disabled': dashboardCurrentPage >= totalDashboardPages, 'pagination-btn': dashboardCurrentPage < totalDashboardPages}">
+                                        &raquo;
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -603,6 +732,29 @@
                                 </button>
                             </div>
                             
+                            <!-- Search and Filter Controls -->
+                            <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-4 space-y-2 md:space-y-0">
+                                <div class="flex items-center space-x-2">
+                                    <input type="text" x-model="lineSearchTerm" placeholder="Cari line atau model..." class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <select x-model="lineStatusFilter" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                        <option value="">Semua Status</option>
+                                        <option value="on-target">On Target</option>
+                                        <option value="behind">Behind</option>
+                                        <option value="no-data">No Data</option>
+                                    </select>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <span class="text-sm text-gray-600">Tampilkan:</span>
+                                    <select x-model="linesPerPage" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                        <option value="5">5</option>
+                                        <option value="10">10</option>
+                                        <option value="20">20</option>
+                                        <option value="50">50</option>
+                                    </select>
+                                    <span class="text-sm text-gray-600">per halaman</span>
+                                </div>
+                            </div>
+                            
                             <div class="overflow-x-auto">
                                 <table class="min-w-full divide-y divide-gray-200">
                                     <thead class="bg-gray-50">
@@ -617,7 +769,7 @@
                                         </tr>
                                     </thead>
                                     <tbody class="bg-white divide-y divide-gray-200">
-                                        <template x-for="line in linesWithModels" :key="line.key">
+                                        <template x-for="line in paginatedLines" :key="line.key">
                                             <tr>
                                                 <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900" x-text="line.lineName"></td>
                                                 <td class="px-4 py-3 whitespace-nowrap">
@@ -642,6 +794,41 @@
                                     </tbody>
                                 </table>
                             </div>
+                            
+                            <!-- Pagination Controls for Lines -->
+                            <div class="flex items-center justify-between mt-4">
+                                <div class="text-sm text-gray-700">
+                                    Menampilkan <span x-text="(currentLinePage - 1) * linesPerPage + 1"></span> sampai 
+                                    <span x-text="Math.min(currentLinePage * linesPerPage, filteredLines.length)"></span> dari 
+                                    <span x-text="filteredLines.length"></span> hasil
+                                </div>
+                                <div class="flex space-x-1">
+                                    <button @click="currentLinePage = 1" :disabled="currentLinePage === 1" 
+                                            :class="{'pagination-btn disabled': currentLinePage === 1, 'pagination-btn': currentLinePage !== 1}">
+                                        &laquo;
+                                    </button>
+                                    <button @click="currentLinePage--" :disabled="currentLinePage === 1" 
+                                            :class="{'pagination-btn disabled': currentLinePage === 1, 'pagination-btn': currentLinePage !== 1}">
+                                        &lsaquo;
+                                    </button>
+                                    
+                                    <template x-for="page in linePages" :key="page">
+                                        <button @click="currentLinePage = page" 
+                                                :class="{'pagination-btn active': page === currentLinePage, 'pagination-btn': page !== currentLinePage}"
+                                                x-text="page">
+                                        </button>
+                                    </template>
+                                    
+                                    <button @click="currentLinePage++" :disabled="currentLinePage >= totalLinePages" 
+                                            :class="{'pagination-btn disabled': currentLinePage >= totalLinePages, 'pagination-btn': currentLinePage < totalLinePages}">
+                                        &rsaquo;
+                                    </button>
+                                    <button @click="currentLinePage = totalLinePages" :disabled="currentLinePage >= totalLinePages" 
+                                            :class="{'pagination-btn disabled': currentLinePage >= totalLinePages, 'pagination-btn': currentLinePage < totalLinePages}">
+                                        &raquo;
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -652,12 +839,25 @@
                             <p class="mt-1 max-w-2xl text-sm text-gray-500">Kelola pengguna sistem</p>
                         </div>
                         <div class="p-4">
-                            <button @click="openUserModal()" class="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 mb-4">
-                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                                </svg>
-                                Tambah User Baru
-                            </button>
+                            <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-4 space-y-2 md:space-y-0">
+                                <button @click="openUserModal()" class="w-full md:w-auto inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                    </svg>
+                                    Tambah User Baru
+                                </button>
+                                
+                                <div class="flex items-center space-x-2">
+                                    <input type="text" x-model="userSearchTerm" placeholder="Cari user..." class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <span class="text-sm text-gray-600">Tampilkan:</span>
+                                    <select x-model="usersPerPage" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                        <option value="5">5</option>
+                                        <option value="10">10</option>
+                                        <option value="20">20</option>
+                                        <option value="50">50</option>
+                                    </select>
+                                </div>
+                            </div>
                             
                             <div class="overflow-x-auto">
                                 <table class="min-w-full divide-y divide-gray-200">
@@ -666,11 +866,12 @@
                                             <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Username</th>
                                             <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama</th>
                                             <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
+                                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Line</th>
                                             <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
                                         </tr>
                                     </thead>
                                     <tbody class="bg-white divide-y divide-gray-200">
-                                        <template x-for="user in users" :key="user.id">
+                                        <template x-for="user in paginatedUsers" :key="user.id">
                                             <tr>
                                                 <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900" x-text="user.username"></td>
                                                 <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500" x-text="user.name"></td>
@@ -683,6 +884,7 @@
                                                           }" 
                                                           x-text="user.role"></span>
                                                 </td>
+                                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500" x-text="user.line || '-'"></td>
                                                 <td class="px-4 py-3 whitespace-nowrap text-sm font-medium">
                                                     <button @click="openUserModal(user)" class="text-blue-600 hover:text-blue-900 mr-2">Edit</button>
                                                     <button @click="deleteUser(user.id)" class="text-red-600 hover:text-red-900">Hapus</button>
@@ -691,6 +893,41 @@
                                         </template>
                                     </tbody>
                                 </table>
+                            </div>
+                            
+                            <!-- Pagination Controls for Users -->
+                            <div class="flex items-center justify-between mt-4">
+                                <div class="text-sm text-gray-700">
+                                    Menampilkan <span x-text="(currentUserPage - 1) * usersPerPage + 1"></span> sampai 
+                                    <span x-text="Math.min(currentUserPage * usersPerPage, filteredUsers.length)"></span> dari 
+                                    <span x-text="filteredUsers.length"></span> hasil
+                                </div>
+                                <div class="flex space-x-1">
+                                    <button @click="currentUserPage = 1" :disabled="currentUserPage === 1" 
+                                            :class="{'pagination-btn disabled': currentUserPage === 1, 'pagination-btn': currentUserPage !== 1}">
+                                        &laquo;
+                                    </button>
+                                    <button @click="currentUserPage--" :disabled="currentUserPage === 1" 
+                                            :class="{'pagination-btn disabled': currentUserPage === 1, 'pagination-btn': currentUserPage !== 1}">
+                                        &lsaquo;
+                                    </button>
+                                    
+                                    <template x-for="page in userPages" :key="page">
+                                        <button @click="currentUserPage = page" 
+                                                :class="{'pagination-btn active': page === currentUserPage, 'pagination-btn': page !== currentUserPage}"
+                                                x-text="page">
+                                        </button>
+                                    </template>
+                                    
+                                    <button @click="currentUserPage++" :disabled="currentUserPage >= totalUserPages" 
+                                            :class="{'pagination-btn disabled': currentUserPage >= totalUserPages, 'pagination-btn': currentUserPage < totalUserPages}">
+                                        &rsaquo;
+                                    </button>
+                                    <button @click="currentUserPage = totalUserPages" :disabled="currentUserPage >= totalUserPages" 
+                                            :class="{'pagination-btn disabled': currentUserPage >= totalUserPages, 'pagination-btn': currentUserPage < totalUserPages}">
+                                        &raquo;
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -725,9 +962,22 @@
                                 </div>
                             </div>
 
-                            <!-- Date Report Results -->
+                            <!-- Date Report Results with Pagination -->
                             <div x-show="dateReport && dateReport.length > 0" class="mt-4">
-                                <h4 class="text-lg font-medium text-gray-900 mb-2">Hasil Laporan Tanggal: <span x-text="reportDate"></span></h4>
+                                <div class="flex justify-between items-center mb-4">
+                                    <h4 class="text-lg font-medium text-gray-900">Hasil Laporan Tanggal: <span x-text="reportDate"></span></h4>
+                                    
+                                    <div class="flex items-center space-x-2">
+                                        <span class="text-sm text-gray-600">Tampilkan:</span>
+                                        <select x-model="reportPerPage" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                            <option value="5">5</option>
+                                            <option value="10">10</option>
+                                            <option value="20">20</option>
+                                            <option value="50">50</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                
                                 <div class="overflow-x-auto">
                                     <table class="min-w-full divide-y divide-gray-200">
                                         <thead class="bg-gray-50">
@@ -743,7 +993,7 @@
                                             </tr>
                                         </thead>
                                         <tbody class="bg-white divide-y divide-gray-200">
-                                            <template x-for="line in dateReport" :key="line.line + '-' + line.modelId">
+                                            <template x-for="line in paginatedDateReport" :key="line.line + '-' + line.modelId">
                                                 <tr>
                                                     <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900" x-text="line.line"></td>
                                                     <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500" x-text="line.modelId"></td>
@@ -759,6 +1009,41 @@
                                             </template>
                                         </tbody>
                                     </table>
+                                </div>
+                                
+                                <!-- Pagination Controls for Date Report -->
+                                <div class="flex items-center justify-between mt-4">
+                                    <div class="text-sm text-gray-700">
+                                        Menampilkan <span x-text="(currentReportPage - 1) * reportPerPage + 1"></span> sampai 
+                                        <span x-text="Math.min(currentReportPage * reportPerPage, dateReport.length)"></span> dari 
+                                        <span x-text="dateReport.length"></span> hasil
+                                    </div>
+                                    <div class="flex space-x-1">
+                                        <button @click="currentReportPage = 1" :disabled="currentReportPage === 1" 
+                                                :class="{'pagination-btn disabled': currentReportPage === 1, 'pagination-btn': currentReportPage !== 1}">
+                                            &laquo;
+                                        </button>
+                                        <button @click="currentReportPage--" :disabled="currentReportPage === 1" 
+                                                :class="{'pagination-btn disabled': currentReportPage === 1, 'pagination-btn': currentReportPage !== 1}">
+                                            &lsaquo;
+                                        </button>
+                                        
+                                        <template x-for="page in reportPages" :key="page">
+                                            <button @click="currentReportPage = page" 
+                                                    :class="{'pagination-btn active': page === currentReportPage, 'pagination-btn': page !== currentReportPage}"
+                                                    x-text="page">
+                                            </button>
+                                        </template>
+                                        
+                                        <button @click="currentReportPage++" :disabled="currentReportPage >= totalReportPages" 
+                                                :class="{'pagination-btn disabled': currentReportPage >= totalReportPages, 'pagination-btn': currentReportPage < totalReportPages}">
+                                            &rsaquo;
+                                        </button>
+                                        <button @click="currentReportPage = totalReportPages" :disabled="currentReportPage >= totalReportPages" 
+                                                :class="{'pagination-btn disabled': currentReportPage >= totalReportPages, 'pagination-btn': currentReportPage < totalReportPages}">
+                                            &raquo;
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -794,111 +1079,110 @@
     </div>
 
     <!-- Modals -->
-   <!-- Line Modal -->
-<div x-show="lineModal.open" class="fixed inset-0 overflow-y-auto z-50" x-cloak>
-    <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        <div class="fixed inset-0 transition-opacity" aria-hidden="true">
-            <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
-        </div>
-        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-        <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-            <form @submit.prevent="saveLine">
-                <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                    <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4" x-text="lineModal.isEdit ? 'Edit Line/Model' : 'Tambah Line Baru'"></h3>
-                    <div class="space-y-4">
-                        <div>
-                            <label for="line-name" class="block text-sm font-medium text-gray-700">Nama Line</label>
-                            <input type="text" id="line-name" x-model="lineModal.data.lineName" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" :readonly="lineModal.isEdit" required>
-                        </div>
-                        <div x-show="lineModal.isEdit">
-                            <label for="model-id" class="block text-sm font-medium text-gray-700">Model ID</label>
-                            <input type="text" id="model-id" x-model="lineModal.data.modelId" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" readonly>
-                        </div>
-                        <div>
-                            <label for="label-week" class="block text-sm font-medium text-gray-700">Label/Week</label>
-                            <input type="text" id="label-week" x-model="lineModal.data.labelWeek" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" required>
-                        </div>
-                        <div>
-                            <label for="model" class="block text-sm font-medium text-gray-700">Model</label>
-                            <input type="text" id="model" x-model="lineModal.data.model" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" required>
-                        </div>
-                        <div>
-                            <label for="target" class="block text-sm font-medium text-gray-700">Target Harian</label>
-                            <input type="number" id="target" x-model="lineModal.data.target" min="1" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" required>
-                        </div>
-                        <div>
-                            <label for="date" class="block text-sm font-medium text-gray-700">Tanggal</label>
-                            <input type="date" id="date" x-model="lineModal.data.date" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md bg-gray-100" readonly>
-                            <p class="text-xs text-gray-500 mt-1">Tanggal otomatis mengikuti hari ini dan tidak dapat diubah</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                    <button type="submit" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm">
-                        Simpan
-                    </button>
-                    <button type="button" @click="lineModal.open = false" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
-                        Batal
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<!-- Model Modal -->
-<div x-show="modelModal.open" class="fixed inset-0 overflow-y-auto z-50" x-cloak>
-    <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        <div class="fixed inset-0 transition-opacity" aria-hidden="true">
-            <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
-        </div>
-        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-        <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-            <form @submit.prevent="saveModel">
-                <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                    <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Tambah Model ke Line</h3>
-                    <div class="space-y-4">
-                        <div>
-                            <label for="model-line-name" class="block text-sm font-medium text-gray-700">Pilih Line</label>
-                            <select id="model-line-name" x-model="modelModal.data.lineName" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md" required>
-                                <option value="">Pilih Line</option>
-                                <template x-for="line in lines" :key="line.name">
-                                    <option :value="line.name" x-text="line.name"></option>
-                                </template>
-                            </select>
-                        </div>
-                        <div>
-                            <label for="model-label-week" class="block text-sm font-medium text-gray-700">Label/Week</label>
-                            <input type="text" id="model-label-week" x-model="modelModal.data.labelWeek" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" required>
-                        </div>
-                        <div>
-                            <label for="model-name" class="block text-sm font-medium text-gray-700">Model</label>
-                            <input type="text" id="model-name" x-model="modelModal.data.model" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" required>
-                        </div>
-                        <div>
-                            <label for="model-target" class="block text-sm font-medium text-gray-700">Target Harian</label>
-                            <input type="number" id="model-target" x-model="modelModal.data.target" min="1" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" required>
-                        </div>
-                        <div>
-                            <label for="model-date" class="block text-sm font-medium text-gray-700">Tanggal</label>
-                            <input type="date" id="model-date" x-model="modelModal.data.date" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md bg-gray-100" readonly>
-                            <p class="text-xs text-gray-500 mt-1">Tanggal otomatis mengikuti hari ini dan tidak dapat diubah</p>
+    <!-- Line Modal -->
+    <div x-show="lineModal.open" class="fixed inset-0 overflow-y-auto z-50" x-cloak>
+        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div class="fixed inset-0 transition-opacity" aria-hidden="true">
+                <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
+            </div>
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+            <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+                <form @submit.prevent="saveLine">
+                    <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                        <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4" x-text="lineModal.isEdit ? 'Edit Line/Model' : 'Tambah Line Baru'"></h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label for="line-name" class="block text-sm font-medium text-gray-700">Nama Line</label>
+                                <input type="text" id="line-name" x-model="lineModal.data.lineName" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" :readonly="lineModal.isEdit" required>
+                            </div>
+                            <div x-show="lineModal.isEdit">
+                                <label for="model-id" class="block text-sm font-medium text-gray-700">Model ID</label>
+                                <input type="text" id="model-id" x-model="lineModal.data.modelId" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" readonly>
+                            </div>
+                            <div>
+                                <label for="label-week" class="block text-sm font-medium text-gray-700">Label/Week</label>
+                                <input type="text" id="label-week" x-model="lineModal.data.labelWeek" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" required>
+                            </div>
+                            <div>
+                                <label for="model" class="block text-sm font-medium text-gray-700">Model</label>
+                                <input type="text" id="model" x-model="lineModal.data.model" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" required>
+                            </div>
+                            <div>
+                                <label for="target" class="block text-sm font-medium text-gray-700">Target Harian</label>
+                                <input type="number" id="target" x-model="lineModal.data.target" min="1" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" required>
+                            </div>
+                            <div>
+                                <label for="date" class="block text-sm font-medium text-gray-700">Tanggal</label>
+                                <input type="date" id="date" x-model="lineModal.data.date" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md bg-gray-100" readonly>
+                                <p class="text-xs text-gray-500 mt-1">Tanggal otomatis mengikuti hari ini dan tidak dapat diubah</p>
+                            </div>
                         </div>
                     </div>
-                </div>
-                <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                    <button type="submit" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm">
-                        Tambah Model
-                    </button>
-                    <button type="button" @click="modelModal.open = false" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
-                        Batal
-                    </button>
-                </div>
-            </form>
+                    <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                        <button type="submit" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm">
+                            Simpan
+                        </button>
+                        <button type="button" @click="lineModal.open = false" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                            Batal
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
-</div>
 
+    <!-- Model Modal -->
+    <div x-show="modelModal.open" class="fixed inset-0 overflow-y-auto z-50" x-cloak>
+        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div class="fixed inset-0 transition-opacity" aria-hidden="true">
+                <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
+            </div>
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+            <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+                <form @submit.prevent="saveModel">
+                    <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                        <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Tambah Model ke Line</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label for="model-line-name" class="block text-sm font-medium text-gray-700">Pilih Line</label>
+                                <select id="model-line-name" x-model="modelModal.data.lineName" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md" required>
+                                    <option value="">Pilih Line</option>
+                                    <template x-for="line in lines" :key="line.name">
+                                        <option :value="line.name" x-text="line.name"></option>
+                                    </template>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="model-label-week" class="block text-sm font-medium text-gray-700">Label/Week</label>
+                                <input type="text" id="model-label-week" x-model="modelModal.data.labelWeek" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" required>
+                            </div>
+                            <div>
+                                <label for="model-name" class="block text-sm font-medium text-gray-700">Model</label>
+                                <input type="text" id="model-name" x-model="modelModal.data.model" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" required>
+                            </div>
+                            <div>
+                                <label for="model-target" class="block text-sm font-medium text-gray-700">Target Harian</label>
+                                <input type="number" id="model-target" x-model="modelModal.data.target" min="1" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" required>
+                            </div>
+                            <div>
+                                <label for="model-date" class="block text-sm font-medium text-gray-700">Tanggal</label>
+                                <input type="date" id="model-date" x-model="modelModal.data.date" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md bg-gray-100" readonly>
+                                <p class="text-xs text-gray-500 mt-1">Tanggal otomatis mengikuti hari ini dan tidak dapat diubah</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                        <button type="submit" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm">
+                            Tambah Model
+                        </button>
+                        <button type="button" @click="modelModal.open = false" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                            Batal
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 
     <!-- User Modal -->
     <div x-show="userModal.open" class="fixed inset-0 overflow-y-auto z-50" x-cloak>
@@ -1079,6 +1363,28 @@
                     type: 'info',
                     message: ''
                 },
+                
+                // Pagination state
+                // Dashboard pagination
+                dashboardCurrentPage: 1,
+                dashboardItemsPerPage: 10,
+                dashboardSearchTerm: '',
+                dashboardStatusFilter: '',
+                
+                // Lines pagination
+                currentLinePage: 1,
+                linesPerPage: 10,
+                lineSearchTerm: '',
+                lineStatusFilter: '',
+                
+                // Users pagination
+                currentUserPage: 1,
+                usersPerPage: 10,
+                userSearchTerm: '',
+                
+                // Date report pagination
+                currentReportPage: 1,
+                reportPerPage: 10,
                 
                 // Initialize
                 async init() {
@@ -1312,6 +1618,7 @@
                         const response = await fetch(`/api/date-report/${this.reportDate}`);
                         if (response.ok) {
                             this.dateReport = await response.json();
+                            this.currentReportPage = 1; // Reset to first page
                             this.showToast('Laporan berhasil dimuat', 'success');
                         } else {
                             console.error('Failed to load date report');
@@ -1495,41 +1802,41 @@
                 },
                 
                 // Admin management methods
-             openLineModal(line = null) {
-    if (line) {
-        this.lineModal.isEdit = true;
-        this.lineModal.data = {
-            lineName: line.lineName,
-            modelId: line.modelId,
-            labelWeek: line.data.labelWeek,
-            model: line.data.model,
-            target: line.data.target,
-            date: line.data.date // Tanggal tetap dari data yang ada, tidak bisa diubah
-        };
-    } else {
-        this.lineModal.isEdit = false;
-        this.lineModal.data = {
-            lineName: '',
-            modelId: '',
-            labelWeek: '',
-            model: '',
-            target: 180,
-            date: new Date().toISOString().split('T')[0] // Tanggal otomatis hari ini
-        };
-    }
-    this.lineModal.open = true;
-},
+                openLineModal(line = null) {
+                    if (line) {
+                        this.lineModal.isEdit = true;
+                        this.lineModal.data = {
+                            lineName: line.lineName,
+                            modelId: line.modelId,
+                            labelWeek: line.data.labelWeek,
+                            model: line.data.model,
+                            target: line.data.target,
+                            date: line.data.date
+                        };
+                    } else {
+                        this.lineModal.isEdit = false;
+                        this.lineModal.data = {
+                            lineName: '',
+                            modelId: '',
+                            labelWeek: '',
+                            model: '',
+                            target: 180,
+                            date: new Date().toISOString().split('T')[0]
+                        };
+                    }
+                    this.lineModal.open = true;
+                },
                 
-            openModelModal() {
-    this.modelModal.data = {
-        lineName: '',
-        labelWeek: '',
-        model: '',
-        target: 180,
-        date: new Date().toISOString().split('T')[0] // Tanggal otomatis hari ini
-    };
-    this.modelModal.open = true;
-},
+                openModelModal() {
+                    this.modelModal.data = {
+                        lineName: '',
+                        labelWeek: '',
+                        model: '',
+                        target: 180,
+                        date: new Date().toISOString().split('T')[0]
+                    };
+                    this.modelModal.open = true;
+                },
                 
                 async saveLine() {
                     try {
@@ -1800,6 +2107,225 @@
                     setTimeout(() => {
                         this.toast.show = false;
                     }, 5000);
+                },
+                
+                // Pagination Computed Properties
+                
+                // Dashboard pagination
+                get filteredDashboardLines() {
+                    if (!this.linesWithModels) return [];
+                    
+                    return this.linesWithModels.filter(line => {
+                        // Search filter
+                        const searchTerm = this.dashboardSearchTerm.toLowerCase();
+                        const matchesSearch = !searchTerm || 
+                            line.lineName.toLowerCase().includes(searchTerm) ||
+                            line.modelId.toLowerCase().includes(searchTerm) ||
+                            line.data.labelWeek.toLowerCase().includes(searchTerm) ||
+                            line.data.model.toLowerCase().includes(searchTerm);
+                        
+                        // Status filter
+                        let matchesStatus = true;
+                        if (this.dashboardStatusFilter) {
+                            if (this.dashboardStatusFilter === 'on-target') {
+                                matchesStatus = line.data.outputDay >= line.data.target;
+                            } else if (this.dashboardStatusFilter === 'behind') {
+                                matchesStatus = line.data.outputDay < line.data.target && line.data.outputDay > 0;
+                            } else if (this.dashboardStatusFilter === 'no-data') {
+                                matchesStatus = line.data.outputDay === 0;
+                            }
+                        }
+                        
+                        return matchesSearch && matchesStatus;
+                    });
+                },
+                
+                get paginatedDashboardLines() {
+                    const startIndex = (this.dashboardCurrentPage - 1) * this.dashboardItemsPerPage;
+                    const endIndex = startIndex + this.dashboardItemsPerPage;
+                    return this.filteredDashboardLines.slice(startIndex, endIndex);
+                },
+                
+                get totalDashboardPages() {
+                    return Math.ceil(this.filteredDashboardLines.length / this.dashboardItemsPerPage);
+                },
+                
+                get dashboardPages() {
+                    const pages = [];
+                    const totalPages = this.totalDashboardPages;
+                    const currentPage = this.dashboardCurrentPage;
+                    
+                    // Show up to 5 pages around current page
+                    let startPage = Math.max(1, currentPage - 2);
+                    let endPage = Math.min(totalPages, currentPage + 2);
+                    
+                    // Adjust if we're at the beginning
+                    if (currentPage <= 3) {
+                        endPage = Math.min(5, totalPages);
+                    }
+                    
+                    // Adjust if we're at the end
+                    if (currentPage >= totalPages - 2) {
+                        startPage = Math.max(1, totalPages - 4);
+                    }
+                    
+                    for (let i = startPage; i <= endPage; i++) {
+                        pages.push(i);
+                    }
+                    
+                    return pages;
+                },
+                
+                // Lines pagination
+                get filteredLines() {
+                    if (!this.linesWithModels) return [];
+                    
+                    return this.linesWithModels.filter(line => {
+                        // Search filter
+                        const searchTerm = this.lineSearchTerm.toLowerCase();
+                        const matchesSearch = !searchTerm || 
+                            line.lineName.toLowerCase().includes(searchTerm) ||
+                            line.modelId.toLowerCase().includes(searchTerm) ||
+                            line.data.labelWeek.toLowerCase().includes(searchTerm) ||
+                            line.data.model.toLowerCase().includes(searchTerm);
+                        
+                        // Status filter
+                        let matchesStatus = true;
+                        if (this.lineStatusFilter) {
+                            if (this.lineStatusFilter === 'on-target') {
+                                matchesStatus = line.data.outputDay >= line.data.target;
+                            } else if (this.lineStatusFilter === 'behind') {
+                                matchesStatus = line.data.outputDay < line.data.target && line.data.outputDay > 0;
+                            } else if (this.lineStatusFilter === 'no-data') {
+                                matchesStatus = line.data.outputDay === 0;
+                            }
+                        }
+                        
+                        return matchesSearch && matchesStatus;
+                    });
+                },
+                
+                get paginatedLines() {
+                    const startIndex = (this.currentLinePage - 1) * this.linesPerPage;
+                    const endIndex = startIndex + this.linesPerPage;
+                    return this.filteredLines.slice(startIndex, endIndex);
+                },
+                
+                get totalLinePages() {
+                    return Math.ceil(this.filteredLines.length / this.linesPerPage);
+                },
+                
+                get linePages() {
+                    const pages = [];
+                    const totalPages = this.totalLinePages;
+                    const currentPage = this.currentLinePage;
+                    
+                    // Show up to 5 pages around current page
+                    let startPage = Math.max(1, currentPage - 2);
+                    let endPage = Math.min(totalPages, currentPage + 2);
+                    
+                    // Adjust if we're at the beginning
+                    if (currentPage <= 3) {
+                        endPage = Math.min(5, totalPages);
+                    }
+                    
+                    // Adjust if we're at the end
+                    if (currentPage >= totalPages - 2) {
+                        startPage = Math.max(1, totalPages - 4);
+                    }
+                    
+                    for (let i = startPage; i <= endPage; i++) {
+                        pages.push(i);
+                    }
+                    
+                    return pages;
+                },
+                
+                // Users pagination
+                get filteredUsers() {
+                    if (!this.users) return [];
+                    
+                    const searchTerm = this.userSearchTerm.toLowerCase();
+                    return this.users.filter(user => 
+                        !searchTerm || 
+                        user.username.toLowerCase().includes(searchTerm) ||
+                        user.name.toLowerCase().includes(searchTerm) ||
+                        user.role.toLowerCase().includes(searchTerm) ||
+                        (user.line && user.line.toLowerCase().includes(searchTerm))
+                    );
+                },
+                
+                get paginatedUsers() {
+                    const startIndex = (this.currentUserPage - 1) * this.usersPerPage;
+                    const endIndex = startIndex + this.usersPerPage;
+                    return this.filteredUsers.slice(startIndex, endIndex);
+                },
+                
+                get totalUserPages() {
+                    return Math.ceil(this.filteredUsers.length / this.usersPerPage);
+                },
+                
+                get userPages() {
+                    const pages = [];
+                    const totalPages = this.totalUserPages;
+                    const currentPage = this.currentUserPage;
+                    
+                    // Show up to 5 pages around current page
+                    let startPage = Math.max(1, currentPage - 2);
+                    let endPage = Math.min(totalPages, currentPage + 2);
+                    
+                    // Adjust if we're at the beginning
+                    if (currentPage <= 3) {
+                        endPage = Math.min(5, totalPages);
+                    }
+                    
+                    // Adjust if we're at the end
+                    if (currentPage >= totalPages - 2) {
+                        startPage = Math.max(1, totalPages - 4);
+                    }
+                    
+                    for (let i = startPage; i <= endPage; i++) {
+                        pages.push(i);
+                    }
+                    
+                    return pages;
+                },
+                
+                // Date report pagination
+                get paginatedDateReport() {
+                    const startIndex = (this.currentReportPage - 1) * this.reportPerPage;
+                    const endIndex = startIndex + this.reportPerPage;
+                    return this.dateReport.slice(startIndex, endIndex);
+                },
+                
+                get totalReportPages() {
+                    return Math.ceil(this.dateReport.length / this.reportPerPage);
+                },
+                
+                get reportPages() {
+                    const pages = [];
+                    const totalPages = this.totalReportPages;
+                    const currentPage = this.currentReportPage;
+                    
+                    // Show up to 5 pages around current page
+                    let startPage = Math.max(1, currentPage - 2);
+                    let endPage = Math.min(totalPages, currentPage + 2);
+                    
+                    // Adjust if we're at the beginning
+                    if (currentPage <= 3) {
+                        endPage = Math.min(5, totalPages);
+                    }
+                    
+                    // Adjust if we're at the end
+                    if (currentPage >= totalPages - 2) {
+                        startPage = Math.max(1, totalPages - 4);
+                    }
+                    
+                    for (let i = startPage; i <= endPage; i++) {
+                        pages.push(i);
+                    }
+                    
+                    return pages;
                 }
             }
         }

@@ -4,6 +4,7 @@ const path = require('path');
 const session = require('express-session');
 const XLSX = require('xlsx');
 const ExcelJS = require('exceljs');
+const crypto = require('crypto');
 
 const app = express();
 const port = 3000;
@@ -23,6 +24,15 @@ app.use(session({
     maxAge: 24 * 60 * 60 * 1000
   }
 }));
+
+// Password encryption functions
+function hashPassword(password) {
+  return crypto.createHash('sha256').update(password).digest('hex');
+}
+
+function verifyPassword(password, hashedPassword) {
+  return hashPassword(password) === hashedPassword;
+}
 
 // Utility Functions
 function getToday() {
@@ -148,7 +158,7 @@ function initializeDataFiles() {
         {
           "id": 1,
           "username": "operator1",
-          "password": "password123",
+          "password": hashPassword("password123"),
           "name": "Ahmad Susanto",
           "line": "F1-5A",
           "role": "operator"
@@ -156,7 +166,7 @@ function initializeDataFiles() {
         {
           "id": 2,
           "username": "admin_operator",
-          "password": "adminop123",
+          "password": hashPassword("adminop123"),
           "name": "Admin Operator",
           "line": "all",
           "role": "admin_operator"
@@ -164,7 +174,7 @@ function initializeDataFiles() {
         {
           "id": 3,
           "username": "admin",
-          "password": "admin123",
+          "password": hashPassword("admin123"),
           "name": "Administrator",
           "line": "all",
           "role": "admin"
@@ -172,7 +182,7 @@ function initializeDataFiles() {
       ]
     };
     fs.writeFileSync(path.join(__dirname, 'users.json'), JSON.stringify(initialUsers, null, 2));
-    console.log('Users file created successfully');
+    console.log('Users file created successfully with encrypted passwords');
   }
 
   const historyDir = path.join(__dirname, 'history');
@@ -208,6 +218,21 @@ function readUsersData() {
     console.error('ERROR: Gagal membaca users.json:', error.message);
     return { users: [] };
   }
+}
+
+function writeUsersData(data) {
+  try {
+    fs.writeFileSync(path.join(__dirname, 'users.json'), JSON.stringify(data, null, 2));
+  } catch (error) {
+    console.error('ERROR: Gagal menulis ke users.json:', error.message);
+  }
+}
+
+// Generate unique user ID
+function generateUserId(users) {
+  if (users.length === 0) return 1;
+  const maxId = Math.max(...users.map(user => user.id));
+  return maxId + 1;
 }
 
 // History Functions
@@ -330,19 +355,19 @@ function autoCheckDateReset(req, res, next) {
 app.post('/api/login', (req, res) => {
   const { username, password } = req.body;
   const usersData = readUsersData();
-  const user = usersData.users.find(u => u.username === username && u.password === password);
+  const user = usersData.users.find(u => u.username === username);
 
-  if (user) {
-    req.session.user = user;
+  if (user && verifyPassword(password, user.password)) {
+    req.session.user = {
+      id: user.id,
+      name: user.name,
+      username: user.username,
+      line: user.line,
+      role: user.role
+    };
     res.json({
       message: 'Login successful',
-      user: {
-        id: user.id,
-        name: user.name,
-        username: user.username,
-        line: user.line,
-        role: user.role
-      }
+      user: req.session.user
     });
   } else {
     res.status(401).json({ error: 'Invalid username or password' });
@@ -1521,32 +1546,44 @@ app.get('/api/export-date-report/:date', requireLogin, requireDateReportAccess, 
 // User Management Routes
 app.get('/api/users', requireLogin, requireAdmin, (req, res) => {
   const usersData = readUsersData();
-  res.json(usersData.users || []);
+  // Jangan kembalikan password
+  const usersWithoutPasswords = usersData.users.map(user => {
+    const { password, ...userWithoutPassword } = user;
+    return userWithoutPassword;
+  });
+  res.json(usersWithoutPasswords || []);
 });
 
 app.post('/api/users', requireLogin, requireAdmin, (req, res) => {
   const { username, password, name, line, role } = req.body;
   const usersData = readUsersData();
 
+  // Check if username already exists
   if (usersData.users.find(u => u.username === username)) {
     return res.status(400).json({ error: 'Username already exists' });
   }
 
+  // Generate unique ID
+  const newId = generateUserId(usersData.users);
+
   const newUser = {
-    id: usersData.users.length + 1,
+    id: newId,
     username,
-    password,
+    password: hashPassword(password),
     name,
     line,
     role
   };
 
   usersData.users.push(newUser);
-  fs.writeFileSync(path.join(__dirname, 'users.json'), JSON.stringify(usersData, null, 2));
+  writeUsersData(usersData);
 
+  // Return user without password
+  const { password: _, ...userWithoutPassword } = newUser;
+  
   res.json({ 
     message: 'User created successfully',
-    user: newUser
+    user: userWithoutPassword
   });
 });
 
@@ -1560,24 +1597,33 @@ app.put('/api/users/:id', requireLogin, requireAdmin, (req, res) => {
     return res.status(404).json({ error: 'User not found' });
   }
 
+  // Check if username already exists (excluding current user)
   if (usersData.users.find(u => u.username === username && u.id !== userId)) {
     return res.status(400).json({ error: 'Username already exists' });
   }
 
+  // Update user data
   usersData.users[userIndex] = {
     ...usersData.users[userIndex],
     username,
-    ...(password && { password }),
     name,
     line,
     role
   };
 
-  fs.writeFileSync(path.join(__dirname, 'users.json'), JSON.stringify(usersData, null, 2));
+  // Update password if provided
+  if (password && password.trim() !== '') {
+    usersData.users[userIndex].password = hashPassword(password);
+  }
 
+  writeUsersData(usersData);
+
+  // Return user without password
+  const { password: _, ...userWithoutPassword } = usersData.users[userIndex];
+  
   res.json({ 
     message: 'User updated successfully',
-    user: usersData.users[userIndex]
+    user: userWithoutPassword
   });
 });
 
@@ -1595,11 +1641,14 @@ app.delete('/api/users/:id', requireLogin, requireAdmin, (req, res) => {
   }
 
   const deletedUser = usersData.users.splice(userIndex, 1)[0];
-  fs.writeFileSync(path.join(__dirname, 'users.json'), JSON.stringify(usersData, null, 2));
+  writeUsersData(usersData);
 
+  // Return user without password
+  const { password: _, ...userWithoutPassword } = deletedUser;
+  
   res.json({ 
     message: 'User deleted successfully',
-    user: deletedUser
+    user: userWithoutPassword
   });
 });
 
@@ -2030,6 +2079,8 @@ app.listen(port, () => {
   console.log(`- Laporan berdasarkan tanggal (FIXED - SEMUA MODEL TERCATAT)`);
   console.log(`- Backup dan History System`);
   console.log(`- Export Excel DENGAN STYLING LANJUTAN`);
+  console.log(`- PASSWORD ENCRYPTION DENGAN SHA-256`);
+  console.log(`- UNIQUE USER ID MANAGEMENT`);
   console.log(`=================================`);
   console.log(`Default Users:`);
   console.log(`- Admin: admin / admin123`);

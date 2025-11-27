@@ -1,28 +1,36 @@
 {
   "users": [
     {
-      "id": 1,
+      "id": 2,
+      "username": "admin_operator",
+      "password": "40cc70c95776bb2d926894c02448c65b15421bcec8cd86d9193a488193932fbc",
+      "name": "Admin Operator",
+      "line": "all",
+      "role": "admin_operator"
+    },
+    {
+      "id": 3,
       "username": "admin",
-      "password": "admin123",
+      "password": "240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9",
       "name": "Administrator",
       "line": "all",
       "role": "admin"
     },
     {
-      "id": 2,
+      "id": 4,
       "username": "qc1",
-      "password": "1234",
-      "name": "Ayu",
+      "password": "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4",
+      "name": "qc",
       "line": "LINE-1",
       "role": "operator"
     },
     {
-      "id": 3,
-      "username": "sewing",
-      "password": "1234",
-      "name": "Ami",
-      "line": "",
-      "role": "admin_operator"
+      "id": 5,
+      "username": "Hafri",
+      "password": "a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3",
+      "name": "qc2",
+      "line": "LINE-1",
+      "role": "operator"
     }
   ]
 }

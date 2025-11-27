@@ -1062,7 +1062,7 @@ app.get('/api/date-report/:date', requireLogin, requireDateReportAccess, autoChe
   }
 });
 
-// Fungsi untuk generate Excel dengan styling untuk laporan berdasarkan tanggal
+// PERBAIKAN BESAR: Fungsi untuk generate Excel dengan styling untuk laporan berdasarkan tanggal - DIPERBAIKI untuk menampilkan semua model
 async function generateStyledDateReportExcel(data, date) {
   const workbook = new ExcelJS.Workbook();
   
@@ -1244,21 +1244,25 @@ async function generateStyledDateReportExcel(data, date) {
   ];
 
   // ===== SHEET: DETAIL PER LINE =====
+  // PERBAIKAN: Buat sheet terpisah untuk setiap line agar semua model tercatat
   Object.keys(data.lines).forEach(lineName => {
     const line = data.lines[lineName];
     const lineSheet = workbook.addWorksheet(lineName.substring(0, 31)); // Batasi nama sheet
     
+    let currentRow = 1;
+    
     // Judul untuk setiap line
-    lineSheet.mergeCells('A1:G1');
-    const lineTitle = lineSheet.getCell('A1');
+    lineSheet.mergeCells(`A${currentRow}:G${currentRow}`);
+    const lineTitle = lineSheet.getCell(`A${currentRow}`);
     lineTitle.value = `PRODUCTION DETAIL - ${lineName} - ${date}`;
     lineTitle.style = titleStyle;
-    
+    currentRow += 2;
+
+    // PERBAIKAN: Iterasi melalui semua model dalam line
     Object.keys(line.models).forEach(modelId => {
       const model = line.models[modelId];
-      let currentRow = 3;
       
-      // Informasi model
+      // Informasi model - PERBAIKAN: Tambahkan Model ID
       lineSheet.getCell(`A${currentRow}`).value = 'Model ID';
       lineSheet.getCell(`B${currentRow}`).value = modelId;
       currentRow++;
@@ -1269,6 +1273,10 @@ async function generateStyledDateReportExcel(data, date) {
       
       lineSheet.getCell(`A${currentRow}`).value = 'Model';
       lineSheet.getCell(`B${currentRow}`).value = model.model || '';
+      currentRow++;
+      
+      lineSheet.getCell(`A${currentRow}`).value = 'Date';
+      lineSheet.getCell(`B${currentRow}`).value = model.date || '';
       currentRow++;
       
       lineSheet.getCell(`A${currentRow}`).value = 'Target';
@@ -1335,13 +1343,14 @@ async function generateStyledDateReportExcel(data, date) {
         });
       }
       
-      currentRow += 2;
+      // PERBAIKAN: Tambahkan jarak antara model yang berbeda dalam line yang sama
+      currentRow += 3;
     });
     
     // Auto adjust column widths untuk line sheet
     lineSheet.columns = [
       { width: 15 },
-      { width: 15 },
+      { width: 25 },
       { width: 12 },
       { width: 12 },
       { width: 12 },
@@ -2018,7 +2027,7 @@ app.listen(port, () => {
   console.log(`- Input langsung di tabel Data Per Jam`);
   console.log(`- Target berdasarkan manual input`);
   console.log(`- AUTO RESET DATA SETIAP HARI BARU`);
-  console.log(`- Laporan berdasarkan tanggal (FIXED)`);
+  console.log(`- Laporan berdasarkan tanggal (FIXED - SEMUA MODEL TERCATAT)`);
   console.log(`- Backup dan History System`);
   console.log(`- Export Excel DENGAN STYLING LANJUTAN`);
   console.log(`=================================`);

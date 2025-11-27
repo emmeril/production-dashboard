@@ -709,16 +709,16 @@ app.get('/api/lines/:lineName/models', requireLogin, requireLineAccess, autoChec
   res.json(data.lines[lineName].models || {});
 });
 
-// Create new line
+// Create new line - PERBAIKAN: Selalu gunakan tanggal sekarang
 app.post('/api/lines', requireLogin, requireLineManagementAccess, (req, res) => {
-  const { lineName, labelWeek, model, date, target } = req.body;
+  const { lineName, labelWeek, model, target } = req.body;
   const data = readProductionData();
 
   if (data.lines[lineName]) {
     return res.status(400).json({ error: 'Line already exists' });
   }
 
-  const lineDate = date || getToday();
+  const lineDate = getToday(); // SELALU gunakan tanggal sekarang
   const targetPerHour = Math.round(target / 8);
   const modelId = 'model1'; // Default first model
 
@@ -763,17 +763,17 @@ app.post('/api/lines', requireLogin, requireLineManagementAccess, (req, res) => 
   });
 });
 
-// Add new model to existing line
+// Add new model to existing line - PERBAIKAN: Selalu gunakan tanggal sekarang
 app.post('/api/lines/:lineName/models', requireLogin, requireLineManagementAccess, (req, res) => {
   const { lineName } = req.params;
-  const { labelWeek, model, date, target } = req.body;
+  const { labelWeek, model, target } = req.body;
   const data = readProductionData();
 
   if (!data.lines[lineName]) {
     return res.status(404).json({ error: 'Line not found' });
   }
 
-  const lineDate = date || getToday();
+  const lineDate = getToday(); // SELALU gunakan tanggal sekarang
   const targetPerHour = Math.round(target / 8);
   
   // Generate new model ID
@@ -813,10 +813,10 @@ app.post('/api/lines/:lineName/models', requireLogin, requireLineManagementAcces
   });
 });
 
-// Update line or model - DITAMBAHKAN autoCheckDateReset
+// Update line or model - PERBAIKAN: Tidak bisa mengedit tanggal
 app.put('/api/lines/:lineName', requireLogin, requireLineManagementAccess, autoCheckDateReset, (req, res) => {
   const lineName = req.params.lineName;
-  const { labelWeek, model, date, target, modelId } = req.body;
+  const { labelWeek, model, target, modelId } = req.body;
   const data = readProductionData();
 
   if (!data.lines[lineName]) {
@@ -828,47 +828,33 @@ app.put('/api/lines/:lineName', requireLogin, requireLineManagementAccess, autoC
     return res.status(404).json({ error: 'Model not found' });
   }
 
-  const oldDate = data.lines[lineName].models[targetModelId].date;
-  const newDate = date || getToday();
   const newTarget = parseInt(target);
 
-  if (oldDate !== newDate) {
-    // Reset data karena perubahan tanggal
-    data.lines[lineName].models[targetModelId] = resetLineData({
-      ...data.lines[lineName].models[targetModelId],
-      labelWeek,
-      model,
-      date: newDate,
-      target: newTarget
-    });
-  } else {
-    // Update tanpa reset data
-    data.lines[lineName].models[targetModelId].labelWeek = labelWeek;
-    data.lines[lineName].models[targetModelId].model = model;
-    data.lines[lineName].models[targetModelId].target = newTarget;
-    data.lines[lineName].models[targetModelId].targetPerHour = Math.round(newTarget / 8);
+  // Update tanpa mengubah tanggal (tanggal tidak bisa diubah)
+  data.lines[lineName].models[targetModelId].labelWeek = labelWeek;
+  data.lines[lineName].models[targetModelId].model = model;
+  data.lines[lineName].models[targetModelId].target = newTarget;
+  data.lines[lineName].models[targetModelId].targetPerHour = Math.round(newTarget / 8);
 
-    // Update targetManual untuk semua jam (kecuali jam istirahat)
-    data.lines[lineName].models[targetModelId].hourly_data.forEach(hour => {
-      if (hour.hour !== "11:00 - 13:00") {
-        hour.targetManual = data.lines[lineName].models[targetModelId].targetPerHour;
-        hour.selisih = hour.output - hour.targetManual;
-      }
-    });
+  // Update targetManual untuk semua jam (kecuali jam istirahat)
+  data.lines[lineName].models[targetModelId].hourly_data.forEach(hour => {
+    if (hour.hour !== "11:00 - 13:00") {
+      hour.targetManual = data.lines[lineName].models[targetModelId].targetPerHour;
+      hour.selisih = hour.output - hour.targetManual;
+    }
+  });
 
-    // Hitung ulang total target dari targetManual
-    let totalTarget = 0;
-    data.lines[lineName].models[targetModelId].hourly_data.forEach(hour => {
-      totalTarget += hour.targetManual || 0;
-    });
-    data.lines[lineName].models[targetModelId].target = totalTarget;
-  }
+  // Hitung ulang total target dari targetManual
+  let totalTarget = 0;
+  data.lines[lineName].models[targetModelId].hourly_data.forEach(hour => {
+    totalTarget += hour.targetManual || 0;
+  });
+  data.lines[lineName].models[targetModelId].target = totalTarget;
 
   writeProductionData(data);
   res.json({ 
     message: `Model ${targetModelId} in line ${lineName} updated successfully`, 
-    data: data.lines[lineName].models[targetModelId],
-    reset: oldDate !== newDate ? 'Data telah direset karena perubahan tanggal.' : 'Tanggal tidak berubah, data diperbarui.'
+    data: data.lines[lineName].models[targetModelId]
   });
 });
 

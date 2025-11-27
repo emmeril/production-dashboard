@@ -57,6 +57,35 @@ function resetLineData(line) {
   };
 }
 
+// PERBAIKAN: Fungsi untuk mengecek dan mereset data jika tanggal berubah
+function checkAndResetDataForNewDay() {
+  const data = readProductionData();
+  const today = getToday();
+  let resetCount = 0;
+
+  Object.keys(data.lines).forEach(lineName => {
+    const line = data.lines[lineName];
+    Object.keys(line.models).forEach(modelId => {
+      const model = line.models[modelId];
+      if (model.date !== today) {
+        console.log(`Reset data untuk line ${lineName}, model ${modelId} dari ${model.date} ke ${today}`);
+        data.lines[lineName].models[modelId] = resetLineData({
+          ...model,
+          date: today
+        });
+        resetCount++;
+      }
+    });
+  });
+
+  if (resetCount > 0) {
+    writeProductionData(data);
+    console.log(`Auto-reset selesai: ${resetCount} model direset ke tanggal ${today}`);
+  }
+
+  return resetCount;
+}
+
 // Initialize data files
 function initializeDataFiles() {
   if (!fs.existsSync(path.join(__dirname, 'data.json'))) {
@@ -289,6 +318,13 @@ function requireLineAccess(req, res, next) {
   res.status(403).json({ error: 'Access denied to this line' });
 }
 
+// PERBAIKAN: Middleware untuk auto-check dan reset data setiap kali ada request ke data lines
+function autoCheckDateReset(req, res, next) {
+  // Jalankan pengecekan dan reset data untuk tanggal baru
+  checkAndResetDataForNewDay();
+  next();
+}
+
 // Authentication Routes
 app.post('/api/login', (req, res) => {
   const { username, password } = req.body;
@@ -325,8 +361,8 @@ app.get('/api/current-user', (req, res) => {
   }
 });
 
-// Update hourly data
-app.post('/api/update-hourly/:lineName/:modelId', requireLogin, requireLineAccess, (req, res) => {
+// Update hourly data - DITAMBAHKAN autoCheckDateReset
+app.post('/api/update-hourly/:lineName/:modelId', requireLogin, requireLineAccess, autoCheckDateReset, (req, res) => {
   const { lineName, modelId } = req.params;
   const { hourIndex, output, defect, qcChecked, targetManual } = req.body;
 
@@ -382,8 +418,8 @@ app.post('/api/update-hourly/:lineName/:modelId', requireLogin, requireLineAcces
   });
 });
 
-// Update target manual
-app.post('/api/update-target-manual/:lineName/:modelId', requireLogin, requireLineAccess, (req, res) => {
+// Update target manual - DITAMBAHKAN autoCheckDateReset
+app.post('/api/update-target-manual/:lineName/:modelId', requireLogin, requireLineAccess, autoCheckDateReset, (req, res) => {
   const { lineName, modelId } = req.params;
   const { hourIndex, targetManual } = req.body;
 
@@ -412,8 +448,8 @@ app.post('/api/update-target-manual/:lineName/:modelId', requireLogin, requireLi
   });
 });
 
-// Update langsung data per jam dari tabel
-app.post('/api/update-hourly-direct/:lineName/:modelId', requireLogin, requireLineAccess, (req, res) => {
+// Update langsung data per jam dari tabel - DITAMBAHKAN autoCheckDateReset
+app.post('/api/update-hourly-direct/:lineName/:modelId', requireLogin, requireLineAccess, autoCheckDateReset, (req, res) => {
   const { lineName, modelId } = req.params;
   const { hourIndex, output, defect, qcChecked, targetManual } = req.body;
 
@@ -629,36 +665,20 @@ app.post('/api/backup/now', requireLogin, requireAdmin, (req, res) => {
   }
 });
 
-// Sync dates endpoint
+// Sync dates endpoint - DIPERBAIKI untuk auto reset data
 app.post('/api/sync-dates', requireLogin, requireAdmin, (req, res) => {
-  const data = readProductionData();
+  const resetCount = checkAndResetDataForNewDay();
   const today = getToday();
-  let updatedModels = [];
-
-  Object.keys(data.lines).forEach(lineName => {
-    const line = data.lines[lineName];
-    Object.keys(line.models).forEach(modelId => {
-      const model = line.models[modelId];
-      if (model.date !== today) {
-        data.lines[lineName].models[modelId] = resetLineData({
-          ...model,
-          date: today
-        });
-        updatedModels.push(`${lineName} - ${modelId}`);
-      }
-    });
-  });
-
-  writeProductionData(data);
+  
   res.json({ 
-    message: `Sinkronisasi tanggal selesai`, 
-    updatedModels: updatedModels,
+    message: `Sinkronisasi tanggal selesai. ${resetCount} model direset ke tanggal ${today}`,
+    resetCount: resetCount,
     today: today
   });
 });
 
-// Line Management Routes
-app.get('/api/lines', requireLogin, (req, res) => {
+// Line Management Routes - DITAMBAHKAN autoCheckDateReset
+app.get('/api/lines', requireLogin, autoCheckDateReset, (req, res) => {
   const user = req.session.user;
   const data = readProductionData();
   
@@ -677,8 +697,8 @@ app.get('/api/lines', requireLogin, (req, res) => {
   res.status(403).json({ error: 'Access denied' });
 });
 
-// Get models for a specific line
-app.get('/api/lines/:lineName/models', requireLogin, requireLineAccess, (req, res) => {
+// Get models for a specific line - DITAMBAHKAN autoCheckDateReset
+app.get('/api/lines/:lineName/models', requireLogin, requireLineAccess, autoCheckDateReset, (req, res) => {
   const { lineName } = req.params;
   const data = readProductionData();
 
@@ -793,8 +813,8 @@ app.post('/api/lines/:lineName/models', requireLogin, requireLineManagementAcces
   });
 });
 
-// Update line or model
-app.put('/api/lines/:lineName', requireLogin, requireLineManagementAccess, (req, res) => {
+// Update line or model - DITAMBAHKAN autoCheckDateReset
+app.put('/api/lines/:lineName', requireLogin, requireLineManagementAccess, autoCheckDateReset, (req, res) => {
   const lineName = req.params.lineName;
   const { labelWeek, model, date, target, modelId } = req.body;
   const data = readProductionData();
@@ -896,8 +916,8 @@ app.delete('/api/lines/:lineName', requireLogin, requireLineManagementAccess, (r
   res.json({ message: `Line ${lineName} deleted successfully` });
 });
 
-// Set active model for a line
-app.post('/api/lines/:lineName/active-model', requireLogin, requireLineManagementAccess, (req, res) => {
+// Set active model for a line - DITAMBAHKAN autoCheckDateReset
+app.post('/api/lines/:lineName/active-model', requireLogin, requireLineManagementAccess, autoCheckDateReset, (req, res) => {
   const { lineName } = req.params;
   const { modelId } = req.body;
   const data = readProductionData();
@@ -918,8 +938,8 @@ app.post('/api/lines/:lineName/active-model', requireLogin, requireLineManagemen
   });
 });
 
-// Data Routes
-app.get('/api/line/:lineName/:modelId', requireLogin, requireLineAccess, (req, res) => {
+// Data Routes - DITAMBAHKAN autoCheckDateReset
+app.get('/api/line/:lineName/:modelId', requireLogin, requireLineAccess, autoCheckDateReset, (req, res) => {
   const { lineName, modelId } = req.params;
   const data = readProductionData();
   
@@ -935,8 +955,8 @@ app.get('/api/line/:lineName/:modelId', requireLogin, requireLineAccess, (req, r
   });
 });
 
-// Get active model for a line
-app.get('/api/line/:lineName', requireLogin, requireLineAccess, (req, res) => {
+// Get active model for a line - DITAMBAHKAN autoCheckDateReset
+app.get('/api/line/:lineName', requireLogin, requireLineAccess, autoCheckDateReset, (req, res) => {
   const { lineName } = req.params;
   const data = readProductionData();
   
@@ -957,7 +977,7 @@ app.get('/api/line/:lineName', requireLogin, requireLineAccess, (req, res) => {
   });
 });
 
-app.post('/api/update-line/:lineName/:modelId', requireLogin, requireLineAccess, (req, res) => {
+app.post('/api/update-line/:lineName/:modelId', requireLogin, requireLineAccess, autoCheckDateReset, (req, res) => {
   const { lineName, modelId } = req.params;
   const newData = req.body;
 
@@ -981,8 +1001,8 @@ app.post('/api/update-line/:lineName/:modelId', requireLogin, requireLineAccess,
   res.json({ message: `Model ${modelId} in line ${lineName} updated successfully.`, data: model });
 });
 
-// PERBAIKAN: Date-based Report Routes - Diperbaiki
-app.get('/api/date-report/:date', requireLogin, requireDateReportAccess, (req, res) => {
+// Date-based Report Routes - DITAMBAHKAN autoCheckDateReset
+app.get('/api/date-report/:date', requireLogin, requireDateReportAccess, autoCheckDateReset, (req, res) => {
   const date = req.params.date;
   
   // Validasi format tanggal
@@ -1055,8 +1075,8 @@ app.get('/api/date-report/:date', requireLogin, requireDateReportAccess, (req, r
   }
 });
 
-// PERBAIKAN: Export Date Report - Diperbaiki
-app.get('/api/export-date-report/:date', requireLogin, requireDateReportAccess, (req, res) => {
+// Export Date Report - DITAMBAHKAN autoCheckDateReset
+app.get('/api/export-date-report/:date', requireLogin, requireDateReportAccess, autoCheckDateReset, (req, res) => {
   const date = req.params.date;
   
   // Validasi format tanggal
@@ -1382,8 +1402,8 @@ function generateExcelData(modelData, lineName, modelId) {
   return workbook;
 }
 
-// Export Excel Endpoint
-app.get('/api/export/:lineName/:modelId', requireLogin, requireLineAccess, (req, res) => {
+// Export Excel Endpoint - DITAMBAHKAN autoCheckDateReset
+app.get('/api/export/:lineName/:modelId', requireLogin, requireLineAccess, autoCheckDateReset, (req, res) => {
   const { lineName, modelId } = req.params;
 
   const data = readProductionData();
@@ -1410,8 +1430,8 @@ app.get('/api/export/:lineName/:modelId', requireLogin, requireLineAccess, (req,
   }
 });
 
-// Public API Routes (No authentication required)
-app.get('/api/public/line/:lineName', (req, res) => {
+// Public API Routes (No authentication required) - DITAMBAHKAN autoCheckDateReset
+app.get('/api/public/line/:lineName', autoCheckDateReset, (req, res) => {
   const lineName = req.params.lineName;
   const data = readProductionData();
   
@@ -1434,7 +1454,7 @@ app.get('/api/public/line/:lineName', (req, res) => {
   res.json(modelData);
 });
 
-app.get('/api/public/line/:lineName/:modelId', (req, res) => {
+app.get('/api/public/line/:lineName/:modelId', autoCheckDateReset, (req, res) => {
   const { lineName, modelId } = req.params;
   const data = readProductionData();
   
@@ -1462,16 +1482,35 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// Schedule daily backup at midnight
+// PERBAIKAN: Schedule daily backup dan auto reset data
 setInterval(() => {
   const now = new Date();
-  if (now.getHours() === 0 && now.getMinutes() === 0) {
+  
+  // Backup setiap jam 23:59
+  if (now.getHours() === 23 && now.getMinutes() === 59) {
     saveDailyBackup();
+    console.log('Auto backup dijalankan');
   }
-}, 60000);
+  
+  // Auto reset data setiap hari jam 00:01
+  if (now.getHours() === 0 && now.getMinutes() === 1) {
+    const resetCount = checkAndResetDataForNewDay();
+    if (resetCount > 0) {
+      console.log(`Auto reset data selesai: ${resetCount} model direset`);
+    }
+  }
+}, 60000); // Cek setiap menit
 
 // Initialize and Start Server
 initializeDataFiles();
+
+// Jalankan pengecekan dan reset data saat server start
+setTimeout(() => {
+  const resetCount = checkAndResetDataForNewDay();
+  if (resetCount > 0) {
+    console.log(`Auto reset saat startup: ${resetCount} model direset`);
+  }
+}, 2000);
 
 setTimeout(saveDailyBackup, 5000);
 
@@ -1486,6 +1525,7 @@ app.listen(port, () => {
   console.log(`- Role: Admin, Admin Operator, Operator`);
   console.log(`- Input langsung di tabel Data Per Jam`);
   console.log(`- Target berdasarkan manual input`);
+  console.log(`- AUTO RESET DATA SETIAP HARI BARU`);
   console.log(`- Laporan berdasarkan tanggal (FIXED)`);
   console.log(`- Backup dan History System`);
   console.log(`- Export Excel`);

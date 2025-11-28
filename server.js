@@ -68,7 +68,7 @@ function resetLineData(line) {
   };
 }
 
-// PERBAIKAN: Fungsi untuk mengecek dan mereset data jika tanggal berubah
+// PERBAIKAN: Fungsi untuk mengecek dan mereset data jika tanggal berubah - DIPERBAIKI
 function checkAndResetDataForNewDay() {
   const data = readProductionData();
   const today = getToday();
@@ -78,12 +78,30 @@ function checkAndResetDataForNewDay() {
     const line = data.lines[lineName];
     Object.keys(line.models).forEach(modelId => {
       const model = line.models[modelId];
+      // PERBAIKAN: Cek jika tanggal berbeda, maka reset data produksi
       if (model.date !== today) {
         console.log(`Reset data untuk line ${lineName}, model ${modelId} dari ${model.date} ke ${today}`);
-        data.lines[lineName].models[modelId] = resetLineData({
-          ...model,
-          date: today
-        });
+        
+        // Simpan data master (labelWeek, model, target) sebelum reset
+        const masterData = {
+          labelWeek: model.labelWeek,
+          model: model.model,
+          target: model.target,
+          operators: model.operators || []
+        };
+        
+        // Reset data dengan mempertahankan data master
+        data.lines[lineName].models[modelId] = {
+          ...resetLineData({
+            ...masterData,
+            date: today
+          }),
+          // Pastikan data master tidak ter-overwrite
+          labelWeek: masterData.labelWeek,
+          model: masterData.model,
+          operators: masterData.operators
+        };
+        
         resetCount++;
       }
     });
@@ -2075,7 +2093,7 @@ app.listen(port, () => {
   console.log(`- Role: Admin, Admin Operator, Operator`);
   console.log(`- Input langsung di tabel Data Per Jam`);
   console.log(`- Target berdasarkan manual input`);
-  console.log(`- AUTO RESET DATA SETIAP HARI BARU`);
+  console.log(`- AUTO RESET DATA SETIAP HARI BARU (FIXED)`);
   console.log(`- Laporan berdasarkan tanggal (FIXED - SEMUA MODEL TERCATAT)`);
   console.log(`- Backup dan History System`);
   console.log(`- Export Excel DENGAN STYLING LANJUTAN`);

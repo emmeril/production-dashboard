@@ -68,7 +68,7 @@ function resetLineData(line) {
   };
 }
 
-// PERBAIKAN: Fungsi untuk mengecek dan mereset data jika tanggal berubah - DIPERBAIKI
+// PERBAIKAN BESAR: Fungsi untuk mengecek dan mereset data jika tanggal berubah - DIPERBAIKI LAGI
 function checkAndResetDataForNewDay() {
   const data = readProductionData();
   const today = getToday();
@@ -78,6 +78,7 @@ function checkAndResetDataForNewDay() {
     const line = data.lines[lineName];
     Object.keys(line.models).forEach(modelId => {
       const model = line.models[modelId];
+      
       // PERBAIKAN: Cek jika tanggal berbeda, maka reset data produksi
       if (model.date !== today) {
         console.log(`Reset data untuk line ${lineName}, model ${modelId} dari ${model.date} ke ${today}`);
@@ -2050,22 +2051,33 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// PERBAIKAN: Schedule daily backup dan auto reset data
+// PERBAIKAN BESAR: Schedule daily backup dan auto reset data yang lebih efektif
+let lastCheckedDate = getToday();
+
 setInterval(() => {
-  const now = new Date();
+  const today = getToday();
   
-  // Backup setiap jam 23:59
-  if (now.getHours() === 23 && now.getMinutes() === 59) {
-    saveDailyBackup();
-    console.log('Auto backup dijalankan');
-  }
-  
-  // Auto reset data setiap hari jam 00:01
-  if (now.getHours() === 0 && now.getMinutes() === 1) {
+  // PERBAIKAN: Cek jika tanggal sudah berubah, langsung reset data
+  if (today !== lastCheckedDate) {
+    console.log(`Tanggal berubah dari ${lastCheckedDate} ke ${today}, melakukan reset data...`);
+    
     const resetCount = checkAndResetDataForNewDay();
     if (resetCount > 0) {
-      console.log(`Auto reset data selesai: ${resetCount} model direset`);
+      console.log(`Auto reset data selesai: ${resetCount} model direset ke tanggal ${today}`);
     }
+    
+    // Backup data hari sebelumnya
+    saveDailyBackup();
+    console.log('Auto backup data hari sebelumnya');
+    
+    lastCheckedDate = today;
+  }
+  
+  // Backup setiap jam 23:59 (sebagai cadangan)
+  const now = new Date();
+  if (now.getHours() === 23 && now.getMinutes() === 59) {
+    saveDailyBackup();
+    console.log('Auto backup cadangan dijalankan');
   }
 }, 60000); // Cek setiap menit
 
@@ -2078,6 +2090,9 @@ setTimeout(() => {
   if (resetCount > 0) {
     console.log(`Auto reset saat startup: ${resetCount} model direset`);
   }
+  
+  // Set lastCheckedDate ke hari ini
+  lastCheckedDate = getToday();
 }, 2000);
 
 setTimeout(saveDailyBackup, 5000);
@@ -2093,12 +2108,17 @@ app.listen(port, () => {
   console.log(`- Role: Admin, Admin Operator, Operator`);
   console.log(`- Input langsung di tabel Data Per Jam`);
   console.log(`- Target berdasarkan manual input`);
-  console.log(`- AUTO RESET DATA SETIAP HARI BARU (FIXED)`);
+  console.log(`- AUTO RESET DATA SETIAP HARI BARU (FIXED - REAL-TIME CHECK)`);
   console.log(`- Laporan berdasarkan tanggal (FIXED - SEMUA MODEL TERCATAT)`);
   console.log(`- Backup dan History System`);
   console.log(`- Export Excel DENGAN STYLING LANJUTAN`);
   console.log(`- PASSWORD ENCRYPTION DENGAN SHA-256`);
   console.log(`- UNIQUE USER ID MANAGEMENT`);
+  console.log(`=================================`);
+  console.log(`SISTEM RESET OTOMATIS:`);
+  console.log(`- Real-time check setiap menit`);
+  console.log(`- Reset otomatis saat tanggal berubah`);
+  console.log(`- Backup otomatis setiap pergantian hari`);
   console.log(`=================================`);
   console.log(`Default Users:`);
   console.log(`- Admin: admin / admin123`);

@@ -68,7 +68,7 @@ function resetLineData(line) {
   };
 }
 
-// PERBAIKAN: Fungsi untuk mengecek dan mereset data jika tanggal berubah - DIPERBAIKI
+// PERBAIKAN: Fungsi untuk mengecek dan mereset data jika tanggal berubah - DIPERBAIKI UNTUK OPERATOR
 function checkAndResetDataForNewDay() {
   const data = readProductionData();
   const today = getToday();
@@ -78,7 +78,7 @@ function checkAndResetDataForNewDay() {
     const line = data.lines[lineName];
     Object.keys(line.models).forEach(modelId => {
       const model = line.models[modelId];
-      // PERBAIKAN: Cek jika tanggal berbeda, maka reset data produksi
+      // PERBAIKAN: Cek jika tanggal berbeda, maka reset data produksi termasuk operator
       if (model.date !== today) {
         console.log(`Reset data untuk line ${lineName}, model ${modelId} dari ${model.date} ke ${today}`);
         
@@ -91,15 +91,28 @@ function checkAndResetDataForNewDay() {
         };
         
         // Reset data dengan mempertahankan data master
+        const resetData = resetLineData({
+          ...masterData,
+          date: today
+        });
+        
+        // PERBAIKAN: Pastikan operator juga direset dengan status tetap dipertahankan
+        if (masterData.operators && masterData.operators.length > 0) {
+          resetData.operators = masterData.operators.map(operator => ({
+            ...operator,
+            output: 0,
+            defect: 0,
+            efficiency: 0
+            // Status operator tetap dipertahankan (active, break, off)
+          }));
+        }
+        
         data.lines[lineName].models[modelId] = {
-          ...resetLineData({
-            ...masterData,
-            date: today
-          }),
+          ...resetData,
           // Pastikan data master tidak ter-overwrite
           labelWeek: masterData.labelWeek,
           model: masterData.model,
-          operators: masterData.operators
+          operators: resetData.operators
         };
         
         resetCount++;
@@ -753,16 +766,16 @@ app.get('/api/lines/:lineName/models', requireLogin, requireLineAccess, autoChec
   res.json(data.lines[lineName].models || {});
 });
 
-// Create new line - PERBAIKAN: Selalu gunakan tanggal sekarang
+// Create new line - PERBAIKAN: Bisa pilih tanggal
 app.post('/api/lines', requireLogin, requireLineManagementAccess, (req, res) => {
-  const { lineName, labelWeek, model, target } = req.body;
+  const { lineName, labelWeek, model, target, date } = req.body; // TAMBAHKAN date
   const data = readProductionData();
 
   if (data.lines[lineName]) {
     return res.status(400).json({ error: 'Line already exists' });
   }
 
-  const lineDate = getToday(); // SELALU gunakan tanggal sekarang
+  const lineDate = date || getToday(); // GUNAKAN tanggal dari input atau hari ini
   const targetPerHour = Math.round(target / 8);
   const modelId = 'model1'; // Default first model
 
@@ -772,7 +785,7 @@ app.post('/api/lines', requireLogin, requireLineManagementAccess, (req, res) => 
         id: modelId,
         labelWeek,
         model,
-        date: lineDate,
+        date: lineDate, // GUNAKAN tanggal yang dipilih
         target: parseInt(target),
         targetPerHour: targetPerHour,
         outputDay: 0,
@@ -807,17 +820,17 @@ app.post('/api/lines', requireLogin, requireLineManagementAccess, (req, res) => 
   });
 });
 
-// Add new model to existing line - PERBAIKAN: Selalu gunakan tanggal sekarang
+// Add new model to existing line - PERBAIKAN: Bisa pilih tanggal
 app.post('/api/lines/:lineName/models', requireLogin, requireLineManagementAccess, (req, res) => {
   const { lineName } = req.params;
-  const { labelWeek, model, target } = req.body;
+  const { labelWeek, model, target, date } = req.body; // TAMBAHKAN date
   const data = readProductionData();
 
   if (!data.lines[lineName]) {
     return res.status(404).json({ error: 'Line not found' });
   }
 
-  const lineDate = getToday(); // SELALU gunakan tanggal sekarang
+  const lineDate = date || getToday(); // GUNAKAN tanggal dari input atau hari ini
   const targetPerHour = Math.round(target / 8);
   
   // Generate new model ID
@@ -828,7 +841,7 @@ app.post('/api/lines/:lineName/models', requireLogin, requireLineManagementAcces
     id: modelId,
     labelWeek,
     model,
-    date: lineDate,
+    date: lineDate, // GUNAKAN tanggal yang dipilih
     target: parseInt(target),
     targetPerHour: targetPerHour,
     outputDay: 0,
@@ -857,10 +870,10 @@ app.post('/api/lines/:lineName/models', requireLogin, requireLineManagementAcces
   });
 });
 
-// Update line or model - PERBAIKAN: Tidak bisa mengedit tanggal
+// Update line or model - PERBAIKAN: Bisa mengedit tanggal
 app.put('/api/lines/:lineName', requireLogin, requireLineManagementAccess, autoCheckDateReset, (req, res) => {
   const lineName = req.params.lineName;
-  const { labelWeek, model, target, modelId } = req.body;
+  const { labelWeek, model, target, modelId, date } = req.body; // TAMBAHKAN date
   const data = readProductionData();
 
   if (!data.lines[lineName]) {
@@ -874,11 +887,16 @@ app.put('/api/lines/:lineName', requireLogin, requireLineManagementAccess, autoC
 
   const newTarget = parseInt(target);
 
-  // Update tanpa mengubah tanggal (tanggal tidak bisa diubah)
+  // PERBAIKAN: Bisa mengubah tanggal
   data.lines[lineName].models[targetModelId].labelWeek = labelWeek;
   data.lines[lineName].models[targetModelId].model = model;
   data.lines[lineName].models[targetModelId].target = newTarget;
   data.lines[lineName].models[targetModelId].targetPerHour = Math.round(newTarget / 8);
+  
+  // PERBAIKAN: Update tanggal jika diubah
+  if (date) {
+    data.lines[lineName].models[targetModelId].date = date;
+  }
 
   // Update targetManual untuk semua jam (kecuali jam istirahat)
   data.lines[lineName].models[targetModelId].hourly_data.forEach(hour => {
@@ -2099,6 +2117,8 @@ app.listen(port, () => {
   console.log(`- Export Excel DENGAN STYLING LANJUTAN`);
   console.log(`- PASSWORD ENCRYPTION DENGAN SHA-256`);
   console.log(`- UNIQUE USER ID MANAGEMENT`);
+  console.log(`- FITUR PILIH TANGGAL KEMBALI AKTIF`);
+  console.log(`- RESET DATA OPERATOR SETIAP GANTI HARI`);
   console.log(`=================================`);
   console.log(`Default Users:`);
   console.log(`- Admin: admin / admin123`);

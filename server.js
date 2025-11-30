@@ -2070,21 +2070,18 @@ app.get('/', (req, res) => {
 
 // PERBAIKAN: Schedule daily backup dan auto reset data
 setInterval(() => {
-  const now = new Date();
+
   
-  // Backup setiap jam 23:59
-  if (now.getHours() === 23 && now.getMinutes() === 59) {
     saveDailyBackup();
     console.log('Auto backup dijalankan');
-  }
+  
   
   // Auto reset data setiap hari jam 00:01
-  if (now.getHours() === 0 && now.getMinutes() === 1) {
     const resetCount = checkAndResetDataForNewDay();
     if (resetCount > 0) {
       console.log(`Auto reset data selesai: ${resetCount} model direset`);
     }
-  }
+
 }, 60000); // Cek setiap menit
 
 // Initialize and Start Server

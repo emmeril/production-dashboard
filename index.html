@@ -228,7 +228,30 @@
                 <div x-show="currentPage === 'dashboard'" class="fade-in">
                     <div class="mb-6">
                         <h1 class="text-2xl font-bold text-gray-800">Dashboard Produksi</h1>
-                        <p class="text-gray-600">Ringkasan performa produksi hari ini</p>
+                        <p class="text-gray-600">Ringkasan performa produksi <span x-text="selectedDate"></span></p>
+                    </div>
+
+                    <!-- Date Selection -->
+                    <div class="bg-white rounded-lg shadow p-4 card-shadow mb-6">
+                        <div class="flex flex-col md:flex-row md:items-center md:justify-between">
+                            <div class="mb-4 md:mb-0">
+                                <h3 class="text-lg font-medium text-gray-900">Pilih Tanggal</h3>
+                                <p class="text-sm text-gray-600">Pilih tanggal untuk melihat data produksi</p>
+                            </div>
+                            <div class="flex flex-col md:flex-row md:items-center space-y-2 md:space-y-0 md:space-x-4">
+                                <div>
+                                    <input type="date" x-model="selectedDate" @change="changeDate()" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                </div>
+                                <div class="flex space-x-2">
+                                    <button @click="changeDate('today')" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                        Hari Ini
+                                    </button>
+                                    <button @click="changeDate('yesterday')" class="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500">
+                                        Kemarin
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Summary Cards -->
@@ -459,6 +482,7 @@
                         <div>
                             <h1 class="text-2xl font-bold text-gray-800" x-text="'Line ' + currentLine + ' - ' + currentModelId"></h1>
                             <p class="text-gray-600" x-text="lineDetail.labelWeek + ' - ' + lineDetail.model"></p>
+                            <p class="text-sm text-gray-500" x-text="'Tanggal: ' + selectedDate"></p>
                         </div>
                         <div class="flex space-x-2">
                             <button @click="exportLineExcel(currentLine, currentModelId)" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
@@ -601,6 +625,7 @@
                         <div>
                             <h1 class="text-2xl font-bold text-gray-800" x-text="'Input Data - Line ' + currentLine + ' - ' + currentModelId"></h1>
                             <p class="text-gray-600" x-text="lineDetail.labelWeek + ' - ' + lineDetail.model"></p>
+                            <p class="text-sm text-gray-500" x-text="'Tanggal: ' + selectedDate"></p>
                         </div>
                         <button @click="changePage('dashboard')" class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                             Kembali
@@ -1113,8 +1138,8 @@
                             </div>
                             <div>
                                 <label for="date" class="block text-sm font-medium text-gray-700">Tanggal</label>
-                                <input type="date" id="date" x-model="lineModal.data.date" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md bg-gray-100" readonly>
-                                <p class="text-xs text-gray-500 mt-1">Tanggal otomatis mengikuti hari ini dan tidak dapat diubah</p>
+                                <input type="date" id="date" x-model="lineModal.data.date" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" required>
+                                <p class="text-xs text-gray-500 mt-1">Pilih tanggal untuk line ini</p>
                             </div>
                         </div>
                     </div>
@@ -1166,8 +1191,8 @@
                             </div>
                             <div>
                                 <label for="model-date" class="block text-sm font-medium text-gray-700">Tanggal</label>
-                                <input type="date" id="model-date" x-model="modelModal.data.date" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md bg-gray-100" readonly>
-                                <p class="text-xs text-gray-500 mt-1">Tanggal otomatis mengikuti hari ini dan tidak dapat diubah</p>
+                                <input type="date" id="model-date" x-model="modelModal.data.date" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" required>
+                                <p class="text-xs text-gray-500 mt-1">Pilih tanggal untuk model ini</p>
                             </div>
                         </div>
                     </div>
@@ -1310,6 +1335,9 @@
                 users: [],
                 dateReport: [],
                 reportDate: new Date().toISOString().split('T')[0],
+                
+                // Date selection
+                selectedDate: new Date().toISOString().split('T')[0],
                 
                 // Forms
                 inputForm: {
@@ -1501,13 +1529,34 @@
                     this.changePage('input-data');
                 },
 
+                // Date change handler
+                async changeDate(type = null) {
+                    if (type === 'today') {
+                        this.selectedDate = new Date().toISOString().split('T')[0];
+                    } else if (type === 'yesterday') {
+                        const yesterday = new Date();
+                        yesterday.setDate(yesterday.getDate() - 1);
+                        this.selectedDate = yesterday.toISOString().split('T')[0];
+                    }
+                    
+                    // Save selected date to localStorage
+                    localStorage.setItem('selectedDate', this.selectedDate);
+                    
+                    // Reload data for the selected date
+                    await this.loadLines();
+                    await this.loadDashboardData();
+                    
+                    this.showToast(`Data untuk tanggal ${this.selectedDate} dimuat`, 'info');
+                },
+
                 // Save and restore page state
                 savePageState() {
                     if (this.isAuthenticated) {
                         const pageState = {
                             currentPage: this.currentPage,
                             currentLine: this.currentLine,
-                            currentModelId: this.currentModelId
+                            currentModelId: this.currentModelId,
+                            selectedDate: this.selectedDate
                         };
                         localStorage.setItem('dashboardPageState', JSON.stringify(pageState));
                     }
@@ -1526,6 +1575,7 @@
                                     this.currentPage = state.currentPage;
                                     this.currentLine = state.currentLine || '';
                                     this.currentModelId = state.currentModelId || '';
+                                    this.selectedDate = state.selectedDate || new Date().toISOString().split('T')[0];
                                     
                                     // If we're on line-detail or input-data page, load the line detail
                                     if ((this.currentPage === 'line-detail' || this.currentPage === 'input-data') && 
@@ -1542,7 +1592,11 @@
                                 console.error('Error restoring page state:', error);
                                 // If there's an error, default to dashboard
                                 this.currentPage = 'dashboard';
+                                this.selectedDate = new Date().toISOString().split('T')[0];
                             }
+                        } else {
+                            // Set default date if no saved state
+                            this.selectedDate = new Date().toISOString().split('T')[0];
                         }
                     }
                 },
@@ -1550,7 +1604,7 @@
                 // Data loading methods
                 async loadLines() {
                     try {
-                        const response = await fetch('/api/lines');
+                        const response = await fetch(`/api/lines?date=${this.selectedDate}`);
                         if (response.ok) {
                             const data = await response.json();
                             this.lines = Object.keys(data).map(key => ({
@@ -1589,9 +1643,9 @@
                     try {
                         let url;
                         if (modelId) {
-                            url = `/api/line/${lineName}/${modelId}`;
+                            url = `/api/line/${lineName}/${modelId}?date=${this.selectedDate}`;
                         } else {
-                            url = `/api/line/${lineName}`;
+                            url = `/api/line/${lineName}?date=${this.selectedDate}`;
                         }
                         
                         const response = await fetch(url);
@@ -1729,7 +1783,7 @@
                     }
                     
                     try {
-                        const response = await fetch(`/api/update-hourly/${this.currentLine}/${this.currentModelId}`, {
+                        const response = await fetch(`/api/update-hourly/${this.currentLine}/${this.currentModelId}?date=${this.selectedDate}`, {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json'
@@ -1762,7 +1816,7 @@
                     }
                     
                     try {
-                        const response = await fetch(`/api/update-target-manual/${lineName}/${modelId}`, {
+                        const response = await fetch(`/api/update-target-manual/${lineName}/${modelId}?date=${this.selectedDate}`, {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json'
@@ -1799,7 +1853,7 @@
                     const hour = this.lineDetail.hourly_data[hourIndex];
                     
                     try {
-                        const response = await fetch(`/api/update-hourly-direct/${lineName}/${modelId}`, {
+                        const response = await fetch(`/api/update-hourly-direct/${lineName}/${modelId}?date=${this.selectedDate}`, {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json'
@@ -1830,13 +1884,13 @@
                 // Export methods
                 async exportLineExcel(lineName, modelId) {
                     try {
-                        const response = await fetch(`/api/export/${lineName}/${modelId}`);
+                        const response = await fetch(`/api/export/${lineName}/${modelId}?date=${this.selectedDate}`);
                         if (response.ok) {
                             const blob = await response.blob();
                             const url = window.URL.createObjectURL(blob);
                             const a = document.createElement('a');
                             a.href = url;
-                            a.download = `Production_Report_${lineName}_${modelId}_${new Date().toISOString().split('T')[0]}.xlsx`;
+                            a.download = `Production_Report_${lineName}_${modelId}_${this.selectedDate}.xlsx`;
                             document.body.appendChild(a);
                             a.click();
                             window.URL.revokeObjectURL(url);
@@ -1872,7 +1926,7 @@
                             labelWeek: '',
                             model: '',
                             target: 180,
-                            date: new Date().toISOString().split('T')[0]
+                            date: this.selectedDate
                         };
                     }
                     this.lineModal.open = true;
@@ -1884,7 +1938,7 @@
                         labelWeek: '',
                         model: '',
                         target: 180,
-                        date: new Date().toISOString().split('T')[0]
+                        date: this.selectedDate
                     };
                     this.modelModal.open = true;
                 },

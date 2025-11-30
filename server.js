@@ -69,49 +69,72 @@ function checkAndResetDataForNewDay() {
   const today = getToday();
   let resetCount = 0;
 
+  // Cek apakah sudah ada data untuk hari ini
+  let hasTodayData = false;
   Object.keys(data.lines).forEach(lineName => {
     const line = data.lines[lineName];
     Object.keys(line.models).forEach(modelId => {
       const model = line.models[modelId];
-      if (model.date !== today) {
-        console.log(`Reset data untuk line ${lineName}, model ${modelId} dari ${model.date} ke ${today}`);
-        
-        const masterData = {
-          labelWeek: model.labelWeek,
-          model: model.model,
-          target: model.target,
-          operators: model.operators || []
-        };
-        
-        const resetData = resetLineData({
-          ...masterData,
-          date: today
-        });
-        
-        if (masterData.operators && masterData.operators.length > 0) {
-          resetData.operators = masterData.operators.map(operator => ({
-            ...operator,
-            output: 0,
-            defect: 0,
-            efficiency: 0
-          }));
-        }
-        
-        data.lines[lineName].models[modelId] = {
-          ...resetData,
-          labelWeek: masterData.labelWeek,
-          model: masterData.model,
-          operators: resetData.operators
-        };
-        
-        resetCount++;
+      if (model.date === today) {
+        hasTodayData = true;
       }
+    });
+  });
+
+  // Jika sudah ada data untuk hari ini, tidak perlu reset
+  if (hasTodayData) {
+    console.log(`Data untuk tanggal ${today} sudah ada, skip reset.`);
+    return 0;
+  }
+
+  console.log(`Memulai reset data untuk tanggal baru: ${today}`);
+
+  Object.keys(data.lines).forEach(lineName => {
+    const line = data.lines[lineName];
+    Object.keys(line.models).forEach(modelId => {
+      const model = line.models[modelId];
+      
+      // Reset semua model ke tanggal hari ini
+      console.log(`Reset data untuk line ${lineName}, model ${modelId} dari ${model.date} ke ${today}`);
+      
+      const masterData = {
+        labelWeek: model.labelWeek,
+        model: model.model,
+        target: model.target,
+        operators: model.operators || []
+      };
+      
+      const resetData = resetLineData({
+        ...masterData,
+        date: today
+      });
+      
+      if (masterData.operators && masterData.operators.length > 0) {
+        resetData.operators = masterData.operators.map(operator => ({
+          ...operator,
+          output: 0,
+          defect: 0,
+          efficiency: 0
+        }));
+      }
+      
+      data.lines[lineName].models[modelId] = {
+        ...resetData,
+        labelWeek: masterData.labelWeek,
+        model: masterData.model,
+        operators: resetData.operators
+      };
+      
+      resetCount++;
     });
   });
 
   if (resetCount > 0) {
     writeProductionData(data);
     console.log(`Auto-reset selesai: ${resetCount} model direset ke tanggal ${today}`);
+    
+    // Buat backup setelah reset
+    saveDailyBackup();
   }
 
   return resetCount;
@@ -259,8 +282,13 @@ function saveDailyBackup() {
     const today = new Date().toISOString().split('T')[0];
     const backupFile = path.join(__dirname, 'history', `data_${today}.json`);
     
-    fs.writeFileSync(backupFile, JSON.stringify(data, null, 2));
-    console.log(`Daily backup saved: data_${today}.json`);
+    // Cek apakah backup untuk hari ini sudah ada
+    if (!fs.existsSync(backupFile)) {
+      fs.writeFileSync(backupFile, JSON.stringify(data, null, 2));
+      console.log(`Daily backup saved: data_${today}.json`);
+    } else {
+      console.log(`Backup for ${today} already exists, skipping...`);
+    }
   } catch (error) {
     console.error('Error saving daily backup:', error);
   }
@@ -398,6 +426,45 @@ app.get('/api/current-user', (req, res) => {
   } else {
     res.status(401).json({ error: 'Not logged in' });
   }
+});
+
+// Endpoint untuk cek status sistem
+app.get('/api/system-status', requireLogin, requireAdmin, (req, res) => {
+  const data = readProductionData();
+  const today = getToday();
+  
+  let modelCount = 0;
+  let todayModelCount = 0;
+  let otherDateModelCount = 0;
+  const modelDates = {};
+  
+  Object.keys(data.lines).forEach(lineName => {
+    const line = data.lines[lineName];
+    Object.keys(line.models).forEach(modelId => {
+      const model = line.models[modelId];
+      modelCount++;
+      
+      if (model.date === today) {
+        todayModelCount++;
+      } else {
+        otherDateModelCount++;
+        if (!modelDates[model.date]) {
+          modelDates[model.date] = 0;
+        }
+        modelDates[model.date]++;
+      }
+    });
+  });
+  
+  res.json({
+    systemTime: new Date().toISOString(),
+    today: today,
+    modelCount: modelCount,
+    todayModelCount: todayModelCount,
+    otherDateModelCount: otherDateModelCount,
+    modelDates: modelDates,
+    needsSync: otherDateModelCount > 0
+  });
 });
 
 app.post('/api/update-hourly/:lineName/:modelId', requireLogin, requireLineAccess, autoCheckDateReset, (req, res) => {
@@ -700,14 +767,25 @@ app.post('/api/backup/now', requireLogin, requireAdmin, (req, res) => {
 });
 
 app.post('/api/sync-dates', requireLogin, requireAdmin, (req, res) => {
+  console.log('Manual sync-dates endpoint called');
   const resetCount = checkAndResetDataForNewDay();
   const today = getToday();
   
-  res.json({ 
-    message: `Sinkronisasi tanggal selesai. ${resetCount} model direset ke tanggal ${today}`,
-    resetCount: resetCount,
-    today: today
-  });
+  if (resetCount > 0) {
+    res.json({ 
+      message: `Sinkronisasi tanggal selesai. ${resetCount} model direset ke tanggal ${today}`,
+      resetCount: resetCount,
+      today: today,
+      status: 'success'
+    });
+  } else {
+    res.json({ 
+      message: `Tidak ada data yang perlu direset. Semua model sudah menggunakan tanggal ${today}`,
+      resetCount: resetCount,
+      today: today,
+      status: 'no_changes'
+    });
+  }
 });
 
 app.get('/api/lines', requireLogin, autoCheckDateReset, (req, res) => {
@@ -1942,26 +2020,39 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
+// Perbaikan interval dan startup logic
 setInterval(() => {
-  saveDailyBackup();
-  console.log('Auto backup dijalankan');
+  const now = new Date();
+  console.log(`System check at: ${now.toLocaleString()}`);
   
+  // Cek dan reset data untuk hari baru
   const resetCount = checkAndResetDataForNewDay();
   if (resetCount > 0) {
     console.log(`Auto reset data selesai: ${resetCount} model direset`);
   }
-}, 60000);
+  
+  // Buat backup setiap hari pada jam 00:01
+  if (now.getHours() === 0 && now.getMinutes() === 1) {
+    saveDailyBackup();
+    console.log('Midnight backup executed');
+  }
+}, 60000); // Check every minute
 
 initializeDataFiles();
 
+// Check for date reset on startup dengan delay lebih lama
 setTimeout(() => {
   const resetCount = checkAndResetDataForNewDay();
   if (resetCount > 0) {
     console.log(`Auto reset saat startup: ${resetCount} model direset`);
   }
-}, 2000);
+}, 10000); // Increase delay to 10 seconds
 
-setTimeout(saveDailyBackup, 5000);
+// Initial backup dengan delay
+setTimeout(() => {
+  saveDailyBackup();
+  console.log('Initial backup completed');
+}, 15000);
 
 app.listen(port, () => {
   console.log(`=================================`);
@@ -1982,6 +2073,7 @@ app.listen(port, () => {
   console.log(`- UNIQUE USER ID MANAGEMENT`);
   console.log(`- FITUR PILIH TANGGAL KEMBALI AKTIF`);
   console.log(`- RESET DATA OPERATOR SETIAP GANTI HARI`);
+  console.log(`- DAILY BACKUP DAN AUTO-SYNC TANGGAL (FIXED)`);
   console.log(`=================================`);
   console.log(`Default Users:`);
   console.log(`- Admin: admin / admin123`);

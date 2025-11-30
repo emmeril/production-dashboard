@@ -9,12 +9,10 @@ const crypto = require('crypto');
 const app = express();
 const port = 3000;
 
-// Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('.'));
 
-// Session middleware
 app.use(session({
   secret: 'production-board-secret-key-2024',
   resave: false,
@@ -25,7 +23,6 @@ app.use(session({
   }
 }));
 
-// Password encryption functions
 function hashPassword(password) {
   return crypto.createHash('sha256').update(password).digest('hex');
 }
@@ -34,7 +31,6 @@ function verifyPassword(password, hashedPassword) {
   return hashPassword(password) === hashedPassword;
 }
 
-// Utility Functions
 function getToday() {
   return new Date().toISOString().split('T')[0];
 }
@@ -68,7 +64,6 @@ function resetLineData(line) {
   };
 }
 
-// PERBAIKAN: Fungsi untuk mengecek dan mereset data jika tanggal berubah - DIPERBAIKI UNTUK OPERATOR
 function checkAndResetDataForNewDay() {
   const data = readProductionData();
   const today = getToday();
@@ -78,11 +73,9 @@ function checkAndResetDataForNewDay() {
     const line = data.lines[lineName];
     Object.keys(line.models).forEach(modelId => {
       const model = line.models[modelId];
-      // PERBAIKAN: Cek jika tanggal berbeda, maka reset data produksi termasuk operator
       if (model.date !== today) {
         console.log(`Reset data untuk line ${lineName}, model ${modelId} dari ${model.date} ke ${today}`);
         
-        // Simpan data master (labelWeek, model, target) sebelum reset
         const masterData = {
           labelWeek: model.labelWeek,
           model: model.model,
@@ -90,26 +83,22 @@ function checkAndResetDataForNewDay() {
           operators: model.operators || []
         };
         
-        // Reset data dengan mempertahankan data master
         const resetData = resetLineData({
           ...masterData,
           date: today
         });
         
-        // PERBAIKAN: Pastikan operator juga direset dengan status tetap dipertahankan
         if (masterData.operators && masterData.operators.length > 0) {
           resetData.operators = masterData.operators.map(operator => ({
             ...operator,
             output: 0,
             defect: 0,
             efficiency: 0
-            // Status operator tetap dipertahankan (active, break, off)
           }));
         }
         
         data.lines[lineName].models[modelId] = {
           ...resetData,
-          // Pastikan data master tidak ter-overwrite
           labelWeek: masterData.labelWeek,
           model: masterData.model,
           operators: resetData.operators
@@ -128,7 +117,6 @@ function checkAndResetDataForNewDay() {
   return resetCount;
 }
 
-// Initialize data files
 function initializeDataFiles() {
   if (!fs.existsSync(path.join(__dirname, 'data.json'))) {
     const today = getToday();
@@ -259,14 +247,12 @@ function writeUsersData(data) {
   }
 }
 
-// Generate unique user ID
 function generateUserId(users) {
   if (users.length === 0) return 1;
   const maxId = Math.max(...users.map(user => user.id));
   return maxId + 1;
 }
 
-// History Functions
 function saveDailyBackup() {
   try {
     const data = readProductionData();
@@ -315,7 +301,6 @@ function readHistoryData(filename) {
   }
 }
 
-// Authentication Middleware
 function requireLogin(req, res, next) {
   if (req.session.user) {
     next();
@@ -375,14 +360,11 @@ function requireLineAccess(req, res, next) {
   res.status(403).json({ error: 'Access denied to this line' });
 }
 
-// PERBAIKAN: Middleware untuk auto-check dan reset data setiap kali ada request ke data lines
 function autoCheckDateReset(req, res, next) {
-  // Jalankan pengecekan dan reset data untuk tanggal baru
   checkAndResetDataForNewDay();
   next();
 }
 
-// Authentication Routes
 app.post('/api/login', (req, res) => {
   const { username, password } = req.body;
   const usersData = readUsersData();
@@ -418,7 +400,6 @@ app.get('/api/current-user', (req, res) => {
   }
 });
 
-// Update hourly data - DITAMBAHKAN autoCheckDateReset
 app.post('/api/update-hourly/:lineName/:modelId', requireLogin, requireLineAccess, autoCheckDateReset, (req, res) => {
   const { lineName, modelId } = req.params;
   const { hourIndex, output, defect, qcChecked, targetManual } = req.body;
@@ -475,7 +456,6 @@ app.post('/api/update-hourly/:lineName/:modelId', requireLogin, requireLineAcces
   });
 });
 
-// Update target manual - DITAMBAHKAN autoCheckDateReset
 app.post('/api/update-target-manual/:lineName/:modelId', requireLogin, requireLineAccess, autoCheckDateReset, (req, res) => {
   const { lineName, modelId } = req.params;
   const { hourIndex, targetManual } = req.body;
@@ -505,7 +485,6 @@ app.post('/api/update-target-manual/:lineName/:modelId', requireLogin, requireLi
   });
 });
 
-// Update langsung data per jam dari tabel - DITAMBAHKAN autoCheckDateReset
 app.post('/api/update-hourly-direct/:lineName/:modelId', requireLogin, requireLineAccess, autoCheckDateReset, (req, res) => {
   const { lineName, modelId } = req.params;
   const { hourIndex, output, defect, qcChecked, targetManual } = req.body;
@@ -562,7 +541,6 @@ app.post('/api/update-hourly-direct/:lineName/:modelId', requireLogin, requireLi
   });
 });
 
-// History Data Routes
 app.get('/api/history/files', requireLogin, requireAdmin, (req, res) => {
   try {
     const historyFiles = getHistoryFiles();
@@ -711,7 +689,6 @@ app.get('/api/history/:filename/export', requireLogin, requireAdmin, (req, res) 
   }
 });
 
-// Manual backup endpoint
 app.post('/api/backup/now', requireLogin, requireAdmin, (req, res) => {
   try {
     saveDailyBackup();
@@ -722,7 +699,6 @@ app.post('/api/backup/now', requireLogin, requireAdmin, (req, res) => {
   }
 });
 
-// Sync dates endpoint - DIPERBAIKI untuk auto reset data
 app.post('/api/sync-dates', requireLogin, requireAdmin, (req, res) => {
   const resetCount = checkAndResetDataForNewDay();
   const today = getToday();
@@ -734,7 +710,6 @@ app.post('/api/sync-dates', requireLogin, requireAdmin, (req, res) => {
   });
 });
 
-// Line Management Routes - DITAMBAHKAN autoCheckDateReset
 app.get('/api/lines', requireLogin, autoCheckDateReset, (req, res) => {
   const user = req.session.user;
   const data = readProductionData();
@@ -754,7 +729,6 @@ app.get('/api/lines', requireLogin, autoCheckDateReset, (req, res) => {
   res.status(403).json({ error: 'Access denied' });
 });
 
-// Get models for a specific line - DITAMBAHKAN autoCheckDateReset
 app.get('/api/lines/:lineName/models', requireLogin, requireLineAccess, autoCheckDateReset, (req, res) => {
   const { lineName } = req.params;
   const data = readProductionData();
@@ -766,18 +740,17 @@ app.get('/api/lines/:lineName/models', requireLogin, requireLineAccess, autoChec
   res.json(data.lines[lineName].models || {});
 });
 
-// Create new line - PERBAIKAN: Bisa pilih tanggal
 app.post('/api/lines', requireLogin, requireLineManagementAccess, (req, res) => {
-  const { lineName, labelWeek, model, target, date } = req.body; // TAMBAHKAN date
+  const { lineName, labelWeek, model, target, date } = req.body;
   const data = readProductionData();
 
   if (data.lines[lineName]) {
     return res.status(400).json({ error: 'Line already exists' });
   }
 
-  const lineDate = date || getToday(); // GUNAKAN tanggal dari input atau hari ini
+  const lineDate = date || getToday();
   const targetPerHour = Math.round(target / 8);
-  const modelId = 'model1'; // Default first model
+  const modelId = 'model1';
 
   data.lines[lineName] = {
     models: {
@@ -785,7 +758,7 @@ app.post('/api/lines', requireLogin, requireLineManagementAccess, (req, res) => 
         id: modelId,
         labelWeek,
         model,
-        date: lineDate, // GUNAKAN tanggal yang dipilih
+        date: lineDate,
         target: parseInt(target),
         targetPerHour: targetPerHour,
         outputDay: 0,
@@ -820,20 +793,18 @@ app.post('/api/lines', requireLogin, requireLineManagementAccess, (req, res) => 
   });
 });
 
-// Add new model to existing line - PERBAIKAN: Bisa pilih tanggal
 app.post('/api/lines/:lineName/models', requireLogin, requireLineManagementAccess, (req, res) => {
   const { lineName } = req.params;
-  const { labelWeek, model, target, date } = req.body; // TAMBAHKAN date
+  const { labelWeek, model, target, date } = req.body;
   const data = readProductionData();
 
   if (!data.lines[lineName]) {
     return res.status(404).json({ error: 'Line not found' });
   }
 
-  const lineDate = date || getToday(); // GUNAKAN tanggal dari input atau hari ini
+  const lineDate = date || getToday();
   const targetPerHour = Math.round(target / 8);
   
-  // Generate new model ID
   const modelCount = Object.keys(data.lines[lineName].models).length;
   const modelId = `model${modelCount + 1}`;
 
@@ -841,7 +812,7 @@ app.post('/api/lines/:lineName/models', requireLogin, requireLineManagementAcces
     id: modelId,
     labelWeek,
     model,
-    date: lineDate, // GUNAKAN tanggal yang dipilih
+    date: lineDate,
     target: parseInt(target),
     targetPerHour: targetPerHour,
     outputDay: 0,
@@ -870,10 +841,9 @@ app.post('/api/lines/:lineName/models', requireLogin, requireLineManagementAcces
   });
 });
 
-// Update line or model - PERBAIKAN: Bisa mengedit tanggal
 app.put('/api/lines/:lineName', requireLogin, requireLineManagementAccess, autoCheckDateReset, (req, res) => {
   const lineName = req.params.lineName;
-  const { labelWeek, model, target, modelId, date } = req.body; // TAMBAHKAN date
+  const { labelWeek, model, target, modelId, date } = req.body;
   const data = readProductionData();
 
   if (!data.lines[lineName]) {
@@ -887,18 +857,15 @@ app.put('/api/lines/:lineName', requireLogin, requireLineManagementAccess, autoC
 
   const newTarget = parseInt(target);
 
-  // PERBAIKAN: Bisa mengubah tanggal
   data.lines[lineName].models[targetModelId].labelWeek = labelWeek;
   data.lines[lineName].models[targetModelId].model = model;
   data.lines[lineName].models[targetModelId].target = newTarget;
   data.lines[lineName].models[targetModelId].targetPerHour = Math.round(newTarget / 8);
   
-  // PERBAIKAN: Update tanggal jika diubah
   if (date) {
     data.lines[lineName].models[targetModelId].date = date;
   }
 
-  // Update targetManual untuk semua jam (kecuali jam istirahat)
   data.lines[lineName].models[targetModelId].hourly_data.forEach(hour => {
     if (hour.hour !== "11:00 - 13:00") {
       hour.targetManual = data.lines[lineName].models[targetModelId].targetPerHour;
@@ -906,7 +873,6 @@ app.put('/api/lines/:lineName', requireLogin, requireLineManagementAccess, autoC
     }
   });
 
-  // Hitung ulang total target dari targetManual
   let totalTarget = 0;
   data.lines[lineName].models[targetModelId].hourly_data.forEach(hour => {
     totalTarget += hour.targetManual || 0;
@@ -920,7 +886,6 @@ app.put('/api/lines/:lineName', requireLogin, requireLineManagementAccess, autoC
   });
 });
 
-// Delete model from line
 app.delete('/api/lines/:lineName/models/:modelId', requireLogin, requireLineManagementAccess, (req, res) => {
   const { lineName, modelId } = req.params;
   const data = readProductionData();
@@ -933,14 +898,12 @@ app.delete('/api/lines/:lineName/models/:modelId', requireLogin, requireLineMana
     return res.status(404).json({ error: 'Model not found' });
   }
 
-  // Cannot delete the last model
   if (Object.keys(data.lines[lineName].models).length === 1) {
     return res.status(400).json({ error: 'Cannot delete the last model in a line' });
   }
 
   delete data.lines[lineName].models[modelId];
 
-  // If deleted model was active, set another model as active
   if (data.lines[lineName].activeModel === modelId) {
     const remainingModels = Object.keys(data.lines[lineName].models);
     data.lines[lineName].activeModel = remainingModels[0];
@@ -950,7 +913,6 @@ app.delete('/api/lines/:lineName/models/:modelId', requireLogin, requireLineMana
   res.json({ message: `Model ${modelId} deleted from line ${lineName} successfully` });
 });
 
-// Delete entire line
 app.delete('/api/lines/:lineName', requireLogin, requireLineManagementAccess, (req, res) => {
   const lineName = req.params.lineName;
   const data = readProductionData();
@@ -964,7 +926,6 @@ app.delete('/api/lines/:lineName', requireLogin, requireLineManagementAccess, (r
   res.json({ message: `Line ${lineName} deleted successfully` });
 });
 
-// Set active model for a line - DITAMBAHKAN autoCheckDateReset
 app.post('/api/lines/:lineName/active-model', requireLogin, requireLineManagementAccess, autoCheckDateReset, (req, res) => {
   const { lineName } = req.params;
   const { modelId } = req.body;
@@ -986,7 +947,6 @@ app.post('/api/lines/:lineName/active-model', requireLogin, requireLineManagemen
   });
 });
 
-// Data Routes - DITAMBAHKAN autoCheckDateReset
 app.get('/api/line/:lineName/:modelId', requireLogin, requireLineAccess, autoCheckDateReset, (req, res) => {
   const { lineName, modelId } = req.params;
   const data = readProductionData();
@@ -1003,7 +963,6 @@ app.get('/api/line/:lineName/:modelId', requireLogin, requireLineAccess, autoChe
   });
 });
 
-// Get active model for a line - DITAMBAHKAN autoCheckDateReset
 app.get('/api/line/:lineName', requireLogin, requireLineAccess, autoCheckDateReset, (req, res) => {
   const { lineName } = req.params;
   const data = readProductionData();
@@ -1049,17 +1008,14 @@ app.post('/api/update-line/:lineName/:modelId', requireLogin, requireLineAccess,
   res.json({ message: `Model ${modelId} in line ${lineName} updated successfully.`, data: model });
 });
 
-// Date-based Report Routes - DITAMBAHKAN autoCheckDateReset
 app.get('/api/date-report/:date', requireLogin, requireDateReportAccess, autoCheckDateReset, (req, res) => {
   const date = req.params.date;
   
-  // Validasi format tanggal
   if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
     return res.status(400).json({ error: 'Format tanggal tidak valid. Gunakan format: YYYY-MM-DD' });
   }
   
   try {
-    // Coba baca dari backup terlebih dahulu
     const backupFile = path.join(__dirname, 'history', `data_${date}.json`);
     let data;
     
@@ -1070,7 +1026,6 @@ app.get('/api/date-report/:date', requireLogin, requireDateReportAccess, autoChe
       console.log(`Backup tidak ditemukan, menggunakan data.json untuk tanggal: ${date}`);
       data = readProductionData();
       
-      // Filter data berdasarkan tanggal
       const filteredLines = {};
       Object.keys(data.lines).forEach(lineName => {
         const line = data.lines[lineName];
@@ -1094,7 +1049,6 @@ app.get('/api/date-report/:date', requireLogin, requireDateReportAccess, autoChe
       data.lines = filteredLines;
     }
     
-    // Format data untuk response
     const reportData = [];
     Object.keys(data.lines).forEach(lineName => {
       const line = data.lines[lineName];
@@ -1123,17 +1077,14 @@ app.get('/api/date-report/:date', requireLogin, requireDateReportAccess, autoChe
   }
 });
 
-// PERBAIKAN BESAR: Fungsi untuk generate Excel dengan styling untuk laporan berdasarkan tanggal - DIPERBAIKI untuk menampilkan semua model
 async function generateStyledDateReportExcel(data, date) {
   const workbook = new ExcelJS.Workbook();
   
-  // Setup properties workbook
   workbook.creator = 'Production Dashboard System';
   workbook.lastModifiedBy = 'Production Dashboard System';
   workbook.created = new Date();
   workbook.modified = new Date();
   
-  // Style definitions
   const headerStyle = {
     font: { bold: true, color: { argb: 'FFFFFF' } },
     fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: '4472C4' } },
@@ -1183,16 +1134,13 @@ async function generateStyledDateReportExcel(data, date) {
     }
   };
 
-  // ===== SHEET: SUMMARY =====
   const summarySheet = workbook.addWorksheet('SUMMARY');
   
-  // Judul
   summarySheet.mergeCells('A1:J1');
   const titleCell = summarySheet.getCell('A1');
   titleCell.value = 'PRODUCTION REPORT SUMMARY - ' + date;
   titleCell.style = titleStyle;
   
-  // Informasi laporan
   summarySheet.getCell('A3').value = 'Generated Date';
   summarySheet.getCell('B3').value = new Date().toLocaleString('id-ID');
   summarySheet.getCell('A4').value = 'Report Date';
@@ -1200,14 +1148,12 @@ async function generateStyledDateReportExcel(data, date) {
   summarySheet.getCell('A5').value = 'Total Lines';
   summarySheet.getCell('B5').value = Object.keys(data.lines).length;
   
-  // Header tabel
   const headers = ['Line', 'Model ID', 'Label/Week', 'Model', 'Target', 'Output', 'Achievement %', 'Defect', 'QC Checked', 'Defect Rate %'];
   summarySheet.getRow(7).values = headers;
   summarySheet.getRow(7).eachCell((cell) => {
     cell.style = headerStyle;
   });
   
-  // Data lines
   let rowIndex = 8;
   let totalTarget = 0;
   let totalOutput = 0;
@@ -1234,7 +1180,6 @@ async function generateStyledDateReportExcel(data, date) {
         (model.defectRatePercentage || 0) + '%'
       ];
       
-      // Beri warna pada achievement
       const achievementCell = row.getCell(7);
       const achievementValue = parseFloat(achievement);
       if (achievementValue >= 100) {
@@ -1245,7 +1190,6 @@ async function generateStyledDateReportExcel(data, date) {
         achievementCell.font = { color: { argb: 'FF0000' }, bold: true };
       }
       
-      // Beri warna pada defect rate
       const defectRateCell = row.getCell(10);
       const defectRateValue = model.defectRatePercentage || 0;
       if (defectRateValue <= 5) {
@@ -1269,7 +1213,6 @@ async function generateStyledDateReportExcel(data, date) {
     });
   });
   
-  // Baris total
   const totalAchievement = totalTarget > 0 ? ((totalOutput / totalTarget) * 100).toFixed(2) + '%' : '0%';
   const totalDefectRate = totalQCChecked > 0 ? ((totalDefect / totalQCChecked) * 100).toFixed(2) + '%' : '0%';
   
@@ -1290,7 +1233,6 @@ async function generateStyledDateReportExcel(data, date) {
     cell.style = totalStyle;
   });
   
-  // Auto adjust column widths
   summarySheet.columns = [
     { width: 15 },
     { width: 12 },
@@ -1304,26 +1246,21 @@ async function generateStyledDateReportExcel(data, date) {
     { width: 15 }
   ];
 
-  // ===== SHEET: DETAIL PER LINE =====
-  // PERBAIKAN: Buat sheet terpisah untuk setiap line agar semua model tercatat
   Object.keys(data.lines).forEach(lineName => {
     const line = data.lines[lineName];
-    const lineSheet = workbook.addWorksheet(lineName.substring(0, 31)); // Batasi nama sheet
+    const lineSheet = workbook.addWorksheet(lineName.substring(0, 31));
     
     let currentRow = 1;
     
-    // Judul untuk setiap line
     lineSheet.mergeCells(`A${currentRow}:G${currentRow}`);
     const lineTitle = lineSheet.getCell(`A${currentRow}`);
     lineTitle.value = `PRODUCTION DETAIL - ${lineName} - ${date}`;
     lineTitle.style = titleStyle;
     currentRow += 2;
 
-    // PERBAIKAN: Iterasi melalui semua model dalam line
     Object.keys(line.models).forEach(modelId => {
       const model = line.models[modelId];
       
-      // Informasi model - PERBAIKAN: Tambahkan Model ID
       lineSheet.getCell(`A${currentRow}`).value = 'Model ID';
       lineSheet.getCell(`B${currentRow}`).value = modelId;
       currentRow++;
@@ -1352,7 +1289,6 @@ async function generateStyledDateReportExcel(data, date) {
       lineSheet.getCell(`B${currentRow}`).value = (model.defectRatePercentage || 0) + '%';
       currentRow += 2;
       
-      // Header hourly data
       const hourlyHeaders = ['Jam', 'Target Manual', 'Output', 'Selisih', 'Defect', 'QC Checked', 'Defect Rate %'];
       lineSheet.getRow(currentRow).values = hourlyHeaders;
       lineSheet.getRow(currentRow).eachCell((cell) => {
@@ -1360,7 +1296,6 @@ async function generateStyledDateReportExcel(data, date) {
       });
       currentRow++;
       
-      // Data hourly
       if (model.hourly_data && model.hourly_data.length > 0) {
         model.hourly_data.forEach(hour => {
           const defectRate = hour.qcChecked > 0 ? ((hour.defect / hour.qcChecked) * 100).toFixed(2) : '0.00';
@@ -1377,7 +1312,6 @@ async function generateStyledDateReportExcel(data, date) {
             defectRate + '%'
           ];
           
-          // Styling conditional untuk selisih
           const selisihCell = row.getCell(4);
           if (selisih >= 0) {
             selisihCell.font = { color: { argb: '00B050' }, bold: true };
@@ -1385,7 +1319,6 @@ async function generateStyledDateReportExcel(data, date) {
             selisihCell.font = { color: { argb: 'FF0000' }, bold: true };
           }
           
-          // Styling conditional untuk defect rate
           const defectRateCell = row.getCell(7);
           const defectRateValue = parseFloat(defectRate);
           if (defectRateValue <= 5) {
@@ -1404,11 +1337,9 @@ async function generateStyledDateReportExcel(data, date) {
         });
       }
       
-      // PERBAIKAN: Tambahkan jarak antara model yang berbeda dalam line yang sama
       currentRow += 3;
     });
     
-    // Auto adjust column widths untuk line sheet
     lineSheet.columns = [
       { width: 15 },
       { width: 25 },
@@ -1420,23 +1351,19 @@ async function generateStyledDateReportExcel(data, date) {
     ];
   });
 
-  // ===== SHEET: PERFORMANCE OVERVIEW =====
   const performanceSheet = workbook.addWorksheet('PERFORMANCE');
   
-  // Judul
   performanceSheet.mergeCells('A1:E1');
   const performanceTitle = performanceSheet.getCell('A1');
   performanceTitle.value = 'PERFORMANCE OVERVIEW - ' + date;
   performanceTitle.style = titleStyle;
   
-  // Header
   const performanceHeaders = ['Line', 'Total Target', 'Total Output', 'Achievement %', 'Overall Status'];
   performanceSheet.getRow(3).values = performanceHeaders;
   performanceSheet.getRow(3).eachCell((cell) => {
     cell.style = headerStyle;
   });
   
-  // Data performance per line
   let perfRowIndex = 4;
   Object.keys(data.lines).forEach(lineName => {
     const line = data.lines[lineName];
@@ -1461,7 +1388,6 @@ async function generateStyledDateReportExcel(data, date) {
       status
     ];
     
-    // Styling conditional untuk achievement
     const achievementCell = row.getCell(4);
     const achievementValue = parseFloat(achievement);
     if (achievementValue >= 100) {
@@ -1472,7 +1398,6 @@ async function generateStyledDateReportExcel(data, date) {
       achievementCell.font = { color: { argb: 'FF0000' }, bold: true };
     }
     
-    // Styling conditional untuk status
     const statusCell = row.getCell(5);
     if (status === 'ON TARGET') {
       statusCell.font = { color: { argb: '00B050' }, bold: true };
@@ -1483,7 +1408,7 @@ async function generateStyledDateReportExcel(data, date) {
     }
     
     row.eachCell((cell) => {
-      if (cell.value !== status) { // Jangan timpa styling status cell
+      if (cell.value !== status) {
         cell.style = dataStyle;
       }
     });
@@ -1491,7 +1416,6 @@ async function generateStyledDateReportExcel(data, date) {
     perfRowIndex++;
   });
   
-  // Total performance
   const totalAchievementPerf = totalTarget > 0 ? ((totalOutput / totalTarget) * 100).toFixed(2) + '%' : '0%';
   const overallStatus = totalOutput >= totalTarget ? 'ON TARGET' : 'BELOW TARGET';
   
@@ -1507,7 +1431,6 @@ async function generateStyledDateReportExcel(data, date) {
     cell.style = totalStyle;
   });
   
-  // Auto adjust column widths untuk performance sheet
   performanceSheet.columns = [
     { width: 15 },
     { width: 15 },
@@ -1519,17 +1442,14 @@ async function generateStyledDateReportExcel(data, date) {
   return workbook;
 }
 
-// Export Date Report dengan styling - DITAMBAHKAN autoCheckDateReset
 app.get('/api/export-date-report/:date', requireLogin, requireDateReportAccess, autoCheckDateReset, async (req, res) => {
   const date = req.params.date;
   
-  // Validasi format tanggal
   if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
     return res.status(400).json({ error: 'Format tanggal tidak valid. Gunakan format: YYYY-MM-DD' });
   }
   
   try {
-    // Coba baca dari backup terlebih dahulu
     const backupFile = path.join(__dirname, 'history', `data_${date}.json`);
     let data;
     
@@ -1540,7 +1460,6 @@ app.get('/api/export-date-report/:date', requireLogin, requireDateReportAccess, 
       console.log(`Backup tidak ditemukan, menggunakan data.json untuk export tanggal: ${date}`);
       data = readProductionData();
       
-      // Filter data berdasarkan tanggal
       const filteredLines = {};
       Object.keys(data.lines).forEach(lineName => {
         const line = data.lines[lineName];
@@ -1564,7 +1483,6 @@ app.get('/api/export-date-report/:date', requireLogin, requireDateReportAccess, 
       data.lines = filteredLines;
     }
     
-    // Generate Excel dengan styling
     const workbook = await generateStyledDateReportExcel(data, date);
     
     const downloadFilename = `Production_Report_${date}.xlsx`;
@@ -1579,10 +1497,8 @@ app.get('/api/export-date-report/:date', requireLogin, requireDateReportAccess, 
   }
 });
 
-// User Management Routes
 app.get('/api/users', requireLogin, requireAdmin, (req, res) => {
   const usersData = readUsersData();
-  // Jangan kembalikan password
   const usersWithoutPasswords = usersData.users.map(user => {
     const { password, ...userWithoutPassword } = user;
     return userWithoutPassword;
@@ -1594,12 +1510,10 @@ app.post('/api/users', requireLogin, requireAdmin, (req, res) => {
   const { username, password, name, line, role } = req.body;
   const usersData = readUsersData();
 
-  // Check if username already exists
   if (usersData.users.find(u => u.username === username)) {
     return res.status(400).json({ error: 'Username already exists' });
   }
 
-  // Generate unique ID
   const newId = generateUserId(usersData.users);
 
   const newUser = {
@@ -1614,7 +1528,6 @@ app.post('/api/users', requireLogin, requireAdmin, (req, res) => {
   usersData.users.push(newUser);
   writeUsersData(usersData);
 
-  // Return user without password
   const { password: _, ...userWithoutPassword } = newUser;
   
   res.json({ 
@@ -1633,12 +1546,10 @@ app.put('/api/users/:id', requireLogin, requireAdmin, (req, res) => {
     return res.status(404).json({ error: 'User not found' });
   }
 
-  // Check if username already exists (excluding current user)
   if (usersData.users.find(u => u.username === username && u.id !== userId)) {
     return res.status(400).json({ error: 'Username already exists' });
   }
 
-  // Update user data
   usersData.users[userIndex] = {
     ...usersData.users[userIndex],
     username,
@@ -1647,14 +1558,12 @@ app.put('/api/users/:id', requireLogin, requireAdmin, (req, res) => {
     role
   };
 
-  // Update password if provided
   if (password && password.trim() !== '') {
     usersData.users[userIndex].password = hashPassword(password);
   }
 
   writeUsersData(usersData);
 
-  // Return user without password
   const { password: _, ...userWithoutPassword } = usersData.users[userIndex];
   
   res.json({ 
@@ -1679,7 +1588,6 @@ app.delete('/api/users/:id', requireLogin, requireAdmin, (req, res) => {
   const deletedUser = usersData.users.splice(userIndex, 1)[0];
   writeUsersData(usersData);
 
-  // Return user without password
   const { password: _, ...userWithoutPassword } = deletedUser;
   
   res.json({ 
@@ -1688,17 +1596,14 @@ app.delete('/api/users/:id', requireLogin, requireAdmin, (req, res) => {
   });
 });
 
-// Export Excel Function dengan styling yang lebih baik
 async function generateStyledExcelData(modelData, lineName, modelId) {
   const workbook = new ExcelJS.Workbook();
   
-  // Setup properties workbook
   workbook.creator = 'Production Dashboard System';
   workbook.lastModifiedBy = 'Production Dashboard System';
   workbook.created = new Date();
   workbook.modified = new Date();
   
-  // Style untuk header
   const headerStyle = {
     font: { bold: true, color: { argb: 'FFFFFF' } },
     fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: '4472C4' } },
@@ -1711,13 +1616,11 @@ async function generateStyledExcelData(modelData, lineName, modelId) {
     }
   };
   
-  // Style untuk judul
   const titleStyle = {
     font: { bold: true, size: 16, color: { argb: '1F4E78' } },
     alignment: { horizontal: 'center', vertical: 'middle' }
   };
   
-  // Style untuk data
   const dataStyle = {
     font: { size: 11 },
     border: {
@@ -1728,7 +1631,6 @@ async function generateStyledExcelData(modelData, lineName, modelId) {
     }
   };
   
-  // Style untuk total
   const totalStyle = {
     font: { bold: true, color: { argb: 'FFFFFF' } },
     fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: '70AD47' } },
@@ -1740,16 +1642,13 @@ async function generateStyledExcelData(modelData, lineName, modelId) {
     }
   };
   
-  // ===== SHEET: SUMMARY =====
   const summarySheet = workbook.addWorksheet('SUMMARY');
   
-  // Judul
   summarySheet.mergeCells('A1:H1');
   const titleCell = summarySheet.getCell('A1');
   titleCell.value = 'PRODUCTION REPORT SUMMARY';
   titleCell.style = titleStyle;
   
-  // Informasi dasar
   summarySheet.getCell('A3').value = 'Line';
   summarySheet.getCell('B3').value = lineName;
   summarySheet.getCell('A4').value = 'Model ID';
@@ -1761,14 +1660,12 @@ async function generateStyledExcelData(modelData, lineName, modelId) {
   summarySheet.getCell('A7').value = 'Date';
   summarySheet.getCell('B7').value = modelData.date || '';
   
-  // Header tabel data
   const headers = ['Metric', 'Value', 'Target per Hour', 'Output/Hari', 'QC Checking', 'Actual Defect', 'Defect Rate (%)'];
   summarySheet.getRow(9).values = headers;
   summarySheet.getRow(9).eachCell((cell) => {
     cell.style = headerStyle;
   });
   
-  // Data utama
   const dataRow1 = summarySheet.getRow(10);
   dataRow1.values = [
     'Production Data',
@@ -1783,7 +1680,6 @@ async function generateStyledExcelData(modelData, lineName, modelId) {
     cell.style = dataStyle;
   });
   
-  // Hitung persentase achievement
   const achievement = modelData.target > 0 ? ((modelData.outputDay || 0) / modelData.target * 100).toFixed(2) + '%' : '0%';
   
   const dataRow2 = summarySheet.getRow(11);
@@ -1800,7 +1696,6 @@ async function generateStyledExcelData(modelData, lineName, modelId) {
     cell.style = dataStyle;
   });
   
-  // Auto adjust column widths
   summarySheet.columns = [
     { width: 20 },
     { width: 15 },
@@ -1811,23 +1706,19 @@ async function generateStyledExcelData(modelData, lineName, modelId) {
     { width: 15 }
   ];
   
-  // ===== SHEET: HOURLY DATA =====
   const hourlySheet = workbook.addWorksheet('HOURLY DATA');
   
-  // Judul
   hourlySheet.mergeCells('A1:G1');
   const hourlyTitle = hourlySheet.getCell('A1');
   hourlyTitle.value = 'HOURLY PRODUCTION DATA';
   hourlyTitle.style = titleStyle;
   
-  // Header
   const hourlyHeaders = ['Jam', 'Target Manual', 'Output', 'Selisih (Output - Target)', 'Defect', 'QC Checked', 'Defect Rate (%)'];
   hourlySheet.getRow(3).values = hourlyHeaders;
   hourlySheet.getRow(3).eachCell((cell) => {
     cell.style = headerStyle;
   });
   
-  // Data per jam
   let rowIndex = 4;
   let totalTargetManual = 0;
   let totalOutput = 0;
@@ -1850,23 +1741,21 @@ async function generateStyledExcelData(modelData, lineName, modelId) {
         defectRate + '%'
       ];
       
-      // Beri warna pada selisih berdasarkan nilai
       const selisihCell = row.getCell(4);
       if (selisih >= 0) {
-        selisihCell.font = { color: { argb: '00B050' }, bold: true }; // Hijau untuk positif
+        selisihCell.font = { color: { argb: '00B050' }, bold: true };
       } else {
-        selisihCell.font = { color: { argb: 'FF0000' }, bold: true }; // Merah untuk negatif
+        selisihCell.font = { color: { argb: 'FF0000' }, bold: true };
       }
       
-      // Beri warna pada defect rate berdasarkan nilai
       const defectRateCell = row.getCell(7);
       const defectRateValue = parseFloat(defectRate);
       if (defectRateValue <= 5) {
-        defectRateCell.font = { color: { argb: '00B050' }, bold: true }; // Hijau untuk <= 5%
+        defectRateCell.font = { color: { argb: '00B050' }, bold: true };
       } else if (defectRateValue <= 10) {
-        defectRateCell.font = { color: { argb: 'FFC000' }, bold: true }; // Kuning untuk 5-10%
+        defectRateCell.font = { color: { argb: 'FFC000' }, bold: true };
       } else {
-        defectRateCell.font = { color: { argb: 'FF0000' }, bold: true }; // Merah untuk > 10%
+        defectRateCell.font = { color: { argb: 'FF0000' }, bold: true };
       }
       
       row.eachCell((cell) => {
@@ -1882,7 +1771,6 @@ async function generateStyledExcelData(modelData, lineName, modelId) {
     });
   }
   
-  // Baris total
   const totalDefectRate = totalQCChecked > 0 ? ((totalDefect / totalQCChecked) * 100).toFixed(2) : '0.00';
   const totalSelisih = totalOutput - totalTargetManual;
   
@@ -1900,7 +1788,6 @@ async function generateStyledExcelData(modelData, lineName, modelId) {
     cell.style = totalStyle;
   });
   
-  // Auto adjust column widths
   hourlySheet.columns = [
     { width: 15 },
     { width: 15 },
@@ -1911,24 +1798,20 @@ async function generateStyledExcelData(modelData, lineName, modelId) {
     { width: 15 }
   ];
   
-  // ===== SHEET: OPERATOR DATA (jika ada) =====
   if (modelData.operators && modelData.operators.length > 0) {
     const operatorSheet = workbook.addWorksheet('OPERATOR DATA');
     
-    // Judul
     operatorSheet.mergeCells('A1:H1');
     const operatorTitle = operatorSheet.getCell('A1');
     operatorTitle.value = 'OPERATOR PERFORMANCE';
     operatorTitle.style = titleStyle;
     
-    // Header
     const operatorHeaders = ['No', 'Nama Operator', 'Posisi', 'Target', 'Output', 'Defect', 'Efisiensi (%)', 'Status'];
     operatorSheet.getRow(3).values = operatorHeaders;
     operatorSheet.getRow(3).eachCell((cell) => {
       cell.style = headerStyle;
     });
     
-    // Data operator
     let opRowIndex = 4;
     modelData.operators.forEach((operator, index) => {
       const statusText = operator.status === 'active' ? 'Aktif' : 
@@ -1946,24 +1829,22 @@ async function generateStyledExcelData(modelData, lineName, modelId) {
         statusText
       ];
       
-      // Beri warna pada status
       const statusCell = row.getCell(8);
       if (operator.status === 'active') {
-        statusCell.font = { color: { argb: '00B050' }, bold: true }; // Hijau untuk aktif
+        statusCell.font = { color: { argb: '00B050' }, bold: true };
       } else if (operator.status === 'break') {
-        statusCell.font = { color: { argb: 'FFC000' }, bold: true }; // Kuning untuk istirahat
+        statusCell.font = { color: { argb: 'FFC000' }, bold: true };
       } else {
-        statusCell.font = { color: { argb: 'FF0000' }, bold: true }; // Merah untuk off
+        statusCell.font = { color: { argb: 'FF0000' }, bold: true };
       }
       
-      // Beri warna pada efisiensi
       const efficiencyCell = row.getCell(7);
       if (operator.efficiency >= 100) {
-        efficiencyCell.font = { color: { argb: '00B050' }, bold: true }; // Hijau untuk >= 100%
+        efficiencyCell.font = { color: { argb: '00B050' }, bold: true };
       } else if (operator.efficiency >= 80) {
-        efficiencyCell.font = { color: { argb: 'FFC000' }, bold: true }; // Kuning untuk 80-99%
+        efficiencyCell.font = { color: { argb: 'FFC000' }, bold: true };
       } else {
-        efficiencyCell.font = { color: { argb: 'FF0000' }, bold: true }; // Merah untuk < 80%
+        efficiencyCell.font = { color: { argb: 'FF0000' }, bold: true };
       }
       
       row.eachCell((cell) => {
@@ -1973,7 +1854,6 @@ async function generateStyledExcelData(modelData, lineName, modelId) {
       opRowIndex++;
     });
     
-    // Auto adjust column widths
     operatorSheet.columns = [
       { width: 8 },
       { width: 25 },
@@ -1989,7 +1869,6 @@ async function generateStyledExcelData(modelData, lineName, modelId) {
   return workbook;
 }
 
-// Export Excel Endpoint dengan styling - DITAMBAHKAN autoCheckDateReset
 app.get('/api/export/:lineName/:modelId', requireLogin, requireLineAccess, autoCheckDateReset, async (req, res) => {
   const { lineName, modelId } = req.params;
 
@@ -2016,7 +1895,6 @@ app.get('/api/export/:lineName/:modelId', requireLogin, requireLineAccess, autoC
   }
 });
 
-// Public API Routes (No authentication required) - DITAMBAHKAN autoCheckDateReset
 app.get('/api/public/line/:lineName', autoCheckDateReset, (req, res) => {
   const lineName = req.params.lineName;
   const data = readProductionData();
@@ -2032,7 +1910,6 @@ app.get('/api/public/line/:lineName', autoCheckDateReset, (req, res) => {
 
   const modelData = data.lines[lineName].models[activeModelId];
   
-  // Hitung target per jam jika belum ada
   if (!modelData.targetPerHour) {
     modelData.targetPerHour = Math.round(modelData.target / 8);
   }
@@ -2050,7 +1927,6 @@ app.get('/api/public/line/:lineName/:modelId', autoCheckDateReset, (req, res) =>
 
   const modelData = data.lines[lineName].models[modelId];
   
-  // Hitung target per jam jika belum ada
   if (!modelData.targetPerHour) {
     modelData.targetPerHour = Math.round(modelData.target / 8);
   }
@@ -2058,36 +1934,26 @@ app.get('/api/public/line/:lineName/:modelId', autoCheckDateReset, (req, res) =>
   res.json(modelData);
 });
 
-// Route untuk halaman public display
 app.get('/public-display', (req, res) => {
   res.sendFile(path.join(__dirname, 'public-display.html'));
 });
 
-// Page Routes
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// PERBAIKAN: Schedule daily backup dan auto reset data
 setInterval(() => {
-
+  saveDailyBackup();
+  console.log('Auto backup dijalankan');
   
-    saveDailyBackup();
-    console.log('Auto backup dijalankan');
-  
-  
-  // Auto reset data setiap hari jam 00:01
-    const resetCount = checkAndResetDataForNewDay();
-    if (resetCount > 0) {
-      console.log(`Auto reset data selesai: ${resetCount} model direset`);
-    }
+  const resetCount = checkAndResetDataForNewDay();
+  if (resetCount > 0) {
+    console.log(`Auto reset data selesai: ${resetCount} model direset`);
+  }
+}, 60000);
 
-}, 60000); // Cek setiap menit
-
-// Initialize and Start Server
 initializeDataFiles();
 
-// Jalankan pengecekan dan reset data saat server start
 setTimeout(() => {
   const resetCount = checkAndResetDataForNewDay();
   if (resetCount > 0) {

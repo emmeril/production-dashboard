@@ -275,19 +275,20 @@
                             </div>
                         </div>
                         
-                        <div class="bg-white rounded-lg shadow p-4 card-shadow">
-                            <div class="flex items-center">
-                                <div class="rounded-full bg-purple-100 p-3 mr-4">
-                                    <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
-                                    </svg>
-                                </div>
-                                <div>
-                                    <p class="text-sm font-medium text-gray-500">Operator Aktif</p>
-                                    <p class="text-2xl font-bold text-gray-800" x-text="dashboardData.activeOperators || 0"></p>
-                                </div>
-                            </div>
-                        </div>
+                       <!-- Di bagian Summary Cards, tambahkan x-show pada kartu Operator Aktif -->
+<div class="bg-white rounded-lg shadow p-4 card-shadow" x-show="currentUser.role === 'admin'">
+    <div class="flex items-center">
+        <div class="rounded-full bg-purple-100 p-3 mr-4">
+            <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+            </svg>
+        </div>
+        <div>
+            <p class="text-sm font-medium text-gray-500">Operator Aktif</p>
+            <p class="text-2xl font-bold text-gray-800" x-text="dashboardData.activeOperators || 0"></p>
+        </div>
+    </div>
+</div>
                     </div>
 
                     <!-- Lines Overview -->
@@ -1611,38 +1612,45 @@
                         this.showToast('Error loading line detail', 'error');
                     }
                 },
-                
-                async loadDashboardData() {
-                    await this.loadLines();
-                    
-                    // Calculate dashboard totals from all models
-                    let totalOutput = 0;
-                    let totalTarget = 0;
-                    let totalDefectRate = 0;
-                    let activeOperators = 0;
-                    let modelCount = 0;
+// Ganti fungsi loadDashboardData() dengan versi yang diperbaiki:
+async loadDashboardData() {
+    await this.loadLines();
+    
+    // Calculate dashboard totals from all models
+    let totalOutput = 0;
+    let totalTarget = 0;
+    let totalDefectRate = 0;
+    let modelCount = 0;
 
-                    this.linesWithModels.forEach(line => {
-                        totalOutput += line.data.outputDay || 0;
-                        totalTarget += line.data.target || 0;
-                        totalDefectRate += line.data.defectRatePercentage || 0;
-                        modelCount++;
-                        
-                        // Count active operators
-                        if (line.data.operators) {
-                            activeOperators += line.data.operators.filter(op => op.status === 'active').length;
-                        }
-                    });
+    this.linesWithModels.forEach(line => {
+        totalOutput += line.data.outputDay || 0;
+        totalTarget += line.data.target || 0;
+        totalDefectRate += line.data.defectRatePercentage || 0;
+        modelCount++;
+    });
 
-                    this.dashboardData = {
-                        totalOutput: totalOutput,
-                        totalTarget: totalTarget,
-                        defectRate: modelCount > 0 ? (totalDefectRate / modelCount).toFixed(2) : 0,
-                        activeOperators: activeOperators
-                    };
-                },
-                
-                async loadAdminData() {
+    // PERBAIKAN: Hitung operator aktif dari data users.json
+    let activeOperators = 0;
+    try {
+        const response = await fetch('/api/users');
+        if (response.ok) {
+            const users = await response.json();
+            // Hitung user dengan role 'operator'
+            activeOperators = users.filter(user => user.role === 'operator').length;
+        }
+    } catch (error) {
+        console.error('Error loading users for operator count:', error);
+    }
+
+    this.dashboardData = {
+        totalOutput: totalOutput,
+        totalTarget: totalTarget,
+        defectRate: modelCount > 0 ? (totalDefectRate / modelCount).toFixed(2) : 0,
+        activeOperators: activeOperators
+    };
+},           
+
+async loadAdminData() {
                     await this.loadUsers();
                 },
                 

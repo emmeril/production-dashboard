@@ -2167,37 +2167,37 @@
                 },
 
                 // System status check
-                async checkSystemStatus() {
-                    try {
-                        const response = await fetch('/api/system-status');
-                        if (response.ok) {
-                            const status = await response.json();
-                            console.log('System status:', status);
-                            
-                            let message = `Status Sistem:\n`;
-                            message += `- Waktu Sistem: ${new Date(status.systemTime).toLocaleString('id-ID')}\n`;
-                            message += `- Tanggal Hari Ini: ${status.today}\n`;
-                            message += `- Total Model: ${status.modelCount}\n`;
-                            message += `- Model Hari Ini: ${status.todayModelCount}\n`;
-                            message += `- Model Tanggal Lain: ${status.otherDateModelCount}\n`;
-                            
-                            if (status.needsSync) {
-                                message += `\n⚠️ PERINGATAN: ${status.otherDateModelCount} model menggunakan tanggal lama!\n`;
-                                message += `Silakan klik "Sinkronisasi Tanggal" untuk memperbarui.`;
-                                this.showToast(message, 'error');
-                            } else {
-                                message += `\n✅ Semua model sudah menggunakan tanggal hari ini.`;
-                                this.showToast(message, 'success');
-                            }
-                        } else {
-                            this.showToast('Gagal memuat status sistem', 'error');
-                        }
-                    } catch (error) {
-                        console.error('Error checking system status:', error);
-                        this.showToast('Error checking system status', 'error');
-                    }
-                },
-                
+
+async checkSystemStatus() {
+    try {
+        const response = await fetch('/api/system-status');
+        if (response.ok) {
+            const status = await response.json();
+            console.log('System status:', status);
+            
+            let message = `Status Sistem:\n`;
+            message += `- Waktu Sistem: ${status.systemTime}\n`; // Langsung gunakan string yang sudah diformat
+            message += `- Tanggal Hari Ini: ${status.today}\n`;
+            message += `- Total Model: ${status.modelCount}\n`;
+            message += `- Model Hari Ini: ${status.todayModelCount}\n`;
+            message += `- Model Tanggal Lain: ${status.otherDateModelCount}\n`;
+            
+            if (status.needsSync) {
+                message += `\n⚠️ PERINGATAN: ${status.otherDateModelCount} model menggunakan tanggal lama!\n`;
+                message += `Silakan klik "Sinkronisasi Tanggal" untuk memperbarui.`;
+                this.showToast(message, 'error');
+            } else {
+                message += `\n✅ Semua model sudah menggunakan tanggal hari ini.`;
+                this.showToast(message, 'success');
+            }
+        } else {
+            this.showToast('Gagal memuat status sistem', 'error');
+        }
+    } catch (error) {
+        console.error('Error checking system status:', error);
+        this.showToast('Error checking system status', 'error');
+    }
+},
                 // Utility methods
                 showToast(message, type = 'info') {
                     this.toast = {

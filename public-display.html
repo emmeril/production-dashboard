@@ -423,6 +423,12 @@
             background: rgba(59, 130, 246, 0.2);
             color: #93c5fd;
         }
+        
+        .balance-info {
+            font-size: calc(1.2rem * var(--scale-factor));
+            margin-top: 5px;
+            color: #cbd5e1;
+        }
     </style>
 </head>
 <body x-data="publicDisplay()" x-cloak>
@@ -450,22 +456,33 @@
                         <div class="progress-container">
                             <div class="progress-bar" :style="'width: ' + Math.min(calculateTargetProgressPercentage(), 100) + '%;'"></div>
                         </div>
+                        <div class="balance-info">
+                            Current Hour Target
+                        </div>
                     </div>
                     <div class="data-box">
                         <div class="data-label">BALANCE</div>
                         <div class="data-value" 
-                             x-text="calculateAccumulatedDifference()" 
+                             x-text="calculateCumulativeBalance()" 
                              :class="{
                                  'pulse': dataUpdated,
-                                 'text-green-400': calculateAccumulatedDifference() >= 0,
-                                 'text-red-400': calculateAccumulatedDifference() < 0
+                                 'text-green-400': calculateCumulativeBalance() >= 0,
+                                 'text-red-400': calculateCumulativeBalance() < 0
                              }"></div>
                         <div class="percentage" 
-                             :class="calculateAccumulatedDifference() >= 0 ? 'positive' : 'negative'"
-                             x-text="calculateDifferencePercentage() + '%'"></div>
+                             :class="calculateCumulativeBalance() >= 0 ? 'positive' : 'negative'"
+                             x-text="calculateCumulativeBalancePercentage() + '%'"></div>
+                        <div class="balance-info">
+                            Accumulated (Running Hours)
+                        </div>
+                        <div class="balance-info text-sm">
+                            Current Hour: <span x-text="getCurrentHourRange()"></span> | 
+                            Balance: <span x-text="calculateCurrentHourBalance()"
+                                       :class="calculateCurrentHourBalance() >= 0 ? 'text-green-300' : 'text-red-300'"></span>
+                        </div>
                     </div>
                     <div class="data-box">
-                        <div class="data-label">PRODUCTIVTY</div>
+                        <div class="data-label">PRODUCTIVITY</div>
                         <div class="data-value" x-text="lineData.data.outputDay || 0" :class="{'pulse': dataUpdated}"></div>
                         <div class="percentage" 
                              :class="calculateOutputPercentage() >= 100 ? 'positive' : (calculateOutputPercentage() >= 80 ? 'neutral' : 'negative')"
@@ -491,7 +508,6 @@
         </div>
         
         <div class="footer">
-            
             <div class="datetime" id="current-datetime">Loading...</div>
             <div class="flex items-center justify-center mt-2">
                 <div class="auto-refresh-indicator bg-green-400 rounded-full w-3 h-3 mr-2"></div>
@@ -683,6 +699,88 @@
                     return currentHourTarget;
                 },
                 
+                getCurrentHourRange() {
+                    if (!this.lineData.data.hourly_data || this.lineData.data.hourly_data.length === 0) return '';
+                    
+                    const now = new Date();
+                    const currentTime = now.getHours() * 60 + now.getMinutes();
+                    
+                    for (let hour of this.lineData.data.hourly_data) {
+                        const hourStart = hour.hour.split(' - ')[0];
+                        const [startHour, startMinute] = hourStart.split(':').map(Number);
+                        const hourStartTime = startHour * 60 + startMinute;
+                        
+                        const hourEnd = hour.hour.split(' - ')[1];
+                        const [endHour, endMinute] = hourEnd.split(':').map(Number);
+                        const hourEndTime = endHour * 60 + endMinute;
+                        
+                        if (currentTime >= hourStartTime && currentTime < hourEndTime) {
+                            return hour.hour;
+                        }
+                    }
+                    
+                    return 'No active hour';
+                },
+                
+                calculateCurrentHourBalance() {
+                    if (!this.lineData.data.hourly_data || this.lineData.data.hourly_data.length === 0) return 0;
+                    
+                    const now = new Date();
+                    const currentTime = now.getHours() * 60 + now.getMinutes();
+                    
+                    let currentHourBalance = 0;
+                    
+                    for (let hour of this.lineData.data.hourly_data) {
+                        const hourStart = hour.hour.split(' - ')[0];
+                        const [startHour, startMinute] = hourStart.split(':').map(Number);
+                        const hourStartTime = startHour * 60 + startMinute;
+                        
+                        const hourEnd = hour.hour.split(' - ')[1];
+                        const [endHour, endMinute] = hourEnd.split(':').map(Number);
+                        const hourEndTime = endHour * 60 + endMinute;
+                        
+                        if (currentTime >= hourStartTime && currentTime < hourEndTime) {
+                            // Hitung selisih untuk jam ini saja: Output - Target
+                            currentHourBalance = (hour.output || 0) - (hour.targetManual || 0);
+                            break;
+                        }
+                    }
+                    
+                    return currentHourBalance;
+                },
+                
+                calculateCumulativeBalance() {
+                    if (!this.lineData.data.hourly_data || this.lineData.data.hourly_data.length === 0) return 0;
+                    
+                    const now = new Date();
+                    const currentTime = now.getHours() * 60 + now.getMinutes();
+                    
+                    let cumulativeBalance = 0;
+                    
+                    this.lineData.data.hourly_data.forEach(hour => {
+                        const hourStart = hour.hour.split(' - ')[0];
+                        const [startHour, startMinute] = hourStart.split(':').map(Number);
+                        const hourStartTime = startHour * 60 + startMinute;
+                        
+                        // Hanya hitung jam-jam yang sudah lewat atau sedang berjalan
+                        if (currentTime >= hourStartTime) {
+                            cumulativeBalance += (hour.output || 0) - (hour.targetManual || 0);
+                        }
+                    });
+                    
+                    return cumulativeBalance;
+                },
+                
+                calculateCumulativeBalancePercentage() {
+                    const cumulativeTarget = this.calculateCumulativeTarget();
+                    if (!cumulativeTarget || cumulativeTarget === 0) return '0.0';
+                    
+                    const cumulativeBalance = this.calculateCumulativeBalance();
+                    // Jika balance positif (lebih dari target), persentase positif
+                    // Jika balance negatif (kurang dari target), persentase positif (karena absolute)
+                    return ((Math.abs(cumulativeBalance) / cumulativeTarget) * 100).toFixed(1);
+                },
+                
                 calculateTargetProgressPercentage() {
                     if (!this.lineData.data.target || this.lineData.data.target === 0) return '0.0';
                     
@@ -713,13 +811,26 @@
                     return cumulativeTarget;
                 },
                 
-                calculateAccumulatedDifference() {
-                    return (this.lineData.data.outputDay || 0) - (this.lineData.data.target || 0);
-                },
-                
-                calculateDifferencePercentage() {
-                    if (!this.lineData.data.target || this.lineData.data.target === 0) return '0.0';
-                    return (Math.abs(this.calculateAccumulatedDifference()) / this.lineData.data.target * 100).toFixed(1);
+                calculateCumulativeOutput() {
+                    if (!this.lineData.data.hourly_data || this.lineData.data.hourly_data.length === 0) return 0;
+                    
+                    const now = new Date();
+                    const currentTime = now.getHours() * 60 + now.getMinutes();
+                    
+                    let cumulativeOutput = 0;
+                    
+                    this.lineData.data.hourly_data.forEach(hour => {
+                        const hourStart = hour.hour.split(' - ')[0];
+                        const [startHour, startMinute] = hourStart.split(':').map(Number);
+                        const hourStartTime = startHour * 60 + startMinute;
+                        
+                        // Hanya hitung jam-jam yang sudah lewat atau sedang berjalan
+                        if (currentTime >= hourStartTime) {
+                            cumulativeOutput += hour.output || 0;
+                        }
+                    });
+                    
+                    return cumulativeOutput;
                 },
                 
                 calculateOutputPercentage() {

@@ -772,13 +772,14 @@
                 },
                 
                 calculateCumulativeBalancePercentage() {
-                    const cumulativeTarget = this.calculateCumulativeTarget();
-                    if (!cumulativeTarget || cumulativeTarget === 0) return '0.0';
+                    const dailyTarget = this.lineData.data.target || 0;
+                    if (!dailyTarget || dailyTarget === 0) return '0.0';
                     
                     const cumulativeBalance = this.calculateCumulativeBalance();
-                    // Jika balance positif (lebih dari target), persentase positif
-                    // Jika balance negatif (kurang dari target), persentase positif (karena absolute)
-                    return ((Math.abs(cumulativeBalance) / cumulativeTarget) * 100).toFixed(1);
+                    // Rumus: (Balance Akumulasi / Total Target 8 Jam) × 100%
+                    const percentage = (cumulativeBalance / dailyTarget) * 100;
+                    
+                    return percentage.toFixed(1);
                 },
                 
                 calculateTargetProgressPercentage() {

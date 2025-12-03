@@ -456,9 +456,9 @@
                         <div class="progress-container">
                             <div class="progress-bar" :style="'width: ' + Math.min(calculateTargetProgressPercentage(), 100) + '%;'"></div>
                         </div>
-                        <div class="balance-info">
+                        <!-- <div class="balance-info">
                             Current Hour Target
-                        </div>
+                        </div> -->
                     </div>
                     <div class="data-box">
                         <div class="data-label">BALANCE</div>
@@ -472,14 +472,14 @@
                         <div class="percentage" 
                              :class="calculateCumulativeBalance() >= 0 ? 'positive' : 'negative'"
                              x-text="calculateCumulativeBalancePercentage() + '%'"></div>
-                        <div class="balance-info">
+                        <!-- <div class="balance-info">
                             Accumulated (Running Hours)
                         </div>
                         <div class="balance-info text-sm">
                             Current Hour: <span x-text="getCurrentHourRange()"></span> | 
                             Balance: <span x-text="calculateCurrentHourBalance()"
                                        :class="calculateCurrentHourBalance() >= 0 ? 'text-green-300' : 'text-red-300'"></span>
-                        </div>
+                        </div> -->
                     </div>
                     <div class="data-box">
                         <div class="data-label">PRODUCTIVITY</div>

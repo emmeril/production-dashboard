@@ -5,9 +5,34 @@ const session = require('express-session');
 const XLSX = require('xlsx');
 const ExcelJS = require('exceljs');
 const crypto = require('crypto');
+const { Sequelize, DataTypes } = require('sequelize');
 
 const app = express();
 const port = 3000;
+const databasePath = path.join(__dirname, 'production-dashboard.sqlite');
+const sequelize = new Sequelize({
+  dialect: 'sqlite',
+  storage: databasePath,
+  logging: false
+});
+const AppData = sequelize.define('AppData', {
+  key: {
+    type: DataTypes.STRING,
+    primaryKey: true
+  },
+  payload: {
+    type: DataTypes.TEXT('long'),
+    allowNull: false
+  }
+}, {
+  tableName: 'app_data',
+  timestamps: true
+});
+const PRODUCTION_DATA_KEY = 'production_data';
+const USERS_DATA_KEY = 'users_data';
+let productionDataCache = { lines: {}, activeLine: '' };
+let usersDataCache = { users: [] };
+let databaseInitialized = false;
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -69,6 +94,165 @@ function resetLineData(line) {
       efficiency: 0
     })) : []
   };
+}
+
+function buildInitialProductionData() {
+  const today = getToday();
+  const targetPerHour = Math.round(180 / 8);
+
+  return {
+    "lines": {
+      "F1-5A": {
+        "models": {
+          "model1": {
+            "id": "model1",
+            "labelWeek": "AP/14-2550",
+            "model": "GOSIG GOLDEN SOFT TOY 40 PDS/GOLDEN RETRIEVER",
+            "date": today,
+            "target": 180,
+            "targetPerHour": targetPerHour,
+            "outputDay": 0,
+            "qcChecking": 0,
+            "actualDefect": 0,
+            "defectRatePercentage": 0,
+            "hourly_data": [
+              { hour: "07:00 - 08:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
+              { hour: "08:00 - 09:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
+              { hour: "09:00 - 10:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
+              { hour: "10:00 - 11:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
+              { hour: "11:00 - 13:00", output: 0, defect: 0, qcChecked: 0, targetManual: 0, selisih: 0 },
+              { hour: "13:00 - 14:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
+              { hour: "14:00 - 15:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
+              { hour: "15:00 - 16:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
+              { hour: "16:00 - 17:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
+            ],
+            "operators": [
+              {
+                "id": 1,
+                "name": "Ahmad Susanto",
+                "position": "Operator Mesin",
+                "target": 100,
+                "output": 0,
+                "defect": 0,
+                "efficiency": 0,
+                "status": "active"
+              }
+            ]
+          }
+        },
+        "activeModel": "model1"
+      }
+    },
+    "activeLine": "F1-5A"
+  };
+}
+
+function buildInitialUsersData() {
+  return {
+    "users": [
+      {
+        "id": 1,
+        "username": "operator1",
+        "password": hashPassword("password123"),
+        "name": "Ahmad Susanto",
+        "line": "F1-5A",
+        "role": "operator"
+      },
+      {
+        "id": 2,
+        "username": "admin_operator",
+        "password": hashPassword("adminop123"),
+        "name": "Admin Operator",
+        "line": "all",
+        "role": "admin_operator"
+      },
+      {
+        "id": 3,
+        "username": "admin",
+        "password": hashPassword("admin123"),
+        "name": "Administrator",
+        "line": "all",
+        "role": "admin"
+      }
+    ]
+  };
+}
+
+function parsePayload(payload, fallback) {
+  try {
+    return JSON.parse(payload);
+  } catch (error) {
+    return fallback;
+  }
+}
+
+async function upsertAppData(key, data) {
+  try {
+    await AppData.upsert({
+      key,
+      payload: JSON.stringify(data)
+    });
+  } catch (error) {
+    console.error(`❌ ERROR: Gagal menyimpan ${key} ke database:`, error.message);
+  }
+}
+
+async function initSequelizeStorage() {
+  try {
+    await sequelize.authenticate();
+    await AppData.sync();
+
+    const legacyDataPath = path.join(__dirname, 'data.json');
+    const legacyUsersPath = path.join(__dirname, 'users.json');
+
+    let productionRow = await AppData.findByPk(PRODUCTION_DATA_KEY);
+    let usersRow = await AppData.findByPk(USERS_DATA_KEY);
+
+    if (!productionRow) {
+      let initialProductionData = buildInitialProductionData();
+      if (fs.existsSync(legacyDataPath)) {
+        try {
+          initialProductionData = JSON.parse(fs.readFileSync(legacyDataPath, 'utf8'));
+          console.log('✅ Migrasi data produksi dari data.json ke Sequelize berhasil');
+        } catch (error) {
+          console.error('❌ ERROR: Gagal migrasi data.json, memakai data default:', error.message);
+        }
+      }
+
+      await upsertAppData(PRODUCTION_DATA_KEY, initialProductionData);
+      productionRow = await AppData.findByPk(PRODUCTION_DATA_KEY);
+    }
+
+    if (!usersRow) {
+      let initialUsersData = buildInitialUsersData();
+      if (fs.existsSync(legacyUsersPath)) {
+        try {
+          initialUsersData = JSON.parse(fs.readFileSync(legacyUsersPath, 'utf8'));
+          console.log('✅ Migrasi data user dari users.json ke Sequelize berhasil');
+        } catch (error) {
+          console.error('❌ ERROR: Gagal migrasi users.json, memakai user default:', error.message);
+        }
+      }
+
+      await upsertAppData(USERS_DATA_KEY, initialUsersData);
+      usersRow = await AppData.findByPk(USERS_DATA_KEY);
+    }
+
+    productionDataCache = parsePayload(
+      productionRow ? productionRow.payload : '',
+      buildInitialProductionData()
+    );
+    usersDataCache = parsePayload(
+      usersRow ? usersRow.payload : '',
+      buildInitialUsersData()
+    );
+
+    databaseInitialized = true;
+    console.log(`✅ Sequelize database siap: ${databasePath}`);
+  } catch (error) {
+    console.error('❌ ERROR: Inisialisasi Sequelize gagal:', error.message);
+    databaseInitialized = false;
+  }
 }
 
 // FUNGSI BACKUP DATA SEBELUM RESET (PERBAIKAN UTAMA)
@@ -212,139 +396,58 @@ function checkAndResetDataForNewDay() {
 }
 
 function initializeDataFiles() {
-  if (!fs.existsSync(path.join(__dirname, 'data.json'))) {
-    const today = getToday();
-    const targetPerHour = Math.round(180 / 8);
-    
-    const initialData = {
-      "lines": {
-        "F1-5A": {
-          "models": {
-            "model1": {
-              "id": "model1",
-              "labelWeek": "AP/14-2550",
-              "model": "GOSIG GOLDEN SOFT TOY 40 PDS/GOLDEN RETRIEVER",
-              "date": today,
-              "target": 180,
-              "targetPerHour": targetPerHour,
-              "outputDay": 0,
-              "qcChecking": 0,
-              "actualDefect": 0,
-              "defectRatePercentage": 0,
-              "hourly_data": [
-                { hour: "07:00 - 08:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
-                { hour: "08:00 - 09:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
-                { hour: "09:00 - 10:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
-                { hour: "10:00 - 11:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
-                { hour: "11:00 - 13:00", output: 0, defect: 0, qcChecked: 0, targetManual: 0, selisih: 0 },
-                { hour: "13:00 - 14:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
-                { hour: "14:00 - 15:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
-                { hour: "15:00 - 16:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
-                { hour: "16:00 - 17:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
-              ],
-              "operators": [
-                {
-                  "id": 1,
-                  "name": "Ahmad Susanto",
-                  "position": "Operator Mesin",
-                  "target": 100,
-                  "output": 0,
-                  "defect": 0,
-                  "efficiency": 0,
-                  "status": "active"
-                }
-              ]
-            }
-          },
-          "activeModel": "model1"
-        }
-      },
-      "activeLine": "F1-5A"
-    };
-    fs.writeFileSync(path.join(__dirname, 'data.json'), JSON.stringify(initialData, null, 2));
-    console.log('✅ Data file created successfully with multi-model support');
-  }
-
-  if (!fs.existsSync(path.join(__dirname, 'users.json'))) {
-    const initialUsers = {
-      "users": [
-        {
-          "id": 1,
-          "username": "operator1",
-          "password": hashPassword("password123"),
-          "name": "Ahmad Susanto",
-          "line": "F1-5A",
-          "role": "operator"
-        },
-        {
-          "id": 2,
-          "username": "admin_operator",
-          "password": hashPassword("adminop123"),
-          "name": "Admin Operator",
-          "line": "all",
-          "role": "admin_operator"
-        },
-        {
-          "id": 3,
-          "username": "admin",
-          "password": hashPassword("admin123"),
-          "name": "Administrator",
-          "line": "all",
-          "role": "admin"
-        }
-      ]
-    };
-    fs.writeFileSync(path.join(__dirname, 'users.json'), JSON.stringify(initialUsers, null, 2));
-    console.log('✅ Users file created successfully with encrypted passwords');
+  if (!databaseInitialized) {
+    productionDataCache = buildInitialProductionData();
+    usersDataCache = buildInitialUsersData();
   }
 
   const historyDir = path.join(__dirname, 'history');
   if (!fs.existsSync(historyDir)) {
     fs.mkdirSync(historyDir);
-    console.log('✅ History directory created successfully');
+    console.log('History directory created successfully');
   }
   
   // Buat subfolder untuk backup arsip
   const backupDir = path.join(__dirname, 'history', 'backups');
   if (!fs.existsSync(backupDir)) {
     fs.mkdirSync(backupDir, { recursive: true });
-    console.log('✅ Backup directory created successfully');
+    console.log('Backup directory created successfully');
   }
 }
 
 function readProductionData() {
   try {
-    const data = fs.readFileSync(path.join(__dirname, 'data.json'), 'utf8');
-    return JSON.parse(data);
+    return productionDataCache;
   } catch (error) {
-    console.error('❌ ERROR: Gagal membaca data.json:', error.message);
+    console.error('ERROR: Gagal membaca production data cache:', error.message);
     return { lines: {}, activeLine: '' };
   }
 }
 
 function writeProductionData(data) {
   try {
-    fs.writeFileSync(path.join(__dirname, 'data.json'), JSON.stringify(data, null, 2));
+    productionDataCache = data;
+    void upsertAppData(PRODUCTION_DATA_KEY, data);
   } catch (error) {
-    console.error('❌ ERROR: Gagal menulis ke data.json:', error.message);
+    console.error('ERROR: Gagal menulis production data ke cache:', error.message);
   }
 }
 
 function readUsersData() {
   try {
-    const data = fs.readFileSync(path.join(__dirname, 'users.json'), 'utf8');
-    return JSON.parse(data);
+    return usersDataCache;
   } catch (error) {
-    console.error('❌ ERROR: Gagal membaca users.json:', error.message);
+    console.error('ERROR: Gagal membaca users data cache:', error.message);
     return { users: [] };
   }
 }
 
 function writeUsersData(data) {
   try {
-    fs.writeFileSync(path.join(__dirname, 'users.json'), JSON.stringify(data, null, 2));
+    usersDataCache = data;
+    void upsertAppData(USERS_DATA_KEY, data);
   } catch (error) {
-    console.error('❌ ERROR: Gagal menulis ke users.json:', error.message);
+    console.error('ERROR: Gagal menulis users data ke cache:', error.message);
   }
 }
 
@@ -2568,49 +2671,51 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// PERBAIKAN INTERVAL DAN STARTUP LOGIC
-setInterval(() => {
-  const now = new Date();
-  const today = getToday();
-  console.log(`\n⏰ System check at: ${now.toLocaleString('id-ID')}, Date: ${today}`);
-  
-  // Cek dan reset data untuk hari baru
-  const resetCount = checkAndResetDataForNewDay();
-  if (resetCount > 0) {
-    console.log(`🔄 Auto reset data selesai: ${resetCount} model direset`);
-  }
-  
-  // Buat arsip backup setiap hari pada jam 00:01 WIB (17:01 UTC)
-  const utcHours = now.getUTCHours();
-  const utcMinutes = now.getUTCMinutes();
-  if (utcHours === 17 && utcMinutes === 1) { // 00:01 WIB = 17:01 UTC
+async function startServer() {
+  await initSequelizeStorage();
+  initializeDataFiles();
+
+  // PERBAIKAN INTERVAL DAN STARTUP LOGIC
+  setInterval(() => {
+    const now = new Date();
+    const today = getToday();
+    console.log(`\nSystem check at: ${now.toLocaleString('id-ID')}, Date: ${today}`);
+    
+    // Cek dan reset data untuk hari baru
+    const resetCount = checkAndResetDataForNewDay();
+    if (resetCount > 0) {
+      console.log(`Auto reset data selesai: ${resetCount} model direset`);
+    }
+    
+    // Buat arsip backup setiap hari pada jam 00:01 WIB (17:01 UTC)
+    const utcHours = now.getUTCHours();
+    const utcMinutes = now.getUTCMinutes();
+    if (utcHours === 17 && utcMinutes === 1) { // 00:01 WIB = 17:01 UTC
+      createArchiveBackup();
+      console.log('Midnight archive backup executed');
+    }
+  }, 60000); // Check every minute
+
+  // Check for date reset on startup dengan delay
+  setTimeout(() => {
+    const resetCount = checkAndResetDataForNewDay();
+    if (resetCount > 0) {
+      console.log(`Auto reset saat startup: ${resetCount} model direset`);
+    }
+  }, 10000); // Increase delay to 10 seconds
+
+  // Initial backup dengan delay
+  setTimeout(() => {
+    // Update backup untuk hari ini
+    updateTodayBackup();
+    console.log('Today backup initialized');
+    
+    // Buat arsip backup awal
     createArchiveBackup();
-    console.log('💾 Midnight archive backup executed');
-  }
-}, 60000); // Check every minute
+    console.log('Initial archive backup completed');
+  }, 15000);
 
-initializeDataFiles();
-
-// Check for date reset on startup dengan delay
-setTimeout(() => {
-  const resetCount = checkAndResetDataForNewDay();
-  if (resetCount > 0) {
-    console.log(`🔄 Auto reset saat startup: ${resetCount} model direset`);
-  }
-}, 10000); // Increase delay to 10 seconds
-
-// Initial backup dengan delay
-setTimeout(() => {
-  // Update backup untuk hari ini
-  updateTodayBackup();
-  console.log('💾 Today backup initialized');
-  
-  // Buat arsip backup awal
-  createArchiveBackup();
-  console.log('💾 Initial archive backup completed');
-}, 15000);
-
-app.listen(port, () => {
+  app.listen(port, () => {
   console.log(`=================================`);
   console.log(`🚀 Production Dashboard System`);
   console.log(`✅ Server berjalan di http://localhost:${port}`);
@@ -2642,4 +2747,7 @@ app.listen(port, () => {
   console.log(`- Admin Operator: admin_operator / adminop123`);
   console.log(`- Operator: operator1 / password123`);
   console.log(`=================================`);
-});
+  });
+}
+
+startServer();

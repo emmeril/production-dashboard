@@ -57,14 +57,13 @@ function verifyPassword(password, hashedPassword) {
 }
 
 function getToday() {
-  // Gunakan waktu lokal Indonesia (WIB - UTC+7)
-  const now = new Date();
-  
-  // Adjust untuk timezone Indonesia (UTC+7)
-  const offset = 7; // WIB UTC+7
-  const localTime = new Date(now.getTime() + (offset * 60 * 60 * 1000));
-  
-  return localTime.toISOString().split('T')[0];
+  // Pastikan selalu konsisten ke timezone Asia/Jakarta
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Jakarta',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).format(new Date());
 }
 
 function resetLineData(line) {
@@ -537,8 +536,12 @@ function requireLogin(req, res, next) {
   }
 }
 
+function hasAnyRole(user, allowedRoles) {
+  return Boolean(user && allowedRoles.includes(user.role));
+}
+
 function requireAdmin(req, res, next) {
-  if (req.session.user && req.session.user.role === 'admin') {
+  if (hasAnyRole(req.session.user, ['admin'])) {
     next();
   } else {
     res.status(403).json({ error: 'Forbidden - Admin access required' });
@@ -546,7 +549,7 @@ function requireAdmin(req, res, next) {
 }
 
 function requireAdminOrAdminOperator(req, res, next) {
-  if (req.session.user && (req.session.user.role === 'admin' || req.session.user.role === 'admin_operator')) {
+  if (hasAnyRole(req.session.user, ['admin', 'admin_operator'])) {
     next();
   } else {
     res.status(403).json({ error: 'Forbidden - Admin or Admin Operator access required' });
@@ -554,7 +557,7 @@ function requireAdminOrAdminOperator(req, res, next) {
 }
 
 function requireLineManagementAccess(req, res, next) {
-  if (req.session.user && (req.session.user.role === 'admin' || req.session.user.role === 'admin_operator')) {
+  if (hasAnyRole(req.session.user, ['admin', 'admin_operator'])) {
     next();
   } else {
     res.status(403).json({ error: 'Forbidden - Line management access required' });
@@ -562,7 +565,7 @@ function requireLineManagementAccess(req, res, next) {
 }
 
 function requireDateReportAccess(req, res, next) {
-  if (req.session.user && (req.session.user.role === 'admin' || req.session.user.role === 'admin_operator')) {
+  if (hasAnyRole(req.session.user, ['admin', 'admin_operator'])) {
     next();
   } else {
     res.status(403).json({ error: 'Forbidden - Date report access required' });

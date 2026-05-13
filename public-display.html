@@ -631,6 +631,7 @@
                 },
 
                 changeRefreshInterval() {
+                    this.refreshInterval = Number(this.refreshInterval) || 0;
                     this.setupAutoRefresh();
                 },
                 
@@ -645,7 +646,7 @@
                         minute: '2-digit',
                         second: '2-digit'
                     };
-                    document.getElementById('current-datetime').textContent = now.toLocaleDateString('id-ID', options);
+                    document.getElementById('current-datetime').textContent = now.toLocaleString('id-ID', options);
                 },
                 
                 setupResponsiveScaling() {
@@ -672,103 +673,87 @@
                     updateScale();
                     window.addEventListener('resize', updateScale);
                 },
-                
-                getCurrentHourTarget() {
-                    if (!this.lineData.data.hourly_data || this.lineData.data.hourly_data.length === 0) return 0;
-                    
+
+                getCurrentTimeInMinutes() {
                     const now = new Date();
-                    const currentTime = now.getHours() * 60 + now.getMinutes();
-                    
-                    let currentHourTarget = 0;
-                    
-                    for (let hour of this.lineData.data.hourly_data) {
-                        const hourStart = hour.hour.split(' - ')[0];
-                        const [startHour, startMinute] = hourStart.split(':').map(Number);
-                        const hourStartTime = startHour * 60 + startMinute;
-                        
-                        const hourEnd = hour.hour.split(' - ')[1];
-                        const [endHour, endMinute] = hourEnd.split(':').map(Number);
-                        const hourEndTime = endHour * 60 + endMinute;
-                        
-                        if (currentTime >= hourStartTime && currentTime < hourEndTime) {
-                            currentHourTarget = hour.targetManual || 0;
-                            break;
+                    return now.getHours() * 60 + now.getMinutes();
+                },
+
+                parseHourRange(hourRange) {
+                    if (!hourRange || typeof hourRange !== 'string') {
+                        return null;
+                    }
+
+                    const [start, end] = hourRange.split(' - ');
+                    if (!start || !end) {
+                        return null;
+                    }
+
+                    const [startHour, startMinute] = start.split(':').map(Number);
+                    const [endHour, endMinute] = end.split(':').map(Number);
+
+                    return {
+                        start: (startHour * 60) + startMinute,
+                        end: (endHour * 60) + endMinute
+                    };
+                },
+
+                getActiveHourData() {
+                    if (!this.lineData.data.hourly_data || this.lineData.data.hourly_data.length === 0) {
+                        return null;
+                    }
+
+                    const currentTime = this.getCurrentTimeInMinutes();
+                    for (const hour of this.lineData.data.hourly_data) {
+                        const range = this.parseHourRange(hour.hour);
+                        if (!range) {
+                            continue;
+                        }
+
+                        if (currentTime >= range.start && currentTime < range.end) {
+                            return hour;
                         }
                     }
-                    
-                    return currentHourTarget;
+
+                    return null;
+                },
+
+                reduceHoursUntilCurrent(reducer, initialValue) {
+                    if (!this.lineData.data.hourly_data || this.lineData.data.hourly_data.length === 0) {
+                        return initialValue;
+                    }
+
+                    const currentTime = this.getCurrentTimeInMinutes();
+                    return this.lineData.data.hourly_data.reduce((acc, hour) => {
+                        const range = this.parseHourRange(hour.hour);
+                        if (!range || currentTime < range.start) {
+                            return acc;
+                        }
+
+                        return reducer(acc, hour);
+                    }, initialValue);
+                },
+                
+                getCurrentHourTarget() {
+                    const activeHour = this.getActiveHourData();
+                    return activeHour ? (activeHour.targetManual || 0) : 0;
                 },
                 
                 getCurrentHourRange() {
-                    if (!this.lineData.data.hourly_data || this.lineData.data.hourly_data.length === 0) return '';
-                    
-                    const now = new Date();
-                    const currentTime = now.getHours() * 60 + now.getMinutes();
-                    
-                    for (let hour of this.lineData.data.hourly_data) {
-                        const hourStart = hour.hour.split(' - ')[0];
-                        const [startHour, startMinute] = hourStart.split(':').map(Number);
-                        const hourStartTime = startHour * 60 + startMinute;
-                        
-                        const hourEnd = hour.hour.split(' - ')[1];
-                        const [endHour, endMinute] = hourEnd.split(':').map(Number);
-                        const hourEndTime = endHour * 60 + endMinute;
-                        
-                        if (currentTime >= hourStartTime && currentTime < hourEndTime) {
-                            return hour.hour;
-                        }
-                    }
-                    
-                    return 'No active hour';
+                    const activeHour = this.getActiveHourData();
+                    return activeHour ? activeHour.hour : 'No active hour';
                 },
                 
                 calculateCurrentHourBalance() {
-                    if (!this.lineData.data.hourly_data || this.lineData.data.hourly_data.length === 0) return 0;
-                    
-                    const now = new Date();
-                    const currentTime = now.getHours() * 60 + now.getMinutes();
-                    
-                    let currentHourBalance = 0;
-                    
-                    for (let hour of this.lineData.data.hourly_data) {
-                        const hourStart = hour.hour.split(' - ')[0];
-                        const [startHour, startMinute] = hourStart.split(':').map(Number);
-                        const hourStartTime = startHour * 60 + startMinute;
-                        
-                        const hourEnd = hour.hour.split(' - ')[1];
-                        const [endHour, endMinute] = hourEnd.split(':').map(Number);
-                        const hourEndTime = endHour * 60 + endMinute;
-                        
-                        if (currentTime >= hourStartTime && currentTime < hourEndTime) {
-                            // Hitung selisih untuk jam ini saja: Output - Target
-                            currentHourBalance = (hour.output || 0) - (hour.targetManual || 0);
-                            break;
-                        }
-                    }
-                    
-                    return currentHourBalance;
+                    const activeHour = this.getActiveHourData();
+                    if (!activeHour) return 0;
+                    return (activeHour.output || 0) - (activeHour.targetManual || 0);
                 },
                 
                 calculateCumulativeBalance() {
-                    if (!this.lineData.data.hourly_data || this.lineData.data.hourly_data.length === 0) return 0;
-                    
-                    const now = new Date();
-                    const currentTime = now.getHours() * 60 + now.getMinutes();
-                    
-                    let cumulativeBalance = 0;
-                    
-                    this.lineData.data.hourly_data.forEach(hour => {
-                        const hourStart = hour.hour.split(' - ')[0];
-                        const [startHour, startMinute] = hourStart.split(':').map(Number);
-                        const hourStartTime = startHour * 60 + startMinute;
-                        
-                        // Hanya hitung jam-jam yang sudah lewat atau sedang berjalan
-                        if (currentTime >= hourStartTime) {
-                            cumulativeBalance += (hour.output || 0) - (hour.targetManual || 0);
-                        }
-                    });
-                    
-                    return cumulativeBalance;
+                    return this.reduceHoursUntilCurrent((acc, hour) => {
+                        return acc + ((hour.output || 0) - (hour.targetManual || 0));
+                    }, 0);
                 },
                 
                 calculateCumulativeBalancePercentage() {
@@ -792,46 +777,15 @@
                 },
                 
                 calculateCumulativeTarget() {
-                    if (!this.lineData.data.hourly_data || this.lineData.data.hourly_data.length === 0) return 0;
-                    
-                    const now = new Date();
-                    const currentTime = now.getHours() * 60 + now.getMinutes();
-                    
-                    let cumulativeTarget = 0;
-                    
-                    this.lineData.data.hourly_data.forEach(hour => {
-                        const hourStart = hour.hour.split(' - ')[0];
-                        const [startHour, startMinute] = hourStart.split(':').map(Number);
-                        const hourStartTime = startHour * 60 + startMinute;
-                        
-                        if (currentTime >= hourStartTime) {
-                            cumulativeTarget += hour.targetManual || 0;
-                        }
-                    });
-                    
-                    return cumulativeTarget;
+                    return this.reduceHoursUntilCurrent((acc, hour) => {
+                        return acc + (hour.targetManual || 0);
+                    }, 0);
                 },
                 
                 calculateCumulativeOutput() {
-                    if (!this.lineData.data.hourly_data || this.lineData.data.hourly_data.length === 0) return 0;
-                    
-                    const now = new Date();
-                    const currentTime = now.getHours() * 60 + now.getMinutes();
-                    
-                    let cumulativeOutput = 0;
-                    
-                    this.lineData.data.hourly_data.forEach(hour => {
-                        const hourStart = hour.hour.split(' - ')[0];
-                        const [startHour, startMinute] = hourStart.split(':').map(Number);
-                        const hourStartTime = startHour * 60 + startMinute;
-                        
-                        // Hanya hitung jam-jam yang sudah lewat atau sedang berjalan
-                        if (currentTime >= hourStartTime) {
-                            cumulativeOutput += hour.output || 0;
-                        }
-                    });
-                    
-                    return cumulativeOutput;
+                    return this.reduceHoursUntilCurrent((acc, hour) => {
+                        return acc + (hour.output || 0);
+                    }, 0);
                 },
                 
                 calculateOutputPercentage() {

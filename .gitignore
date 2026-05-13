@@ -3,5 +3,7 @@ package-lock.json
 pnpm-lock.yaml
 data/
 data.json
+users.json
+defect-config.json
 history/
 production-dashboard.sqlite

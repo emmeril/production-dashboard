@@ -889,27 +889,13 @@
 </div>
 	                    </div>
 
-	                    <div class="filter-toolbar line-management-toolbar">
-	                        <div class="filter-group">
-	                            <span class="filter-caption"><i class="fa-solid fa-calendar-days"></i>Tanggal</span>
-	                            <div class="filter-control filter-control-select has-icon">
-	                                <i class="fa-solid fa-calendar-day filter-control-icon"></i>
-	                                <select x-model="dashboardDateFilter" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-	                                    <template x-for="date in dashboardDateOptions" :key="date">
-	                                        <option :value="date" x-text="formatShortDate(date)"></option>
-	                                    </template>
-	                                </select>
-	                            </div>
-	                        </div>
-	                    </div>
-
 	                    <div class="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-6">
 	                        <div class="xl:col-span-2 bg-white rounded-lg shadow overflow-hidden card-shadow">
 	                            <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
 	                                <div class="flex flex-wrap items-center justify-between gap-3">
 	                                    <div>
 	                                        <h3 class="text-lg leading-6 font-medium text-gray-900 flex items-center"><i class="fa-solid fa-chart-simple text-blue-600 mr-2"></i>Chart Akumulasi Data Tiap Hari</h3>
-	                                        <p class="mt-1 max-w-2xl text-sm text-gray-500">Perbandingan target, output, dan defect per line pada tanggal yang dipilih</p>
+	                                        <p class="mt-1 max-w-2xl text-sm text-gray-500">Akumulasi harian dengan bar per line dan tanggal</p>
 	                                    </div>
 	                                    <div class="chart-legend">
 	                                        <span><span class="legend-dot chart-bar-target"></span>Target</span>
@@ -928,7 +914,7 @@
 	                                                <div class="chart-bar chart-bar-output" :style="'height: ' + chartBarHeight(day.output) + '%'"></div>
 	                                                <div class="chart-bar chart-bar-defect" :style="'height: ' + chartBarHeight(day.defect) + '%'"></div>
 	                                            </div>
-	                                            <div class="chart-label" x-text="day.lineName"></div>
+	                                            <div class="chart-label" x-text="formatShortDate(day.date) + ' / ' + day.lineName"></div>
 	                                        </div>
 	                                    </template>
 	                                </div>
@@ -939,12 +925,13 @@
 	                        <div class="bg-white rounded-lg shadow overflow-hidden card-shadow">
 	                            <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
 	                                <h3 class="text-lg leading-6 font-medium text-gray-900 flex items-center"><i class="fa-solid fa-calendar-day text-blue-600 mr-2"></i>Detail Data Per Hari</h3>
-	                                <p class="mt-1 max-w-2xl text-sm text-gray-500">Daftar line yang tersedia pada tanggal yang dipilih</p>
+	                                <p class="mt-1 max-w-2xl text-sm text-gray-500">Daftar line yang tersedia dari semua tanggal data</p>
 	                            </div>
 	                            <div class="overflow-x-auto">
 	                                <table class="min-w-full divide-y divide-gray-200">
 	                                    <thead class="bg-gray-50">
 	                                        <tr>
+	                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal</th>
 	                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Line</th>
 	                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Target</th>
 	                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Output</th>
@@ -956,6 +943,7 @@
 	                                    <tbody class="bg-white divide-y divide-gray-200">
 	                                        <template x-for="day in dashboardDailyDetails" :key="day.date + '-' + day.lineName">
 	                                            <tr>
+	                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900" x-text="formatShortDate(day.date)"></td>
 	                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900" x-text="day.lineName"></td>
 	                                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700" x-text="day.target"></td>
 	                                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700" x-text="day.output"></td>
@@ -965,7 +953,7 @@
 	                                            </tr>
 	                                        </template>
 	                                        <tr x-show="dashboardDailyDetails.length === 0">
-	                                            <td colspan="6" class="px-4 py-8 text-center text-sm text-gray-500">Belum ada detail data line.</td>
+	                                            <td colspan="7" class="px-4 py-8 text-center text-sm text-gray-500">Belum ada detail data line.</td>
 	                                        </tr>
 	                                    </tbody>
 	                                </table>
@@ -2271,7 +2259,6 @@
 	                    topDefectAreas: [],
 	                    topDefectTypes: []
 	                },
-	                dashboardDateFilter: '',
                 users: [],
                 dateReport: [],
                 reportDate: new Date().toISOString().split('T')[0],
@@ -3588,28 +3575,13 @@ async checkSystemStatus() {
 		                        .slice(0, 1);
 		                },
 	                
-		                get dashboardDateOptions() {
-		                    const dates = [...new Set([
-		                        ...(this.dashboardData.daily || []).map(item => item.date),
-		                        ...(this.dashboardData.lineDaily || []).map(item => item.date)
-		                    ].filter(Boolean))];
-
-		                    return dates.sort((a, b) => new Date(b) - new Date(a));
-		                },
-
-		                get selectedDashboardDate() {
-		                    return this.dashboardDateFilter || this.dashboardDateOptions[0] || '';
-		                },
-
 		                get selectedDashboardLineData() {
-		                    return (this.dashboardData.lineDaily || [])
-		                        .filter(item => item.date === this.selectedDashboardDate)
-		                        .sort((a, b) => a.lineName.localeCompare(b.lineName, undefined, { numeric: true }));
+		                    return [...(this.dashboardData.lineDaily || [])]
+		                        .sort((a, b) => new Date(a.date) - new Date(b.date) || a.lineName.localeCompare(b.lineName, undefined, { numeric: true }));
 		                },
 
 		                get selectedDashboardSummary() {
-		                    const summary = (this.dashboardData.daily || [])
-		                        .find(item => item.date === this.selectedDashboardDate);
+		                    const summary = [...(this.dashboardData.daily || [])].reverse()[0];
 
 		                    return summary || {
 		                        target: 0,
@@ -3619,11 +3591,11 @@ async checkSystemStatus() {
 		                },
 
 		                get dashboardChartData() {
-		                    return this.selectedDashboardLineData;
+		                    return this.selectedDashboardLineData.slice(-30);
 		                },
 
 		                get dashboardDailyDetails() {
-		                    return this.selectedDashboardLineData;
+		                    return [...this.selectedDashboardLineData].reverse().slice(0, 30);
 		                },
 
 		                get selectedDashboardTopDefectAreas() {

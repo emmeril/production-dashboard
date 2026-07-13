@@ -216,16 +216,186 @@
 	            padding: 0.1rem 0;
 	        }
 
-	        button,
-	        a.group,
-	        .pagination-btn {
-	            transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
-	        }
+		        button,
+		        a.group,
+		        .pagination-btn {
+		            transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+		        }
 
-	        button:hover:not(:disabled),
-	        a.group:hover {
-	            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
-	        }
+		        button:not(.pagination-btn):not([class*="rounded-full"]):not([class*="p-1"]):not([class*="p-2"]) {
+		            min-height: 38px;
+		            border-radius: 6px !important;
+		            font-weight: 600 !important;
+		            line-height: 1.2;
+		            gap: 0.45rem;
+		            white-space: nowrap;
+		        }
+
+		        button:not(.pagination-btn) i {
+		            margin-right: 0 !important;
+		            line-height: 1;
+		        }
+
+		        button:hover:not(:disabled),
+		        a.group:hover {
+		            box-shadow: 0 0.35rem 0.8rem rgba(15, 23, 42, 0.12);
+		            transform: translateY(-1px);
+		        }
+
+		        button:active:not(:disabled) {
+		            transform: translateY(0);
+		            box-shadow: 0 0.125rem 0.25rem rgba(15, 23, 42, 0.08);
+		        }
+
+		        button:disabled,
+		        .pagination-btn.disabled {
+		            box-shadow: none !important;
+		            transform: none !important;
+		        }
+
+		        .table-actions {
+		            display: flex;
+		            flex-wrap: wrap;
+		            align-items: center;
+		            gap: 0.4rem;
+		        }
+
+		        .btn-action {
+		            display: inline-flex;
+		            align-items: center;
+		            justify-content: center;
+		            min-height: 32px !important;
+		            padding: 0.4rem 0.65rem;
+		            border: 1px solid transparent;
+		            border-radius: 6px;
+		            font-size: 0.78rem;
+		            font-weight: 700;
+		            letter-spacing: 0;
+		        }
+
+		        .btn-action-primary {
+		            background: #e7f1ff;
+		            border-color: #b8daff;
+		            color: #0056b3 !important;
+		        }
+
+		        .btn-action-success {
+		            background: #eaf7ee;
+		            border-color: #b7e1c1;
+		            color: #1e7e34 !important;
+		        }
+
+		        .btn-action-danger {
+		            background: #fdecee;
+		            border-color: #f5c2c7;
+		            color: #b02a37 !important;
+		        }
+
+		        .btn-action-neutral {
+		            background: #f8f9fa;
+		            border-color: #ced4da;
+		            color: #495057 !important;
+		        }
+
+		        .btn-action:hover {
+		            filter: brightness(0.97);
+		        }
+
+		        .btn-compact {
+		            min-height: 34px !important;
+		            padding: 0.42rem 0.7rem !important;
+		            font-size: 0.78rem !important;
+		        }
+
+		        .filter-toolbar {
+		            display: flex;
+		            flex-wrap: nowrap;
+		            align-items: center;
+		            justify-content: space-between;
+		            gap: 0.75rem;
+		            overflow-x: auto;
+		            padding: 0.75rem;
+		            margin-bottom: 1rem;
+		            background: #f8f9fa;
+		            border: 1px solid #dee2e6;
+		            border-radius: 8px;
+		        }
+
+		        .filter-group {
+		            display: flex;
+		            flex-wrap: nowrap;
+		            align-items: center;
+		            flex: 0 0 auto;
+		            gap: 0.55rem;
+		        }
+
+		        .line-management-toolbar {
+		            justify-content: flex-start;
+		        }
+
+		        .filter-control {
+		            position: relative;
+		            flex: 0 1 auto;
+		        }
+
+		        .filter-control-search {
+		            width: 260px;
+		        }
+
+		        .filter-control-select {
+		            width: 170px;
+		        }
+
+		        .filter-control-page-size {
+		            width: 86px;
+		        }
+
+		        .filter-control input,
+		        .filter-control select {
+		            min-height: 36px !important;
+		            font-size: 0.875rem !important;
+		        }
+
+		        .filter-control.has-icon input,
+		        .filter-control.has-icon select {
+		            padding-left: 2.2rem !important;
+		        }
+
+		        .filter-control-icon {
+		            position: absolute;
+		            left: 0.75rem;
+		            top: 50%;
+		            z-index: 2;
+		            color: #6c757d;
+		            font-size: 0.82rem;
+		            pointer-events: none;
+		            transform: translateY(-50%);
+		        }
+
+		        .filter-caption {
+		            display: inline-flex;
+		            align-items: center;
+		            gap: 0.4rem;
+		            color: #495057;
+		            font-size: 0.875rem;
+		            font-weight: 600;
+		            white-space: nowrap;
+		        }
+
+		        main .mb-6.flex.justify-between.items-center {
+		            gap: 0.75rem;
+		            flex-wrap: wrap;
+		        }
+
+		        main .mb-6.flex.justify-between.items-center > .flex,
+		        main .px-4.py-5 .flex,
+		        main .p-4 .grid button {
+		            gap: 0.5rem;
+		        }
+
+		        main .space-x-2 > :not([hidden]) ~ :not([hidden]) {
+		            margin-left: 0 !important;
+		        }
 
 	        .bg-blue-800 {
 	            background-color: #343a40 !important;
@@ -306,14 +476,14 @@
 	            box-shadow: 0 28px 80px rgba(15, 23, 42, 0.28);
 	        }
 
-	        @media (max-width: 768px) {
-	            main {
-	                padding: 1rem !important;
-	            }
+		        @media (max-width: 768px) {
+		            main {
+		                padding: 1rem !important;
+		            }
 
-	            main h1 {
-	                font-size: 1.35rem !important;
-	            }
+		            main h1 {
+		                font-size: 1.35rem !important;
+		            }
 
 	            .card-shadow {
 	                box-shadow: 0 8px 22px rgba(15, 23, 42, 0.06);
@@ -632,28 +802,37 @@
 	                                    <h3 class="text-lg leading-6 font-medium text-gray-900 flex items-center"><i class="fa-solid fa-industry text-blue-600 mr-2"></i>Ringkasan Line Produksi</h3>
                                     <p class="mt-1 max-w-2xl text-sm text-gray-500">Status produksi per line dan model</p>
                                 </div>
-                                <div class="mt-4 md:mt-0 flex flex-col md:flex-row md:items-center space-y-2 md:space-y-0 md:space-x-2">
-                                    <div class="flex items-center">
-                                        <input type="text" x-model="dashboardSearchTerm" placeholder="Cari line atau model..." class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-full md:w-auto">
-                                    </div>
-                                    <div class="flex items-center">
-                                        <select x-model="dashboardStatusFilter" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-full md:w-auto">
-                                            <option value="">Semua Status</option>
-                                            <option value="on-target">On Target</option>
-                                            <option value="behind">Behind</option>
-                                            <option value="no-data">No Data</option>
-                                        </select>
-                                    </div>
-                                    <div class="flex items-center">
-                                        <span class="text-sm text-gray-600 mr-2">Tampilkan:</span>
-                                        <select x-model="dashboardItemsPerPage" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-full md:w-auto">
-                                            <option value="5">5</option>
-                                            <option value="10">10</option>
-                                            <option value="20">20</option>
-                                            <option value="50">50</option>
-                                        </select>
-                                    </div>
-                                </div>
+	                                <div class="filter-toolbar line-management-toolbar mt-4 md:mt-0 mb-0">
+	                                    <div class="filter-group">
+	                                        <div class="filter-control filter-control-search has-icon">
+	                                            <i class="fa-solid fa-magnifying-glass filter-control-icon"></i>
+	                                            <input type="text" x-model="dashboardSearchTerm" placeholder="Cari line atau model..." class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+	                                        </div>
+	                                    </div>
+	                                    <div class="filter-group">
+	                                        <div class="filter-control filter-control-select has-icon">
+	                                            <i class="fa-solid fa-filter filter-control-icon"></i>
+	                                            <select x-model="dashboardStatusFilter" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+	                                            <option value="">Semua Status</option>
+	                                            <option value="on-target">On Target</option>
+	                                            <option value="behind">Behind</option>
+	                                            <option value="no-data">No Data</option>
+	                                            </select>
+	                                        </div>
+	                                    </div>
+	                                    <div class="filter-group">
+	                                        <span class="filter-caption"><i class="fa-solid fa-table-list"></i>Tampilkan</span>
+	                                        <div class="filter-control filter-control-page-size">
+	                                            <select x-model="dashboardItemsPerPage" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+	                                            <option value="5">5</option>
+	                                            <option value="10">10</option>
+	                                            <option value="20">20</option>
+	                                            <option value="50">50</option>
+	                                            </select>
+	                                        </div>
+	                                        <span class="filter-caption">per halaman</span>
+	                                    </div>
+	                                </div>
                             </div>
                         </div>
                         <div class="overflow-x-auto">
@@ -738,11 +917,13 @@
                                                 <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800" 
                                                       x-show="line.data.outputDay === 0">No Data</span>
                                             </td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-	                                                <button x-show="currentUser.role !== 'operator'" @click="viewLine(line.lineName, line.modelId)" class="text-blue-600 hover:text-blue-900 mr-3"><i class="fa-solid fa-eye mr-1"></i>Lihat</button>
-	                                                <!-- Tombol Input hanya untuk operator dan admin, bukan admin_operator -->
-	                                                <button x-show="currentUser.role === 'operator' || currentUser.role === 'admin'" @click="inputData(line.lineName, line.modelId)" class="text-green-600 hover:text-green-900"><i class="fa-solid fa-keyboard mr-1"></i>Input</button>
-                                            </td>
+	                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+		                                                <div class="table-actions">
+		                                                <button x-show="currentUser.role !== 'operator'" @click="viewLine(line.lineName, line.modelId)" class="btn-action btn-action-primary"><i class="fa-solid fa-eye"></i>Lihat</button>
+		                                                <!-- Tombol Input hanya untuk operator dan admin, bukan admin_operator -->
+		                                                <button x-show="currentUser.role === 'operator' || currentUser.role === 'admin'" @click="inputData(line.lineName, line.modelId)" class="btn-action btn-action-success"><i class="fa-solid fa-keyboard"></i>Input</button>
+		                                                </div>
+	                                            </td>
                                         </tr>
                                     </template>
                                 </tbody>
@@ -898,10 +1079,10 @@
 	                                                x-text="hour.output - hour.targetManual"></td>
 	                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
 	                                                <!-- Tombol Simpan hanya untuk operator dan admin, bukan admin_operator -->
-                                                <button x-show="currentUser.role !== 'admin_operator'" @click="updateHourlyDataDirect(currentLine, currentModelId, index)" 
-                                                        class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 text-sm">
-	                                                    <i class="fa-solid fa-floppy-disk mr-1"></i>Simpan
-                                                </button>
+	                                                <button x-show="currentUser.role !== 'admin_operator'" @click="updateHourlyDataDirect(currentLine, currentModelId, index)"
+	                                                        class="btn-action btn-action-primary">
+		                                                    <i class="fa-solid fa-floppy-disk"></i>Simpan
+	                                                </button>
                                             </td>
                                         </tr>
                                     </template>
@@ -1032,7 +1213,8 @@
 	                                                <tr>
 	                                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jenis</th>
 	                                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Area</th>
-	                                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Keterangan</th>
+		                                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Keterangan</th>
+		                                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Update Terakhir</th>
 	                                                </tr>
 	                                            </thead>
 	                                            <tbody class="bg-white divide-y divide-gray-200">
@@ -1040,12 +1222,13 @@
 	                                                    <tr>
 	                                                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900" x-text="check.type || '-'"></td>
 	                                                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900" x-text="check.area || '-'"></td>
-	                                                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500" x-text="check.notes || '-'"></td>
-	                                                    </tr>
-	                                                </template>
-	                                                <tr x-show="recentDefectChecks.length === 0">
-	                                                    <td colspan="3" class="px-4 py-6 text-center text-sm text-gray-500">Belum ada defect QC.</td>
-	                                                </tr>
+		                                                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500" x-text="check.notes || '-'"></td>
+		                                                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500" x-text="formatDateTime(check.checkedAt)"></td>
+		                                                    </tr>
+		                                                </template>
+		                                                <tr x-show="recentDefectChecks.length === 0">
+		                                                    <td colspan="4" class="px-4 py-6 text-center text-sm text-gray-500">Belum ada defect QC.</td>
+		                                                </tr>
 	                                            </tbody>
 	                                        </table>
 	                                    </div>
@@ -1105,38 +1288,44 @@
                             <p class="mt-1 max-w-2xl text-sm text-gray-500">Tambah, edit, atau hapus line produksi dan model</p>
                         </div>
                         <div class="p-4">
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-	                                <button @click="openLineModal()" class="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-	                                    <i class="fa-solid fa-plus mr-2"></i>Tambah Line Baru
-	                                </button>
+	                            <div class="filter-toolbar line-management-toolbar">
+	                                <div class="filter-group">
+		                                <button @click="openLineModal()" class="btn-compact inline-flex justify-center items-center border border-transparent font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+		                                    <i class="fa-solid fa-plus mr-2"></i>Tambah Line Baru
+		                                </button>
 
-	                                <button @click="openModelModal()" class="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
-	                                    <i class="fa-solid fa-cubes-stacked mr-2"></i>Tambah Model ke Line
-	                                </button>
-                            </div>
-                            
-                            <!-- Search and Filter Controls -->
-                            <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-4 space-y-2 md:space-y-0">
-                                <div class="flex items-center space-x-2">
-                                    <input type="text" x-model="lineSearchTerm" placeholder="Cari line atau model..." class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                    <select x-model="lineStatusFilter" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                        <option value="">Semua Status</option>
-                                        <option value="on-target">On Target</option>
-                                        <option value="behind">Behind</option>
-                                        <option value="no-data">No Data</option>
-                                    </select>
-                                </div>
-                                <div class="flex items-center space-x-2">
-                                    <span class="text-sm text-gray-600">Tampilkan:</span>
-                                    <select x-model="linesPerPage" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                        <option value="5">5</option>
-                                        <option value="10">10</option>
-                                        <option value="20">20</option>
-                                        <option value="50">50</option>
-                                    </select>
-                                    <span class="text-sm text-gray-600">per halaman</span>
-                                </div>
-                            </div>
+		                                <button @click="openModelModal()" class="btn-compact inline-flex justify-center items-center border border-transparent font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+		                                    <i class="fa-solid fa-cubes-stacked mr-2"></i>Tambah Model ke Line
+		                                </button>
+	                                </div>
+	                                <div class="filter-group">
+	                                    <div class="filter-control filter-control-search has-icon">
+	                                        <i class="fa-solid fa-magnifying-glass filter-control-icon"></i>
+	                                        <input type="text" x-model="lineSearchTerm" placeholder="Cari line atau model..." class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+	                                    </div>
+	                                    <div class="filter-control filter-control-select has-icon">
+	                                        <i class="fa-solid fa-filter filter-control-icon"></i>
+	                                        <select x-model="lineStatusFilter" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+	                                        <option value="">Semua Status</option>
+	                                        <option value="on-target">On Target</option>
+	                                        <option value="behind">Behind</option>
+	                                        <option value="no-data">No Data</option>
+	                                        </select>
+	                                    </div>
+	                                </div>
+	                                <div class="filter-group">
+	                                    <span class="filter-caption"><i class="fa-solid fa-table-list"></i>Tampilkan</span>
+	                                    <div class="filter-control filter-control-page-size">
+	                                        <select x-model="linesPerPage" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+	                                        <option value="5">5</option>
+	                                        <option value="10">10</option>
+	                                        <option value="20">20</option>
+	                                        <option value="50">50</option>
+	                                        </select>
+	                                    </div>
+	                                    <span class="filter-caption">per halaman</span>
+	                                </div>
+	                            </div>
                             
                             <div class="overflow-x-auto">
                                 <table class="min-w-full divide-y divide-gray-200">
@@ -1167,12 +1356,14 @@
                                                     <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800" x-show="line.data.outputDay < line.data.target && line.data.outputDay > 0">Behind</span>
                                                     <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800" x-show="line.data.outputDay === 0">No Data</span>
                                                 </td>
-                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-medium">
-	                                                    <button @click="openLineModal(line)" class="text-blue-600 hover:text-blue-900 mr-2"><i class="fa-solid fa-pen-to-square mr-1"></i>Edit</button>
-	                                                    <button @click="setActiveModel(line.lineName, line.modelId)" class="text-green-600 hover:text-green-900 mr-2"><i class="fa-solid fa-toggle-on mr-1"></i>Set Aktif</button>
-	                                                    <button @click="deleteModel(line.lineName, line.modelId)" class="text-red-600 hover:text-red-900 mr-2" x-show="!line.data.lineActiveModel || line.data.lineActiveModel !== line.modelId"><i class="fa-solid fa-trash mr-1"></i>Hapus Model</button>
-	                                                    <button @click="deleteLine(line.lineName)" class="text-red-700 hover:text-red-900" x-show="currentUser.role === 'admin'"><i class="fa-solid fa-trash-can mr-1"></i>Hapus Line</button>
-	                                                </td>
+	                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-medium">
+		                                                    <div class="table-actions">
+		                                                    <button @click="openLineModal(line)" class="btn-action btn-action-primary"><i class="fa-solid fa-pen-to-square"></i>Edit</button>
+		                                                    <button @click="setActiveModel(line.lineName, line.modelId)" class="btn-action btn-action-success"><i class="fa-solid fa-toggle-on"></i>Set Aktif</button>
+		                                                    <button @click="deleteModel(line.lineName, line.modelId)" class="btn-action btn-action-danger" x-show="!line.data.lineActiveModel || line.data.lineActiveModel !== line.modelId"><i class="fa-solid fa-trash"></i>Hapus Model</button>
+		                                                    <button @click="deleteLine(line.lineName)" class="btn-action btn-action-danger" x-show="currentUser.role === 'admin'"><i class="fa-solid fa-trash-can"></i>Hapus Line</button>
+		                                                    </div>
+		                                                </td>
                                             </tr>
                                         </template>
                                     </tbody>
@@ -1224,22 +1415,31 @@
                             <p class="mt-1 max-w-2xl text-sm text-gray-500">Kelola pengguna sistem</p>
                         </div>
                         <div class="p-4">
-                            <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-4 space-y-2 md:space-y-0">
-	                                <button @click="openUserModal()" class="w-full md:w-auto inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-	                                    <i class="fa-solid fa-user-plus mr-2"></i>Tambah User Baru
-	                                </button>
-                                
-                                <div class="flex items-center space-x-2">
-                                    <input type="text" x-model="userSearchTerm" placeholder="Cari user..." class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                    <span class="text-sm text-gray-600">Tampilkan:</span>
-                                    <select x-model="usersPerPage" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                        <option value="5">5</option>
-                                        <option value="10">10</option>
-                                        <option value="20">20</option>
-                                        <option value="50">50</option>
-                                    </select>
-                                </div>
-                            </div>
+	                            <div class="filter-toolbar line-management-toolbar">
+	                                <div class="filter-group">
+		                                <button @click="openUserModal()" class="btn-compact inline-flex justify-center items-center border border-transparent font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+		                                    <i class="fa-solid fa-user-plus mr-2"></i>Tambah User Baru
+		                                </button>
+	                                </div>
+	                                <div class="filter-group">
+	                                    <div class="filter-control filter-control-search has-icon">
+	                                        <i class="fa-solid fa-magnifying-glass filter-control-icon"></i>
+	                                        <input type="text" x-model="userSearchTerm" placeholder="Cari user..." class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+	                                    </div>
+	                                </div>
+	                                <div class="filter-group">
+	                                    <span class="filter-caption"><i class="fa-solid fa-table-list"></i>Tampilkan</span>
+	                                    <div class="filter-control filter-control-page-size">
+	                                        <select x-model="usersPerPage" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+	                                        <option value="5">5</option>
+	                                        <option value="10">10</option>
+	                                        <option value="20">20</option>
+	                                        <option value="50">50</option>
+	                                        </select>
+	                                    </div>
+	                                    <span class="filter-caption">per halaman</span>
+	                                </div>
+	                            </div>
                             
                             <div class="overflow-x-auto">
                                 <table class="min-w-full divide-y divide-gray-200">
@@ -1267,10 +1467,12 @@
                                                           x-text="user.role"></span>
                                                 </td>
                                                 <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500" x-text="user.line || '-'"></td>
-                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-medium">
-	                                                    <button @click="openUserModal(user)" class="text-blue-600 hover:text-blue-900 mr-2"><i class="fa-solid fa-user-pen mr-1"></i>Edit</button>
-	                                                    <button @click="deleteUser(user.id)" class="text-red-600 hover:text-red-900"><i class="fa-solid fa-user-xmark mr-1"></i>Hapus</button>
-                                                </td>
+	                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-medium">
+		                                                    <div class="table-actions">
+		                                                    <button @click="openUserModal(user)" class="btn-action btn-action-primary"><i class="fa-solid fa-user-pen"></i>Edit</button>
+		                                                    <button @click="deleteUser(user.id)" class="btn-action btn-action-danger"><i class="fa-solid fa-user-xmark"></i>Hapus</button>
+		                                                    </div>
+		                                                </td>
                                             </tr>
                                         </template>
                                     </tbody>
@@ -1321,37 +1523,40 @@
                             <p class="mt-1 max-w-2xl text-sm text-gray-500">Lihat rekap data produksi berdasarkan tanggal tertentu</p>
                         </div>
                         <div class="p-4">
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                                <div>
-                                    <label for="report-date" class="block text-sm font-medium text-gray-700 mb-2">Pilih Tanggal</label>
-                                    <input type="date" id="report-date" x-model="reportDate" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
-                                </div>
-                                <div class="flex items-end">
-	                                    <button @click="loadDateReport()" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-	                                        <i class="fa-solid fa-magnifying-glass-chart mr-2"></i>Lihat Laporan
-	                                    </button>
-                                </div>
-                                <div class="flex items-end">
-	                                    <button @click="exportDateReport()" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
-	                                        <i class="fa-solid fa-file-excel mr-2"></i>Export Excel
-	                                    </button>
-                                </div>
-                            </div>
+	                            <div class="filter-toolbar line-management-toolbar">
+	                                <div class="filter-group">
+	                                    <span class="filter-caption"><i class="fa-solid fa-calendar-days"></i>Tanggal</span>
+	                                    <div class="filter-control filter-control-select">
+	                                        <input type="date" id="report-date" x-model="reportDate" class="focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
+	                                    </div>
+	                                </div>
+	                                <div class="filter-group">
+		                                    <button @click="loadDateReport()" class="btn-compact inline-flex items-center border border-transparent font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+		                                        <i class="fa-solid fa-magnifying-glass-chart mr-2"></i>Lihat Laporan
+		                                    </button>
+		                                    <button @click="exportDateReport()" class="btn-compact inline-flex items-center border border-transparent font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+		                                        <i class="fa-solid fa-file-excel mr-2"></i>Export Excel
+		                                    </button>
+	                                </div>
+	                            </div>
 
                             <!-- Date Report Results with Pagination -->
                             <div x-show="dateReport && dateReport.length > 0" class="mt-4">
                                 <div class="flex justify-between items-center mb-4">
 	                                    <h4 class="text-lg font-medium text-gray-900 flex items-center"><i class="fa-solid fa-table-list text-blue-600 mr-2"></i>Hasil Laporan Tanggal: <span class="ml-1" x-text="reportDate"></span></h4>
                                     
-                                    <div class="flex items-center space-x-2">
-                                        <span class="text-sm text-gray-600">Tampilkan:</span>
-                                        <select x-model="reportPerPage" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                            <option value="5">5</option>
-                                            <option value="10">10</option>
-                                            <option value="20">20</option>
-                                            <option value="50">50</option>
-                                        </select>
-                                    </div>
+	                                    <div class="filter-group">
+	                                        <span class="filter-caption"><i class="fa-solid fa-table-list"></i>Tampilkan</span>
+	                                        <div class="filter-control filter-control-page-size">
+	                                            <select x-model="reportPerPage" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+	                                            <option value="5">5</option>
+	                                            <option value="10">10</option>
+	                                            <option value="20">20</option>
+	                                            <option value="50">50</option>
+	                                            </select>
+	                                        </div>
+	                                        <span class="filter-caption">per halaman</span>
+	                                    </div>
                                 </div>
                                 
                                 <div class="overflow-x-auto">
@@ -1436,21 +1641,23 @@
 	                            <h3 class="text-lg leading-6 font-medium text-gray-900 flex items-center"><i class="fa-solid fa-sliders text-blue-600 mr-2"></i>Maintenance</h3>
 	                            <p class="mt-1 max-w-2xl text-sm text-gray-500">Gunakan aksi ini hanya saat perlu administrasi data sistem</p>
 	                        </div>
-	                        <div class="p-4">
-	                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-	                                <button @click="createBackup()" class="inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
-	                                    <i class="fa-solid fa-database mr-2"></i>Buat Backup
-	                                </button>
+		                        <div class="p-4">
+		                            <div class="filter-toolbar line-management-toolbar mb-0">
+		                                <div class="filter-group">
+		                                <button @click="createBackup()" class="btn-compact inline-flex justify-center items-center border border-transparent font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+		                                    <i class="fa-solid fa-database mr-2"></i>Buat Backup
+		                                </button>
 
-	                                <button @click="syncDates()" class="inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-	                                    <i class="fa-solid fa-rotate mr-2"></i>Sinkronisasi Tanggal
-	                                </button>
+		                                <button @click="syncDates()" class="btn-compact inline-flex justify-center items-center border border-transparent font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+		                                    <i class="fa-solid fa-rotate mr-2"></i>Sinkronisasi Tanggal
+		                                </button>
 
-	                                <button @click="checkSystemStatus()" class="inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500">
-	                                    <i class="fa-solid fa-shield-halved mr-2"></i>Cek Status Sistem
-	                                </button>
-	                            </div>
-	                        </div>
+		                                <button @click="checkSystemStatus()" class="btn-compact inline-flex justify-center items-center border border-transparent font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500">
+		                                    <i class="fa-solid fa-shield-halved mr-2"></i>Cek Status Sistem
+		                                </button>
+		                                </div>
+		                            </div>
+		                        </div>
 	                    </div>
 	                </div>
 
@@ -1467,11 +1674,15 @@
 	                                <h3 class="text-lg leading-6 font-medium text-gray-900 flex items-center"><i class="fa-solid fa-tags text-blue-600 mr-2"></i>Jenis Defect</h3>
 	                                <p class="mt-1 max-w-2xl text-sm text-gray-500">Contoh: jahitan lepas, kotor, bentuk tidak sesuai</p>
 	                            </div>
-	                            <div class="p-4 border-b border-gray-200">
-	                                <button type="button" @click="openDefectCategoryModal('type')" class="inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
-	                                    <i class="fa-solid fa-plus mr-2"></i>Tambah Jenis Defect
-	                                </button>
-	                            </div>
+		                            <div class="p-4 border-b border-gray-200">
+		                                <div class="filter-toolbar line-management-toolbar mb-0">
+		                                <div class="filter-group">
+		                                <button type="button" @click="openDefectCategoryModal('type')" class="btn-compact inline-flex justify-center items-center border border-transparent font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
+		                                    <i class="fa-solid fa-plus mr-2"></i>Tambah Jenis Defect
+		                                </button>
+		                                </div>
+		                                </div>
+		                            </div>
 	                            <div class="overflow-x-auto">
 	                                <table class="min-w-full divide-y divide-gray-200">
 	                                    <thead class="bg-gray-50">
@@ -1486,11 +1697,15 @@
 	                                            <tr>
 	                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900" x-text="type.name"></td>
 	                                                <td class="px-4 py-3 whitespace-nowrap">
-	                                                    <button @click="toggleDefectType(type)" class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full" :class="type.active !== false ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-700'" x-text="type.active !== false ? 'Aktif' : 'Nonaktif'"></button>
+	                                                    <div class="table-actions">
+	                                                    <button @click="toggleDefectType(type)" class="btn-action" :class="type.active !== false ? 'btn-action-success' : 'btn-action-neutral'" x-text="type.active !== false ? 'Aktif' : 'Nonaktif'"></button>
+	                                                    </div>
 	                                                </td>
 	                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-medium">
-	                                                    <button @click="editDefectType(type)" class="text-blue-600 hover:text-blue-900 mr-3"><i class="fa-solid fa-pen-to-square mr-1"></i>Edit</button>
-	                                                    <button @click="deleteDefectType(type.id)" class="text-red-600 hover:text-red-900"><i class="fa-solid fa-trash mr-1"></i>Hapus</button>
+	                                                    <div class="table-actions">
+	                                                    <button @click="editDefectType(type)" class="btn-action btn-action-primary"><i class="fa-solid fa-pen-to-square"></i>Edit</button>
+	                                                    <button @click="deleteDefectType(type.id)" class="btn-action btn-action-danger"><i class="fa-solid fa-trash"></i>Hapus</button>
+	                                                    </div>
 	                                                </td>
 	                                            </tr>
 	                                        </template>
@@ -1507,11 +1722,15 @@
 	                                <h3 class="text-lg leading-6 font-medium text-gray-900 flex items-center"><i class="fa-solid fa-location-dot text-blue-600 mr-2"></i>Area Defect</h3>
 	                                <p class="mt-1 max-w-2xl text-sm text-gray-500">Contoh: kepala, badan, kaki, aksesoris</p>
 	                            </div>
-	                            <div class="p-4 border-b border-gray-200">
-	                                <button type="button" @click="openDefectCategoryModal('area')" class="inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
-	                                    <i class="fa-solid fa-plus mr-2"></i>Tambah Area Defect
-	                                </button>
-	                            </div>
+		                            <div class="p-4 border-b border-gray-200">
+		                                <div class="filter-toolbar line-management-toolbar mb-0">
+		                                <div class="filter-group">
+		                                <button type="button" @click="openDefectCategoryModal('area')" class="btn-compact inline-flex justify-center items-center border border-transparent font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
+		                                    <i class="fa-solid fa-plus mr-2"></i>Tambah Area Defect
+		                                </button>
+		                                </div>
+		                                </div>
+		                            </div>
 	                            <div class="overflow-x-auto">
 	                                <table class="min-w-full divide-y divide-gray-200">
 	                                    <thead class="bg-gray-50">
@@ -1526,11 +1745,15 @@
 	                                            <tr>
 	                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900" x-text="area.name"></td>
 	                                                <td class="px-4 py-3 whitespace-nowrap">
-	                                                    <button @click="toggleDefectArea(area)" class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full" :class="area.active !== false ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-700'" x-text="area.active !== false ? 'Aktif' : 'Nonaktif'"></button>
+	                                                    <div class="table-actions">
+	                                                    <button @click="toggleDefectArea(area)" class="btn-action" :class="area.active !== false ? 'btn-action-success' : 'btn-action-neutral'" x-text="area.active !== false ? 'Aktif' : 'Nonaktif'"></button>
+	                                                    </div>
 	                                                </td>
 	                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-medium">
-	                                                    <button @click="editDefectArea(area)" class="text-blue-600 hover:text-blue-900 mr-3"><i class="fa-solid fa-pen-to-square mr-1"></i>Edit</button>
-	                                                    <button @click="deleteDefectArea(area.id)" class="text-red-600 hover:text-red-900"><i class="fa-solid fa-trash mr-1"></i>Hapus</button>
+	                                                    <div class="table-actions">
+	                                                    <button @click="editDefectArea(area)" class="btn-action btn-action-primary"><i class="fa-solid fa-pen-to-square"></i>Edit</button>
+	                                                    <button @click="deleteDefectArea(area.id)" class="btn-action btn-action-danger"><i class="fa-solid fa-trash"></i>Hapus</button>
+	                                                    </div>
 	                                                </td>
 	                                            </tr>
 	                                        </template>
@@ -3014,8 +3237,23 @@ async checkSystemStatus() {
         this.showToast('Error checking system status', 'error');
     }
 },
-                // Utility methods
-                showToast(message, type = 'info') {
+	                // Utility methods
+	                formatDateTime(value) {
+	                    if (!value) return '-';
+
+	                    const date = new Date(value);
+	                    if (Number.isNaN(date.getTime())) return '-';
+
+	                    return date.toLocaleString('id-ID', {
+	                        day: '2-digit',
+	                        month: '2-digit',
+	                        year: 'numeric',
+	                        hour: '2-digit',
+	                        minute: '2-digit'
+	                    });
+	                },
+
+	                showToast(message, type = 'info') {
                     this.toast = {
                         show: true,
                         type: type,
@@ -3053,12 +3291,12 @@ async checkSystemStatus() {
 	                    return (this.lineDetail.qcChecks || []).filter(check => check.result === 'good').length;
 	                },
 
-	                get recentDefectChecks() {
-	                    return (this.lineDetail.qcChecks || [])
-	                        .filter(check => check.result === 'defect')
-	                        .slice(-5)
-	                        .reverse();
-	                },
+		                get recentDefectChecks() {
+		                    return (this.lineDetail.qcChecks || [])
+		                        .filter(check => check.result === 'defect')
+		                        .sort((a, b) => new Date(b.checkedAt || 0) - new Date(a.checkedAt || 0))
+		                        .slice(0, 1);
+		                },
 	                
 	                // Dashboard pagination
                 get filteredDashboardLines() {

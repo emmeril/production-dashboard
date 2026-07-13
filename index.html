@@ -891,13 +891,12 @@
 
 	                    <div class="filter-toolbar line-management-toolbar">
 	                        <div class="filter-group">
-	                            <span class="filter-caption"><i class="fa-solid fa-sitemap"></i>Line</span>
+	                            <span class="filter-caption"><i class="fa-solid fa-calendar-days"></i>Tanggal</span>
 	                            <div class="filter-control filter-control-select has-icon">
-	                                <i class="fa-solid fa-filter filter-control-icon"></i>
-	                                <select x-model="dashboardLineFilter" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-	                                    <option value="">Semua Line</option>
-	                                    <template x-for="lineName in dashboardLineOptions" :key="lineName">
-	                                        <option :value="lineName" x-text="lineName"></option>
+	                                <i class="fa-solid fa-calendar-day filter-control-icon"></i>
+	                                <select x-model="dashboardDateFilter" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+	                                    <template x-for="date in dashboardDateOptions" :key="date">
+	                                        <option :value="date" x-text="formatShortDate(date)"></option>
 	                                    </template>
 	                                </select>
 	                            </div>
@@ -910,7 +909,7 @@
 	                                <div class="flex flex-wrap items-center justify-between gap-3">
 	                                    <div>
 	                                        <h3 class="text-lg leading-6 font-medium text-gray-900 flex items-center"><i class="fa-solid fa-chart-simple text-blue-600 mr-2"></i>Chart Akumulasi Data Tiap Hari</h3>
-	                                        <p class="mt-1 max-w-2xl text-sm text-gray-500">Perbandingan target, output, dan defect berdasarkan line yang dipilih</p>
+	                                        <p class="mt-1 max-w-2xl text-sm text-gray-500">Perbandingan target, output, dan defect per line pada tanggal yang dipilih</p>
 	                                    </div>
 	                                    <div class="chart-legend">
 	                                        <span><span class="legend-dot chart-bar-target"></span>Target</span>
@@ -921,15 +920,15 @@
 	                            </div>
 	                            <div class="p-4">
 	                                <div x-show="dashboardChartData.length > 0" class="dashboard-chart">
-	                                    <template x-for="day in dashboardChartData" :key="day.date + '-' + (day.lineName || 'all')">
-	                                        <div class="chart-column" :title="formatShortDate(day.date) + ' - Target: ' + day.target + ', Output: ' + day.output + ', Defect: ' + day.defect">
+	                                    <template x-for="day in dashboardChartData" :key="day.date + '-' + day.lineName">
+	                                        <div class="chart-column" :title="day.lineName + ' - ' + formatShortDate(day.date) + ' - Target: ' + day.target + ', Output: ' + day.output + ', Defect: ' + day.defect">
 	                                            <div class="text-center text-xs font-semibold text-gray-700" x-text="day.output"></div>
 	                                            <div class="chart-bars">
 	                                                <div class="chart-bar chart-bar-target" :style="'height: ' + chartBarHeight(day.target) + '%'"></div>
 	                                                <div class="chart-bar chart-bar-output" :style="'height: ' + chartBarHeight(day.output) + '%'"></div>
 	                                                <div class="chart-bar chart-bar-defect" :style="'height: ' + chartBarHeight(day.defect) + '%'"></div>
 	                                            </div>
-	                                            <div class="chart-label" x-text="formatShortDate(day.date)"></div>
+	                                            <div class="chart-label" x-text="day.lineName"></div>
 	                                        </div>
 	                                    </template>
 	                                </div>
@@ -940,31 +939,33 @@
 	                        <div class="bg-white rounded-lg shadow overflow-hidden card-shadow">
 	                            <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
 	                                <h3 class="text-lg leading-6 font-medium text-gray-900 flex items-center"><i class="fa-solid fa-calendar-day text-blue-600 mr-2"></i>Detail Data Per Hari</h3>
-	                                <p class="mt-1 max-w-2xl text-sm text-gray-500">Ringkasan terbaru berdasarkan tanggal</p>
+	                                <p class="mt-1 max-w-2xl text-sm text-gray-500">Daftar line yang tersedia pada tanggal yang dipilih</p>
 	                            </div>
 	                            <div class="overflow-x-auto">
 	                                <table class="min-w-full divide-y divide-gray-200">
 	                                    <thead class="bg-gray-50">
 	                                        <tr>
-	                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal</th>
 	                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Line</th>
+	                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Target</th>
 	                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Output</th>
+	                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">QC</th>
 	                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Defect</th>
 	                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rate</th>
 	                                        </tr>
 	                                    </thead>
 	                                    <tbody class="bg-white divide-y divide-gray-200">
-	                                        <template x-for="day in dashboardDailyDetails" :key="day.date + '-' + (day.lineName || 'all')">
+	                                        <template x-for="day in dashboardDailyDetails" :key="day.date + '-' + day.lineName">
 	                                            <tr>
-	                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900" x-text="formatShortDate(day.date)"></td>
-	                                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700" x-text="day.lineName || 'Semua Line'"></td>
+	                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900" x-text="day.lineName"></td>
+	                                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700" x-text="day.target"></td>
 	                                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700" x-text="day.output"></td>
+	                                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700" x-text="day.qcChecked"></td>
 	                                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700" x-text="day.defect"></td>
 	                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-semibold" :class="day.defectRate > 5 ? 'text-red-600' : 'text-green-600'" x-text="day.defectRate + '%'"></td>
 	                                            </tr>
 	                                        </template>
 	                                        <tr x-show="dashboardDailyDetails.length === 0">
-	                                            <td colspan="5" class="px-4 py-8 text-center text-sm text-gray-500">Belum ada detail data harian.</td>
+	                                            <td colspan="6" class="px-4 py-8 text-center text-sm text-gray-500">Belum ada detail data line.</td>
 	                                        </tr>
 	                                    </tbody>
 	                                </table>
@@ -2270,7 +2271,7 @@
 	                    topDefectAreas: [],
 	                    topDefectTypes: []
 	                },
-	                dashboardLineFilter: '',
+	                dashboardDateFilter: '',
                 users: [],
                 dateReport: [],
                 reportDate: new Date().toISOString().split('T')[0],
@@ -3587,31 +3588,30 @@ async checkSystemStatus() {
 		                        .slice(0, 1);
 		                },
 	                
-		                get dashboardLineOptions() {
-		                    const lines = this.dashboardData.lines || [];
-		                    if (lines.length) return lines;
+		                get dashboardDateOptions() {
+		                    const dates = [...new Set([
+		                        ...(this.dashboardData.daily || []).map(item => item.date),
+		                        ...(this.dashboardData.lineDaily || []).map(item => item.date)
+		                    ].filter(Boolean))];
 
-		                    return [...new Set((this.dashboardData.lineDaily || []).map(item => item.lineName).filter(Boolean))]
-		                        .sort((a, b) => a.localeCompare(b));
+		                    return dates.sort((a, b) => new Date(b) - new Date(a));
 		                },
 
-		                get selectedDashboardDailyData() {
-		                    if (!this.dashboardLineFilter) return this.dashboardData.daily || [];
+		                get selectedDashboardDate() {
+		                    return this.dashboardDateFilter || this.dashboardDateOptions[0] || '';
+		                },
 
+		                get selectedDashboardLineData() {
 		                    return (this.dashboardData.lineDaily || [])
-		                        .filter(item => item.lineName === this.dashboardLineFilter);
+		                        .filter(item => item.date === this.selectedDashboardDate)
+		                        .sort((a, b) => a.lineName.localeCompare(b.lineName, undefined, { numeric: true }));
 		                },
 
 		                get selectedDashboardSummary() {
-		                    if (!this.dashboardLineFilter) {
-		                        return {
-		                            target: this.dashboardData.totalTarget || 0,
-		                            output: this.dashboardData.totalOutput || 0,
-		                            defectRate: this.dashboardData.defectRate || 0
-		                        };
-		                    }
+		                    const summary = (this.dashboardData.daily || [])
+		                        .find(item => item.date === this.selectedDashboardDate);
 
-		                    return [...this.selectedDashboardDailyData].reverse()[0] || {
+		                    return summary || {
 		                        target: 0,
 		                        output: 0,
 		                        defectRate: 0
@@ -3619,23 +3619,19 @@ async checkSystemStatus() {
 		                },
 
 		                get dashboardChartData() {
-		                    return this.selectedDashboardDailyData.slice(-10);
+		                    return this.selectedDashboardLineData;
 		                },
 
 		                get dashboardDailyDetails() {
-		                    return [...this.selectedDashboardDailyData].reverse().slice(0, 7);
+		                    return this.selectedDashboardLineData;
 		                },
 
 		                get selectedDashboardTopDefectAreas() {
-		                    if (!this.dashboardLineFilter) return this.dashboardData.topDefectAreas || [];
-
-		                    return this.topCounterFromDaily(this.selectedDashboardDailyData, 'areaCounts');
+		                    return this.topCounterFromDaily(this.selectedDashboardLineData, 'areaCounts');
 		                },
 
 		                get selectedDashboardTopDefectTypes() {
-		                    if (!this.dashboardLineFilter) return this.dashboardData.topDefectTypes || [];
-
-		                    return this.topCounterFromDaily(this.selectedDashboardDailyData, 'typeCounts');
+		                    return this.topCounterFromDaily(this.selectedDashboardLineData, 'typeCounts');
 		                },
 
 		                get maxDashboardChartValue() {

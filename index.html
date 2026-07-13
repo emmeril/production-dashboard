@@ -4,9 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Production Dashboard System</title>
-	    <script src="https://cdn.tailwindcss.com"></script>
-	    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
-	    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+		    <script src="https://cdn.tailwindcss.com"></script>
+		    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+		    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+		    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 	    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 	    <style>
 	        :root {
@@ -382,38 +383,10 @@
 		            white-space: nowrap;
 		        }
 
-		        .dashboard-chart {
-		            display: grid;
-		            grid-template-columns: repeat(auto-fit, minmax(76px, 1fr));
-		            align-items: end;
-		            gap: 0.85rem;
-		            min-height: 260px;
-		            padding: 1rem 0.25rem 0;
-		        }
-
-		        .chart-column {
-		            display: flex;
-		            min-width: 0;
-		            height: 220px;
-		            flex-direction: column;
-		            justify-content: flex-end;
-		            gap: 0.45rem;
-		        }
-
-		        .chart-bars {
-		            display: grid;
-		            grid-template-columns: repeat(3, minmax(8px, 1fr));
-		            align-items: end;
-		            gap: 0.22rem;
-		            height: 160px;
-		            padding: 0 0.2rem;
-		            border-bottom: 1px solid #dee2e6;
-		        }
-
-		        .chart-bar {
-		            min-height: 4px;
-		            border-radius: 6px 6px 0 0;
-		            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
+		        .dashboard-chart-frame {
+		            position: relative;
+		            height: 320px;
+		            min-height: 320px;
 		        }
 
 		        .chart-bar-target {
@@ -426,16 +399,6 @@
 
 		        .chart-bar-defect {
 		            background: #dc3545;
-		        }
-
-		        .chart-label {
-		            overflow: hidden;
-		            color: #495057;
-		            font-size: 0.75rem;
-		            font-weight: 700;
-		            text-align: center;
-		            text-overflow: ellipsis;
-		            white-space: nowrap;
 		        }
 
 		        .chart-legend {
@@ -903,29 +866,19 @@
 	                                        <span><span class="legend-dot chart-bar-defect"></span>Defect</span>
 	                                    </div>
 	                                </div>
-	                            </div>
-	                            <div class="p-4">
-	                                <div x-show="dashboardChartData.length > 0" class="dashboard-chart">
-	                                    <template x-for="day in dashboardChartData" :key="day.date + '-' + day.lineName">
-	                                        <div class="chart-column" :title="day.lineName + ' - ' + formatShortDate(day.date) + ' - Target: ' + day.target + ', Output: ' + day.output + ', Defect: ' + day.defect">
-	                                            <div class="text-center text-xs font-semibold text-gray-700" x-text="day.output"></div>
-	                                            <div class="chart-bars">
-	                                                <div class="chart-bar chart-bar-target" :style="'height: ' + chartBarHeight(day.target) + '%'"></div>
-	                                                <div class="chart-bar chart-bar-output" :style="'height: ' + chartBarHeight(day.output) + '%'"></div>
-	                                                <div class="chart-bar chart-bar-defect" :style="'height: ' + chartBarHeight(day.defect) + '%'"></div>
-	                                            </div>
-	                                            <div class="chart-label" x-text="formatShortDate(day.date) + ' / ' + day.lineName"></div>
-	                                        </div>
-	                                    </template>
-	                                </div>
-	                                <div x-show="dashboardChartData.length === 0" class="px-4 py-10 text-center text-sm text-gray-500">Belum ada data harian untuk chart.</div>
-	                            </div>
+		                            </div>
+		                            <div class="p-4">
+		                                <div x-show="dashboardChartData.length > 0" class="dashboard-chart-frame">
+		                                    <canvas x-ref="dashboardChartCanvas"></canvas>
+		                                </div>
+		                                <div x-show="dashboardChartData.length === 0" class="px-4 py-10 text-center text-sm text-gray-500">Belum ada data harian untuk chart.</div>
+		                            </div>
 	                        </div>
 
 	                        <div class="bg-white rounded-lg shadow overflow-hidden card-shadow">
 	                            <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
 	                                <h3 class="text-lg leading-6 font-medium text-gray-900 flex items-center"><i class="fa-solid fa-calendar-day text-blue-600 mr-2"></i>Detail Data Per Hari</h3>
-	                                <p class="mt-1 max-w-2xl text-sm text-gray-500">Daftar line yang tersedia dari semua tanggal data</p>
+		                                <p class="mt-1 max-w-2xl text-sm text-gray-500">Daftar line yang tersedia untuk hari ini</p>
 	                            </div>
 	                            <div class="overflow-x-auto">
 	                                <table class="min-w-full divide-y divide-gray-200">
@@ -2259,6 +2212,7 @@
 	                    topDefectAreas: [],
 	                    topDefectTypes: []
 	                },
+	                dashboardChart: null,
                 users: [],
                 dateReport: [],
                 reportDate: new Date().toISOString().split('T')[0],
@@ -2755,10 +2709,11 @@
 	                        daily: dashboardSummary.daily || [],
 	                        lineDaily: dashboardSummary.lineDaily || [],
 	                        lines: dashboardSummary.lines || [],
-	                        topDefectAreas: dashboardSummary.topDefectAreas || [],
-	                        topDefectTypes: dashboardSummary.topDefectTypes || []
-	                    };
-	                },
+		                        topDefectAreas: dashboardSummary.topDefectAreas || [],
+		                        topDefectTypes: dashboardSummary.topDefectTypes || []
+		                    };
+		                    this.$nextTick(() => this.renderDashboardChart());
+		                },
 
 	                async loadAdminData() {
 	                    await this.loadLines();
@@ -3505,9 +3460,79 @@ async checkSystemStatus() {
 	                    });
 	                },
 
-	                chartBarHeight(value) {
-	                    const max = this.maxDashboardChartValue || 1;
-	                    return Math.max(4, Math.round(((parseInt(value) || 0) / max) * 100));
+	                currentDateKey() {
+	                    const now = new Date();
+	                    const year = now.getFullYear();
+	                    const month = String(now.getMonth() + 1).padStart(2, '0');
+	                    const day = String(now.getDate()).padStart(2, '0');
+	                    return `${year}-${month}-${day}`;
+	                },
+
+	                renderDashboardChart() {
+	                    if (!this.$refs.dashboardChartCanvas || typeof Chart === 'undefined') return;
+
+	                    const labels = this.dashboardChartData.map(item => `${this.formatShortDate(item.date)} / ${item.lineName}`);
+	                    const data = this.dashboardChartData;
+
+	                    if (this.dashboardChart) {
+	                        this.dashboardChart.destroy();
+	                        this.dashboardChart = null;
+	                    }
+
+	                    if (!data.length) return;
+
+	                    this.dashboardChart = new Chart(this.$refs.dashboardChartCanvas, {
+	                        type: 'bar',
+	                        data: {
+	                            labels,
+	                            datasets: [
+	                                {
+	                                    label: 'Target',
+	                                    data: data.map(item => item.target || 0),
+	                                    backgroundColor: 'rgba(0, 123, 255, 0.55)',
+	                                    borderColor: '#007bff',
+	                                    borderWidth: 1,
+	                                    borderRadius: 4
+	                                },
+	                                {
+	                                    label: 'Output',
+	                                    data: data.map(item => item.output || 0),
+	                                    backgroundColor: 'rgba(40, 167, 69, 0.6)',
+	                                    borderColor: '#28a745',
+	                                    borderWidth: 1,
+	                                    borderRadius: 4
+	                                },
+	                                {
+	                                    label: 'Defect',
+	                                    data: data.map(item => item.defect || 0),
+	                                    backgroundColor: 'rgba(220, 53, 69, 0.6)',
+	                                    borderColor: '#dc3545',
+	                                    borderWidth: 1,
+	                                    borderRadius: 4
+	                                }
+	                            ]
+	                        },
+	                        options: {
+	                            responsive: true,
+	                            maintainAspectRatio: false,
+	                            interaction: { mode: 'index', intersect: false },
+	                            plugins: {
+	                                legend: { position: 'top', labels: { boxWidth: 12, usePointStyle: true } },
+	                                tooltip: {
+	                                    callbacks: {
+	                                        afterTitle: items => {
+	                                            const item = data[items[0].dataIndex];
+	                                            return item ? `Line: ${item.lineName}` : '';
+	                                        }
+	                                    }
+	                                }
+	                            },
+	                            scales: {
+	                                x: { ticks: { maxRotation: 45, minRotation: 0 }, grid: { display: false } },
+	                                y: { beginAtZero: true, grid: { color: 'rgba(222, 226, 230, 0.7)' } }
+	                            }
+	                        }
+	                    });
 	                },
 
 	                topDefectPercent(value, items = []) {
@@ -3595,7 +3620,9 @@ async checkSystemStatus() {
 		                },
 
 		                get dashboardDailyDetails() {
-		                    return [...this.selectedDashboardLineData].reverse().slice(0, 30);
+		                    return this.selectedDashboardLineData
+		                        .filter(item => item.date === this.currentDateKey())
+		                        .sort((a, b) => a.lineName.localeCompare(b.lineName, undefined, { numeric: true }));
 		                },
 
 		                get selectedDashboardTopDefectAreas() {
@@ -3604,11 +3631,6 @@ async checkSystemStatus() {
 
 		                get selectedDashboardTopDefectTypes() {
 		                    return this.topCounterFromDaily(this.selectedDashboardLineData, 'typeCounts');
-		                },
-
-		                get maxDashboardChartValue() {
-		                    const values = this.dashboardChartData.flatMap(day => [day.target || 0, day.output || 0, day.defect || 0]);
-		                    return Math.max(...values, 1);
 		                },
 
 		                // Dashboard pagination

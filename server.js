@@ -30,8 +30,10 @@ const AppData = sequelize.define('AppData', {
 });
 const PRODUCTION_DATA_KEY = 'production_data';
 const USERS_DATA_KEY = 'users_data';
+const DEFECT_CONFIG_KEY = 'defect_config';
 let productionDataCache = { lines: {}, activeLine: '' };
 let usersDataCache = { users: [] };
+let defectConfigCache = { defectTypes: [], defectAreas: [] };
 let databaseInitialized = false;
 
 app.use(express.json());
@@ -177,6 +179,21 @@ function buildInitialUsersData() {
   };
 }
 
+function buildInitialDefectConfig() {
+  return {
+    defectTypes: [
+      { id: 1, name: 'Jahitan lepas', active: true },
+      { id: 2, name: 'Kotor', active: true },
+      { id: 3, name: 'Bentuk tidak sesuai', active: true }
+    ],
+    defectAreas: [
+      { id: 1, name: 'Kepala', active: true },
+      { id: 2, name: 'Badan', active: true },
+      { id: 3, name: 'Kaki', active: true }
+    ]
+  };
+}
+
 function parsePayload(payload, fallback) {
   try {
     return JSON.parse(payload);
@@ -206,6 +223,7 @@ async function initSequelizeStorage() {
 
     let productionRow = await AppData.findByPk(PRODUCTION_DATA_KEY);
     let usersRow = await AppData.findByPk(USERS_DATA_KEY);
+    let defectConfigRow = await AppData.findByPk(DEFECT_CONFIG_KEY);
 
     if (!productionRow) {
       let initialProductionData = buildInitialProductionData();
@@ -237,6 +255,11 @@ async function initSequelizeStorage() {
       usersRow = await AppData.findByPk(USERS_DATA_KEY);
     }
 
+    if (!defectConfigRow) {
+      await upsertAppData(DEFECT_CONFIG_KEY, buildInitialDefectConfig());
+      defectConfigRow = await AppData.findByPk(DEFECT_CONFIG_KEY);
+    }
+
     productionDataCache = parsePayload(
       productionRow ? productionRow.payload : '',
       buildInitialProductionData()
@@ -244,6 +267,10 @@ async function initSequelizeStorage() {
     usersDataCache = parsePayload(
       usersRow ? usersRow.payload : '',
       buildInitialUsersData()
+    );
+    defectConfigCache = parsePayload(
+      defectConfigRow ? defectConfigRow.payload : '',
+      buildInitialDefectConfig()
     );
 
     databaseInitialized = true;
@@ -398,6 +425,7 @@ function initializeDataFiles() {
   if (!databaseInitialized) {
     productionDataCache = buildInitialProductionData();
     usersDataCache = buildInitialUsersData();
+    defectConfigCache = buildInitialDefectConfig();
   }
 
   const historyDir = path.join(__dirname, 'history');
@@ -450,10 +478,94 @@ function writeUsersData(data) {
   }
 }
 
+function readDefectConfig() {
+  try {
+    return defectConfigCache;
+  } catch (error) {
+    console.error('ERROR: Gagal membaca defect config cache:', error.message);
+    return buildInitialDefectConfig();
+  }
+}
+
+function writeDefectConfig(data) {
+  try {
+    defectConfigCache = data;
+    void upsertAppData(DEFECT_CONFIG_KEY, data);
+  } catch (error) {
+    console.error('ERROR: Gagal menulis defect config ke cache:', error.message);
+  }
+}
+
 function generateUserId(users) {
   if (users.length === 0) return 1;
   const maxId = Math.max(...users.map(user => user.id));
   return maxId + 1;
+}
+
+function generateNumericId(items) {
+  if (!items || items.length === 0) return 1;
+  return Math.max(...items.map(item => parseInt(item.id) || 0)) + 1;
+}
+
+function getActiveModel(data, lineName) {
+  const line = data.lines[lineName];
+  if (!line) return null;
+
+  const activeModelId = line.activeModel || Object.keys(line.models || {})[0];
+  if (!activeModelId || !line.models[activeModelId]) return null;
+
+  return {
+    line,
+    modelId: activeModelId,
+    model: line.models[activeModelId]
+  };
+}
+
+function recalculateModelTotals(model) {
+  let totalOutput = 0;
+  let totalDefect = 0;
+  let totalQCChecked = 0;
+  let totalTarget = 0;
+
+  (model.hourly_data || []).forEach(hour => {
+    totalOutput += parseInt(hour.output) || 0;
+    totalDefect += parseInt(hour.defect) || 0;
+    totalQCChecked += parseInt(hour.qcChecked) || 0;
+    totalTarget += parseInt(hour.targetManual) || 0;
+  });
+
+  model.outputDay = totalOutput;
+  model.actualDefect = totalDefect;
+  model.qcChecking = totalQCChecked;
+  model.target = totalTarget;
+  model.defectRatePercentage = totalQCChecked > 0
+    ? parseFloat(((totalDefect / totalQCChecked) * 100).toFixed(2))
+    : 0;
+
+  return { totalOutput, totalDefect, totalQCChecked, totalTarget };
+}
+
+function buildLinesResponse(lines) {
+  const response = {};
+
+  Object.keys(lines || {}).forEach(lineName => {
+    const line = lines[lineName];
+    const activeModelId = line.activeModel || Object.keys(line.models || {})[0];
+    const activeModel = activeModelId ? line.models[activeModelId] : null;
+
+    response[lineName] = {
+      ...line,
+      activeModel: activeModelId,
+      target: activeModel ? activeModel.target : 0,
+      targetPerHour: activeModel ? activeModel.targetPerHour : 0,
+      productivity: activeModel ? activeModel.outputDay || 0 : 0,
+      labelWeek: activeModel ? activeModel.labelWeek : '',
+      model: activeModel ? activeModel.model : '',
+      date: activeModel ? activeModel.date : ''
+    };
+  });
+
+  return response;
 }
 
 // FUNGSI BACKUP BARU: Update backup untuk hari ini (real-time)
@@ -1087,6 +1199,126 @@ app.get('/api/current-user', (req, res) => {
   }
 });
 
+app.post('/api/update-hourly/:lineName', requireLogin, requireLineAccess, autoCheckDateReset, (req, res) => {
+  const { lineName } = req.params;
+  const { hourIndex, output, defect, qcChecked, targetManual, defectDetails } = req.body;
+  const data = readProductionData();
+  const active = getActiveModel(data, lineName);
+
+  if (!active || !active.model.hourly_data) {
+    return res.status(404).json({ error: 'Line, active model or hourly data not found' });
+  }
+
+  const index = parseInt(hourIndex);
+  if (!Number.isInteger(index) || index < 0 || index >= active.model.hourly_data.length) {
+    return res.status(400).json({ error: 'Invalid hour index' });
+  }
+
+  const currentHour = active.model.hourly_data[index];
+  const nextTargetManual = targetManual !== undefined
+    ? parseInt(targetManual) || 0
+    : parseInt(currentHour.targetManual) || 0;
+  const nextOutput = parseInt(output) || 0;
+
+  active.model.hourly_data[index] = {
+    ...currentHour,
+    output: nextOutput,
+    defect: parseInt(defect) || 0,
+    qcChecked: parseInt(qcChecked) || 0,
+    targetManual: nextTargetManual,
+    defectDetails: Array.isArray(defectDetails) ? defectDetails : (currentHour.defectDetails || []),
+    selisih: nextOutput - nextTargetManual
+  };
+
+  const summary = recalculateModelTotals(active.model);
+
+  writeProductionData(data);
+  updateTodayBackup();
+
+  res.json({
+    message: 'Hourly data updated successfully.',
+    data: active.model,
+    modelId: active.modelId,
+    summary: {
+      ...summary,
+      defectRate: active.model.defectRatePercentage.toFixed(2) + '%'
+    }
+  });
+});
+
+app.post('/api/update-target-manual/:lineName', requireLogin, requireLineAccess, autoCheckDateReset, (req, res) => {
+  const { lineName } = req.params;
+  const { hourIndex, targetManual } = req.body;
+  const data = readProductionData();
+  const active = getActiveModel(data, lineName);
+
+  if (!active || !active.model.hourly_data) {
+    return res.status(404).json({ error: 'Line, active model or hourly data not found' });
+  }
+
+  const index = parseInt(hourIndex);
+  if (!Number.isInteger(index) || index < 0 || index >= active.model.hourly_data.length) {
+    return res.status(400).json({ error: 'Invalid hour index' });
+  }
+
+  const nextTargetManual = parseInt(targetManual) || 0;
+  active.model.hourly_data[index].targetManual = nextTargetManual;
+  active.model.hourly_data[index].selisih = (parseInt(active.model.hourly_data[index].output) || 0) - nextTargetManual;
+  const summary = recalculateModelTotals(active.model);
+
+  writeProductionData(data);
+  updateTodayBackup();
+
+  res.json({
+    message: 'Target manual updated successfully.',
+    data: active.model.hourly_data[index],
+    modelId: active.modelId,
+    totalTarget: summary.totalTarget
+  });
+});
+
+app.post('/api/update-hourly-direct/:lineName', requireLogin, requireLineAccess, autoCheckDateReset, (req, res) => {
+  const { lineName } = req.params;
+  const { hourIndex, output, defect, qcChecked, targetManual } = req.body;
+  const data = readProductionData();
+  const active = getActiveModel(data, lineName);
+
+  if (!active || !active.model.hourly_data) {
+    return res.status(404).json({ error: 'Line, active model or hourly data not found' });
+  }
+
+  const index = parseInt(hourIndex);
+  if (!Number.isInteger(index) || index < 0 || index >= active.model.hourly_data.length) {
+    return res.status(400).json({ error: 'Invalid hour index' });
+  }
+
+  const nextOutput = parseInt(output) || 0;
+  const nextTargetManual = parseInt(targetManual) || 0;
+  active.model.hourly_data[index] = {
+    ...active.model.hourly_data[index],
+    output: nextOutput,
+    defect: parseInt(defect) || 0,
+    qcChecked: parseInt(qcChecked) || 0,
+    targetManual: nextTargetManual,
+    selisih: nextOutput - nextTargetManual
+  };
+
+  const summary = recalculateModelTotals(active.model);
+
+  writeProductionData(data);
+  updateTodayBackup();
+
+  res.json({
+    message: 'Hourly data updated successfully.',
+    data: active.model,
+    modelId: active.modelId,
+    summary: {
+      ...summary,
+      defectRate: active.model.defectRatePercentage.toFixed(2) + '%'
+    }
+  });
+});
+
 app.post('/api/update-hourly/:lineName/:modelId', requireLogin, requireLineAccess, autoCheckDateReset, (req, res) => {
   const { lineName, modelId } = req.params;
   const { hourIndex, output, defect, qcChecked, targetManual } = req.body;
@@ -1426,7 +1658,7 @@ app.get('/api/lines', requireLogin, autoCheckDateReset, (req, res) => {
   const data = readProductionData();
   
   if (user.role === 'admin' || user.role === 'admin_operator') {
-    return res.json(data.lines || {});
+    return res.json(buildLinesResponse(data.lines || {}));
   }
   
   if (user.role === 'operator') {
@@ -1434,7 +1666,7 @@ app.get('/api/lines', requireLogin, autoCheckDateReset, (req, res) => {
     if (data.lines[user.line]) {
       operatorLine[user.line] = data.lines[user.line];
     }
-    return res.json(operatorLine);
+    return res.json(buildLinesResponse(operatorLine));
   }
   
   res.status(403).json({ error: 'Access denied' });
@@ -2238,6 +2470,227 @@ app.get('/api/users', requireLogin, requireAdmin, (req, res) => {
   res.json(usersWithoutPasswords || []);
 });
 
+app.get('/api/operators/:lineName', requireLogin, requireLineAccess, autoCheckDateReset, (req, res) => {
+  const { lineName } = req.params;
+  const data = readProductionData();
+  const active = getActiveModel(data, lineName);
+
+  if (!active) {
+    return res.status(404).json({ error: 'Line or active model not found' });
+  }
+
+  res.json(active.model.operators || []);
+});
+
+app.post('/api/operators/:lineName', requireLogin, requireLineManagementAccess, autoCheckDateReset, (req, res) => {
+  const { lineName } = req.params;
+  const { name, position, target, output, defect, status } = req.body;
+  const data = readProductionData();
+  const active = getActiveModel(data, lineName);
+
+  if (!active) {
+    return res.status(404).json({ error: 'Line or active model not found' });
+  }
+
+  const operators = active.model.operators || [];
+  const nextOutput = parseInt(output) || 0;
+  const nextTarget = parseInt(target) || 0;
+  const operator = {
+    id: generateNumericId(operators),
+    name,
+    position,
+    target: nextTarget,
+    output: nextOutput,
+    defect: parseInt(defect) || 0,
+    efficiency: nextTarget > 0 ? parseFloat(((nextOutput / nextTarget) * 100).toFixed(2)) : 0,
+    status: status || 'active'
+  };
+
+  operators.push(operator);
+  active.model.operators = operators;
+  writeProductionData(data);
+  updateTodayBackup();
+
+  res.json({ message: 'Operator created successfully', operator });
+});
+
+app.put('/api/operators/:lineName/:operatorId', requireLogin, requireLineManagementAccess, autoCheckDateReset, (req, res) => {
+  const { lineName, operatorId } = req.params;
+  const { name, position, target, output, defect, status } = req.body;
+  const data = readProductionData();
+  const active = getActiveModel(data, lineName);
+
+  if (!active) {
+    return res.status(404).json({ error: 'Line or active model not found' });
+  }
+
+  const operators = active.model.operators || [];
+  const operatorIndex = operators.findIndex(operator => String(operator.id) === String(operatorId));
+  if (operatorIndex === -1) {
+    return res.status(404).json({ error: 'Operator not found' });
+  }
+
+  const nextOutput = parseInt(output) || 0;
+  const nextTarget = parseInt(target) || 0;
+  operators[operatorIndex] = {
+    ...operators[operatorIndex],
+    name,
+    position,
+    target: nextTarget,
+    output: nextOutput,
+    defect: parseInt(defect) || 0,
+    efficiency: nextTarget > 0 ? parseFloat(((nextOutput / nextTarget) * 100).toFixed(2)) : 0,
+    status: status || operators[operatorIndex].status || 'active'
+  };
+
+  active.model.operators = operators;
+  writeProductionData(data);
+  updateTodayBackup();
+
+  res.json({ message: 'Operator updated successfully', operator: operators[operatorIndex] });
+});
+
+app.delete('/api/operators/:lineName/:operatorId', requireLogin, requireLineManagementAccess, autoCheckDateReset, (req, res) => {
+  const { lineName, operatorId } = req.params;
+  const data = readProductionData();
+  const active = getActiveModel(data, lineName);
+
+  if (!active) {
+    return res.status(404).json({ error: 'Line or active model not found' });
+  }
+
+  const operators = active.model.operators || [];
+  const operatorIndex = operators.findIndex(operator => String(operator.id) === String(operatorId));
+  if (operatorIndex === -1) {
+    return res.status(404).json({ error: 'Operator not found' });
+  }
+
+  const [operator] = operators.splice(operatorIndex, 1);
+  active.model.operators = operators;
+  writeProductionData(data);
+  updateTodayBackup();
+
+  res.json({ message: 'Operator deleted successfully', operator });
+});
+
+app.get('/api/defect-config', requireLogin, (req, res) => {
+  res.json(readDefectConfig());
+});
+
+app.get('/api/defect-types', requireLogin, (req, res) => {
+  const config = readDefectConfig();
+  res.json((config.defectTypes || []).filter(type => type.active !== false));
+});
+
+app.post('/api/defect-types', requireLogin, requireAdmin, (req, res) => {
+  const { name, active = true } = req.body;
+  const config = readDefectConfig();
+  config.defectTypes = config.defectTypes || [];
+
+  if (!name || !name.trim()) {
+    return res.status(400).json({ error: 'Defect type name is required' });
+  }
+
+  const defectType = { id: generateNumericId(config.defectTypes), name: name.trim(), active: Boolean(active) };
+  config.defectTypes.push(defectType);
+  writeDefectConfig(config);
+
+  res.json({ message: 'Defect type created successfully', defectType });
+});
+
+app.put('/api/defect-types/:id', requireLogin, requireAdmin, (req, res) => {
+  const { id } = req.params;
+  const { name, active = true } = req.body;
+  const config = readDefectConfig();
+  const defectType = (config.defectTypes || []).find(type => String(type.id) === String(id));
+
+  if (!defectType) {
+    return res.status(404).json({ error: 'Defect type not found' });
+  }
+
+  if (!name || !name.trim()) {
+    return res.status(400).json({ error: 'Defect type name is required' });
+  }
+
+  defectType.name = name.trim();
+  defectType.active = Boolean(active);
+  writeDefectConfig(config);
+
+  res.json({ message: 'Defect type updated successfully', defectType });
+});
+
+app.delete('/api/defect-types/:id', requireLogin, requireAdmin, (req, res) => {
+  const { id } = req.params;
+  const config = readDefectConfig();
+  const index = (config.defectTypes || []).findIndex(type => String(type.id) === String(id));
+
+  if (index === -1) {
+    return res.status(404).json({ error: 'Defect type not found' });
+  }
+
+  const [defectType] = config.defectTypes.splice(index, 1);
+  writeDefectConfig(config);
+
+  res.json({ message: 'Defect type deleted successfully', defectType });
+});
+
+app.get('/api/defect-areas', requireLogin, (req, res) => {
+  const config = readDefectConfig();
+  res.json((config.defectAreas || []).filter(area => area.active !== false));
+});
+
+app.post('/api/defect-areas', requireLogin, requireAdmin, (req, res) => {
+  const { name, active = true } = req.body;
+  const config = readDefectConfig();
+  config.defectAreas = config.defectAreas || [];
+
+  if (!name || !name.trim()) {
+    return res.status(400).json({ error: 'Defect area name is required' });
+  }
+
+  const defectArea = { id: generateNumericId(config.defectAreas), name: name.trim(), active: Boolean(active) };
+  config.defectAreas.push(defectArea);
+  writeDefectConfig(config);
+
+  res.json({ message: 'Defect area created successfully', defectArea });
+});
+
+app.put('/api/defect-areas/:id', requireLogin, requireAdmin, (req, res) => {
+  const { id } = req.params;
+  const { name, active = true } = req.body;
+  const config = readDefectConfig();
+  const defectArea = (config.defectAreas || []).find(area => String(area.id) === String(id));
+
+  if (!defectArea) {
+    return res.status(404).json({ error: 'Defect area not found' });
+  }
+
+  if (!name || !name.trim()) {
+    return res.status(400).json({ error: 'Defect area name is required' });
+  }
+
+  defectArea.name = name.trim();
+  defectArea.active = Boolean(active);
+  writeDefectConfig(config);
+
+  res.json({ message: 'Defect area updated successfully', defectArea });
+});
+
+app.delete('/api/defect-areas/:id', requireLogin, requireAdmin, (req, res) => {
+  const { id } = req.params;
+  const config = readDefectConfig();
+  const index = (config.defectAreas || []).findIndex(area => String(area.id) === String(id));
+
+  if (index === -1) {
+    return res.status(404).json({ error: 'Defect area not found' });
+  }
+
+  const [defectArea] = config.defectAreas.splice(index, 1);
+  writeDefectConfig(config);
+
+  res.json({ message: 'Defect area deleted successfully', defectArea });
+});
+
 app.post('/api/users', requireLogin, requireAdmin, (req, res) => {
   const { username, password, name, line, role } = req.body;
   const usersData = readUsersData();
@@ -2624,6 +3077,27 @@ app.get('/api/export/:lineName/:modelId', requireLogin, requireLineAccess, autoC
   } catch (error) {
     console.error('❌ Export error:', error);
     res.status(500).json({ error: 'Failed to generate Excel file' });
+  }
+});
+
+app.get('/api/export/:lineName', requireLogin, requireLineAccess, autoCheckDateReset, async (req, res) => {
+  const { lineName } = req.params;
+  const data = readProductionData();
+  const active = getActiveModel(data, lineName);
+
+  if (!active) {
+    return res.status(404).json({ error: 'Line or active model not found' });
+  }
+
+  try {
+    const workbook = await generateStyledExcelData(active.model, lineName, active.modelId);
+    const fileName = `Production_Report_${lineName}_${active.modelId}_${new Date().toISOString().split('T')[0]}.xlsx`;
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    await workbook.xlsx.write(res);
+  } catch (error) {
+    console.error('Export error:', error);
+    res.status(500).json({ error: 'Failed to export data: ' + error.message });
   }
 });
 

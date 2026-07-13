@@ -616,8 +616,16 @@
 </div>
                     </div>
 
-                    <!-- Lines Overview -->
-                    <div class="bg-white rounded-lg shadow overflow-hidden card-shadow">
+	                </div>
+
+	                <!-- Line Summary Page -->
+	                <div x-show="currentPage === 'line-summary'" class="fade-in">
+	                    <div class="mb-6">
+	                        <h1 class="text-2xl font-bold text-gray-800 flex items-center"><i class="fa-solid fa-industry text-blue-600 mr-3"></i>Ringkasan Line Produksi</h1>
+	                        <p class="text-gray-600">Status produksi per line dan model</p>
+	                    </div>
+
+	                    <div class="bg-white rounded-lg shadow overflow-hidden card-shadow">
                         <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
                             <div class="flex flex-col md:flex-row md:items-center md:justify-between">
                                 <div>
@@ -776,10 +784,10 @@
                                 </div>
                             </div>
                         </div>
-                    </div>
-                </div>
+	                    </div>
+	                </div>
 
-                <!-- Line Detail Page -->
+	                <!-- Line Detail Page -->
                 <div x-show="currentPage === 'line-detail'" class="fade-in">
                     <div class="mb-6 flex justify-between items-center">
                         <div>
@@ -790,7 +798,7 @@
 	                            <button @click="exportLineExcel(currentLine, currentModelId)" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
 	                                <i class="fa-solid fa-file-excel mr-2"></i>Export Excel
 	                            </button>
-	                            <button @click="changePage('dashboard')" class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+		                            <button @click="changePage('line-summary')" class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
 	                                <i class="fa-solid fa-arrow-left mr-2"></i>Kembali
 	                            </button>
                         </div>
@@ -910,7 +918,7 @@
 	                            <h1 class="text-2xl font-bold text-gray-800 flex items-center"><i class="fa-solid fa-keyboard text-blue-600 mr-3"></i><span x-text="'Input Data - Line ' + currentLine + ' - ' + currentModelId"></span></h1>
                             <p class="text-gray-600" x-text="lineDetail.labelWeek + ' - ' + lineDetail.model"></p>
                         </div>
-                        <button @click="changePage('dashboard')" class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+	                        <button @click="changePage('line-summary')" class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
 	                            <i class="fa-solid fa-arrow-left mr-2"></i>Kembali
                         </button>
                     </div>
@@ -1077,8 +1085,8 @@
                         </div>
                     </div>
                     <div class="text-center">
-                        <button @click="changePage('dashboard')" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-	                            <i class="fa-solid fa-arrow-left mr-2"></i>Kembali ke Dashboard
+	                        <button @click="changePage('line-summary')" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+		                            <i class="fa-solid fa-arrow-left mr-2"></i>Kembali ke Ringkasan Line
                         </button>
                     </div>
                 </div>
@@ -1985,9 +1993,10 @@
                 
                 // Navigation
                 setupNavigation() {
-	                    const baseNav = [
-	                        { name: 'Dashboard', page: 'dashboard', iconClass: 'fa-house' }
-	                    ];
+		                    const baseNav = [
+		                        { name: 'Dashboard', page: 'dashboard', iconClass: 'fa-house' },
+		                        { name: 'Ringkasan Line', page: 'line-summary', iconClass: 'fa-industry' }
+		                    ];
                     
 	                    if (this.currentUser.role === 'admin' || this.currentUser.role === 'admin_operator') {
 	                        this.navigation = [
@@ -2091,9 +2100,9 @@
                 changePage(page) {
                     this.currentPage = page;
                     this.savePageState();
-	                    if (page === 'dashboard') {
-	                        this.loadDashboardData();
-	                    }
+		                    if (page === 'dashboard' || page === 'line-summary') {
+		                        this.loadDashboardData();
+		                    }
 		                    if (page === 'user-management') {
 		                        this.loadUsers();
 		                    }

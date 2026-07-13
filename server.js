@@ -529,10 +529,18 @@ function recalculateModelTotals(model) {
 
   (model.hourly_data || []).forEach(hour => {
     totalOutput += parseInt(hour.output) || 0;
-    totalDefect += parseInt(hour.defect) || 0;
-    totalQCChecked += parseInt(hour.qcChecked) || 0;
     totalTarget += parseInt(hour.targetManual) || 0;
   });
+
+  if (Array.isArray(model.qcChecks)) {
+    totalQCChecked = model.qcChecks.length;
+    totalDefect = model.qcChecks.filter(check => check.result === 'defect').length;
+  } else {
+    (model.hourly_data || []).forEach(hour => {
+      totalDefect += parseInt(hour.defect) || 0;
+      totalQCChecked += parseInt(hour.qcChecked) || 0;
+    });
+  }
 
   model.outputDay = totalOutput;
   model.actualDefect = totalDefect;
@@ -1321,7 +1329,7 @@ app.post('/api/update-hourly-direct/:lineName', requireLogin, requireLineAccess,
 
 app.post('/api/update-hourly/:lineName/:modelId', requireLogin, requireLineAccess, autoCheckDateReset, (req, res) => {
   const { lineName, modelId } = req.params;
-  const { hourIndex, output, defect, qcChecked, targetManual } = req.body;
+  const { hourIndex, output, defect, qcChecked, targetManual, defectDetails } = req.body;
 
   const data = readProductionData();
 
@@ -1329,37 +1337,28 @@ app.post('/api/update-hourly/:lineName/:modelId', requireLogin, requireLineAcces
     return res.status(404).json({ error: 'Line, model or hourly data not found' });
   }
 
-  const selisih = parseInt(output) - parseInt(targetManual);
+  const index = parseInt(hourIndex);
+  if (!Number.isInteger(index) || index < 0 || index >= data.lines[lineName].models[modelId].hourly_data.length) {
+    return res.status(400).json({ error: 'Invalid hour index' });
+  }
 
-  data.lines[lineName].models[modelId].hourly_data[hourIndex] = {
-    ...data.lines[lineName].models[modelId].hourly_data[hourIndex],
-    output: parseInt(output),
-    defect: parseInt(defect),
-    qcChecked: parseInt(qcChecked),
-    targetManual: parseInt(targetManual) || data.lines[lineName].models[modelId].hourly_data[hourIndex].targetManual,
+  const currentHour = data.lines[lineName].models[modelId].hourly_data[index];
+  const nextTargetManual = parseInt(targetManual) || currentHour.targetManual || 0;
+  const nextOutput = parseInt(output) || 0;
+  const nextDefect = parseInt(defect) || 0;
+  const selisih = nextOutput - nextTargetManual;
+
+  data.lines[lineName].models[modelId].hourly_data[index] = {
+    ...currentHour,
+    output: nextOutput,
+    defect: nextDefect,
+    qcChecked: parseInt(qcChecked) || 0,
+    targetManual: nextTargetManual,
+    defectDetails: Array.isArray(defectDetails) ? defectDetails : (currentHour.defectDetails || []),
     selisih: selisih
   };
 
-  let totalOutput = 0;
-  let totalDefect = 0;
-  let totalQCChecked = 0;
-  let totalTarget = 0;
-
-  data.lines[lineName].models[modelId].hourly_data.forEach(hour => {
-    totalOutput += hour.output || 0;
-    totalDefect += hour.defect || 0;
-    totalQCChecked += hour.qcChecked || 0;
-    totalTarget += hour.targetManual || 0;
-  });
-
-  data.lines[lineName].models[modelId].outputDay = totalOutput;
-  data.lines[lineName].models[modelId].actualDefect = totalDefect;
-  data.lines[lineName].models[modelId].qcChecking = totalQCChecked;
-  data.lines[lineName].models[modelId].target = totalTarget;
-
-  const defectRatePercentage = (totalQCChecked > 0) ? (totalDefect / totalQCChecked) * 100 : 0;
-
-  data.lines[lineName].models[modelId].defectRatePercentage = parseFloat(defectRatePercentage.toFixed(2));
+  const summary = recalculateModelTotals(data.lines[lineName].models[modelId]);
 
   writeProductionData(data);
   
@@ -1370,11 +1369,94 @@ app.post('/api/update-hourly/:lineName/:modelId', requireLogin, requireLineAcces
     message: 'Hourly data updated successfully.',
     data: data.lines[lineName].models[modelId],
     summary: {
-      totalOutput: totalOutput,
-      totalDefect: totalDefect,
-      totalQCChecked: totalQCChecked,
-      totalTarget: totalTarget,
-      defectRate: defectRatePercentage.toFixed(2) + '%'
+      ...summary,
+      defectRate: data.lines[lineName].models[modelId].defectRatePercentage.toFixed(2) + '%'
+    }
+  });
+});
+
+app.post('/api/update-production/:lineName/:modelId', requireLogin, requireLineAccess, autoCheckDateReset, (req, res) => {
+  const { lineName, modelId } = req.params;
+  const { hourIndex, output, targetManual } = req.body;
+  const data = readProductionData();
+
+  if (!data.lines[lineName] || !data.lines[lineName].models[modelId] || !data.lines[lineName].models[modelId].hourly_data) {
+    return res.status(404).json({ error: 'Line, model or hourly data not found' });
+  }
+
+  const index = parseInt(hourIndex);
+  const model = data.lines[lineName].models[modelId];
+  if (!Number.isInteger(index) || index < 0 || index >= model.hourly_data.length) {
+    return res.status(400).json({ error: 'Invalid hour index' });
+  }
+
+  const currentHour = model.hourly_data[index];
+  const nextOutput = parseInt(output) || 0;
+  const nextTargetManual = parseInt(targetManual) || currentHour.targetManual || 0;
+
+  model.hourly_data[index] = {
+    ...currentHour,
+    output: nextOutput,
+    targetManual: nextTargetManual,
+    selisih: nextOutput - nextTargetManual
+  };
+
+  const summary = recalculateModelTotals(model);
+  writeProductionData(data);
+  updateTodayBackup();
+
+  res.json({
+    message: 'Production data updated successfully.',
+    data: model,
+    summary: {
+      ...summary,
+      defectRate: model.defectRatePercentage.toFixed(2) + '%'
+    }
+  });
+});
+
+app.post('/api/qc-check/:lineName/:modelId', requireLogin, requireLineAccess, autoCheckDateReset, (req, res) => {
+  const { lineName, modelId } = req.params;
+  const { result, type, area, notes } = req.body;
+  const data = readProductionData();
+
+  if (!data.lines[lineName] || !data.lines[lineName].models[modelId]) {
+    return res.status(404).json({ error: 'Line or model not found' });
+  }
+
+  if (!['good', 'defect'].includes(result)) {
+    return res.status(400).json({ error: 'QC result must be good or defect' });
+  }
+
+  if (result === 'defect' && (!type || !area)) {
+    return res.status(400).json({ error: 'Jenis defect dan area defect wajib dipilih' });
+  }
+
+  const model = data.lines[lineName].models[modelId];
+  model.qcChecks = Array.isArray(model.qcChecks) ? model.qcChecks : [];
+
+  const qcCheck = {
+    id: generateNumericId(model.qcChecks),
+    result,
+    type: result === 'defect' ? String(type).trim() : '',
+    area: result === 'defect' ? String(area).trim() : '',
+    notes: notes ? String(notes).trim() : '',
+    checkedAt: new Date().toISOString()
+  };
+
+  model.qcChecks.push(qcCheck);
+
+  const summary = recalculateModelTotals(model);
+  writeProductionData(data);
+  updateTodayBackup();
+
+  res.json({
+    message: result === 'defect' ? 'Defect QC recorded successfully.' : 'Good QC recorded successfully.',
+    qcCheck,
+    data: model,
+    summary: {
+      ...summary,
+      defectRate: model.defectRatePercentage.toFixed(2) + '%'
     }
   });
 });
@@ -1414,7 +1496,7 @@ app.post('/api/update-target-manual/:lineName/:modelId', requireLogin, requireLi
 
 app.post('/api/update-hourly-direct/:lineName/:modelId', requireLogin, requireLineAccess, autoCheckDateReset, (req, res) => {
   const { lineName, modelId } = req.params;
-  const { hourIndex, output, defect, qcChecked, targetManual } = req.body;
+  const { hourIndex, output, defect, qcChecked, targetManual, defectDetails } = req.body;
 
   const data = readProductionData();
 
@@ -1424,35 +1506,19 @@ app.post('/api/update-hourly-direct/:lineName/:modelId', requireLogin, requireLi
 
   const selisih = parseInt(output) - parseInt(targetManual);
 
+  const currentHour = data.lines[lineName].models[modelId].hourly_data[hourIndex];
+
   data.lines[lineName].models[modelId].hourly_data[hourIndex] = {
-    ...data.lines[lineName].models[modelId].hourly_data[hourIndex],
+    ...currentHour,
     output: parseInt(output),
     defect: parseInt(defect),
     qcChecked: parseInt(qcChecked),
     targetManual: parseInt(targetManual),
+    defectDetails: Array.isArray(defectDetails) ? defectDetails : (currentHour.defectDetails || []),
     selisih: selisih
   };
 
-  let totalOutput = 0;
-  let totalDefect = 0;
-  let totalQCChecked = 0;
-  let totalTarget = 0;
-
-  data.lines[lineName].models[modelId].hourly_data.forEach(hour => {
-    totalOutput += hour.output || 0;
-    totalDefect += hour.defect || 0;
-    totalQCChecked += hour.qcChecked || 0;
-    totalTarget += hour.targetManual || 0;
-  });
-
-  data.lines[lineName].models[modelId].outputDay = totalOutput;
-  data.lines[lineName].models[modelId].actualDefect = totalDefect;
-  data.lines[lineName].models[modelId].qcChecking = totalQCChecked;
-  data.lines[lineName].models[modelId].target = totalTarget;
-
-  const defectRatePercentage = (totalQCChecked > 0) ? (totalDefect / totalQCChecked) * 100 : 0;
-
-  data.lines[lineName].models[modelId].defectRatePercentage = parseFloat(defectRatePercentage.toFixed(2));
+  const summary = recalculateModelTotals(data.lines[lineName].models[modelId]);
 
   writeProductionData(data);
   
@@ -1463,11 +1529,8 @@ app.post('/api/update-hourly-direct/:lineName/:modelId', requireLogin, requireLi
     message: 'Hourly data updated successfully.',
     data: data.lines[lineName].models[modelId],
     summary: {
-      totalOutput: totalOutput,
-      totalDefect: totalDefect,
-      totalQCChecked: totalQCChecked,
-      totalTarget: totalTarget,
-      defectRate: defectRatePercentage.toFixed(2) + '%'
+      ...summary,
+      defectRate: data.lines[lineName].models[modelId].defectRatePercentage.toFixed(2) + '%'
     }
   });
 });

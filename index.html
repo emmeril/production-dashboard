@@ -544,14 +544,11 @@
                                 <thead class="bg-gray-50">
                                     <tr>
                                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jam</th>
-                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Target Manual</th>
-                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Output</th>
-                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Selisih</th>
-                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Defect</th>
-                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">QC Checked</th>
-                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Defect Rate</th>
-                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
-                                    </tr>
+	                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Target Manual</th>
+	                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Output</th>
+	                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Selisih</th>
+	                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
+	                                    </tr>
                                 </thead>
                                 <tbody class="bg-white divide-y divide-gray-200">
                                     <template x-for="(hour, index) in lineDetail.hourly_data" :key="index">
@@ -566,23 +563,11 @@
                                                 <input type="number" x-model="hour.output" 
                                                        class="input-cell" :disabled="currentUser.role === 'admin_operator'">
                                             </td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium" 
-                                                :class="hour.output - hour.targetManual >= 0 ? 'text-green-600' : 'text-red-600'"
-                                                x-text="hour.output - hour.targetManual"></td>
-                                            <td class="px-6 py-4 whitespace-nowrap">
-                                                <input type="number" x-model="hour.defect" 
-                                                       class="input-cell" :disabled="currentUser.role === 'admin_operator'">
-                                            </td>
-                                            <td class="px-6 py-4 whitespace-nowrap">
-                                                <input type="number" x-model="hour.qcChecked" 
-                                                       class="input-cell" :disabled="currentUser.role === 'admin_operator'">
-                                            </td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium" 
-                                                :class="(hour.qcChecked > 0 ? (hour.defect / hour.qcChecked * 100) : 0) > 5 ? 'text-red-600' : 'text-green-600'">
-                                                <span x-text="(hour.qcChecked > 0 ? (hour.defect / hour.qcChecked * 100).toFixed(2) : 0) + '%'"></span>
-                                            </td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                                <!-- Tombol Simpan hanya untuk operator dan admin, bukan admin_operator -->
+	                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium" 
+	                                                :class="hour.output - hour.targetManual >= 0 ? 'text-green-600' : 'text-red-600'"
+	                                                x-text="hour.output - hour.targetManual"></td>
+	                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+	                                                <!-- Tombol Simpan hanya untuk operator dan admin, bukan admin_operator -->
                                                 <button x-show="currentUser.role !== 'admin_operator'" @click="updateHourlyDataDirect(currentLine, currentModelId, index)" 
                                                         class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 text-sm">
                                                     Simpan
@@ -608,64 +593,137 @@
                         </button>
                     </div>
 
-                    <div class="bg-white rounded-lg shadow overflow-hidden card-shadow">
-                        <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
-                            <h3 class="text-lg leading-6 font-medium text-gray-900">Input Data Produksi Per Jam</h3>
-                            <p class="mt-1 max-w-2xl text-sm text-gray-500">Masukkan data output dan defect untuk setiap jam</p>
-                        </div>
-                        <div class="p-6">
-                            <form @submit.prevent="submitHourlyData">
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                                    <div>
-                                        <label for="hour-select" class="block text-sm font-medium text-gray-700 mb-2">Pilih Jam</label>
-                                        <select id="hour-select" x-model="inputForm.hourIndex" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md" required>
-                                            <template x-for="(hour, index) in lineDetail.hourly_data" :key="index">
-                                                <option :value="index" x-text="hour.hour"></option>
-                                            </template>
-                                        </select>
-                                    </div>
-                                    
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-2">Target Manual</label>
-                                        <p class="text-lg font-semibold text-gray-900" x-text="lineDetail.hourly_data[inputForm.hourIndex]?.targetManual || 0"></p>
-                                        <p class="text-xs text-gray-500">Target harian akan otomatis terupdate dari jumlah target manual</p>
-                                    </div>
-                                </div>
-                                
-                                <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-                                    <div>
-                                        <label for="output" class="block text-sm font-medium text-gray-700 mb-2">Output</label>
-                                        <input type="number" id="output" x-model="inputForm.output" min="0" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" required>
-                                    </div>
-                                    
-                                    <div>
-                                        <label for="defect" class="block text-sm font-medium text-gray-700 mb-2">Defect</label>
-                                        <input type="number" id="defect" x-model="inputForm.defect" min="0" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" required>
-                                    </div>
-                                    
-                                    <div>
-                                        <label for="qc-checked" class="block text-sm font-medium text-gray-700 mb-2">QC Checked</label>
-                                        <input type="number" id="qc-checked" x-model="inputForm.qcChecked" min="0" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" required>
-                                    </div>
+	                    <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+	                        <div class="bg-white rounded-lg shadow overflow-hidden card-shadow">
+	                            <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+	                                <h3 class="text-lg leading-6 font-medium text-gray-900">Hasil Produksi per Jam</h3>
+	                                <p class="mt-1 max-w-2xl text-sm text-gray-500">Pilih jam hanya untuk input output produksi</p>
+	                            </div>
+	                            <div class="p-6">
+	                                <form @submit.prevent="submitProductionData">
+	                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+	                                        <div>
+	                                            <label for="hour-select" class="block text-sm font-medium text-gray-700 mb-2">Pilih Jam Produksi</label>
+	                                            <select id="hour-select" x-model="inputForm.hourIndex" @change="syncInputFormFromSelectedHour()" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md" required>
+	                                                <template x-for="(hour, index) in lineDetail.hourly_data" :key="index">
+	                                                    <option :value="index" x-text="hour.hour"></option>
+	                                                </template>
+	                                            </select>
+	                                        </div>
 
-                                    <div>
-                                        <label for="target-manual" class="block text-sm font-medium text-gray-700 mb-2">Target Manual</label>
-                                        <input type="number" id="target-manual" x-model="inputForm.targetManual" min="0" 
-                                               :placeholder="lineDetail.hourly_data[inputForm.hourIndex]?.targetManual"
-                                               class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" required>
-                                        <p class="text-xs text-gray-500 mt-1" x-text="'Current: ' + (lineDetail.hourly_data[inputForm.hourIndex]?.targetManual || 0)"></p>
-                                    </div>
-                                </div>
-                                
-                                <div class="flex justify-end">
-                                    <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                                        Simpan Data
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </div>
+	                                        <div>
+	                                            <label for="output" class="block text-sm font-medium text-gray-700 mb-2">Output Produksi</label>
+	                                            <input type="number" id="output" x-model="inputForm.output" min="0" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" required>
+	                                        </div>
+
+	                                        <div>
+	                                            <label for="target-manual" class="block text-sm font-medium text-gray-700 mb-2">Target Manual</label>
+	                                            <input type="number" id="target-manual" x-model="inputForm.targetManual" min="0"
+	                                                   :placeholder="lineDetail.hourly_data[inputForm.hourIndex]?.targetManual"
+	                                                   class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" required>
+	                                        </div>
+
+	                                        <div>
+	                                            <label class="block text-sm font-medium text-gray-700 mb-2">Target Saat Ini</label>
+	                                            <p class="text-lg font-semibold text-gray-900" x-text="lineDetail.hourly_data[inputForm.hourIndex]?.targetManual || 0"></p>
+	                                            <p class="text-xs text-gray-500">Target harian ikut total target manual</p>
+	                                        </div>
+	                                    </div>
+
+	                                    <div class="flex justify-end">
+	                                        <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+	                                            Simpan Produksi
+	                                        </button>
+	                                    </div>
+	                                </form>
+	                            </div>
+	                        </div>
+
+	                        <div class="bg-white rounded-lg shadow overflow-hidden card-shadow">
+	                            <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+	                                <h3 class="text-lg leading-6 font-medium text-gray-900">QC Check</h3>
+	                                <p class="mt-1 max-w-2xl text-sm text-gray-500">Input QC satu per satu dengan tombol Good atau Defect</p>
+	                            </div>
+	                            <div class="p-6 space-y-6">
+	                                <div class="grid grid-cols-3 gap-3">
+	                                    <div class="bg-gray-50 rounded-lg p-3">
+	                                        <p class="text-xs font-medium text-gray-500">QC Checked</p>
+	                                        <p class="text-2xl font-bold text-gray-900" x-text="lineDetail.qcChecking || 0"></p>
+	                                    </div>
+	                                    <div class="bg-green-50 rounded-lg p-3">
+	                                        <p class="text-xs font-medium text-green-700">Good</p>
+	                                        <p class="text-2xl font-bold text-green-700" x-text="qcGoodCount"></p>
+	                                    </div>
+	                                    <div class="bg-red-50 rounded-lg p-3">
+	                                        <p class="text-xs font-medium text-red-700">Defect</p>
+	                                        <p class="text-2xl font-bold text-red-700" x-text="lineDetail.actualDefect || 0"></p>
+	                                    </div>
+	                                </div>
+
+	                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+	                                    <div>
+	                                        <label class="block text-sm font-medium text-gray-700 mb-2">Jenis Defect</label>
+	                                        <select x-model="defectEntry.type" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
+	                                            <option value="">Pilih jenis</option>
+	                                            <template x-for="type in activeDefectTypes" :key="type.id">
+	                                                <option :value="type.name" x-text="type.name"></option>
+	                                            </template>
+	                                        </select>
+	                                    </div>
+	                                    <div>
+	                                        <label class="block text-sm font-medium text-gray-700 mb-2">Area Defect</label>
+	                                        <select x-model="defectEntry.area" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
+	                                            <option value="">Pilih area</option>
+	                                            <template x-for="area in activeDefectAreas" :key="area.id">
+	                                                <option :value="area.name" x-text="area.name"></option>
+	                                            </template>
+	                                        </select>
+	                                    </div>
+	                                    <div>
+	                                        <label class="block text-sm font-medium text-gray-700 mb-2">Keterangan</label>
+	                                        <input type="text" x-model="defectEntry.notes" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" placeholder="Opsional">
+	                                    </div>
+	                                </div>
+
+	                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+	                                    <button type="button" @click="submitQcCheck('good')" class="inline-flex justify-center items-center px-4 py-3 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700">
+	                                        Good
+	                                    </button>
+	                                    <button type="button" @click="submitQcCheck('defect')" class="inline-flex justify-center items-center px-4 py-3 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700">
+	                                        Defect
+	                                    </button>
+	                                </div>
+
+	                                <div class="border border-gray-200 rounded-lg overflow-hidden">
+	                                    <div class="px-4 py-3 bg-gray-50 border-b border-gray-200 text-sm font-medium text-gray-900">Defect Terakhir</div>
+	                                    <div class="overflow-x-auto">
+	                                        <table class="min-w-full divide-y divide-gray-200">
+	                                            <thead class="bg-white">
+	                                                <tr>
+	                                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jenis</th>
+	                                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Area</th>
+	                                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Keterangan</th>
+	                                                </tr>
+	                                            </thead>
+	                                            <tbody class="bg-white divide-y divide-gray-200">
+	                                                <template x-for="check in recentDefectChecks" :key="check.id">
+	                                                    <tr>
+	                                                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900" x-text="check.type || '-'"></td>
+	                                                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900" x-text="check.area || '-'"></td>
+	                                                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500" x-text="check.notes || '-'"></td>
+	                                                    </tr>
+	                                                </template>
+	                                                <tr x-show="recentDefectChecks.length === 0">
+	                                                    <td colspan="3" class="px-4 py-6 text-center text-sm text-gray-500">Belum ada defect QC.</td>
+	                                                </tr>
+	                                            </tbody>
+	                                        </table>
+	                                    </div>
+	                                </div>
+	                            </div>
+	                        </div>
+	                    </div>
+	                </div>
 
                 <!-- Pesan Akses Ditolak untuk Admin Operator di Halaman Input Data -->
                 <div x-show="currentPage === 'input-data' && currentUser.role === 'admin_operator'" class="fade-in">
@@ -1080,9 +1138,111 @@
                                 </button>
                             </div>
                         </div>
-                    </div>
-                </div>
-            </main>
+	                    </div>
+	                </div>
+
+	                <!-- Defect Category Page - Admin only -->
+	                <div x-show="currentPage === 'defect-categories' && currentUser.role === 'admin'" x-init="loadDefectConfig()" class="fade-in">
+	                    <div class="mb-6">
+	                        <h1 class="text-2xl font-bold text-gray-800">Kategori Defect</h1>
+	                        <p class="text-gray-600">Kelola master jenis defect dan area defect untuk input operator</p>
+	                    </div>
+
+	                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+	                        <div class="bg-white rounded-lg shadow overflow-hidden card-shadow">
+	                            <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+	                                <h3 class="text-lg leading-6 font-medium text-gray-900">Jenis Defect</h3>
+	                                <p class="mt-1 max-w-2xl text-sm text-gray-500">Contoh: jahitan lepas, kotor, bentuk tidak sesuai</p>
+	                            </div>
+	                            <div class="p-4 border-b border-gray-200">
+	                                <form @submit.prevent="saveDefectType()" class="flex flex-col sm:flex-row gap-3">
+	                                    <input type="text" x-model="defectTypeForm.name" class="flex-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" placeholder="Nama jenis defect" required>
+	                                    <button type="submit" class="inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
+	                                        <span x-text="defectTypeForm.id ? 'Update' : 'Tambah'"></span>
+	                                    </button>
+	                                    <button type="button" x-show="defectTypeForm.id" @click="resetDefectTypeForm()" class="inline-flex justify-center items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+	                                        Batal
+	                                    </button>
+	                                </form>
+	                            </div>
+	                            <div class="overflow-x-auto">
+	                                <table class="min-w-full divide-y divide-gray-200">
+	                                    <thead class="bg-gray-50">
+	                                        <tr>
+	                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama</th>
+	                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+	                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
+	                                        </tr>
+	                                    </thead>
+	                                    <tbody class="bg-white divide-y divide-gray-200">
+	                                        <template x-for="type in defectTypes" :key="type.id">
+	                                            <tr>
+	                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900" x-text="type.name"></td>
+	                                                <td class="px-4 py-3 whitespace-nowrap">
+	                                                    <button @click="toggleDefectType(type)" class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full" :class="type.active !== false ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-700'" x-text="type.active !== false ? 'Aktif' : 'Nonaktif'"></button>
+	                                                </td>
+	                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-medium">
+	                                                    <button @click="editDefectType(type)" class="text-blue-600 hover:text-blue-900 mr-3">Edit</button>
+	                                                    <button @click="deleteDefectType(type.id)" class="text-red-600 hover:text-red-900">Hapus</button>
+	                                                </td>
+	                                            </tr>
+	                                        </template>
+	                                        <tr x-show="defectTypes.length === 0">
+	                                            <td colspan="3" class="px-4 py-6 text-center text-sm text-gray-500">Belum ada jenis defect.</td>
+	                                        </tr>
+	                                    </tbody>
+	                                </table>
+	                            </div>
+	                        </div>
+
+	                        <div class="bg-white rounded-lg shadow overflow-hidden card-shadow">
+	                            <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+	                                <h3 class="text-lg leading-6 font-medium text-gray-900">Area Defect</h3>
+	                                <p class="mt-1 max-w-2xl text-sm text-gray-500">Contoh: kepala, badan, kaki, aksesoris</p>
+	                            </div>
+	                            <div class="p-4 border-b border-gray-200">
+	                                <form @submit.prevent="saveDefectArea()" class="flex flex-col sm:flex-row gap-3">
+	                                    <input type="text" x-model="defectAreaForm.name" class="flex-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" placeholder="Nama area defect" required>
+	                                    <button type="submit" class="inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
+	                                        <span x-text="defectAreaForm.id ? 'Update' : 'Tambah'"></span>
+	                                    </button>
+	                                    <button type="button" x-show="defectAreaForm.id" @click="resetDefectAreaForm()" class="inline-flex justify-center items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+	                                        Batal
+	                                    </button>
+	                                </form>
+	                            </div>
+	                            <div class="overflow-x-auto">
+	                                <table class="min-w-full divide-y divide-gray-200">
+	                                    <thead class="bg-gray-50">
+	                                        <tr>
+	                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama</th>
+	                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+	                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
+	                                        </tr>
+	                                    </thead>
+	                                    <tbody class="bg-white divide-y divide-gray-200">
+	                                        <template x-for="area in defectAreas" :key="area.id">
+	                                            <tr>
+	                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900" x-text="area.name"></td>
+	                                                <td class="px-4 py-3 whitespace-nowrap">
+	                                                    <button @click="toggleDefectArea(area)" class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full" :class="area.active !== false ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-700'" x-text="area.active !== false ? 'Aktif' : 'Nonaktif'"></button>
+	                                                </td>
+	                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-medium">
+	                                                    <button @click="editDefectArea(area)" class="text-blue-600 hover:text-blue-900 mr-3">Edit</button>
+	                                                    <button @click="deleteDefectArea(area.id)" class="text-red-600 hover:text-red-900">Hapus</button>
+	                                                </td>
+	                                            </tr>
+	                                        </template>
+	                                        <tr x-show="defectAreas.length === 0">
+	                                            <td colspan="3" class="px-4 py-6 text-center text-sm text-gray-500">Belum ada area defect.</td>
+	                                        </tr>
+	                                    </tbody>
+	                                </table>
+	                            </div>
+	                        </div>
+	                    </div>
+	                </div>
+	            </main>
         </div>
     </div>
 
@@ -1322,13 +1482,30 @@
                 reportDate: new Date().toISOString().split('T')[0],
                 
                 // Forms
-                inputForm: {
-                    hourIndex: 0,
-                    output: 0,
-                    defect: 0,
-                    qcChecked: 0,
-                    targetManual: 0
-                },
+		                inputForm: {
+		                    hourIndex: 0,
+		                    output: 0,
+		                    defect: 0,
+		                    qcChecked: 0,
+		                    targetManual: 0,
+		                    defectDetails: []
+		                },
+		                defectEntry: {
+		                    type: '',
+		                    area: '',
+		                    notes: ''
+		                },
+
+		                defectTypes: [],
+	                defectAreas: [],
+	                defectTypeForm: {
+	                    id: null,
+	                    name: ''
+	                },
+	                defectAreaForm: {
+	                    id: null,
+	                    name: ''
+	                },
                 
                 // Modals
                 lineModal: {
@@ -1490,14 +1667,17 @@
                         { name: 'Dashboard', page: 'dashboard' }
                     ];
                     
-                    if (this.currentUser.role === 'admin' || this.currentUser.role === 'admin_operator') {
-                        this.navigation = [
-                            ...baseNav,
-                            { name: 'Manajemen Admin', page: 'admin-management' }
-                        ];
-                    } else {
-                        this.navigation = baseNav;
-                    }
+	                    if (this.currentUser.role === 'admin' || this.currentUser.role === 'admin_operator') {
+	                        this.navigation = [
+	                            ...baseNav,
+	                            { name: 'Manajemen Admin', page: 'admin-management' }
+	                        ];
+	                        if (this.currentUser.role === 'admin') {
+	                            this.navigation.push({ name: 'Kategori Defect', page: 'defect-categories' });
+	                        }
+	                    } else {
+	                        this.navigation = baseNav;
+	                    }
                 },
 
                 getInitialRouteState() {
@@ -1531,9 +1711,13 @@
                 },
 
                 canUseRouteState(state) {
-                    if (state.currentPage === 'admin-management') {
-                        return this.currentUser.role === 'admin' || this.currentUser.role === 'admin_operator';
-                    }
+	                    if (state.currentPage === 'admin-management') {
+	                        return this.currentUser.role === 'admin' || this.currentUser.role === 'admin_operator';
+	                    }
+
+	                    if (state.currentPage === 'defect-categories') {
+	                        return this.currentUser.role === 'admin';
+	                    }
 
                     if (state.currentPage === 'input-data') {
                         return this.currentUser.role !== 'admin_operator';
@@ -1550,22 +1734,35 @@
                 },
 
                 async loadCurrentPageData() {
-                    if ((this.currentPage === 'line-detail' || this.currentPage === 'input-data') && this.currentLine) {
-                        await this.loadLineDetail(this.currentLine, this.currentModelId);
-                    }
+	                    if ((this.currentPage === 'line-detail' || this.currentPage === 'input-data') && this.currentLine) {
+	                        await this.loadLineDetail(this.currentLine, this.currentModelId);
+	                    }
 
-                    if (this.currentPage === 'admin-management') {
-                        await this.loadAdminData();
-                    }
-                },
+		                    if (this.currentPage === 'input-data') {
+		                        await this.loadDefectConfig();
+		                        if (!this.inputForm.defectDetails) this.resetInputForm();
+		                        this.syncInputFormFromSelectedHour();
+		                    }
+
+	                    if (this.currentPage === 'admin-management') {
+	                        await this.loadAdminData();
+	                    }
+
+	                    if (this.currentPage === 'defect-categories') {
+	                        await this.loadDefectConfig();
+	                    }
+	                },
                 
                 changePage(page) {
                     this.currentPage = page;
                     this.savePageState();
-                    if (page === 'dashboard') {
-                        this.loadDashboardData();
-                    }
-                },
+	                    if (page === 'dashboard') {
+	                        this.loadDashboardData();
+	                    }
+	                    if (page === 'defect-categories') {
+	                        this.loadDefectConfig();
+	                    }
+	                },
                 
                 viewLine(lineName, modelId) {
                     this.currentLine = lineName;
@@ -1574,19 +1771,21 @@
                     this.changePage('line-detail');
                 },
                 
-                inputData(lineName, modelId) {
+	                async inputData(lineName, modelId) {
                     // Cek jika user adalah admin_operator, maka tidak boleh input data
                     if (this.currentUser.role === 'admin_operator') {
                         this.showToast('Anda tidak memiliki akses untuk input data', 'error');
                         return;
                     }
                     
-                    this.currentLine = lineName;
-                    this.currentModelId = modelId;
-                    this.loadLineDetail(lineName, modelId);
-                    this.resetInputForm();
-                    this.changePage('input-data');
-                },
+		                    this.currentLine = lineName;
+		                    this.currentModelId = modelId;
+		                    this.resetInputForm();
+		                    await this.loadLineDetail(lineName, modelId);
+		                    await this.loadDefectConfig();
+		                    this.syncInputFormFromSelectedHour();
+		                    this.changePage('input-data');
+		                },
 
                 // Save and restore page state
                 savePageState() {
@@ -1619,15 +1818,28 @@
                                     this.currentModelId = state.currentModelId || '';
                                     
                                     // If we're on line-detail or input-data page, load the line detail
-                                    if ((this.currentPage === 'line-detail' || this.currentPage === 'input-data') && 
-                                        this.currentLine && this.currentModelId) {
-                                        this.loadLineDetail(this.currentLine, this.currentModelId);
-                                    }
+		                                    if ((this.currentPage === 'line-detail' || this.currentPage === 'input-data') && 
+		                                        this.currentLine && this.currentModelId) {
+		                                        this.loadLineDetail(this.currentLine, this.currentModelId).then(() => {
+		                                            if (this.currentPage === 'input-data') {
+		                                                if (!this.inputForm.defectDetails) this.resetInputForm();
+		                                                this.syncInputFormFromSelectedHour();
+		                                            }
+		                                        });
+		                                    }
+
+	                                    if (this.currentPage === 'input-data') {
+	                                        this.loadDefectConfig();
+	                                    }
                                     
                                     // If we're on admin-management page, load admin data
-                                    if (this.currentPage === 'admin-management') {
-                                        this.loadAdminData();
-                                    }
+	                                    if (this.currentPage === 'admin-management') {
+	                                        this.loadAdminData();
+	                                    }
+
+	                                    if (this.currentPage === 'defect-categories') {
+	                                        this.loadDefectConfig();
+	                                    }
                                 }
                             } catch (error) {
                                 console.error('Error restoring page state:', error);
@@ -1742,9 +1954,9 @@
                     await this.loadUsers();
                 },
                 
-                async loadUsers() {
-                    try {
-                        const response = await fetch('/api/users');
+	                async loadUsers() {
+	                    try {
+	                        const response = await fetch('/api/users');
                         if (response.ok) {
                             this.users = await response.json();
                         } else {
@@ -1752,11 +1964,127 @@
                         }
                     } catch (error) {
                         console.error('Error loading users:', error);
-                        this.showToast('Error loading users', 'error');
-                    }
-                },
+	                        this.showToast('Error loading users', 'error');
+	                    }
+	                },
 
-                // Date-based report methods
+	                async loadDefectConfig() {
+	                    try {
+	                        const response = await fetch('/api/defect-config');
+	                        if (response.ok) {
+	                            const config = await response.json();
+	                            this.defectTypes = config.defectTypes || [];
+	                            this.defectAreas = config.defectAreas || [];
+	                        } else {
+	                            this.showToast('Gagal memuat kategori defect', 'error');
+	                        }
+	                    } catch (error) {
+	                        console.error('Error loading defect config:', error);
+	                        this.showToast('Error loading defect config', 'error');
+	                    }
+	                },
+
+	                resetDefectTypeForm() {
+	                    this.defectTypeForm = { id: null, name: '' };
+	                },
+
+	                resetDefectAreaForm() {
+	                    this.defectAreaForm = { id: null, name: '' };
+	                },
+
+	                editDefectType(type) {
+	                    this.defectTypeForm = { id: type.id, name: type.name };
+	                },
+
+	                editDefectArea(area) {
+	                    this.defectAreaForm = { id: area.id, name: area.name };
+	                },
+
+	                async saveDefectType() {
+	                    await this.saveDefectCategory('type', {
+	                        id: this.defectTypeForm.id,
+	                        name: this.defectTypeForm.name,
+	                        active: true
+	                    });
+	                    this.resetDefectTypeForm();
+	                },
+
+	                async saveDefectArea() {
+	                    await this.saveDefectCategory('area', {
+	                        id: this.defectAreaForm.id,
+	                        name: this.defectAreaForm.name,
+	                        active: true
+	                    });
+	                    this.resetDefectAreaForm();
+	                },
+
+	                async toggleDefectType(type) {
+	                    await this.saveDefectCategory('type', {
+	                        id: type.id,
+	                        name: type.name,
+	                        active: type.active === false
+	                    });
+	                },
+
+	                async toggleDefectArea(area) {
+	                    await this.saveDefectCategory('area', {
+	                        id: area.id,
+	                        name: area.name,
+	                        active: area.active === false
+	                    });
+	                },
+
+	                async saveDefectCategory(kind, payload) {
+	                    try {
+	                        const collection = kind === 'type' ? 'defect-types' : 'defect-areas';
+	                        const url = payload.id ? `/api/${collection}/${payload.id}` : `/api/${collection}`;
+	                        const method = payload.id ? 'PUT' : 'POST';
+	                        const response = await fetch(url, {
+	                            method,
+	                            headers: { 'Content-Type': 'application/json' },
+	                            body: JSON.stringify({ name: payload.name, active: payload.active })
+	                        });
+
+	                        if (response.ok) {
+	                            this.showToast('Kategori defect berhasil disimpan', 'success');
+	                            await this.loadDefectConfig();
+	                        } else {
+	                            const error = await response.json();
+	                            this.showToast(error.error || 'Gagal menyimpan kategori defect', 'error');
+	                        }
+	                    } catch (error) {
+	                        console.error('Error saving defect category:', error);
+	                        this.showToast('Error saving defect category', 'error');
+	                    }
+	                },
+
+	                async deleteDefectType(typeId) {
+	                    await this.deleteDefectCategory('defect-types', typeId);
+	                },
+
+	                async deleteDefectArea(areaId) {
+	                    await this.deleteDefectCategory('defect-areas', areaId);
+	                },
+
+	                async deleteDefectCategory(collection, id) {
+	                    if (!confirm('Hapus kategori defect ini?')) return;
+
+	                    try {
+	                        const response = await fetch(`/api/${collection}/${id}`, { method: 'DELETE' });
+	                        if (response.ok) {
+	                            this.showToast('Kategori defect berhasil dihapus', 'success');
+	                            await this.loadDefectConfig();
+	                        } else {
+	                            const error = await response.json();
+	                            this.showToast(error.error || 'Gagal menghapus kategori defect', 'error');
+	                        }
+	                    } catch (error) {
+	                        console.error('Error deleting defect category:', error);
+	                        this.showToast('Error deleting defect category', 'error');
+	                    }
+	                },
+
+	                // Date-based report methods
                 async loadDateReport() {
                     if (!this.reportDate) {
                         this.showToast('Pilih tanggal terlebih dahulu', 'error');
@@ -1809,47 +2137,100 @@
                 },
                 
                 // Input data methods
-                resetInputForm() {
-                    this.inputForm = {
-                        hourIndex: 0,
-                        output: 0,
-                        defect: 0,
-                        qcChecked: 0,
-                        targetManual: 0
-                    };
-                },
-                
-                async submitHourlyData() {
-                    // Cek jika user adalah admin_operator, maka tidak boleh input data
-                    if (this.currentUser.role === 'admin_operator') {
-                        this.showToast('Anda tidak memiliki akses untuk input data', 'error');
-                        return;
-                    }
-                    
-                    try {
-                        const response = await fetch(`/api/update-hourly/${this.currentLine}/${this.currentModelId}`, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify(this.inputForm)
-                        });
-                        
-                        if (response.ok) {
-                            const data = await response.json();
-                            this.showToast('Data berhasil disimpan', 'success');
-                            this.resetInputForm();
-                            await this.loadLineDetail(this.currentLine, this.currentModelId);
-                            await this.loadDashboardData();
-                        } else {
+		                resetInputForm() {
+		                    this.inputForm = {
+		                        hourIndex: 0,
+		                        output: 0,
+		                        targetManual: 0,
+		                        defectDetails: []
+		                    };
+		                    this.resetDefectEntry();
+		                },
+
+		                resetDefectEntry() {
+		                    this.defectEntry = { type: '', area: '', notes: '' };
+		                },
+
+		                syncInputFormFromSelectedHour() {
+		                    const hour = this.lineDetail.hourly_data?.[this.inputForm.hourIndex];
+		                    if (!hour) return;
+
+		                    this.inputForm.output = parseInt(hour.output) || 0;
+		                    this.inputForm.targetManual = parseInt(hour.targetManual) || 0;
+		                },
+	                
+	                async submitProductionData() {
+	                    // Cek jika user adalah admin_operator, maka tidak boleh input data
+	                    if (this.currentUser.role === 'admin_operator') {
+	                        this.showToast('Anda tidak memiliki akses untuk input data', 'error');
+	                        return;
+	                    }
+
+		                    try {
+		                        const response = await fetch(`/api/update-production/${this.currentLine}/${this.currentModelId}`, {
+		                            method: 'POST',
+		                            headers: {
+		                                'Content-Type': 'application/json'
+		                            },
+		                            body: JSON.stringify({
+		                                hourIndex: this.inputForm.hourIndex,
+		                                output: parseInt(this.inputForm.output) || 0,
+		                                targetManual: parseInt(this.inputForm.targetManual) || 0
+		                            })
+		                        });
+	                        
+	                        if (response.ok) {
+	                            this.showToast('Data produksi berhasil disimpan', 'success');
+	                            await this.loadLineDetail(this.currentLine, this.currentModelId);
+	                            this.syncInputFormFromSelectedHour();
+	                            await this.loadDashboardData();
+	                        } else {
                             const error = await response.json();
                             this.showToast(error.error || 'Failed to save data', 'error');
                         }
                     } catch (error) {
                         console.error('Error saving hourly data:', error);
-                        this.showToast('Error saving data', 'error');
-                    }
-                },
+	                        this.showToast('Error saving data', 'error');
+	                    }
+	                },
+
+	                async submitQcCheck(result) {
+	                    if (this.currentUser.role === 'admin_operator') {
+	                        this.showToast('Anda tidak memiliki akses untuk input QC', 'error');
+	                        return;
+	                    }
+
+	                    if (result === 'defect' && (!this.defectEntry.type || !this.defectEntry.area)) {
+	                        this.showToast('Pilih jenis defect dan area defect terlebih dahulu', 'error');
+	                        return;
+	                    }
+
+	                    try {
+	                        const response = await fetch(`/api/qc-check/${this.currentLine}/${this.currentModelId}`, {
+	                            method: 'POST',
+	                            headers: { 'Content-Type': 'application/json' },
+	                            body: JSON.stringify({
+	                                result,
+	                                type: this.defectEntry.type,
+	                                area: this.defectEntry.area,
+	                                notes: this.defectEntry.notes
+	                            })
+	                        });
+
+	                        if (response.ok) {
+	                            this.showToast(result === 'defect' ? 'QC defect berhasil dicatat' : 'QC good berhasil dicatat', 'success');
+	                            if (result === 'defect') this.resetDefectEntry();
+	                            await this.loadLineDetail(this.currentLine, this.currentModelId);
+	                            await this.loadDashboardData();
+	                        } else {
+	                            const error = await response.json();
+	                            this.showToast(error.error || 'Gagal menyimpan QC check', 'error');
+	                        }
+	                    } catch (error) {
+	                        console.error('Error saving QC check:', error);
+	                        this.showToast('Error saving QC check', 'error');
+	                    }
+	                },
                 
                 // Methods for target manual
                 async updateTargetManual(lineName, modelId, hourIndex, targetManual) {
@@ -1887,7 +2268,7 @@
                 },
 
                 // Update data langsung dari tabel
-                async updateHourlyDataDirect(lineName, modelId, hourIndex) {
+	                async updateHourlyDataDirect(lineName, modelId, hourIndex) {
                     // Cek jika user adalah admin_operator, maka tidak boleh input data
                     if (this.currentUser.role === 'admin_operator') {
                         this.showToast('Anda tidak memiliki akses untuk input data', 'error');
@@ -1897,19 +2278,17 @@
                     const hour = this.lineDetail.hourly_data[hourIndex];
                     
                     try {
-                        const response = await fetch(`/api/update-hourly-direct/${lineName}/${modelId}`, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify({
-                                hourIndex: hourIndex,
-                                output: parseInt(hour.output) || 0,
-                                defect: parseInt(hour.defect) || 0,
-                                qcChecked: parseInt(hour.qcChecked) || 0,
-                                targetManual: parseInt(hour.targetManual) || 0
-                            })
-                        });
+	                        const response = await fetch(`/api/update-production/${lineName}/${modelId}`, {
+	                            method: 'POST',
+	                            headers: {
+	                                'Content-Type': 'application/json'
+	                            },
+	                            body: JSON.stringify({
+	                                hourIndex: hourIndex,
+	                                output: parseInt(hour.output) || 0,
+	                                targetManual: parseInt(hour.targetManual) || 0
+	                            })
+	                        });
                         
                         if (response.ok) {
                             this.showToast('Data berhasil disimpan', 'success');
@@ -2290,9 +2669,34 @@ async checkSystemStatus() {
                     }, 5000);
                 },
                 
-                // Pagination Computed Properties
-                
-                // Dashboard pagination
+	                // Pagination Computed Properties
+
+	                get activeDefectTypes() {
+	                    return (this.defectTypes || []).filter(type => type.active !== false);
+	                },
+
+	                get activeDefectAreas() {
+	                    return (this.defectAreas || []).filter(area => area.active !== false);
+	                },
+
+	                get inputDefectTotal() {
+	                    return (this.inputForm.defectDetails || []).reduce((total, detail) => {
+	                        return total + (parseInt(detail.quantity) || 0);
+	                    }, 0);
+	                },
+
+	                get qcGoodCount() {
+	                    return (this.lineDetail.qcChecks || []).filter(check => check.result === 'good').length;
+	                },
+
+	                get recentDefectChecks() {
+	                    return (this.lineDetail.qcChecks || [])
+	                        .filter(check => check.result === 'defect')
+	                        .slice(-5)
+	                        .reverse();
+	                },
+	                
+	                // Dashboard pagination
                 get filteredDashboardLines() {
                     if (!this.linesWithModels) return [];
                     

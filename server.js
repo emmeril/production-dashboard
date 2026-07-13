@@ -2670,6 +2670,12 @@ app.get('/public-display', (req, res) => {
   res.sendFile(path.join(__dirname, 'public-display.html'));
 });
 
+// Frontend SPA routes. Legacy pages such as /admin, /leader, /line/:line,
+// and /input/:line now use the Alpine/Tailwind dashboard entry point.
+app.get(['/admin', '/leader', '/line/:lineName', '/input/:lineName'], (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
+
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });

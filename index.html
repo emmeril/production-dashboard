@@ -1400,8 +1400,14 @@
                 async init() {
                     await this.checkAuth();
                     this.setupNavigation();
-                    this.restorePageState();
+                    const initialRoute = this.getInitialRouteState();
+                    if (this.isAuthenticated && initialRoute && this.canUseRouteState(initialRoute)) {
+                        this.applyRouteState(initialRoute);
+                    } else {
+                        this.restorePageState();
+                    }
                     await this.loadLines();
+                    await this.loadCurrentPageData();
                     await this.loadDashboardData();
                     await this.checkSystemStatus();
                 },
@@ -1438,8 +1444,14 @@
                             this.isAuthenticated = true;
                             this.loginError = '';
                             this.setupNavigation();
-                            this.restorePageState();
+                            const initialRoute = this.getInitialRouteState();
+                            if (initialRoute && this.canUseRouteState(initialRoute)) {
+                                this.applyRouteState(initialRoute);
+                            } else {
+                                this.restorePageState();
+                            }
                             await this.loadLines();
+                            await this.loadCurrentPageData();
                             await this.loadDashboardData();
                             await this.checkSystemStatus();
                         } else {
@@ -1481,6 +1493,65 @@
                         ];
                     } else {
                         this.navigation = baseNav;
+                    }
+                },
+
+                getInitialRouteState() {
+                    const path = window.location.pathname.replace(/\/$/, '');
+
+                    if (path === '/admin') {
+                        return { currentPage: 'admin-management' };
+                    }
+
+                    if (path === '/leader') {
+                        return { currentPage: 'dashboard' };
+                    }
+
+                    const lineMatch = path.match(/^\/line\/([^/]+)$/);
+                    if (lineMatch) {
+                        return {
+                            currentPage: 'line-detail',
+                            currentLine: decodeURIComponent(lineMatch[1])
+                        };
+                    }
+
+                    const inputMatch = path.match(/^\/input\/([^/]+)$/);
+                    if (inputMatch) {
+                        return {
+                            currentPage: 'input-data',
+                            currentLine: decodeURIComponent(inputMatch[1])
+                        };
+                    }
+
+                    return null;
+                },
+
+                canUseRouteState(state) {
+                    if (state.currentPage === 'admin-management') {
+                        return this.currentUser.role === 'admin' || this.currentUser.role === 'admin_operator';
+                    }
+
+                    if (state.currentPage === 'input-data') {
+                        return this.currentUser.role !== 'admin_operator';
+                    }
+
+                    return true;
+                },
+
+                applyRouteState(state) {
+                    this.currentPage = state.currentPage || 'dashboard';
+                    this.currentLine = state.currentLine || '';
+                    this.currentModelId = state.currentModelId || '';
+                    this.savePageState();
+                },
+
+                async loadCurrentPageData() {
+                    if ((this.currentPage === 'line-detail' || this.currentPage === 'input-data') && this.currentLine) {
+                        await this.loadLineDetail(this.currentLine, this.currentModelId);
+                    }
+
+                    if (this.currentPage === 'admin-management') {
+                        await this.loadAdminData();
                     }
                 },
                 
@@ -1533,7 +1604,11 @@
                                 const state = JSON.parse(savedState);
                                 
                                 // Check if the saved page is allowed for current user
-                                const allowedPages = this.navigation.map(item => item.page);
+                                const allowedPages = [
+                                    ...this.navigation.map(item => item.page),
+                                    'line-detail',
+                                    'input-data'
+                                ];
                                 if (allowedPages.includes(state.currentPage)) {
                                     this.currentPage = state.currentPage;
                                     this.currentLine = state.currentLine || '';

@@ -1417,18 +1417,23 @@
                         </div>
                     </div>
 
-                <!-- System Actions - Hanya untuk Admin -->
-                <div x-show="currentPage === 'admin-management' && currentUser.role === 'admin'" class="bg-white rounded-lg shadow overflow-hidden card-shadow fade-in">
-                        <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
-	                            <h3 class="text-lg leading-6 font-medium text-gray-900 flex items-center"><i class="fa-solid fa-screwdriver-wrench text-blue-600 mr-2"></i>Aksi Sistem</h3>
-                            <p class="mt-1 max-w-2xl text-sm text-gray-500">Backup dan sinkronisasi data</p>
-                        </div>
-                        <div class="p-4">
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+	                <!-- System Actions - Hanya untuk Admin -->
+	                <div x-show="currentPage === 'system-actions' && currentUser.role === 'admin'" class="fade-in">
+	                    <div class="mb-6">
+	                        <h1 class="text-2xl font-bold text-gray-800 flex items-center"><i class="fa-solid fa-screwdriver-wrench text-blue-600 mr-3"></i>Aksi Sistem</h1>
+	                        <p class="text-gray-600">Backup, sinkronisasi tanggal, dan status sistem</p>
+	                    </div>
+	                    <div class="bg-white rounded-lg shadow overflow-hidden card-shadow">
+	                        <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+	                            <h3 class="text-lg leading-6 font-medium text-gray-900 flex items-center"><i class="fa-solid fa-sliders text-blue-600 mr-2"></i>Maintenance</h3>
+	                            <p class="mt-1 max-w-2xl text-sm text-gray-500">Gunakan aksi ini hanya saat perlu administrasi data sistem</p>
+	                        </div>
+	                        <div class="p-4">
+	                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
 	                                <button @click="createBackup()" class="inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
 	                                    <i class="fa-solid fa-database mr-2"></i>Buat Backup
 	                                </button>
-                                
+
 	                                <button @click="syncDates()" class="inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
 	                                    <i class="fa-solid fa-rotate mr-2"></i>Sinkronisasi Tanggal
 	                                </button>
@@ -1436,7 +1441,8 @@
 	                                <button @click="checkSystemStatus()" class="inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500">
 	                                    <i class="fa-solid fa-shield-halved mr-2"></i>Cek Status Sistem
 	                                </button>
-		                    </div>
+	                            </div>
+	                        </div>
 	                    </div>
 	                </div>
 
@@ -1908,10 +1914,7 @@
                     await this.loadLines();
                     await this.loadCurrentPageData();
                     await this.loadDashboardData();
-                    if (this.currentUser.role === 'admin') {
-                        await this.checkSystemStatus();
-                    }
-                },
+	                },
                 
                 // Authentication methods
                 async checkAuth() {
@@ -1954,10 +1957,7 @@
                             await this.loadLines();
                             await this.loadCurrentPageData();
                             await this.loadDashboardData();
-                            if (this.currentUser.role === 'admin') {
-                                await this.checkSystemStatus();
-                            }
-                        } else {
+	                        } else {
                             const error = await response.json();
                             this.loginError = error.error || 'Login failed';
                             this.showToast(error.error, 'error');
@@ -1998,7 +1998,8 @@
 	                        if (this.currentUser.role === 'admin') {
 	                            this.navigation.push(
 	                                { name: 'Manajemen User', page: 'user-management', iconClass: 'fa-users-gear' },
-	                                { name: 'Kategori Defect', page: 'defect-categories', iconClass: 'fa-triangle-exclamation' }
+	                                { name: 'Kategori Defect', page: 'defect-categories', iconClass: 'fa-triangle-exclamation' },
+	                                { name: 'Aksi Sistem', page: 'system-actions', iconClass: 'fa-screwdriver-wrench' }
 	                            );
 	                        }
 	                    } else {
@@ -2045,7 +2046,7 @@
 		                        return this.currentUser.role === 'admin' || this.currentUser.role === 'admin_operator';
 		                    }
 
-		                    if (state.currentPage === 'user-management' || state.currentPage === 'defect-categories') {
+		                    if (state.currentPage === 'user-management' || state.currentPage === 'defect-categories' || state.currentPage === 'system-actions') {
 		                        return this.currentUser.role === 'admin';
 		                    }
 

@@ -1409,7 +1409,9 @@
                     await this.loadLines();
                     await this.loadCurrentPageData();
                     await this.loadDashboardData();
-                    await this.checkSystemStatus();
+                    if (this.currentUser.role === 'admin') {
+                        await this.checkSystemStatus();
+                    }
                 },
                 
                 // Authentication methods
@@ -1453,7 +1455,9 @@
                             await this.loadLines();
                             await this.loadCurrentPageData();
                             await this.loadDashboardData();
-                            await this.checkSystemStatus();
+                            if (this.currentUser.role === 'admin') {
+                                await this.checkSystemStatus();
+                            }
                         } else {
                             const error = await response.json();
                             this.loginError = error.error || 'Login failed';

@@ -382,6 +382,109 @@
 		            white-space: nowrap;
 		        }
 
+		        .dashboard-chart {
+		            display: grid;
+		            grid-template-columns: repeat(auto-fit, minmax(76px, 1fr));
+		            align-items: end;
+		            gap: 0.85rem;
+		            min-height: 260px;
+		            padding: 1rem 0.25rem 0;
+		        }
+
+		        .chart-column {
+		            display: flex;
+		            min-width: 0;
+		            height: 220px;
+		            flex-direction: column;
+		            justify-content: flex-end;
+		            gap: 0.45rem;
+		        }
+
+		        .chart-bars {
+		            display: grid;
+		            grid-template-columns: repeat(3, minmax(8px, 1fr));
+		            align-items: end;
+		            gap: 0.22rem;
+		            height: 160px;
+		            padding: 0 0.2rem;
+		            border-bottom: 1px solid #dee2e6;
+		        }
+
+		        .chart-bar {
+		            min-height: 4px;
+		            border-radius: 6px 6px 0 0;
+		            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
+		        }
+
+		        .chart-bar-target {
+		            background: #8bbcff;
+		        }
+
+		        .chart-bar-output {
+		            background: #28a745;
+		        }
+
+		        .chart-bar-defect {
+		            background: #dc3545;
+		        }
+
+		        .chart-label {
+		            overflow: hidden;
+		            color: #495057;
+		            font-size: 0.75rem;
+		            font-weight: 700;
+		            text-align: center;
+		            text-overflow: ellipsis;
+		            white-space: nowrap;
+		        }
+
+		        .chart-legend {
+		            display: flex;
+		            flex-wrap: wrap;
+		            gap: 0.75rem;
+		            color: #6c757d;
+		            font-size: 0.8rem;
+		            font-weight: 600;
+		        }
+
+		        .chart-legend span {
+		            display: inline-flex;
+		            align-items: center;
+		            gap: 0.35rem;
+		        }
+
+		        .legend-dot {
+		            width: 0.7rem;
+		            height: 0.7rem;
+		            border-radius: 999px;
+		        }
+
+		        .top-defect-row {
+		            display: grid;
+		            grid-template-columns: minmax(0, 1fr) auto;
+		            gap: 0.75rem;
+		            align-items: center;
+		            padding: 0.65rem 0;
+		            border-bottom: 1px solid #edf0f2;
+		        }
+
+		        .top-defect-row:last-child {
+		            border-bottom: 0;
+		        }
+
+		        .top-defect-meter {
+		            height: 0.45rem;
+		            overflow: hidden;
+		            border-radius: 999px;
+		            background: #e9ecef;
+		        }
+
+		        .top-defect-fill {
+		            height: 100%;
+		            border-radius: inherit;
+		            background: var(--danger);
+		        }
+
 		        main .mb-6.flex.justify-between.items-center {
 		            gap: 0.75rem;
 		            flex-wrap: wrap;
@@ -723,7 +826,7 @@
                 <div x-show="currentPage === 'dashboard'" class="fade-in">
                     <div class="mb-6">
 	                        <h1 class="text-2xl font-bold text-gray-800 flex items-center"><i class="fa-solid fa-gauge-high text-blue-600 mr-3"></i>Dashboard Produksi</h1>
-                        <p class="text-gray-600">Ringkasan performa produksi hari ini</p>
+	                        <p class="text-gray-600">Ringkasan performa produksi berdasarkan line</p>
                     </div>
 
                     <!-- Summary Cards -->
@@ -737,7 +840,7 @@
                                 </div>
                                 <div>
                                     <p class="text-sm font-medium text-gray-500">Total Output</p>
-                                    <p class="text-2xl font-bold text-gray-800" x-text="dashboardData.totalOutput || 0"></p>
+	                                    <p class="text-2xl font-bold text-gray-800" x-text="selectedDashboardSummary.output || 0"></p>
                                 </div>
                             </div>
                         </div>
@@ -751,7 +854,7 @@
                                 </div>
                                 <div>
                                     <p class="text-sm font-medium text-gray-500">Target</p>
-                                    <p class="text-2xl font-bold text-gray-800" x-text="dashboardData.totalTarget || 0"></p>
+	                                    <p class="text-2xl font-bold text-gray-800" x-text="selectedDashboardSummary.target || 0"></p>
                                 </div>
                             </div>
                         </div>
@@ -765,7 +868,7 @@
                                 </div>
                                 <div>
                                     <p class="text-sm font-medium text-gray-500">Defect Rate</p>
-                                    <p class="text-2xl font-bold text-gray-800" x-text="(dashboardData.defectRate || 0) + '%'"></p>
+	                                    <p class="text-2xl font-bold text-gray-800" x-text="(selectedDashboardSummary.defectRate || 0) + '%'"></p>
                                 </div>
                             </div>
                         </div>
@@ -784,9 +887,136 @@
         </div>
     </div>
 </div>
-                    </div>
+	                    </div>
 
-	                </div>
+	                    <div class="filter-toolbar line-management-toolbar">
+	                        <div class="filter-group">
+	                            <span class="filter-caption"><i class="fa-solid fa-sitemap"></i>Line</span>
+	                            <div class="filter-control filter-control-select has-icon">
+	                                <i class="fa-solid fa-filter filter-control-icon"></i>
+	                                <select x-model="dashboardLineFilter" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+	                                    <option value="">Semua Line</option>
+	                                    <template x-for="lineName in dashboardLineOptions" :key="lineName">
+	                                        <option :value="lineName" x-text="lineName"></option>
+	                                    </template>
+	                                </select>
+	                            </div>
+	                        </div>
+	                    </div>
+
+	                    <div class="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-6">
+	                        <div class="xl:col-span-2 bg-white rounded-lg shadow overflow-hidden card-shadow">
+	                            <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+	                                <div class="flex flex-wrap items-center justify-between gap-3">
+	                                    <div>
+	                                        <h3 class="text-lg leading-6 font-medium text-gray-900 flex items-center"><i class="fa-solid fa-chart-simple text-blue-600 mr-2"></i>Chart Akumulasi Data Tiap Hari</h3>
+	                                        <p class="mt-1 max-w-2xl text-sm text-gray-500">Perbandingan target, output, dan defect berdasarkan line yang dipilih</p>
+	                                    </div>
+	                                    <div class="chart-legend">
+	                                        <span><span class="legend-dot chart-bar-target"></span>Target</span>
+	                                        <span><span class="legend-dot chart-bar-output"></span>Output</span>
+	                                        <span><span class="legend-dot chart-bar-defect"></span>Defect</span>
+	                                    </div>
+	                                </div>
+	                            </div>
+	                            <div class="p-4">
+	                                <div x-show="dashboardChartData.length > 0" class="dashboard-chart">
+	                                    <template x-for="day in dashboardChartData" :key="day.date + '-' + (day.lineName || 'all')">
+	                                        <div class="chart-column" :title="formatShortDate(day.date) + ' - Target: ' + day.target + ', Output: ' + day.output + ', Defect: ' + day.defect">
+	                                            <div class="text-center text-xs font-semibold text-gray-700" x-text="day.output"></div>
+	                                            <div class="chart-bars">
+	                                                <div class="chart-bar chart-bar-target" :style="'height: ' + chartBarHeight(day.target) + '%'"></div>
+	                                                <div class="chart-bar chart-bar-output" :style="'height: ' + chartBarHeight(day.output) + '%'"></div>
+	                                                <div class="chart-bar chart-bar-defect" :style="'height: ' + chartBarHeight(day.defect) + '%'"></div>
+	                                            </div>
+	                                            <div class="chart-label" x-text="formatShortDate(day.date)"></div>
+	                                        </div>
+	                                    </template>
+	                                </div>
+	                                <div x-show="dashboardChartData.length === 0" class="px-4 py-10 text-center text-sm text-gray-500">Belum ada data harian untuk chart.</div>
+	                            </div>
+	                        </div>
+
+	                        <div class="bg-white rounded-lg shadow overflow-hidden card-shadow">
+	                            <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+	                                <h3 class="text-lg leading-6 font-medium text-gray-900 flex items-center"><i class="fa-solid fa-calendar-day text-blue-600 mr-2"></i>Detail Data Per Hari</h3>
+	                                <p class="mt-1 max-w-2xl text-sm text-gray-500">Ringkasan terbaru berdasarkan tanggal</p>
+	                            </div>
+	                            <div class="overflow-x-auto">
+	                                <table class="min-w-full divide-y divide-gray-200">
+	                                    <thead class="bg-gray-50">
+	                                        <tr>
+	                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal</th>
+	                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Line</th>
+	                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Output</th>
+	                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Defect</th>
+	                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rate</th>
+	                                        </tr>
+	                                    </thead>
+	                                    <tbody class="bg-white divide-y divide-gray-200">
+	                                        <template x-for="day in dashboardDailyDetails" :key="day.date + '-' + (day.lineName || 'all')">
+	                                            <tr>
+	                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900" x-text="formatShortDate(day.date)"></td>
+	                                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700" x-text="day.lineName || 'Semua Line'"></td>
+	                                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700" x-text="day.output"></td>
+	                                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700" x-text="day.defect"></td>
+	                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-semibold" :class="day.defectRate > 5 ? 'text-red-600' : 'text-green-600'" x-text="day.defectRate + '%'"></td>
+	                                            </tr>
+	                                        </template>
+	                                        <tr x-show="dashboardDailyDetails.length === 0">
+	                                            <td colspan="5" class="px-4 py-8 text-center text-sm text-gray-500">Belum ada detail data harian.</td>
+	                                        </tr>
+	                                    </tbody>
+	                                </table>
+	                            </div>
+	                        </div>
+	                    </div>
+
+	                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+	                        <div class="bg-white rounded-lg shadow overflow-hidden card-shadow">
+	                            <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+	                                <h3 class="text-lg leading-6 font-medium text-gray-900 flex items-center"><i class="fa-solid fa-location-dot text-blue-600 mr-2"></i>Top 5 Defect Area</h3>
+	                                <p class="mt-1 max-w-2xl text-sm text-gray-500">Area defect terbanyak dari data harian</p>
+	                            </div>
+	                            <div class="p-4">
+	                                <template x-for="item in selectedDashboardTopDefectAreas" :key="item.name">
+	                                    <div class="top-defect-row">
+	                                        <div class="min-w-0">
+	                                            <div class="flex items-center justify-between gap-2 mb-2">
+	                                                <span class="text-sm font-semibold text-gray-900 truncate" x-text="item.name"></span>
+	                                                <span class="text-xs font-bold text-red-700" x-text="item.count"></span>
+	                                            </div>
+	                                            <div class="top-defect-meter"><div class="top-defect-fill" :style="'width: ' + topDefectPercent(item.count, selectedDashboardTopDefectAreas) + '%'"></div></div>
+	                                        </div>
+	                                    </div>
+	                                </template>
+	                                <div x-show="!selectedDashboardTopDefectAreas.length" class="px-4 py-8 text-center text-sm text-gray-500">Belum ada data area defect.</div>
+	                            </div>
+	                        </div>
+
+	                        <div class="bg-white rounded-lg shadow overflow-hidden card-shadow">
+	                            <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+	                                <h3 class="text-lg leading-6 font-medium text-gray-900 flex items-center"><i class="fa-solid fa-tags text-blue-600 mr-2"></i>Top 5 Jenis Defect</h3>
+	                                <p class="mt-1 max-w-2xl text-sm text-gray-500">Jenis defect terbanyak dari data harian</p>
+	                            </div>
+	                            <div class="p-4">
+	                                <template x-for="item in selectedDashboardTopDefectTypes" :key="item.name">
+	                                    <div class="top-defect-row">
+	                                        <div class="min-w-0">
+	                                            <div class="flex items-center justify-between gap-2 mb-2">
+	                                                <span class="text-sm font-semibold text-gray-900 truncate" x-text="item.name"></span>
+	                                                <span class="text-xs font-bold text-red-700" x-text="item.count"></span>
+	                                            </div>
+	                                            <div class="top-defect-meter"><div class="top-defect-fill" :style="'width: ' + topDefectPercent(item.count, selectedDashboardTopDefectTypes) + '%'"></div></div>
+	                                        </div>
+	                                    </div>
+	                                </template>
+	                                <div x-show="!selectedDashboardTopDefectTypes.length" class="px-4 py-8 text-center text-sm text-gray-500">Belum ada data jenis defect.</div>
+	                            </div>
+	                        </div>
+	                    </div>
+
+		                </div>
 
 	                <!-- Line Summary Page -->
 	                <div x-show="currentPage === 'line-summary'" class="fade-in">
@@ -2033,7 +2263,14 @@
                 lineDetail: {},
                 currentLine: '',
                 currentModelId: '',
-                dashboardData: {},
+	                dashboardData: {
+	                    daily: [],
+	                    lineDaily: [],
+	                    lines: [],
+	                    topDefectAreas: [],
+	                    topDefectTypes: []
+	                },
+	                dashboardLineFilter: '',
                 users: [],
                 dateReport: [],
                 reportDate: new Date().toISOString().split('T')[0],
@@ -2512,13 +2749,28 @@
                         console.error('Error loading users for operator count:', error);
                     }
 
-                    this.dashboardData = {
-                        totalOutput: totalOutput,
-                        totalTarget: totalTarget,
-                        defectRate: modelCount > 0 ? (totalDefectRate / modelCount).toFixed(2) : 0,
-                        activeOperators: activeOperators
-                    };
-                },           
+	                    let dashboardSummary = { daily: [], lineDaily: [], lines: [], topDefectAreas: [], topDefectTypes: [] };
+	                    try {
+	                        const response = await fetch('/api/dashboard-summary');
+	                        if (response.ok) {
+	                            dashboardSummary = await response.json();
+	                        }
+	                    } catch (error) {
+	                        console.error('Error loading dashboard summary:', error);
+	                    }
+
+	                    this.dashboardData = {
+	                        totalOutput: totalOutput,
+	                        totalTarget: totalTarget,
+	                        defectRate: modelCount > 0 ? (totalDefectRate / modelCount).toFixed(2) : 0,
+	                        activeOperators: activeOperators,
+	                        daily: dashboardSummary.daily || [],
+	                        lineDaily: dashboardSummary.lineDaily || [],
+	                        lines: dashboardSummary.lines || [],
+	                        topDefectAreas: dashboardSummary.topDefectAreas || [],
+	                        topDefectTypes: dashboardSummary.topDefectTypes || []
+	                    };
+	                },
 
 	                async loadAdminData() {
 	                    await this.loadLines();
@@ -3253,6 +3505,43 @@ async checkSystemStatus() {
 	                    });
 	                },
 
+	                formatShortDate(value) {
+	                    if (!value) return '-';
+
+	                    const date = new Date(`${value}T00:00:00`);
+	                    if (Number.isNaN(date.getTime())) return value;
+
+	                    return date.toLocaleDateString('id-ID', {
+	                        day: '2-digit',
+	                        month: 'short'
+	                    });
+	                },
+
+	                chartBarHeight(value) {
+	                    const max = this.maxDashboardChartValue || 1;
+	                    return Math.max(4, Math.round(((parseInt(value) || 0) / max) * 100));
+	                },
+
+	                topDefectPercent(value, items = []) {
+	                    const max = Math.max(...(items || []).map(item => parseInt(item.count) || 0), 1);
+	                    return Math.max(6, Math.round(((parseInt(value) || 0) / max) * 100));
+	                },
+
+	                topCounterFromDaily(items = [], counterKey) {
+	                    const counter = {};
+
+	                    (items || []).forEach(item => {
+	                        Object.entries(item[counterKey] || {}).forEach(([name, count]) => {
+	                            counter[name] = (counter[name] || 0) + (parseInt(count) || 0);
+	                        });
+	                    });
+
+	                    return Object.entries(counter)
+	                        .map(([name, count]) => ({ name, count }))
+	                        .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
+	                        .slice(0, 5);
+	                },
+
 	                showToast(message, type = 'info') {
                     this.toast = {
                         show: true,
@@ -3298,7 +3587,63 @@ async checkSystemStatus() {
 		                        .slice(0, 1);
 		                },
 	                
-	                // Dashboard pagination
+		                get dashboardLineOptions() {
+		                    const lines = this.dashboardData.lines || [];
+		                    if (lines.length) return lines;
+
+		                    return [...new Set((this.dashboardData.lineDaily || []).map(item => item.lineName).filter(Boolean))]
+		                        .sort((a, b) => a.localeCompare(b));
+		                },
+
+		                get selectedDashboardDailyData() {
+		                    if (!this.dashboardLineFilter) return this.dashboardData.daily || [];
+
+		                    return (this.dashboardData.lineDaily || [])
+		                        .filter(item => item.lineName === this.dashboardLineFilter);
+		                },
+
+		                get selectedDashboardSummary() {
+		                    if (!this.dashboardLineFilter) {
+		                        return {
+		                            target: this.dashboardData.totalTarget || 0,
+		                            output: this.dashboardData.totalOutput || 0,
+		                            defectRate: this.dashboardData.defectRate || 0
+		                        };
+		                    }
+
+		                    return [...this.selectedDashboardDailyData].reverse()[0] || {
+		                        target: 0,
+		                        output: 0,
+		                        defectRate: 0
+		                    };
+		                },
+
+		                get dashboardChartData() {
+		                    return this.selectedDashboardDailyData.slice(-10);
+		                },
+
+		                get dashboardDailyDetails() {
+		                    return [...this.selectedDashboardDailyData].reverse().slice(0, 7);
+		                },
+
+		                get selectedDashboardTopDefectAreas() {
+		                    if (!this.dashboardLineFilter) return this.dashboardData.topDefectAreas || [];
+
+		                    return this.topCounterFromDaily(this.selectedDashboardDailyData, 'areaCounts');
+		                },
+
+		                get selectedDashboardTopDefectTypes() {
+		                    if (!this.dashboardLineFilter) return this.dashboardData.topDefectTypes || [];
+
+		                    return this.topCounterFromDaily(this.selectedDashboardDailyData, 'typeCounts');
+		                },
+
+		                get maxDashboardChartValue() {
+		                    const values = this.dashboardChartData.flatMap(day => [day.target || 0, day.output || 0, day.defect || 0]);
+		                    return Math.max(...values, 1);
+		                },
+
+		                // Dashboard pagination
                 get filteredDashboardLines() {
                     if (!this.linesWithModels) return [];
                     

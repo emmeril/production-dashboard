@@ -8,7 +8,7 @@ const crypto = require('crypto');
 const { Sequelize, DataTypes } = require('sequelize');
 
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 3000;
 const databasePath = path.join(__dirname, 'production-dashboard.sqlite');
 const sequelize = new Sequelize({
   dialect: 'sqlite',
@@ -1169,6 +1169,201 @@ app.get('/api/available-dates', requireLogin, requireDateReportAccess, (req, res
   } catch (error) {
     console.error('❌ Error getting available dates:', error);
     res.status(500).json({ error: 'Failed to get available dates' });
+  }
+});
+
+function addToCounter(counter, key, amount = 1) {
+  const label = String(key || '').trim();
+  if (!label) return;
+  counter[label] = (counter[label] || 0) + (parseInt(amount) || 0 || 1);
+}
+
+function createProductionSummary(date, lineName = '') {
+  return {
+    date,
+    lineName,
+    lineCount: 0,
+    modelCount: 0,
+    target: 0,
+    output: 0,
+    defect: 0,
+    qcChecked: 0,
+    defectRate: 0,
+    areaCounts: {},
+    typeCounts: {}
+  };
+}
+
+function addModelToProductionSummary(summary, model) {
+  summary.modelCount += 1;
+  summary.target += parseInt(model.target) || 0;
+  summary.output += parseInt(model.outputDay) || 0;
+  summary.defect += parseInt(model.actualDefect) || 0;
+  summary.qcChecked += parseInt(model.qcChecking) || 0;
+
+  (model.hourly_data || []).forEach(hour => {
+    (hour.defectDetails || []).forEach(detail => {
+      const quantity = parseInt(detail.quantity) || 1;
+      addToCounter(summary.typeCounts, detail.type, quantity);
+      addToCounter(summary.areaCounts, detail.area, quantity);
+    });
+  });
+
+  (model.qcChecks || [])
+    .filter(check => check.result === 'defect')
+    .forEach(check => {
+      addToCounter(summary.typeCounts, check.type, 1);
+      addToCounter(summary.areaCounts, check.area, 1);
+    });
+}
+
+function finalizeProductionSummary(summary) {
+  summary.defectRate = summary.qcChecked > 0
+    ? parseFloat(((summary.defect / summary.qcChecked) * 100).toFixed(2))
+    : 0;
+  return summary;
+}
+
+function summarizeProductionSnapshot(data, date) {
+  const summary = {
+    date,
+    lineCount: 0,
+    modelCount: 0,
+    target: 0,
+    output: 0,
+    defect: 0,
+    qcChecked: 0,
+    defectRate: 0,
+    areaCounts: {},
+    typeCounts: {}
+  };
+
+  Object.keys(data.lines || {}).forEach(lineName => {
+    const line = data.lines[lineName];
+    let hasModelForDate = false;
+
+    Object.keys(line.models || {}).forEach(modelId => {
+      const model = line.models[modelId];
+      if (model.date && model.date !== date) return;
+
+      hasModelForDate = true;
+      summary.modelCount += 1;
+      summary.target += parseInt(model.target) || 0;
+      summary.output += parseInt(model.outputDay) || 0;
+      summary.defect += parseInt(model.actualDefect) || 0;
+      summary.qcChecked += parseInt(model.qcChecking) || 0;
+
+      (model.hourly_data || []).forEach(hour => {
+        (hour.defectDetails || []).forEach(detail => {
+          const quantity = parseInt(detail.quantity) || 1;
+          addToCounter(summary.typeCounts, detail.type, quantity);
+          addToCounter(summary.areaCounts, detail.area, quantity);
+        });
+      });
+
+      (model.qcChecks || [])
+        .filter(check => check.result === 'defect')
+        .forEach(check => {
+          addToCounter(summary.typeCounts, check.type, 1);
+          addToCounter(summary.areaCounts, check.area, 1);
+        });
+    });
+
+    if (hasModelForDate) summary.lineCount += 1;
+  });
+
+  summary.defectRate = summary.qcChecked > 0
+    ? parseFloat(((summary.defect / summary.qcChecked) * 100).toFixed(2))
+    : 0;
+
+  return summary;
+}
+
+function summarizeProductionSnapshotByLine(data, date) {
+  const summaries = [];
+
+  Object.keys(data.lines || {}).forEach(lineName => {
+    const line = data.lines[lineName];
+    const summary = createProductionSummary(date, lineName);
+
+    Object.keys(line.models || {}).forEach(modelId => {
+      const model = line.models[modelId];
+      if (model.date && model.date !== date) return;
+      addModelToProductionSummary(summary, model);
+    });
+
+    if (summary.modelCount > 0) {
+      summary.lineCount = 1;
+      summaries.push(finalizeProductionSummary(summary));
+    }
+  });
+
+  return summaries;
+}
+
+function topCounterItems(counter, limit = 5) {
+  return Object.entries(counter)
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
+    .slice(0, limit);
+}
+
+app.get('/api/dashboard-summary', requireLogin, autoCheckDateReset, (req, res) => {
+  try {
+    const snapshotsByDate = new Map();
+    const historyDir = path.join(__dirname, 'history');
+
+    if (fs.existsSync(historyDir)) {
+      fs.readdirSync(historyDir)
+        .filter(file => /^data_\d{4}-\d{2}-\d{2}\.json$/.test(file))
+        .forEach(file => {
+          const date = file.replace('data_', '').replace('.json', '');
+          const filePath = path.join(historyDir, file);
+          try {
+            snapshotsByDate.set(date, JSON.parse(fs.readFileSync(filePath, 'utf8')));
+          } catch (error) {
+            console.error(`Failed to read dashboard history ${file}:`, error.message);
+          }
+        });
+    }
+
+    snapshotsByDate.set(getToday(), readProductionData());
+
+    const totalAreaCounts = {};
+    const totalTypeCounts = {};
+    const lineNames = new Set();
+    const daily = Array.from(snapshotsByDate.entries())
+      .map(([date, data]) => summarizeProductionSnapshot(data, date))
+      .filter(item => item.modelCount > 0)
+      .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    const lineDaily = [];
+    Array.from(snapshotsByDate.entries()).forEach(([date, data]) => {
+      summarizeProductionSnapshotByLine(data, date).forEach(item => {
+        lineNames.add(item.lineName);
+        lineDaily.push(item);
+      });
+    });
+
+    lineDaily.sort((a, b) => new Date(a.date) - new Date(b.date) || a.lineName.localeCompare(b.lineName));
+
+    daily.forEach(item => {
+      Object.entries(item.areaCounts).forEach(([name, count]) => addToCounter(totalAreaCounts, name, count));
+      Object.entries(item.typeCounts).forEach(([name, count]) => addToCounter(totalTypeCounts, name, count));
+      delete item.areaCounts;
+      delete item.typeCounts;
+    });
+
+    res.json({
+      daily,
+      lineDaily,
+      lines: Array.from(lineNames).sort((a, b) => a.localeCompare(b)),
+      topDefectAreas: topCounterItems(totalAreaCounts, 5),
+      topDefectTypes: topCounterItems(totalTypeCounts, 5)
+    });
+  } catch (error) {
+    console.error('Error building dashboard summary:', error);
+    res.status(500).json({ error: 'Failed to build dashboard summary' });
   }
 });
 

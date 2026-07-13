@@ -1935,7 +1935,7 @@ app.delete('/api/lines/:lineName/models/:modelId', requireLogin, requireLineMana
   res.json({ message: `Model ${modelId} deleted from line ${lineName} successfully` });
 });
 
-app.delete('/api/lines/:lineName', requireLogin, requireLineManagementAccess, (req, res) => {
+app.delete('/api/lines/:lineName', requireLogin, requireAdmin, (req, res) => {
   const lineName = req.params.lineName;
   const data = readProductionData();
 

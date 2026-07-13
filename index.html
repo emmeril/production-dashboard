@@ -1162,8 +1162,9 @@
                                                 <td class="px-4 py-3 whitespace-nowrap text-sm font-medium">
 	                                                    <button @click="openLineModal(line)" class="text-blue-600 hover:text-blue-900 mr-2"><i class="fa-solid fa-pen-to-square mr-1"></i>Edit</button>
 	                                                    <button @click="setActiveModel(line.lineName, line.modelId)" class="text-green-600 hover:text-green-900 mr-2"><i class="fa-solid fa-toggle-on mr-1"></i>Set Aktif</button>
-	                                                    <button @click="deleteModel(line.lineName, line.modelId)" class="text-red-600 hover:text-red-900" x-show="!line.data.lineActiveModel || line.data.lineActiveModel !== line.modelId"><i class="fa-solid fa-trash mr-1"></i>Hapus</button>
-                                                </td>
+	                                                    <button @click="deleteModel(line.lineName, line.modelId)" class="text-red-600 hover:text-red-900 mr-2" x-show="!line.data.lineActiveModel || line.data.lineActiveModel !== line.modelId"><i class="fa-solid fa-trash mr-1"></i>Hapus Model</button>
+	                                                    <button @click="deleteLine(line.lineName)" class="text-red-700 hover:text-red-900" x-show="currentUser.role === 'admin'"><i class="fa-solid fa-trash-can mr-1"></i>Hapus Line</button>
+	                                                </td>
                                             </tr>
                                         </template>
                                     </tbody>

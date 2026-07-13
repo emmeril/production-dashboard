@@ -406,9 +406,9 @@
                                                       x-show="line.data.outputDay === 0">No Data</span>
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                                <button @click="viewLine(line.lineName, line.modelId)" class="text-blue-600 hover:text-blue-900 mr-3">Lihat</button>
+                                                <button x-show="currentUser.role !== 'operator'" @click="viewLine(line.lineName, line.modelId)" class="text-blue-600 hover:text-blue-900 mr-3">Lihat</button>
                                                 <!-- Tombol Input hanya untuk operator dan admin, bukan admin_operator -->
-                                                <button x-show="currentUser.role !== 'admin_operator'" @click="inputData(line.lineName, line.modelId)" class="text-green-600 hover:text-green-900">Input</button>
+                                                <button x-show="currentUser.role === 'operator' || currentUser.role === 'admin'" @click="inputData(line.lineName, line.modelId)" class="text-green-600 hover:text-green-900">Input</button>
                                             </td>
                                         </tr>
                                     </template>
@@ -764,8 +764,8 @@
                 <!-- Admin Management Page -->
                 <div x-show="currentPage === 'admin-management'" class="fade-in">
                     <div class="mb-6">
-                        <h1 class="text-2xl font-bold text-gray-800" x-text="currentUser.role === 'admin_operator' ? 'Manajemen Line & Laporan' : 'Manajemen Admin'"></h1>
-                        <p class="text-gray-600" x-text="currentUser.role === 'admin_operator' ? 'Kelola lines dan lihat laporan produksi' : 'Kelola lines, users, dan konfigurasi sistem'"></p>
+                        <h1 class="text-2xl font-bold text-gray-800">Management Line</h1>
+                        <p class="text-gray-600" x-text="currentUser.role === 'admin_operator' ? 'Kelola line produksi' : 'Kelola lines, model, dan konfigurasi sistem'"></p>
                     </div>
 
                     <!-- Line Management - Untuk admin dan admin_operator -->
@@ -888,11 +888,12 @@
                                     </button>
                                 </div>
                             </div>
-                        </div>
-                    </div>
+	                        </div>
+	                    </div>
+	                </div>
 
-                    <!-- User Management - Hanya untuk Admin -->
-                    <div x-show="currentUser.role === 'admin'" class="bg-white rounded-lg shadow overflow-hidden card-shadow mb-6">
+                <!-- User Management - Hanya untuk Admin -->
+                <div x-show="currentPage === 'user-management' && currentUser.role === 'admin'" class="bg-white rounded-lg shadow overflow-hidden card-shadow mb-6 fade-in">
                         <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
                             <h3 class="text-lg leading-6 font-medium text-gray-900">Manajemen User</h3>
                             <p class="mt-1 max-w-2xl text-sm text-gray-500">Kelola pengguna sistem</p>
@@ -991,8 +992,8 @@
                         </div>
                     </div>
 
-                    <!-- Date-based Reports - Untuk admin dan admin_operator -->
-                    <div class="bg-white rounded-lg shadow overflow-hidden card-shadow mb-6">
+                <!-- Date-based Reports - Untuk admin dan admin_operator -->
+                <div x-show="currentPage === 'report' && (currentUser.role === 'admin' || currentUser.role === 'admin_operator')" class="bg-white rounded-lg shadow overflow-hidden card-shadow mb-6 fade-in">
                         <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
                             <h3 class="text-lg leading-6 font-medium text-gray-900">Laporan Berdasarkan Tanggal</h3>
                             <p class="mt-1 max-w-2xl text-sm text-gray-500">Lihat rekap data produksi berdasarkan tanggal tertentu</p>
@@ -1108,8 +1109,8 @@
                         </div>
                     </div>
 
-                    <!-- System Actions - Hanya untuk Admin -->
-                    <div x-show="currentUser.role === 'admin'" class="bg-white rounded-lg shadow overflow-hidden card-shadow">
+                <!-- System Actions - Hanya untuk Admin -->
+                <div x-show="currentPage === 'admin-management' && currentUser.role === 'admin'" class="bg-white rounded-lg shadow overflow-hidden card-shadow fade-in">
                         <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
                             <h3 class="text-lg leading-6 font-medium text-gray-900">Aksi Sistem</h3>
                             <p class="mt-1 max-w-2xl text-sm text-gray-500">Backup dan sinkronisasi data</p>
@@ -1136,8 +1137,7 @@
                                     </svg>
                                     Cek Status Sistem
                                 </button>
-                            </div>
-                        </div>
+		                    </div>
 	                    </div>
 	                </div>
 
@@ -1674,10 +1674,14 @@
 	                    if (this.currentUser.role === 'admin' || this.currentUser.role === 'admin_operator') {
 	                        this.navigation = [
 	                            ...baseNav,
-	                            { name: 'Manajemen Admin', page: 'admin-management' }
+	                            { name: 'Management Line', page: 'admin-management' },
+	                            { name: 'Report', page: 'report' }
 	                        ];
 	                        if (this.currentUser.role === 'admin') {
-	                            this.navigation.push({ name: 'Kategori Defect', page: 'defect-categories' });
+	                            this.navigation.push(
+	                                { name: 'Manajemen User', page: 'user-management' },
+	                                { name: 'Kategori Defect', page: 'defect-categories' }
+	                            );
 	                        }
 	                    } else {
 	                        this.navigation = baseNav;
@@ -1719,9 +1723,13 @@
 	                        return this.currentUser.role === 'admin' || this.currentUser.role === 'admin_operator';
 	                    }
 
-	                    if (state.currentPage === 'defect-categories') {
-	                        return this.currentUser.role === 'admin';
-	                    }
+		                    if (state.currentPage === 'report') {
+		                        return this.currentUser.role === 'admin' || this.currentUser.role === 'admin_operator';
+		                    }
+
+		                    if (state.currentPage === 'user-management' || state.currentPage === 'defect-categories') {
+		                        return this.currentUser.role === 'admin';
+		                    }
 
                     if (state.currentPage === 'input-data') {
                         return this.currentUser.role !== 'admin_operator';
@@ -1752,9 +1760,13 @@
 	                        await this.loadAdminData();
 	                    }
 
-	                    if (this.currentPage === 'defect-categories') {
-	                        await this.loadDefectConfig();
-	                    }
+		                    if (this.currentPage === 'user-management') {
+		                        await this.loadUsers();
+		                    }
+
+		                    if (this.currentPage === 'defect-categories') {
+		                        await this.loadDefectConfig();
+		                    }
 	                },
                 
                 changePage(page) {
@@ -1763,9 +1775,12 @@
 	                    if (page === 'dashboard') {
 	                        this.loadDashboardData();
 	                    }
-	                    if (page === 'defect-categories') {
-	                        this.loadDefectConfig();
-	                    }
+		                    if (page === 'user-management') {
+		                        this.loadUsers();
+		                    }
+		                    if (page === 'defect-categories') {
+		                        this.loadDefectConfig();
+		                    }
 	                },
                 
                 viewLine(lineName, modelId) {
@@ -1836,10 +1851,10 @@
 	                                        this.loadDefectConfig();
 	                                    }
                                     
-                                    // If we're on admin-management page, load admin data
-	                                    if (this.currentPage === 'admin-management') {
-	                                        this.loadAdminData();
-	                                    }
+
+		                                    if (this.currentPage === 'user-management') {
+		                                        this.loadUsers();
+		                                    }
 
 	                                    if (this.currentPage === 'defect-categories') {
 	                                        this.loadDefectConfig();
@@ -1954,9 +1969,9 @@
                     };
                 },           
 
-                async loadAdminData() {
-                    await this.loadUsers();
-                },
+	                async loadAdminData() {
+	                    await this.loadLines();
+	                },
                 
 	                async loadUsers() {
 	                    try {

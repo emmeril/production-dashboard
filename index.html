@@ -236,7 +236,7 @@
 	                                <h3 class="text-lg leading-6 font-medium text-gray-900 flex items-center"><i class="fa-solid fa-calendar-day text-blue-600 mr-2"></i>Detail Data Per Hari</h3>
 		                                <p class="mt-1 max-w-2xl text-sm text-gray-500">Daftar line yang tersedia untuk hari ini</p>
 	                            </div>
-	                            <div class="overflow-x-auto">
+		                            <div class="dashboard-daily-scroll overflow-x-auto">
 	                                <table class="min-w-full divide-y divide-gray-200">
 	                                    <thead class="bg-gray-50">
 	                                        <tr>
@@ -276,7 +276,7 @@
 	                                <h3 class="text-lg leading-6 font-medium text-gray-900 flex items-center"><i class="fa-solid fa-location-dot text-blue-600 mr-2"></i>Top 5 Defect Area</h3>
 	                                <p class="mt-1 max-w-2xl text-sm text-gray-500">Area defect terbanyak dari data harian</p>
 	                            </div>
-	                            <div class="p-4">
+		                            <div class="top-defect-scroll p-4">
 	                                <template x-for="item in selectedDashboardTopDefectAreas" :key="item.name">
 	                                    <div class="top-defect-row">
 	                                        <div class="min-w-0">
@@ -297,7 +297,7 @@
 	                                <h3 class="text-lg leading-6 font-medium text-gray-900 flex items-center"><i class="fa-solid fa-tags text-blue-600 mr-2"></i>Top 5 Jenis Defect</h3>
 	                                <p class="mt-1 max-w-2xl text-sm text-gray-500">Jenis defect terbanyak dari data harian</p>
 	                            </div>
-	                            <div class="p-4">
+		                            <div class="top-defect-scroll p-4">
 	                                <template x-for="item in selectedDashboardTopDefectTypes" :key="item.name">
 	                                    <div class="top-defect-row">
 	                                        <div class="min-w-0">

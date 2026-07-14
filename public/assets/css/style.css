@@ -379,6 +379,22 @@
 	            min-height: 320px;
 	        }
 
+	        .dashboard-daily-scroll {
+	            max-height: 320px;
+	            overflow-y: auto;
+	        }
+
+	        .dashboard-daily-scroll thead th {
+	            position: sticky;
+	            top: 0;
+	            z-index: 1;
+	        }
+
+	        .top-defect-scroll {
+	            max-height: 320px;
+	            overflow-y: auto;
+	        }
+
 	        .chart-bar-target {
 	            background: #8bbcff;
 	        }

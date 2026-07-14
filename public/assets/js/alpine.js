@@ -1343,7 +1343,11 @@ function dashboard() {
 	                                },
 	                                afterTitle: items => {
 	                                    const item = data[items[0].dataIndex];
-	                                    return item ? `Tanggal: ${this.formatShortDate(item.date)}` : '';
+	                                    if (!item) return '';
+	                                    const dates = item.dates || (item.date ? [item.date] : []);
+	                                    if (!dates.length) return '';
+	                                    if (dates.length === 1) return `Tanggal: ${this.formatShortDate(dates[0])}`;
+	                                    return `Tanggal: ${this.formatShortDate(dates[0])} - ${this.formatShortDate(dates[dates.length - 1])}`;
 	                                }
 	                            }
 	                        }
@@ -1441,7 +1445,29 @@ function dashboard() {
         },
 
         get dashboardChartData() {
-            return this.selectedDashboardLineData.slice(-30);
+            const groupedByLine = new Map();
+
+            this.selectedDashboardLineData.forEach(item => {
+                const lineName = item.lineName || '-';
+                const current = groupedByLine.get(lineName) || {
+                    lineName,
+                    target: 0,
+                    output: 0,
+                    defect: 0,
+                    dates: []
+                };
+
+                current.target += parseInt(item.target) || 0;
+                current.output += parseInt(item.output) || 0;
+                current.defect += parseInt(item.defect) || 0;
+                if (item.date && !current.dates.includes(item.date)) current.dates.push(item.date);
+
+                groupedByLine.set(lineName, current);
+            });
+
+            return Array.from(groupedByLine.values())
+                .map(item => ({ ...item, dates: item.dates.sort((a, b) => new Date(a) - new Date(b)) }))
+                .sort((a, b) => a.lineName.localeCompare(b.lineName, undefined, { numeric: true }));
         },
 
         get dashboardDailyDetails() {

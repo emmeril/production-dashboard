@@ -244,6 +244,13 @@
 	            transform: none !important;
 	        }
 
+	        .production-save-btn:disabled {
+	            background-color: #9ca3af !important;
+	            border-color: #9ca3af !important;
+	            color: #f3f4f6 !important;
+	            opacity: 0.85;
+	        }
+
 	        .table-actions {
 	            display: flex;
 	            flex-wrap: wrap;

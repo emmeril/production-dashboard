@@ -711,6 +711,10 @@ function requireLineAccess(req, res, next) {
   res.status(403).json({ error: 'Access denied to this line' });
 }
 
+function isOperatorProductionLocked(req, hour) {
+  return req.session.user?.role === 'operator' && Boolean(hour?.productionLocked);
+}
+
 function autoCheckDateReset(req, res, next) {
   checkAndResetDataForNewDay();
   next();
@@ -1375,7 +1379,7 @@ function topCounterItems(counter, limit = 5) {
     .slice(0, limit);
 }
 
-app.get('/api/dashboard-summary', requireLogin, autoCheckDateReset, (req, res) => {
+app.get('/api/dashboard-summary', requireLogin, requireAdminOrAdminOperator, autoCheckDateReset, (req, res) => {
   try {
     const snapshotsByDate = new Map();
     const historyDir = path.join(__dirname, 'history');
@@ -1484,21 +1488,28 @@ app.post('/api/update-hourly/:lineName', requireLogin, requireLineAccess, autoCh
     return res.status(400).json({ error: 'Invalid hour index' });
   }
 
-  const currentHour = active.model.hourly_data[index];
-  const nextTargetManual = targetManual !== undefined
-    ? parseInt(targetManual) || 0
-    : parseInt(currentHour.targetManual) || 0;
+	  const currentHour = active.model.hourly_data[index];
+	  if (isOperatorProductionLocked(req, currentHour)) {
+	    return res.status(403).json({ error: 'Data produksi jam ini sudah disimpan dan tidak bisa diubah' });
+	  }
+
+	  const nextTargetManual = targetManual !== undefined
+	    ? parseInt(targetManual) || 0
+	    : parseInt(currentHour.targetManual) || 0;
   const nextOutput = parseInt(output) || 0;
 
   active.model.hourly_data[index] = {
     ...currentHour,
-    output: nextOutput,
-    defect: parseInt(defect) || 0,
-    qcChecked: parseInt(qcChecked) || 0,
-    targetManual: nextTargetManual,
-    defectDetails: Array.isArray(defectDetails) ? defectDetails : (currentHour.defectDetails || []),
-    selisih: nextOutput - nextTargetManual
-  };
+	    output: nextOutput,
+	    defect: parseInt(defect) || 0,
+	    qcChecked: parseInt(qcChecked) || 0,
+	    targetManual: nextTargetManual,
+	    defectDetails: Array.isArray(defectDetails) ? defectDetails : (currentHour.defectDetails || []),
+	    productionLocked: req.session.user?.role === 'operator' ? true : Boolean(currentHour.productionLocked),
+	    productionLockedAt: req.session.user?.role === 'operator' ? new Date().toISOString() : currentHour.productionLockedAt,
+	    productionLockedBy: req.session.user?.role === 'operator' ? req.session.user.username : currentHour.productionLockedBy,
+	    selisih: nextOutput - nextTargetManual
+	  };
 
   const summary = recalculateModelTotals(active.model);
 
@@ -1531,7 +1542,11 @@ app.post('/api/update-target-manual/:lineName', requireLogin, requireLineAccess,
     return res.status(400).json({ error: 'Invalid hour index' });
   }
 
-  const nextTargetManual = parseInt(targetManual) || 0;
+	  if (isOperatorProductionLocked(req, active.model.hourly_data[index])) {
+	    return res.status(403).json({ error: 'Data produksi jam ini sudah disimpan dan tidak bisa diubah' });
+	  }
+
+	  const nextTargetManual = parseInt(targetManual) || 0;
   active.model.hourly_data[index].targetManual = nextTargetManual;
   active.model.hourly_data[index].selisih = (parseInt(active.model.hourly_data[index].output) || 0) - nextTargetManual;
   const summary = recalculateModelTotals(active.model);
@@ -1562,16 +1577,23 @@ app.post('/api/update-hourly-direct/:lineName', requireLogin, requireLineAccess,
     return res.status(400).json({ error: 'Invalid hour index' });
   }
 
-  const nextOutput = parseInt(output) || 0;
-  const nextTargetManual = parseInt(targetManual) || 0;
-  active.model.hourly_data[index] = {
-    ...active.model.hourly_data[index],
-    output: nextOutput,
-    defect: parseInt(defect) || 0,
-    qcChecked: parseInt(qcChecked) || 0,
-    targetManual: nextTargetManual,
-    selisih: nextOutput - nextTargetManual
-  };
+	  const nextOutput = parseInt(output) || 0;
+	  const nextTargetManual = parseInt(targetManual) || 0;
+	  if (isOperatorProductionLocked(req, active.model.hourly_data[index])) {
+	    return res.status(403).json({ error: 'Data produksi jam ini sudah disimpan dan tidak bisa diubah' });
+	  }
+
+	  active.model.hourly_data[index] = {
+	    ...active.model.hourly_data[index],
+	    output: nextOutput,
+	    defect: parseInt(defect) || 0,
+	    qcChecked: parseInt(qcChecked) || 0,
+	    targetManual: nextTargetManual,
+	    productionLocked: req.session.user?.role === 'operator' ? true : Boolean(active.model.hourly_data[index].productionLocked),
+	    productionLockedAt: req.session.user?.role === 'operator' ? new Date().toISOString() : active.model.hourly_data[index].productionLockedAt,
+	    productionLockedBy: req.session.user?.role === 'operator' ? req.session.user.username : active.model.hourly_data[index].productionLockedBy,
+	    selisih: nextOutput - nextTargetManual
+	  };
 
   const summary = recalculateModelTotals(active.model);
 
@@ -1652,16 +1674,23 @@ app.post('/api/update-production/:lineName/:modelId', requireLogin, requireLineA
     return res.status(400).json({ error: 'Invalid hour index' });
   }
 
-  const currentHour = model.hourly_data[index];
-  const nextOutput = parseInt(output) || 0;
-  const nextTargetManual = parseInt(targetManual) || currentHour.targetManual || 0;
+	  const currentHour = model.hourly_data[index];
+	  if (isOperatorProductionLocked(req, currentHour)) {
+	    return res.status(403).json({ error: 'Data produksi jam ini sudah disimpan dan tidak bisa diubah' });
+	  }
 
-  model.hourly_data[index] = {
-    ...currentHour,
-    output: nextOutput,
-    targetManual: nextTargetManual,
-    selisih: nextOutput - nextTargetManual
-  };
+	  const nextOutput = parseInt(output) || 0;
+	  const nextTargetManual = parseInt(targetManual) || currentHour.targetManual || 0;
+
+	  model.hourly_data[index] = {
+	    ...currentHour,
+	    output: nextOutput,
+	    targetManual: nextTargetManual,
+	    productionLocked: req.session.user?.role === 'operator' ? true : Boolean(currentHour.productionLocked),
+	    productionLockedAt: req.session.user?.role === 'operator' ? new Date().toISOString() : currentHour.productionLockedAt,
+	    productionLockedBy: req.session.user?.role === 'operator' ? req.session.user.username : currentHour.productionLockedBy,
+	    selisih: nextOutput - nextTargetManual
+	  };
 
   const summary = recalculateModelTotals(model);
   writeProductionData(data);
@@ -1735,31 +1764,41 @@ app.post('/api/update-target-manual/:lineName/:modelId', requireLogin, requireLi
 
   const data = readProductionData();
 
-  if (!data.lines[lineName] || !data.lines[lineName].models[modelId] || !data.lines[lineName].models[modelId].hourly_data) {
-    return res.status(404).json({ error: 'Line, model or hourly data not found' });
-  }
+	  if (!data.lines[lineName] || !data.lines[lineName].models[modelId] || !data.lines[lineName].models[modelId].hourly_data) {
+	    return res.status(404).json({ error: 'Line, model or hourly data not found' });
+	  }
 
-  data.lines[lineName].models[modelId].hourly_data[hourIndex].targetManual = parseInt(targetManual);
-  
-  data.lines[lineName].models[modelId].hourly_data[hourIndex].selisih = 
-    data.lines[lineName].models[modelId].hourly_data[hourIndex].output - parseInt(targetManual);
+	  const index = parseInt(hourIndex);
+	  const model = data.lines[lineName].models[modelId];
+	  if (!Number.isInteger(index) || index < 0 || index >= model.hourly_data.length) {
+	    return res.status(400).json({ error: 'Invalid hour index' });
+	  }
 
-  let totalTarget = 0;
-  data.lines[lineName].models[modelId].hourly_data.forEach(hour => {
-    totalTarget += hour.targetManual || 0;
-  });
-  data.lines[lineName].models[modelId].target = totalTarget;
+	  const currentHour = model.hourly_data[index];
+	  if (isOperatorProductionLocked(req, currentHour)) {
+	    return res.status(403).json({ error: 'Data produksi jam ini sudah disimpan dan tidak bisa diubah' });
+	  }
+
+	  model.hourly_data[index].targetManual = parseInt(targetManual);
+	  
+	  model.hourly_data[index].selisih = model.hourly_data[index].output - parseInt(targetManual);
+
+	  let totalTarget = 0;
+	  model.hourly_data.forEach(hour => {
+	    totalTarget += hour.targetManual || 0;
+	  });
+	  model.target = totalTarget;
 
   writeProductionData(data);
   
   // ✅ UPDATE BACKUP HARI INI
   updateTodayBackup();
   
-  res.json({
-    message: 'Target manual updated successfully.',
-    data: data.lines[lineName].models[modelId].hourly_data[hourIndex],
-    totalTarget: totalTarget
-  });
+	  res.json({
+	    message: 'Target manual updated successfully.',
+	    data: model.hourly_data[index],
+	    totalTarget: totalTarget
+	  });
 });
 
 app.post('/api/update-hourly-direct/:lineName/:modelId', requireLogin, requireLineAccess, autoCheckDateReset, (req, res) => {
@@ -1774,17 +1813,23 @@ app.post('/api/update-hourly-direct/:lineName/:modelId', requireLogin, requireLi
 
   const selisih = parseInt(output) - parseInt(targetManual);
 
-  const currentHour = data.lines[lineName].models[modelId].hourly_data[hourIndex];
+	  const currentHour = data.lines[lineName].models[modelId].hourly_data[hourIndex];
+	  if (isOperatorProductionLocked(req, currentHour)) {
+	    return res.status(403).json({ error: 'Data produksi jam ini sudah disimpan dan tidak bisa diubah' });
+	  }
 
-  data.lines[lineName].models[modelId].hourly_data[hourIndex] = {
-    ...currentHour,
-    output: parseInt(output),
-    defect: parseInt(defect),
-    qcChecked: parseInt(qcChecked),
-    targetManual: parseInt(targetManual),
-    defectDetails: Array.isArray(defectDetails) ? defectDetails : (currentHour.defectDetails || []),
-    selisih: selisih
-  };
+	  data.lines[lineName].models[modelId].hourly_data[hourIndex] = {
+	    ...currentHour,
+	    output: parseInt(output),
+	    defect: parseInt(defect),
+	    qcChecked: parseInt(qcChecked),
+	    targetManual: parseInt(targetManual),
+	    defectDetails: Array.isArray(defectDetails) ? defectDetails : (currentHour.defectDetails || []),
+	    productionLocked: req.session.user?.role === 'operator' ? true : Boolean(currentHour.productionLocked),
+	    productionLockedAt: req.session.user?.role === 'operator' ? new Date().toISOString() : currentHour.productionLockedAt,
+	    productionLockedBy: req.session.user?.role === 'operator' ? req.session.user.username : currentHour.productionLockedBy,
+	    selisih: selisih
+	  };
 
   const summary = recalculateModelTotals(data.lines[lineName].models[modelId]);
 

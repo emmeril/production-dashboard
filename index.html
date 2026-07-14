@@ -142,7 +142,7 @@
             <!-- Page Content -->
             <main class="flex-1 overflow-y-auto p-4 md:p-6">
                 <!-- Dashboard Page -->
-                <div x-show="currentPage === 'dashboard'" class="fade-in">
+	                <div x-show="currentPage === 'dashboard' && (currentUser.role === 'admin' || currentUser.role === 'admin_operator')" class="fade-in">
                     <div class="mb-6">
 	                        <h1 class="text-2xl font-bold text-gray-800 flex items-center"><i class="fa-solid fa-gauge-high text-blue-600 mr-3"></i>Dashboard Produksi</h1>
 	                        <p class="text-gray-600">Ringkasan performa produksi berdasarkan line</p>
@@ -593,25 +593,26 @@
                                     <template x-for="(hour, index) in lineDetail.hourly_data" :key="index">
                                         <tr>
                                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900" x-text="hour.hour"></td>
-                                            <td class="px-6 py-4 whitespace-nowrap">
-                                                <input type="number" x-model="hour.targetManual" 
-                                                       @change="updateTargetManual(currentLine, currentModelId, index, hour.targetManual)"
-                                                       class="input-cell" :disabled="currentUser.role === 'admin_operator'">
-                                            </td>
-                                            <td class="px-6 py-4 whitespace-nowrap">
-                                                <input type="number" x-model="hour.output" 
-                                                       class="input-cell" :disabled="currentUser.role === 'admin_operator'">
-                                            </td>
+	                                            <td class="px-6 py-4 whitespace-nowrap">
+	                                                <input type="number" x-model="hour.targetManual" 
+	                                                       @change="updateTargetManual(currentLine, currentModelId, index, hour.targetManual)"
+	                                                       class="input-cell" :disabled="currentUser.role === 'admin_operator' || isProductionHourLocked(hour)">
+	                                            </td>
+	                                            <td class="px-6 py-4 whitespace-nowrap">
+	                                                <input type="number" x-model="hour.output" 
+	                                                       class="input-cell" :disabled="currentUser.role === 'admin_operator' || isProductionHourLocked(hour)">
+	                                            </td>
 	                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium" 
 	                                                :class="hour.output - hour.targetManual >= 0 ? 'text-green-600' : 'text-red-600'"
 	                                                x-text="hour.output - hour.targetManual"></td>
 	                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
 	                                                <!-- Tombol Simpan hanya untuk operator dan admin, bukan admin_operator -->
-	                                                <button x-show="currentUser.role !== 'admin_operator'" @click="updateHourlyDataDirect(currentLine, currentModelId, index)"
+	                                                <button x-show="currentUser.role !== 'admin_operator' && !isProductionHourLocked(hour)" @click="updateHourlyDataDirect(currentLine, currentModelId, index)"
 	                                                        class="btn-action btn-action-primary">
 		                                                    <i class="fa-solid fa-floppy-disk"></i>Simpan
 	                                                </button>
-                                            </td>
+	                                                <span x-show="isProductionHourLocked(hour)" class="text-xs font-semibold text-gray-500">Terkunci</span>
+	                                            </td>
                                         </tr>
                                     </template>
                                 </tbody>
@@ -652,13 +653,14 @@
 
 	                                        <div>
 	                                            <label for="output" class="block text-sm font-medium text-gray-700 mb-2">Output Produksi</label>
-	                                            <input type="number" id="output" x-model="inputForm.output" min="0" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" required>
+	                                            <input type="number" id="output" x-model="inputForm.output" min="0" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" :disabled="isSelectedProductionHourLocked()" required>
 	                                        </div>
 
 	                                        <div>
 	                                            <label for="target-manual" class="block text-sm font-medium text-gray-700 mb-2">Target Manual</label>
 	                                            <input type="number" id="target-manual" x-model="inputForm.targetManual" min="0"
 	                                                   :placeholder="lineDetail.hourly_data[inputForm.hourIndex]?.targetManual"
+	                                                   :disabled="isSelectedProductionHourLocked()"
 	                                                   class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" required>
 	                                        </div>
 
@@ -669,8 +671,11 @@
 	                                        </div>
 	                                    </div>
 
+	                                    <div class="min-h-5 text-right text-sm font-semibold text-gray-500 mb-2">
+	                                        <span x-show="isSelectedProductionHourLocked()">Data jam ini sudah terkunci</span>
+	                                    </div>
 	                                    <div class="flex justify-end">
-	                                        <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+	                                        <button type="submit" :disabled="isSelectedProductionHourLocked()" class="production-save-btn inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
 	                                            <i class="fa-solid fa-floppy-disk mr-2"></i>Simpan Produksi
 	                                        </button>
 	                                    </div>

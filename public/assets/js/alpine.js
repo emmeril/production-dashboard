@@ -210,17 +210,20 @@ function dashboard() {
             }
         },
 
-        // Navigation
-        setupNavigation() {
-            const baseNav = [
-                { name: 'Dashboard', page: 'dashboard', iconClass: 'fa-house' },
-                { name: 'Ringkasan Line', page: 'line-summary', iconClass: 'fa-industry' }
-            ];
+	        // Navigation
+	        setupNavigation() {
+	            const lineSummaryNav = { name: 'Ringkasan Line', page: 'line-summary', iconClass: 'fa-industry' };
+	            const baseNav = this.canViewDashboard()
+	                ? [
+	                    { name: 'Dashboard', page: 'dashboard', iconClass: 'fa-house' },
+	                    lineSummaryNav
+	                ]
+	                : [lineSummaryNav];
 
-            if (this.currentUser.role === 'admin' || this.currentUser.role === 'admin_operator') {
-                this.navigation = [
-                    ...baseNav,
-                    { name: 'Management Line', page: 'admin-management', iconClass: 'fa-list-check' },
+	            if (this.canViewDashboard()) {
+	                this.navigation = [
+	                    ...baseNav,
+	                    { name: 'Management Line', page: 'admin-management', iconClass: 'fa-list-check' },
                     { name: 'Report', page: 'report', iconClass: 'fa-chart-column' }
                 ];
                 if (this.currentUser.role === 'admin') {
@@ -230,10 +233,18 @@ function dashboard() {
                         { name: 'Aksi Sistem', page: 'system-actions', iconClass: 'fa-screwdriver-wrench' }
                     );
                 }
-            } else {
-                this.navigation = baseNav;
-            }
-        },
+	            } else {
+	                this.navigation = baseNav;
+	            }
+	        },
+
+	        canViewDashboard() {
+	            return this.currentUser.role === 'admin' || this.currentUser.role === 'admin_operator';
+	        },
+
+	        getDefaultPage() {
+	            return this.canViewDashboard() ? 'dashboard' : 'line-summary';
+	        },
 
         getInitialRouteState() {
             const path = window.location.pathname.replace(/\/$/, '');
@@ -242,9 +253,9 @@ function dashboard() {
                 return { currentPage: 'admin-management' };
             }
 
-            if (path === '/leader') {
-                return { currentPage: 'dashboard' };
-            }
+	            if (path === '/leader') {
+	                return { currentPage: 'dashboard' };
+	            }
 
             const lineMatch = path.match(/^\/line\/([^/]+)$/);
             if (lineMatch) {
@@ -265,10 +276,14 @@ function dashboard() {
             return null;
         },
 
-        canUseRouteState(state) {
-            if (state.currentPage === 'admin-management') {
-                return this.currentUser.role === 'admin' || this.currentUser.role === 'admin_operator';
-            }
+	        canUseRouteState(state) {
+	            if (state.currentPage === 'dashboard') {
+	                return this.canViewDashboard();
+	            }
+
+	            if (state.currentPage === 'admin-management') {
+	                return this.currentUser.role === 'admin' || this.currentUser.role === 'admin_operator';
+	            }
 
             if (state.currentPage === 'report') {
                 return this.currentUser.role === 'admin' || this.currentUser.role === 'admin_operator';
@@ -285,11 +300,11 @@ function dashboard() {
             return true;
         },
 
-        applyRouteState(state) {
-            this.currentPage = state.currentPage || 'dashboard';
-            this.currentLine = state.currentLine || '';
-            this.currentModelId = state.currentModelId || '';
-            this.savePageState();
+	        applyRouteState(state) {
+	            this.currentPage = state.currentPage || this.getDefaultPage();
+	            this.currentLine = state.currentLine || '';
+	            this.currentModelId = state.currentModelId || '';
+	            this.savePageState();
         },
 
         async loadCurrentPageData() {
@@ -316,8 +331,14 @@ function dashboard() {
             }
         },
 
-        changePage(page) {
-            this.currentPage = page;
+	        changePage(page) {
+	            if (page === 'dashboard' && !this.canViewDashboard()) {
+	                this.currentPage = this.getDefaultPage();
+	                this.savePageState();
+	                return;
+	            }
+
+	            this.currentPage = page;
             this.savePageState();
             if (page === 'dashboard' || page === 'line-summary') {
                 this.loadDashboardData();
@@ -365,12 +386,13 @@ function dashboard() {
             }
         },
 
-        restorePageState() {
-            if (this.isAuthenticated) {
-                const savedState = localStorage.getItem('dashboardPageState');
-                if (savedState) {
-                    try {
-                        const state = JSON.parse(savedState);
+	        restorePageState() {
+	            if (this.isAuthenticated) {
+	                const savedState = localStorage.getItem('dashboardPageState');
+	                let restored = false;
+	                if (savedState) {
+	                    try {
+	                        const state = JSON.parse(savedState);
 
                         // Check if the saved page is allowed for current user
                         const allowedPages = [
@@ -378,10 +400,11 @@ function dashboard() {
                             'line-detail',
                             'input-data'
                         ];
-                        if (allowedPages.includes(state.currentPage)) {
-                            this.currentPage = state.currentPage;
-                            this.currentLine = state.currentLine || '';
-                            this.currentModelId = state.currentModelId || '';
+	                        if (allowedPages.includes(state.currentPage) && this.canUseRouteState(state)) {
+	                            this.currentPage = state.currentPage;
+	                            this.currentLine = state.currentLine || '';
+	                            this.currentModelId = state.currentModelId || '';
+	                            restored = true;
 
                             // If we're on line-detail or input-data page, load the line detail
                             if ((this.currentPage === 'line-detail' || this.currentPage === 'input-data') &&
@@ -407,14 +430,19 @@ function dashboard() {
                                 this.loadDefectConfig();
                             }
                         }
-                    } catch (error) {
-                        console.error('Error restoring page state:', error);
-                        // If there's an error, default to dashboard
-                        this.currentPage = 'dashboard';
-                    }
-                }
-            }
-        },
+	                    } catch (error) {
+	                        console.error('Error restoring page state:', error);
+	                    }
+	                }
+
+	                if (!restored) {
+	                    this.currentPage = this.getDefaultPage();
+	                    this.currentLine = '';
+	                    this.currentModelId = '';
+	                    this.savePageState();
+	                }
+	            }
+	        },
 
         // Data loading methods
         async loadLines() {
@@ -479,8 +507,12 @@ function dashboard() {
             }
         },
 
-        async loadDashboardData() {
-            await this.loadLines();
+	        async loadDashboardData() {
+	            if (!this.canViewDashboard()) {
+	                return;
+	            }
+
+	            await this.loadLines();
 
             // Calculate dashboard totals from all models
             let totalOutput = 0;
@@ -744,20 +776,34 @@ function dashboard() {
             this.defectEntry = { type: '', area: '', notes: '' };
         },
 
-        syncInputFormFromSelectedHour() {
-            const hour = this.lineDetail.hourly_data?.[this.inputForm.hourIndex];
-            if (!hour) return;
+	        syncInputFormFromSelectedHour() {
+	            const hour = this.lineDetail.hourly_data?.[this.inputForm.hourIndex];
+	            if (!hour) return;
 
-            this.inputForm.output = parseInt(hour.output) || 0;
-            this.inputForm.targetManual = parseInt(hour.targetManual) || 0;
-        },
+	            this.inputForm.output = parseInt(hour.output) || 0;
+	            this.inputForm.targetManual = parseInt(hour.targetManual) || 0;
+	        },
 
-        async submitProductionData() {
-            // Cek jika user adalah admin_operator, maka tidak boleh input data
-            if (this.currentUser.role === 'admin_operator') {
-                this.showToast('Anda tidak memiliki akses untuk input data', 'error');
-                return;
-            }
+	        isProductionHourLocked(hour) {
+	            return this.currentUser.role === 'operator' && Boolean(hour?.productionLocked);
+	        },
+
+	        isSelectedProductionHourLocked() {
+	            const hour = this.lineDetail.hourly_data?.[this.inputForm.hourIndex];
+	            return this.isProductionHourLocked(hour);
+	        },
+
+	        async submitProductionData() {
+	            // Cek jika user adalah admin_operator, maka tidak boleh input data
+	            if (this.currentUser.role === 'admin_operator') {
+	                this.showToast('Anda tidak memiliki akses untuk input data', 'error');
+	                return;
+	            }
+
+	            if (this.isSelectedProductionHourLocked()) {
+	                this.showToast('Data produksi jam ini sudah disimpan dan tidak bisa diubah', 'error');
+	                return;
+	            }
 
             try {
                 const response = await fetch(`/api/update-production/${this.currentLine}/${this.currentModelId}`, {

@@ -1346,10 +1346,14 @@ function dashboard() {
                     },
                     scales: {
                         x: { ticks: { maxRotation: 45, minRotation: 0 }, grid: { display: false } },
-                        y: { beginAtZero: true, grid: { color: 'rgba(222, 226, 230, 0.7)' } }
-                    }
-                }
-            });
+	                        y: {
+	                            beginAtZero: true,
+	                            title: { display: true, text: 'Qty' },
+	                            grid: { color: 'rgba(222, 226, 230, 0.7)' }
+	                        }
+	                    }
+	                }
+	            });
         },
 
         topDefectPercent(value, items = []) {

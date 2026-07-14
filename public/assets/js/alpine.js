@@ -88,12 +88,24 @@ function dashboard() {
                 line: ''
             }
         },
-        defectCategoryModal: {
-            open: false,
-            kind: 'type',
-            id: null,
-            name: ''
-        },
+	        defectCategoryModal: {
+	            open: false,
+	            kind: 'type',
+	            id: null,
+	            name: '',
+	            severity: 'minor'
+	        },
+
+	        publicDisplaySettings: {
+	            layoutWidth: 98,
+	            marginLeft: 30,
+	            marginTop: 12,
+	            cellFontSize: 16,
+	            sideFontSize: 14,
+	            metricFontSize: 66,
+	            percentFontSize: 40,
+	            refreshInterval: 10000
+	        },
 
         // Toast notification
         toast: {
@@ -226,13 +238,14 @@ function dashboard() {
 	                    { name: 'Management Line', page: 'admin-management', iconClass: 'fa-list-check' },
                     { name: 'Report', page: 'report', iconClass: 'fa-chart-column' }
                 ];
-                if (this.currentUser.role === 'admin') {
-                    this.navigation.push(
-                        { name: 'Manajemen User', page: 'user-management', iconClass: 'fa-users-gear' },
-                        { name: 'Kategori Defect', page: 'defect-categories', iconClass: 'fa-triangle-exclamation' },
-                        { name: 'Aksi Sistem', page: 'system-actions', iconClass: 'fa-screwdriver-wrench' }
-                    );
-                }
+	                if (this.currentUser.role === 'admin') {
+	                    this.navigation.push(
+	                        { name: 'Manajemen User', page: 'user-management', iconClass: 'fa-users-gear' },
+	                        { name: 'Kategori Defect', page: 'defect-categories', iconClass: 'fa-triangle-exclamation' },
+	                        { name: 'Public Display', page: 'public-display-settings', iconClass: 'fa-tv' },
+	                        { name: 'Aksi Sistem', page: 'system-actions', iconClass: 'fa-screwdriver-wrench' }
+	                    );
+	                }
 	            } else {
 	                this.navigation = baseNav;
 	            }
@@ -289,9 +302,9 @@ function dashboard() {
                 return this.currentUser.role === 'admin' || this.currentUser.role === 'admin_operator';
             }
 
-            if (state.currentPage === 'user-management' || state.currentPage === 'defect-categories' || state.currentPage === 'system-actions') {
-                return this.currentUser.role === 'admin';
-            }
+	            if (state.currentPage === 'user-management' || state.currentPage === 'defect-categories' || state.currentPage === 'public-display-settings' || state.currentPage === 'system-actions') {
+	                return this.currentUser.role === 'admin';
+	            }
 
             if (state.currentPage === 'input-data') {
                 return this.currentUser.role !== 'admin_operator';
@@ -326,10 +339,14 @@ function dashboard() {
                 await this.loadUsers();
             }
 
-            if (this.currentPage === 'defect-categories') {
-                await this.loadDefectConfig();
-            }
-        },
+	            if (this.currentPage === 'defect-categories') {
+	                await this.loadDefectConfig();
+	            }
+
+	            if (this.currentPage === 'public-display-settings') {
+	                await this.loadPublicDisplaySettings();
+	            }
+	        },
 
 	        changePage(page) {
 	            if (page === 'dashboard' && !this.canViewDashboard()) {
@@ -346,10 +363,13 @@ function dashboard() {
             if (page === 'user-management') {
                 this.loadUsers();
             }
-            if (page === 'defect-categories') {
-                this.loadDefectConfig();
-            }
-        },
+	            if (page === 'defect-categories') {
+	                this.loadDefectConfig();
+	            }
+	            if (page === 'public-display-settings') {
+	                this.loadPublicDisplaySettings();
+	            }
+	        },
 
         viewLine(lineName, modelId) {
             this.currentLine = lineName;
@@ -606,23 +626,25 @@ function dashboard() {
             this.openDefectCategoryModal('area', area);
         },
 
-        openDefectCategoryModal(kind, item = null) {
-            this.defectCategoryModal = {
-                open: true,
-                kind,
-                id: item ? item.id : null,
-                name: item ? item.name : ''
-            };
-        },
+	        openDefectCategoryModal(kind, item = null) {
+	            this.defectCategoryModal = {
+	                open: true,
+	                kind,
+	                id: item ? item.id : null,
+	                name: item ? item.name : '',
+	                severity: item?.severity || 'minor'
+	            };
+	        },
 
         closeDefectCategoryModal() {
             this.defectCategoryModal = {
-                open: false,
-                kind: 'type',
-                id: null,
-                name: ''
-            };
-        },
+	                open: false,
+	                kind: 'type',
+	                id: null,
+	                name: '',
+	                severity: 'minor'
+	            };
+	        },
 
         async saveDefectCategoryModal() {
             const kind = this.defectCategoryModal.kind;
@@ -632,28 +654,31 @@ function dashboard() {
                 return;
             }
 
-            const saved = await this.saveDefectCategory(kind, {
-                id: this.defectCategoryModal.id,
-                name,
-                active: true
-            });
+	            const saved = await this.saveDefectCategory(kind, {
+	                id: this.defectCategoryModal.id,
+	                name,
+	                severity: this.defectCategoryModal.severity || 'minor',
+	                active: true
+	            });
             if (saved) this.closeDefectCategoryModal();
         },
 
         async toggleDefectType(type) {
             await this.saveDefectCategory('type', {
-                id: type.id,
-                name: type.name,
-                active: type.active === false
-            });
+	                id: type.id,
+	                name: type.name,
+	                severity: type.severity || 'minor',
+	                active: type.active === false
+	            });
         },
 
         async toggleDefectArea(area) {
             await this.saveDefectCategory('area', {
-                id: area.id,
-                name: area.name,
-                active: area.active === false
-            });
+	                id: area.id,
+	                name: area.name,
+	                severity: area.severity || 'minor',
+	                active: area.active === false
+	            });
         },
 
         async saveDefectCategory(kind, payload) {
@@ -664,8 +689,8 @@ function dashboard() {
                 const response = await fetch(url, {
                     method,
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name: payload.name, active: payload.active })
-                });
+	                    body: JSON.stringify({ name: payload.name, severity: payload.severity || 'minor', active: payload.active })
+	                });
 
                 if (response.ok) {
                     this.showToast('Kategori defect berhasil disimpan', 'success');
@@ -691,8 +716,8 @@ function dashboard() {
             await this.deleteDefectCategory('defect-areas', areaId);
         },
 
-        async deleteDefectCategory(collection, id) {
-            if (!confirm('Hapus kategori defect ini?')) return;
+	        async deleteDefectCategory(collection, id) {
+	            if (!confirm('Hapus kategori defect ini?')) return;
 
             try {
                 const response = await fetch(`/api/${collection}/${id}`, { method: 'DELETE' });
@@ -706,11 +731,80 @@ function dashboard() {
             } catch (error) {
                 console.error('Error deleting defect category:', error);
                 this.showToast('Error deleting defect category', 'error');
-            }
-        },
+	            }
+	        },
 
-        // Date-based report methods
-        async loadDateReport() {
+	        normalizePublicDisplaySettings(settings = {}) {
+	            const defaults = {
+	                layoutWidth: 98,
+	                marginLeft: 30,
+	                marginTop: 12,
+	                cellFontSize: 16,
+	                sideFontSize: 14,
+	                metricFontSize: 66,
+	                percentFontSize: 40,
+	                refreshInterval: 10000
+	            };
+
+	            return {
+	                layoutWidth: Number(settings.layoutWidth ?? defaults.layoutWidth),
+	                marginLeft: Number(settings.marginLeft ?? defaults.marginLeft),
+	                marginTop: Number(settings.marginTop ?? defaults.marginTop),
+	                cellFontSize: Number(settings.cellFontSize ?? defaults.cellFontSize),
+	                sideFontSize: Number(settings.sideFontSize ?? defaults.sideFontSize),
+	                metricFontSize: Number(settings.metricFontSize ?? defaults.metricFontSize),
+	                percentFontSize: Number(settings.percentFontSize ?? defaults.percentFontSize),
+	                refreshInterval: Number(settings.refreshInterval ?? defaults.refreshInterval)
+	            };
+	        },
+
+	        async loadPublicDisplaySettings() {
+	            try {
+	                const response = await fetch('/api/public-display-settings');
+	                if (response.ok) {
+	                    this.publicDisplaySettings = this.normalizePublicDisplaySettings(await response.json());
+	                } else {
+	                    this.showToast('Gagal memuat setting public display', 'error');
+	                }
+	            } catch (error) {
+	                console.error('Error loading public display settings:', error);
+	                this.showToast('Error loading public display settings', 'error');
+	            }
+	        },
+
+	        async savePublicDisplaySettings() {
+	            try {
+	                const response = await fetch('/api/public-display-settings', {
+	                    method: 'PUT',
+	                    headers: { 'Content-Type': 'application/json' },
+	                    body: JSON.stringify(this.normalizePublicDisplaySettings(this.publicDisplaySettings))
+	                });
+
+	                if (response.ok) {
+	                    const result = await response.json();
+	                    this.publicDisplaySettings = this.normalizePublicDisplaySettings(result.settings);
+	                    this.showToast('Setting public display berhasil disimpan', 'success');
+	                } else {
+	                    const error = await response.json();
+	                    this.showToast(error.error || 'Gagal menyimpan setting public display', 'error');
+	                }
+	            } catch (error) {
+	                console.error('Error saving public display settings:', error);
+	                this.showToast('Error saving public display settings', 'error');
+	            }
+	        },
+
+	        resetPublicDisplaySettings() {
+	            this.publicDisplaySettings = this.normalizePublicDisplaySettings();
+	        },
+
+	        publicDisplayPreviewUrl(defectMode = 'all') {
+	            const lineName = this.lines?.[0]?.name || 'LINE_NAME';
+	            return `/public-display?line=${encodeURIComponent(lineName)}&defect=${defectMode}`;
+	        },
+
+	        // Date-based report methods
+	        async loadDateReport() {
             if (!this.reportDate) {
                 this.showToast('Pilih tanggal terlebih dahulu', 'error');
                 return;

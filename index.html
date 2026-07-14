@@ -1163,8 +1163,112 @@
                         </div>
                     </div>
 
-	                <!-- System Actions - Hanya untuk Admin -->
-	                <div x-show="currentPage === 'system-actions' && currentUser.role === 'admin'" class="fade-in">
+		                <!-- Public Display Settings - Hanya untuk Admin -->
+		                <div x-show="currentPage === 'public-display-settings' && currentUser.role === 'admin'" class="fade-in">
+		                    <div class="mb-6">
+		                        <h1 class="text-2xl font-bold text-gray-800 flex items-center"><i class="fa-solid fa-tv text-blue-600 mr-3"></i>Public Display</h1>
+		                        <p class="text-gray-600">Atur ukuran layout public display untuk monitor atau TV</p>
+		                    </div>
+
+		                    <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+		                        <div class="xl:col-span-2 bg-white rounded-lg shadow overflow-hidden card-shadow">
+		                            <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+		                                <h3 class="text-lg leading-6 font-medium text-gray-900 flex items-center"><i class="fa-solid fa-sliders text-blue-600 mr-2"></i>Ukuran Layout</h3>
+		                                <p class="mt-1 max-w-2xl text-sm text-gray-500">Sesuaikan lebar, jarak tepi, dan ukuran teks display</p>
+		                            </div>
+		                            <form class="p-4 space-y-5" @submit.prevent="savePublicDisplaySettings()">
+		                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+		                                    <div>
+		                                        <label class="block text-sm font-medium text-gray-700">Lebar Layout (%)</label>
+		                                        <div class="mt-1 flex items-center gap-3">
+		                                            <input type="range" min="60" max="100" x-model.number="publicDisplaySettings.layoutWidth" class="w-full">
+		                                            <input type="number" min="60" max="100" x-model.number="publicDisplaySettings.layoutWidth" class="w-24 rounded-md border-gray-300 shadow-sm sm:text-sm">
+		                                        </div>
+		                                    </div>
+		                                    <div>
+		                                        <label class="block text-sm font-medium text-gray-700">Margin Kiri (px)</label>
+		                                        <div class="mt-1 flex items-center gap-3">
+		                                            <input type="range" min="0" max="120" x-model.number="publicDisplaySettings.marginLeft" class="w-full">
+		                                            <input type="number" min="0" max="120" x-model.number="publicDisplaySettings.marginLeft" class="w-24 rounded-md border-gray-300 shadow-sm sm:text-sm">
+		                                        </div>
+		                                    </div>
+		                                    <div>
+		                                        <label class="block text-sm font-medium text-gray-700">Margin Atas (px)</label>
+		                                        <div class="mt-1 flex items-center gap-3">
+		                                            <input type="range" min="0" max="80" x-model.number="publicDisplaySettings.marginTop" class="w-full">
+		                                            <input type="number" min="0" max="80" x-model.number="publicDisplaySettings.marginTop" class="w-24 rounded-md border-gray-300 shadow-sm sm:text-sm">
+		                                        </div>
+		                                    </div>
+		                                    <div>
+		                                        <label class="block text-sm font-medium text-gray-700">Font Tabel Utama (px)</label>
+		                                        <div class="mt-1 flex items-center gap-3">
+		                                            <input type="range" min="10" max="28" x-model.number="publicDisplaySettings.cellFontSize" class="w-full">
+		                                            <input type="number" min="10" max="28" x-model.number="publicDisplaySettings.cellFontSize" class="w-24 rounded-md border-gray-300 shadow-sm sm:text-sm">
+		                                        </div>
+		                                    </div>
+		                                    <div>
+		                                        <label class="block text-sm font-medium text-gray-700">Font Panel Kanan (px)</label>
+		                                        <div class="mt-1 flex items-center gap-3">
+		                                            <input type="range" min="10" max="24" x-model.number="publicDisplaySettings.sideFontSize" class="w-full">
+		                                            <input type="number" min="10" max="24" x-model.number="publicDisplaySettings.sideFontSize" class="w-24 rounded-md border-gray-300 shadow-sm sm:text-sm">
+		                                        </div>
+		                                    </div>
+		                                    <div>
+		                                        <label class="block text-sm font-medium text-gray-700">Font Angka Besar (px)</label>
+		                                        <div class="mt-1 flex items-center gap-3">
+		                                            <input type="range" min="32" max="110" x-model.number="publicDisplaySettings.metricFontSize" class="w-full">
+		                                            <input type="number" min="32" max="110" x-model.number="publicDisplaySettings.metricFontSize" class="w-24 rounded-md border-gray-300 shadow-sm sm:text-sm">
+		                                        </div>
+		                                    </div>
+		                                    <div>
+		                                        <label class="block text-sm font-medium text-gray-700">Font Persentase (px)</label>
+		                                        <div class="mt-1 flex items-center gap-3">
+		                                            <input type="range" min="20" max="72" x-model.number="publicDisplaySettings.percentFontSize" class="w-full">
+		                                            <input type="number" min="20" max="72" x-model.number="publicDisplaySettings.percentFontSize" class="w-24 rounded-md border-gray-300 shadow-sm sm:text-sm">
+		                                        </div>
+		                                    </div>
+		                                    <div>
+		                                        <label class="block text-sm font-medium text-gray-700">Auto Refresh Default (ms)</label>
+		                                        <select x-model.number="publicDisplaySettings.refreshInterval" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm">
+		                                            <option value="0">Mati</option>
+		                                            <option value="5000">5 Detik</option>
+		                                            <option value="10000">10 Detik</option>
+		                                            <option value="30000">30 Detik</option>
+		                                            <option value="60000">1 Menit</option>
+		                                        </select>
+		                                    </div>
+		                                </div>
+
+		                                <div class="flex flex-wrap gap-2 pt-2">
+		                                    <button type="submit" class="btn-compact inline-flex items-center border border-transparent font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700">
+		                                        <i class="fa-solid fa-floppy-disk mr-2"></i>Simpan Setting
+		                                    </button>
+		                                    <button type="button" @click="resetPublicDisplaySettings()" class="btn-compact inline-flex items-center border border-gray-300 font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50">
+		                                        <i class="fa-solid fa-rotate-left mr-2"></i>Reset Default
+		                                    </button>
+		                                </div>
+		                            </form>
+		                        </div>
+
+		                        <div class="bg-white rounded-lg shadow overflow-hidden card-shadow">
+		                            <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+		                                <h3 class="text-lg leading-6 font-medium text-gray-900 flex items-center"><i class="fa-solid fa-link text-blue-600 mr-2"></i>Preview Link</h3>
+		                                <p class="mt-1 max-w-2xl text-sm text-gray-500">Gunakan link ini untuk test di browser display</p>
+		                            </div>
+		                            <div class="p-4 space-y-3 text-sm">
+		                                <div class="rounded-md bg-gray-50 border border-gray-200 p-3 break-all" x-text="publicDisplayPreviewUrl('all')"></div>
+		                                <div class="flex flex-wrap gap-2">
+		                                    <a :href="publicDisplayPreviewUrl('all')" target="_blank" class="btn-action btn-action-primary"><i class="fa-solid fa-up-right-from-square"></i>Semua</a>
+		                                    <a :href="publicDisplayPreviewUrl('major')" target="_blank" class="btn-action btn-action-danger"><i class="fa-solid fa-up-right-from-square"></i>Major</a>
+		                                    <a :href="publicDisplayPreviewUrl('minor')" target="_blank" class="btn-action btn-action-neutral"><i class="fa-solid fa-up-right-from-square"></i>Minor</a>
+		                                </div>
+		                            </div>
+		                        </div>
+		                    </div>
+		                </div>
+
+		                <!-- System Actions - Hanya untuk Admin -->
+		                <div x-show="currentPage === 'system-actions' && currentUser.role === 'admin'" class="fade-in">
 	                    <div class="mb-6">
 	                        <h1 class="text-2xl font-bold text-gray-800 flex items-center"><i class="fa-solid fa-screwdriver-wrench text-blue-600 mr-3"></i>Aksi Sistem</h1>
 	                        <p class="text-gray-600">Backup, sinkronisasi tanggal, dan status sistem</p>
@@ -1221,6 +1325,7 @@
 	                                    <thead class="bg-gray-50">
 	                                        <tr>
 	                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama</th>
+	                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kategori</th>
 	                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
 	                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
 	                                        </tr>
@@ -1229,6 +1334,9 @@
 	                                        <template x-for="type in defectTypes" :key="type.id">
 	                                            <tr>
 	                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900" x-text="type.name"></td>
+	                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-semibold">
+	                                                    <span class="inline-flex px-2 py-1 text-xs rounded-full" :class="(type.severity || 'minor') === 'major' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'" x-text="(type.severity || 'minor') === 'major' ? 'Major' : 'Minor'"></span>
+	                                                </td>
 	                                                <td class="px-4 py-3 whitespace-nowrap">
 	                                                    <div class="table-actions">
 	                                                    <button @click="toggleDefectType(type)" class="btn-action" :class="type.active !== false ? 'btn-action-success' : 'btn-action-neutral'" x-text="type.active !== false ? 'Aktif' : 'Nonaktif'"></button>
@@ -1243,7 +1351,7 @@
 	                                            </tr>
 	                                        </template>
 	                                        <tr x-show="defectTypes.length === 0">
-	                                            <td colspan="3" class="px-4 py-6 text-center text-sm text-gray-500">Belum ada jenis defect.</td>
+	                                            <td colspan="4" class="px-4 py-6 text-center text-sm text-gray-500">Belum ada jenis defect.</td>
 	                                        </tr>
 	                                    </tbody>
 	                                </table>
@@ -1269,6 +1377,7 @@
 	                                    <thead class="bg-gray-50">
 	                                        <tr>
 	                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama</th>
+	                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kategori</th>
 	                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
 	                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
 	                                        </tr>
@@ -1277,6 +1386,9 @@
 	                                        <template x-for="area in defectAreas" :key="area.id">
 	                                            <tr>
 	                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900" x-text="area.name"></td>
+	                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-semibold">
+	                                                    <span class="inline-flex px-2 py-1 text-xs rounded-full" :class="(area.severity || 'minor') === 'major' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'" x-text="(area.severity || 'minor') === 'major' ? 'Major' : 'Minor'"></span>
+	                                                </td>
 	                                                <td class="px-4 py-3 whitespace-nowrap">
 	                                                    <div class="table-actions">
 	                                                    <button @click="toggleDefectArea(area)" class="btn-action" :class="area.active !== false ? 'btn-action-success' : 'btn-action-neutral'" x-text="area.active !== false ? 'Aktif' : 'Nonaktif'"></button>
@@ -1291,7 +1403,7 @@
 	                                            </tr>
 	                                        </template>
 	                                        <tr x-show="defectAreas.length === 0">
-	                                            <td colspan="3" class="px-4 py-6 text-center text-sm text-gray-500">Belum ada area defect.</td>
+	                                            <td colspan="4" class="px-4 py-6 text-center text-sm text-gray-500">Belum ada area defect.</td>
 	                                        </tr>
 	                                    </tbody>
 	                                </table>
@@ -1481,9 +1593,18 @@
 	                            <i class="fa-solid text-blue-600 mr-2" :class="defectCategoryModal.kind === 'type' ? 'fa-tags' : 'fa-location-dot'"></i>
 	                            <span x-text="defectCategoryModalTitle"></span>
 	                        </h3>
+	                        <div class="space-y-4">
 	                        <div>
 	                            <label for="defect-category-name" class="block text-sm font-medium text-gray-700" x-text="defectCategoryModal.kind === 'type' ? 'Nama Jenis Defect' : 'Nama Area Defect'"></label>
 	                            <input type="text" id="defect-category-name" x-model="defectCategoryModal.name" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" :placeholder="defectCategoryModal.kind === 'type' ? 'Contoh: Jahitan lepas' : 'Contoh: Kepala'" required>
+	                        </div>
+	                        <div>
+	                            <label for="defect-category-severity" class="block text-sm font-medium text-gray-700">Kategori</label>
+	                            <select id="defect-category-severity" x-model="defectCategoryModal.severity" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md" required>
+	                                <option value="minor">Minor</option>
+	                                <option value="major">Major</option>
+	                            </select>
+	                        </div>
 	                        </div>
 	                    </div>
 	                    <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">

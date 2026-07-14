@@ -31,9 +31,11 @@ const AppData = sequelize.define('AppData', {
 const PRODUCTION_DATA_KEY = 'production_data';
 const USERS_DATA_KEY = 'users_data';
 const DEFECT_CONFIG_KEY = 'defect_config';
+const PUBLIC_DISPLAY_SETTINGS_KEY = 'public_display_settings';
 let productionDataCache = { lines: {}, activeLine: '' };
 let usersDataCache = { users: [] };
 let defectConfigCache = { defectTypes: [], defectAreas: [] };
+let publicDisplaySettingsCache = {};
 let databaseInitialized = false;
 
 app.use(express.json());
@@ -182,16 +184,167 @@ function buildInitialUsersData() {
 function buildInitialDefectConfig() {
   return {
     defectTypes: [
-      { id: 1, name: 'Jahitan lepas', active: true },
-      { id: 2, name: 'Kotor', active: true },
-      { id: 3, name: 'Bentuk tidak sesuai', active: true }
+      { id: 1, name: 'Jahitan lepas', severity: 'major', active: true },
+      { id: 2, name: 'Kotor', severity: 'minor', active: true },
+      { id: 3, name: 'Bentuk tidak sesuai', severity: 'major', active: true }
     ],
     defectAreas: [
-      { id: 1, name: 'Kepala', active: true },
-      { id: 2, name: 'Badan', active: true },
-      { id: 3, name: 'Kaki', active: true }
+      { id: 1, name: 'Kepala', severity: 'major', active: true },
+      { id: 2, name: 'Badan', severity: 'minor', active: true },
+      { id: 3, name: 'Kaki', severity: 'minor', active: true }
     ]
   };
+}
+
+function normalizeDefectSeverity(value) {
+  return value === 'major' ? 'major' : 'minor';
+}
+
+function normalizeDefectConfig(config = {}) {
+  return {
+    defectTypes: (config.defectTypes || []).map(type => ({
+      ...type,
+      severity: normalizeDefectSeverity(type.severity)
+    })),
+    defectAreas: (config.defectAreas || []).map(area => ({
+      ...area,
+      severity: normalizeDefectSeverity(area.severity)
+    }))
+  };
+}
+
+function buildInitialPublicDisplaySettings() {
+  return {
+    layoutWidth: 98,
+    marginLeft: 30,
+    marginTop: 12,
+    cellFontSize: 16,
+    sideFontSize: 14,
+    metricFontSize: 66,
+    percentFontSize: 40,
+    refreshInterval: 10000
+  };
+}
+
+function normalizeNumberSetting(value, fallback, min, max) {
+  const number = Number(value);
+  if (Number.isNaN(number)) return fallback;
+  return Math.min(Math.max(number, min), max);
+}
+
+function normalizePublicDisplaySettings(settings = {}) {
+  const defaults = buildInitialPublicDisplaySettings();
+
+  return {
+    layoutWidth: normalizeNumberSetting(settings.layoutWidth, defaults.layoutWidth, 60, 100),
+    marginLeft: normalizeNumberSetting(settings.marginLeft, defaults.marginLeft, 0, 120),
+    marginTop: normalizeNumberSetting(settings.marginTop, defaults.marginTop, 0, 80),
+    cellFontSize: normalizeNumberSetting(settings.cellFontSize, defaults.cellFontSize, 10, 28),
+    sideFontSize: normalizeNumberSetting(settings.sideFontSize, defaults.sideFontSize, 10, 24),
+    metricFontSize: normalizeNumberSetting(settings.metricFontSize, defaults.metricFontSize, 32, 110),
+    percentFontSize: normalizeNumberSetting(settings.percentFontSize, defaults.percentFontSize, 20, 72),
+    refreshInterval: normalizeNumberSetting(settings.refreshInterval, defaults.refreshInterval, 0, 60000)
+  };
+}
+
+function normalizeDefectKey(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
+function buildDefectSeverityMaps(config = readDefectConfig()) {
+  const typeMap = new Map();
+  const areaMap = new Map();
+
+  (config.defectTypes || []).forEach(type => {
+    const key = normalizeDefectKey(type.name);
+    if (key) typeMap.set(key, normalizeDefectSeverity(type.severity));
+  });
+
+  (config.defectAreas || []).forEach(area => {
+    const key = normalizeDefectKey(area.name);
+    if (key) areaMap.set(key, normalizeDefectSeverity(area.severity));
+  });
+
+  return { typeMap, areaMap };
+}
+
+function getDefectSeverity(type, area, severityMaps) {
+  const typeSeverity = severityMaps.typeMap.get(normalizeDefectKey(type));
+  const areaSeverity = severityMaps.areaMap.get(normalizeDefectKey(area));
+
+  return typeSeverity === 'major' || areaSeverity === 'major' ? 'major' : 'minor';
+}
+
+function buildEmptyDefectBreakdown(qcChecking) {
+  return {
+    all: { count: 0, rate: 0 },
+    major: { count: 0, rate: 0 },
+    minor: { count: 0, rate: 0 },
+    qcChecking: parseInt(qcChecking) || 0
+  };
+}
+
+function calculateDefectSeverityBreakdown(model, config = readDefectConfig()) {
+  const qcChecking = parseInt(model.qcChecking) || 0;
+  const breakdown = buildEmptyDefectBreakdown(qcChecking);
+  const severityMaps = buildDefectSeverityMaps(config);
+
+  const addDefect = (type, area, quantity = 1) => {
+    const count = Math.max(parseInt(quantity) || 1, 0);
+    const severity = getDefectSeverity(type, area, severityMaps);
+
+    breakdown.all.count += count;
+    breakdown[severity].count += count;
+  };
+
+  if (Array.isArray(model.qcChecks)) {
+    model.qcChecks
+      .filter(check => check.result === 'defect')
+      .forEach(check => addDefect(check.type, check.area, 1));
+  } else {
+    (model.hourly_data || []).forEach(hour => {
+      (hour.defectDetails || []).forEach(detail => {
+        addDefect(detail.type, detail.area, detail.quantity);
+      });
+    });
+  }
+
+  ['all', 'major', 'minor'].forEach(key => {
+    breakdown[key].rate = qcChecking > 0
+      ? parseFloat(((breakdown[key].count / qcChecking) * 100).toFixed(2))
+      : 0;
+  });
+
+  return breakdown;
+}
+
+function buildPublicModelResponse(model) {
+  const defectConfig = readDefectConfig();
+  const severityMaps = buildDefectSeverityMaps(defectConfig);
+  const response = { ...model };
+
+  if (!response.targetPerHour) {
+    response.targetPerHour = Math.round((response.target || 0) / 8);
+  }
+
+  response.defectBreakdown = calculateDefectSeverityBreakdown(response, defectConfig);
+  const actualDefect = parseInt(response.actualDefect);
+  const defectRatePercentage = parseFloat(response.defectRatePercentage);
+
+  if (!Number.isNaN(actualDefect)) {
+    response.defectBreakdown.all.count = actualDefect;
+  }
+
+  if (!Number.isNaN(defectRatePercentage)) {
+    response.defectBreakdown.all.rate = defectRatePercentage;
+  }
+
+  response.defectSeverityLookups = {
+    types: Object.fromEntries(severityMaps.typeMap),
+    areas: Object.fromEntries(severityMaps.areaMap)
+  };
+
+  return response;
 }
 
 function parsePayload(payload, fallback) {
@@ -224,6 +377,7 @@ async function initSequelizeStorage() {
     let productionRow = await AppData.findByPk(PRODUCTION_DATA_KEY);
     let usersRow = await AppData.findByPk(USERS_DATA_KEY);
     let defectConfigRow = await AppData.findByPk(DEFECT_CONFIG_KEY);
+    let publicDisplaySettingsRow = await AppData.findByPk(PUBLIC_DISPLAY_SETTINGS_KEY);
 
     if (!productionRow) {
       let initialProductionData = buildInitialProductionData();
@@ -260,6 +414,11 @@ async function initSequelizeStorage() {
       defectConfigRow = await AppData.findByPk(DEFECT_CONFIG_KEY);
     }
 
+    if (!publicDisplaySettingsRow) {
+      await upsertAppData(PUBLIC_DISPLAY_SETTINGS_KEY, buildInitialPublicDisplaySettings());
+      publicDisplaySettingsRow = await AppData.findByPk(PUBLIC_DISPLAY_SETTINGS_KEY);
+    }
+
     productionDataCache = parsePayload(
       productionRow ? productionRow.payload : '',
       buildInitialProductionData()
@@ -268,10 +427,14 @@ async function initSequelizeStorage() {
       usersRow ? usersRow.payload : '',
       buildInitialUsersData()
     );
-    defectConfigCache = parsePayload(
-      defectConfigRow ? defectConfigRow.payload : '',
-      buildInitialDefectConfig()
-    );
+	    defectConfigCache = normalizeDefectConfig(parsePayload(
+	      defectConfigRow ? defectConfigRow.payload : '',
+	      buildInitialDefectConfig()
+	    ));
+    publicDisplaySettingsCache = normalizePublicDisplaySettings(parsePayload(
+      publicDisplaySettingsRow ? publicDisplaySettingsRow.payload : '',
+      buildInitialPublicDisplaySettings()
+    ));
 
     databaseInitialized = true;
     console.log(`✅ Sequelize database siap: ${databasePath}`);
@@ -426,6 +589,7 @@ function initializeDataFiles() {
     productionDataCache = buildInitialProductionData();
     usersDataCache = buildInitialUsersData();
     defectConfigCache = buildInitialDefectConfig();
+    publicDisplaySettingsCache = buildInitialPublicDisplaySettings();
   }
 
   const historyDir = path.join(__dirname, 'history');
@@ -480,6 +644,7 @@ function writeUsersData(data) {
 
 function readDefectConfig() {
   try {
+    defectConfigCache = normalizeDefectConfig(defectConfigCache);
     return defectConfigCache;
   } catch (error) {
     console.error('ERROR: Gagal membaca defect config cache:', error.message);
@@ -489,10 +654,31 @@ function readDefectConfig() {
 
 function writeDefectConfig(data) {
   try {
-    defectConfigCache = data;
-    void upsertAppData(DEFECT_CONFIG_KEY, data);
+    defectConfigCache = normalizeDefectConfig(data);
+    void upsertAppData(DEFECT_CONFIG_KEY, defectConfigCache);
   } catch (error) {
     console.error('ERROR: Gagal menulis defect config ke cache:', error.message);
+  }
+}
+
+function readPublicDisplaySettings() {
+  try {
+    publicDisplaySettingsCache = normalizePublicDisplaySettings(publicDisplaySettingsCache);
+    return publicDisplaySettingsCache;
+  } catch (error) {
+    console.error('ERROR: Gagal membaca public display settings cache:', error.message);
+    return buildInitialPublicDisplaySettings();
+  }
+}
+
+function writePublicDisplaySettings(data) {
+  try {
+    publicDisplaySettingsCache = normalizePublicDisplaySettings(data);
+    void upsertAppData(PUBLIC_DISPLAY_SETTINGS_KEY, publicDisplaySettingsCache);
+    return publicDisplaySettingsCache;
+  } catch (error) {
+    console.error('ERROR: Gagal menulis public display settings ke cache:', error.message);
+    return readPublicDisplaySettings();
   }
 }
 
@@ -3014,13 +3200,22 @@ app.get('/api/defect-config', requireLogin, (req, res) => {
   res.json(readDefectConfig());
 });
 
+app.get('/api/public-display-settings', (req, res) => {
+  res.json(readPublicDisplaySettings());
+});
+
+app.put('/api/public-display-settings', requireLogin, requireAdmin, (req, res) => {
+  const settings = writePublicDisplaySettings(req.body || {});
+  res.json({ message: 'Public display settings updated successfully', settings });
+});
+
 app.get('/api/defect-types', requireLogin, (req, res) => {
   const config = readDefectConfig();
   res.json((config.defectTypes || []).filter(type => type.active !== false));
 });
 
 app.post('/api/defect-types', requireLogin, requireAdmin, (req, res) => {
-  const { name, active = true } = req.body;
+  const { name, severity = 'minor', active = true } = req.body;
   const config = readDefectConfig();
   config.defectTypes = config.defectTypes || [];
 
@@ -3028,7 +3223,7 @@ app.post('/api/defect-types', requireLogin, requireAdmin, (req, res) => {
     return res.status(400).json({ error: 'Defect type name is required' });
   }
 
-  const defectType = { id: generateNumericId(config.defectTypes), name: name.trim(), active: Boolean(active) };
+  const defectType = { id: generateNumericId(config.defectTypes), name: name.trim(), severity: normalizeDefectSeverity(severity), active: Boolean(active) };
   config.defectTypes.push(defectType);
   writeDefectConfig(config);
 
@@ -3037,7 +3232,7 @@ app.post('/api/defect-types', requireLogin, requireAdmin, (req, res) => {
 
 app.put('/api/defect-types/:id', requireLogin, requireAdmin, (req, res) => {
   const { id } = req.params;
-  const { name, active = true } = req.body;
+  const { name, severity = 'minor', active = true } = req.body;
   const config = readDefectConfig();
   const defectType = (config.defectTypes || []).find(type => String(type.id) === String(id));
 
@@ -3050,6 +3245,7 @@ app.put('/api/defect-types/:id', requireLogin, requireAdmin, (req, res) => {
   }
 
   defectType.name = name.trim();
+  defectType.severity = normalizeDefectSeverity(severity);
   defectType.active = Boolean(active);
   writeDefectConfig(config);
 
@@ -3077,7 +3273,7 @@ app.get('/api/defect-areas', requireLogin, (req, res) => {
 });
 
 app.post('/api/defect-areas', requireLogin, requireAdmin, (req, res) => {
-  const { name, active = true } = req.body;
+  const { name, severity = 'minor', active = true } = req.body;
   const config = readDefectConfig();
   config.defectAreas = config.defectAreas || [];
 
@@ -3085,7 +3281,7 @@ app.post('/api/defect-areas', requireLogin, requireAdmin, (req, res) => {
     return res.status(400).json({ error: 'Defect area name is required' });
   }
 
-  const defectArea = { id: generateNumericId(config.defectAreas), name: name.trim(), active: Boolean(active) };
+  const defectArea = { id: generateNumericId(config.defectAreas), name: name.trim(), severity: normalizeDefectSeverity(severity), active: Boolean(active) };
   config.defectAreas.push(defectArea);
   writeDefectConfig(config);
 
@@ -3094,7 +3290,7 @@ app.post('/api/defect-areas', requireLogin, requireAdmin, (req, res) => {
 
 app.put('/api/defect-areas/:id', requireLogin, requireAdmin, (req, res) => {
   const { id } = req.params;
-  const { name, active = true } = req.body;
+  const { name, severity = 'minor', active = true } = req.body;
   const config = readDefectConfig();
   const defectArea = (config.defectAreas || []).find(area => String(area.id) === String(id));
 
@@ -3107,6 +3303,7 @@ app.put('/api/defect-areas/:id', requireLogin, requireAdmin, (req, res) => {
   }
 
   defectArea.name = name.trim();
+  defectArea.severity = normalizeDefectSeverity(severity);
   defectArea.active = Boolean(active);
   writeDefectConfig(config);
 
@@ -3567,12 +3764,8 @@ app.get('/api/public/line/:lineName', autoCheckDateReset, (req, res) => {
   }
 
   const modelData = data.lines[lineName].models[activeModelId];
-  
-  if (!modelData.targetPerHour) {
-    modelData.targetPerHour = Math.round(modelData.target / 8);
-  }
-  
-  res.json(modelData);
+
+  res.json(buildPublicModelResponse(modelData));
 });
 
 app.get('/api/public/line/:lineName/:modelId', autoCheckDateReset, (req, res) => {
@@ -3584,12 +3777,8 @@ app.get('/api/public/line/:lineName/:modelId', autoCheckDateReset, (req, res) =>
   }
 
   const modelData = data.lines[lineName].models[modelId];
-  
-  if (!modelData.targetPerHour) {
-    modelData.targetPerHour = Math.round(modelData.target / 8);
-  }
-  
-  res.json(modelData);
+
+  res.json(buildPublicModelResponse(modelData));
 });
 
 app.get('/public-display', (req, res) => {

@@ -14,12 +14,12 @@
 
         body {
           padding: 0;
-          margin-left: 30px;
-          margin-top: 12px;
+	          margin-left: var(--display-margin-left, 30px);
+	          margin-top: var(--display-margin-top, 12px);
           background-color: #111;
           color: #fff;
           font-family: 'Noto IKEA Latin', Arial, Helvetica, sans-serif;
-          font-size: 18px;
+	          font-size: var(--display-body-font-size, 18px);
           text-align: center;
           overflow: hidden;
         }
@@ -39,7 +39,7 @@
           border: 1px solid #fff;
           text-align: center;
           vertical-align: middle;
-          font-size: 16px;
+	          font-size: var(--display-cell-font-size, 16px);
           color: #FFEB3B;
           word-wrap: break-word;
           font-weight: bold;
@@ -64,7 +64,7 @@
         .main-table .outputisi,
         .main-table .outputisired {
           font-weight: bold;
-          font-size: 18px;
+	          font-size: var(--display-output-font-size, 18px);
         }
 
         .main-table .outputisi { color: white; }
@@ -72,7 +72,7 @@
 
         .main-table .outday,
         .main-table .outday1 {
-          font-size: 4.1em;
+	          font-size: var(--display-metric-font-size, 66px);
           font-weight: 900;
           color: black;
         }
@@ -81,7 +81,7 @@
         .main-table .outday1 { background-color: #FFD8D8; }
 
         .main-table .perday {
-          font-size: 2.5em;
+	          font-size: var(--display-percent-font-size, 40px);
           font-weight: 900;
           color: navy;
           background-color: #add8e6;
@@ -91,7 +91,7 @@
         .main-table .isin,
         .main-table .isi,
         .main-table .isie {
-          font-size: 4.1em;
+	          font-size: var(--display-metric-font-size, 66px);
           font-weight: 900;
         }
 
@@ -120,24 +120,24 @@
 
         .tg {
           text-align: center;
-          width: 98%;
+	          width: var(--display-layout-width, 98%);
           height: 100%;
           border-collapse: collapse;
           overflow: hidden;
           margin-top: 10px;
         }
 
-        .date {
-            font-size: 18px;
-            font-weight: 900;
-            color: #ffeb3b;
-        }
+	        .date {
+	            font-size: var(--display-output-font-size, 18px);
+	            font-weight: 900;
+	            color: #ffeb3b;
+	        }
 
-        .clock {
-            font-size: 20px;
-            font-weight: 900;
-            color: #00b0ff;
-        }
+	        .clock {
+	            font-size: var(--display-clock-font-size, 20px);
+	            font-weight: 900;
+	            color: #00b0ff;
+	        }
 
         .histor,
         .table-defect {
@@ -151,43 +151,43 @@
             background: #222;
             color: #fff;
             padding: 1px;
-            font-size: 14px;
+	            font-size: var(--display-side-font-size, 14px);
         }
 
         .histor td,
         .table-defect td {
             border: 1px solid #666;
             padding: 4px;
-            font-size: 14px;
+	            font-size: var(--display-side-font-size, 14px);
             font-weight: 900;
         }
 
-        .histor .hour-cell {
-            color: #fff !important;
-            font-size: 12px !important;
-        }
+	        .histor .hour-cell {
+	            color: #fff !important;
+	            font-size: var(--display-hour-font-size, 12px) !important;
+	        }
 
         .histor .hour-active {
             background: #ff0 !important;
             color: #000 !important;
         }
 
-        .histor .output-ok {
-            color: #fff !important;
-            font-size: 18px !important;
-        }
+	        .histor .output-ok {
+	            color: #fff !important;
+	            font-size: var(--display-output-font-size, 18px) !important;
+	        }
 
-        .histor .output-ng {
-            color: #ff1a1a !important;
-            font-size: 18px !important;
-        }
+	        .histor .output-ng {
+	            color: #ff1a1a !important;
+	            font-size: var(--display-output-font-size, 18px) !important;
+	        }
 
         .metric-green { color: green !important; }
         .metric-red { color: red !important; }
 
         .top-defect-title {
             text-align: center;
-            font-size: 16px !important;
+	            font-size: var(--display-cell-font-size, 16px) !important;
         }
 
         .footer-control {
@@ -245,7 +245,7 @@
         }
     </style>
 </head>
-<body x-data="publicDisplay()" x-cloak>
+<body x-data="publicDisplay()" :style="displayCssVars()" x-cloak>
     <div class="tg">
         <table class="main-table" border="0">
             <tbody>
@@ -308,20 +308,26 @@
                     <td class="perday" x-text="calculateCumulativeBalancePercentage() + '%'"></td>
                     <td class="perday" x-text="calculateOutputPercentage() + '%'"></td>
                 </tr>
-                <tr>
-                    <td colspan="2" class="bawah">ACT DEFECT</td>
-                    <td class="bawah">DEFECT %</td>
-                </tr>
-                <tr>
-                    <td colspan="2" class="outday1" :class="(lineData.data.defectRatePercentage || 0) > 3 ? 'metric-red' : 'metric-green'" x-text="formatNumber(lineData.data.actualDefect || 0)"></td>
-                    <td class="outday1" :class="(lineData.data.defectRatePercentage || 0) > 3 ? 'metric-red' : 'metric-green'" x-text="formatPercent(lineData.data.defectRatePercentage || 0)"></td>
-                </tr>
+	                <tr>
+	                    <td colspan="2" class="bawah" x-text="defectTitle()"></td>
+	                    <td class="bawah">DEFECT %</td>
+	                </tr>
+	                <tr>
+	                    <td colspan="2" class="outday1" :class="selectedDefectRate() > 3 ? 'metric-red' : 'metric-green'" x-text="formatNumber(selectedDefectCount())"></td>
+	                    <td class="outday1" :class="selectedDefectRate() > 3 ? 'metric-red' : 'metric-green'" x-text="formatPercent(selectedDefectRate())"></td>
+	                </tr>
             </tbody>
         </table>
 
-        <div class="footer-control">
-            <span>Auto Refresh</span>
-            <select x-model="refreshInterval" @change="changeRefreshInterval">
+	        <div class="footer-control">
+	            <span>Defect</span>
+	            <select x-model="defectMode" @change="changeDefectMode">
+	                <option value="all">Semua</option>
+	                <option value="major">Major</option>
+	                <option value="minor">Minor</option>
+	            </select>
+	            <span>Auto Refresh</span>
+	            <select x-model="refreshInterval" @change="changeRefreshInterval">
                 <option value="0">Mati</option>
                 <option value="5000">5 Detik</option>
                 <option value="10000">10 Detik</option>
@@ -356,31 +362,50 @@
                         targetPerHour: 0,
                         outputDay: 0,
                         qcChecking: 0,
-                        actualDefect: 0,
-                        defectRatePercentage: 0,
-                        hourly_data: [],
-                        operators: []
-                    }
-                },
-                currentModelId: '',
-                errorMessage: '',
-                refreshInterval: 10000,
+	                        actualDefect: 0,
+	                        defectRatePercentage: 0,
+	                        defectBreakdown: {
+	                            all: { count: 0, rate: 0 },
+	                            major: { count: 0, rate: 0 },
+	                            minor: { count: 0, rate: 0 }
+	                        },
+	                        hourly_data: [],
+	                        operators: []
+	                    }
+	                },
+	                currentModelId: '',
+	                defectMode: 'all',
+	                displaySettings: {
+	                    layoutWidth: 98,
+	                    marginLeft: 30,
+	                    marginTop: 12,
+	                    cellFontSize: 16,
+	                    sideFontSize: 14,
+	                    metricFontSize: 66,
+	                    percentFontSize: 40,
+	                    refreshInterval: 10000
+	                },
+	                errorMessage: '',
+	                refreshInterval: 10000,
                 refreshTimer: null,
                 dataUpdated: false,
 
                 async init() {
-                    const urlParams = new URLSearchParams(window.location.search);
-                    const lineName = urlParams.get('line');
-                    const modelId = urlParams.get('model');
-                    
-                    if (!lineName) {
-                        this.errorMessage = 'Parameter line tidak ditemukan. Gunakan format: public-display.html?line=NAMA_LINE&model=MODEL_ID';
-                        return;
-                    }
+	                    const urlParams = new URLSearchParams(window.location.search);
+	                    const lineName = urlParams.get('line');
+	                    const modelId = urlParams.get('model');
+	                    const defectMode = urlParams.get('defect') || urlParams.get('defectMode') || 'all';
 
-                    this.lineData.name = lineName;
-                    this.currentModelId = modelId || '';
-                    await this.loadLineData();
+	                    if (!lineName) {
+	                        this.errorMessage = 'Parameter line tidak ditemukan. Gunakan format: public-display.html?line=NAMA_LINE&model=MODEL_ID';
+	                        return;
+	                    }
+
+	                    this.lineData.name = lineName;
+	                    this.currentModelId = modelId || '';
+	                    this.defectMode = ['all', 'major', 'minor'].includes(defectMode) ? defectMode : 'all';
+	                    await this.loadDisplaySettings();
+	                    await this.loadLineData();
                     
                     this.setupAutoRefresh();
                     
@@ -437,11 +462,73 @@
                     }
                 },
 
-                changeRefreshInterval() {
-                    this.refreshInterval = Number(this.refreshInterval) || 0;
-                    this.setupAutoRefresh();
-                },
-                
+	                changeRefreshInterval() {
+	                    this.refreshInterval = Number(this.refreshInterval) || 0;
+	                    this.setupAutoRefresh();
+	                },
+
+	                changeDefectMode() {
+	                    if (!['all', 'major', 'minor'].includes(this.defectMode)) {
+	                        this.defectMode = 'all';
+	                    }
+
+	                    const url = new URL(window.location.href);
+	                    url.searchParams.set('defect', this.defectMode);
+	                    window.history.replaceState({}, '', url.toString());
+	                },
+
+	                normalizeDisplaySettings(settings = {}) {
+	                    const defaults = {
+	                        layoutWidth: 98,
+	                        marginLeft: 30,
+	                        marginTop: 12,
+	                        cellFontSize: 16,
+	                        sideFontSize: 14,
+	                        metricFontSize: 66,
+	                        percentFontSize: 40,
+	                        refreshInterval: 10000
+	                    };
+
+	                    return {
+	                        layoutWidth: Number(settings.layoutWidth ?? defaults.layoutWidth),
+	                        marginLeft: Number(settings.marginLeft ?? defaults.marginLeft),
+	                        marginTop: Number(settings.marginTop ?? defaults.marginTop),
+	                        cellFontSize: Number(settings.cellFontSize ?? defaults.cellFontSize),
+	                        sideFontSize: Number(settings.sideFontSize ?? defaults.sideFontSize),
+	                        metricFontSize: Number(settings.metricFontSize ?? defaults.metricFontSize),
+	                        percentFontSize: Number(settings.percentFontSize ?? defaults.percentFontSize),
+	                        refreshInterval: Number(settings.refreshInterval ?? defaults.refreshInterval)
+	                    };
+	                },
+
+	                async loadDisplaySettings() {
+	                    try {
+	                        const response = await fetch('/api/public-display-settings');
+	                        if (response.ok) {
+	                            this.displaySettings = this.normalizeDisplaySettings(await response.json());
+	                            this.refreshInterval = this.displaySettings.refreshInterval;
+	                        }
+	                    } catch (error) {
+	                        console.error('Error loading public display settings:', error);
+	                    }
+	                },
+
+	                displayCssVars() {
+	                    const settings = this.displaySettings || {};
+	                    return {
+	                        '--display-layout-width': `${settings.layoutWidth || 98}%`,
+	                        '--display-margin-left': `${settings.marginLeft ?? 30}px`,
+	                        '--display-margin-top': `${settings.marginTop ?? 12}px`,
+	                        '--display-cell-font-size': `${settings.cellFontSize || 16}px`,
+	                        '--display-output-font-size': `${Math.max((settings.cellFontSize || 16) + 2, 12)}px`,
+	                        '--display-clock-font-size': `${Math.max((settings.cellFontSize || 16) + 4, 14)}px`,
+	                        '--display-hour-font-size': `${Math.max((settings.sideFontSize || 14) - 2, 10)}px`,
+	                        '--display-side-font-size': `${settings.sideFontSize || 14}px`,
+	                        '--display-metric-font-size': `${settings.metricFontSize || 66}px`,
+	                        '--display-percent-font-size': `${settings.percentFontSize || 40}px`
+	                    };
+	                },
+
 	                updateDateTime() {
 	                    const now = new Date();
 	                    const dateEl = document.getElementById('current-date');
@@ -586,9 +673,53 @@
 	                    return (parseInt(value) || 0).toLocaleString('id-ID');
 	                },
 
-	                formatPercent(value) {
-	                    return `${(parseFloat(value) || 0).toFixed(1)}%`;
-	                },
+		                formatPercent(value) {
+		                    return `${(parseFloat(value) || 0).toFixed(1)}%`;
+		                },
+
+		                normalizeDefectKey(value) {
+		                    return String(value || '').trim().toLowerCase();
+		                },
+
+		                getDefectSeverity(type, area) {
+		                    const lookups = this.lineData.data.defectSeverityLookups || { types: {}, areas: {} };
+		                    const typeSeverity = lookups.types?.[this.normalizeDefectKey(type)];
+		                    const areaSeverity = lookups.areas?.[this.normalizeDefectKey(area)];
+
+		                    return typeSeverity === 'major' || areaSeverity === 'major' ? 'major' : 'minor';
+		                },
+
+		                matchesDefectMode(type, area) {
+		                    return this.defectMode === 'all' || this.getDefectSeverity(type, area) === this.defectMode;
+		                },
+
+		                selectedDefectBreakdown() {
+		                    const breakdown = this.lineData.data.defectBreakdown || {};
+		                    const selected = breakdown[this.defectMode];
+
+		                    if (selected) {
+		                        return selected;
+		                    }
+
+		                    return {
+		                        count: this.lineData.data.actualDefect || 0,
+		                        rate: this.lineData.data.defectRatePercentage || 0
+		                    };
+		                },
+
+		                selectedDefectCount() {
+		                    return this.selectedDefectBreakdown().count || 0;
+		                },
+
+		                selectedDefectRate() {
+		                    return this.selectedDefectBreakdown().rate || 0;
+		                },
+
+		                defectTitle() {
+		                    if (this.defectMode === 'major') return 'MAJOR DEFECT';
+		                    if (this.defectMode === 'minor') return 'MINOR DEFECT';
+		                    return 'ACT DEFECT';
+		                },
 
 	                compactHour(value) {
 	                    return String(value || '-').replace(/\s+/g, '');
@@ -616,20 +747,24 @@
 
 	                get topDefects() {
 	                    const counts = {};
+	                    const qcChecks = this.lineData.data.qcChecks;
 
-	                    (this.lineData.data.hourly_data || []).forEach(hour => {
-	                        (hour.defectDetails || []).forEach(detail => {
-	                            const name = detail.type || '-';
-	                            counts[name] = (counts[name] || 0) + (parseInt(detail.quantity) || 1);
-	                        });
-	                    });
-
-	                    (this.lineData.data.qcChecks || [])
-	                        .filter(check => check.result === 'defect')
-	                        .forEach(check => {
-	                            const name = check.type || '-';
-	                            counts[name] = (counts[name] || 0) + 1;
-	                        });
+		                    if (Array.isArray(qcChecks)) {
+		                        qcChecks
+		                            .filter(check => check.result === 'defect')
+		                            .filter(check => this.matchesDefectMode(check.type, check.area))
+		                            .forEach(check => {
+	                                const name = check.type || '-';
+	                                counts[name] = (counts[name] || 0) + 1;
+	                            });
+	                    } else {
+		                        (this.lineData.data.hourly_data || []).forEach(hour => {
+		                            (hour.defectDetails || []).filter(detail => this.matchesDefectMode(detail.type, detail.area)).forEach(detail => {
+		                                const name = detail.type || '-';
+		                                counts[name] = (counts[name] || 0) + (parseInt(detail.quantity) || 1);
+		                            });
+		                        });
+	                    }
 
 	                    const items = Object.entries(counts)
 	                        .map(([name, count]) => ({ name, count }))

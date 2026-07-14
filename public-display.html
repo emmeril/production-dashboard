@@ -2,133 +2,129 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-    <title>Production Line Display - TV Monitor</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DISPLAY LINE</title>
     <style>
-        * {
-            box-sizing: border-box;
-        }
-
-        html,
-        body {
-            width: 100%;
-            height: 100%;
-            margin: 0;
-            overflow: hidden;
+        @font-face {
+          font-family: 'Noto IKEA Latin';
+          src: url('fonts/NotoIKEA.woff2') format('woff2'),
+               url('fonts/NotoIKEA.woff') format('woff'),
+               url('fonts/NotoIKEA.ttf') format('truetype');
         }
 
         body {
-            padding: 12px 18px 0 30px;
-            background: #111;
-            color: #fff;
-            font-family: Arial, Helvetica, sans-serif;
-            font-size: 18px;
-            text-align: center;
+          padding: 0;
+          margin-left: 30px;
+          margin-top: 12px;
+          background-color: #111;
+          color: #fff;
+          font-family: 'Noto IKEA Latin', Arial, Helvetica, sans-serif;
+          font-size: 18px;
+          text-align: center;
+          overflow: hidden;
         }
 
         [x-cloak] {
             display: none !important;
         }
 
-        .display-frame {
-            width: 98%;
-            height: calc(100vh - 12px);
-            border-collapse: collapse;
-            overflow: hidden;
-        }
-
         .main-table {
-            width: 100%;
-            height: 100%;
-            table-layout: fixed;
-            border-collapse: collapse;
+          width: 100%;
+          border-collapse: collapse;
         }
 
         .main-table td,
         .main-table th {
-            padding: 1px;
-            border: 1px solid #fff;
-            text-align: center;
-            vertical-align: middle;
-            color: #ffeb3b;
-            font-weight: 900;
-            word-wrap: break-word;
+          padding: 1px;
+          border: 1px solid #fff;
+          text-align: center;
+          vertical-align: middle;
+          font-size: 16px;
+          color: #FFEB3B;
+          word-wrap: break-word;
+          font-weight: bold;
         }
 
-        .line-cell {
-            height: 66px;
-            font-size: 24px;
-            color: #ffeb3b;
+        .main-table th {
+          background-color: #222;
+          color: #f1f1f1;
         }
 
-        .model-cell {
-            height: 132px;
-            font-size: 24px;
-            color: #ffeb3b;
-            white-space: normal;
-            word-break: break-word;
-            overflow-wrap: break-word;
+        .main-table tr:nth-child(even) {
+          background-color: #1c1c1c;
         }
 
-        .week-cell {
-            height: 66px;
-            font-size: 20px;
-            color: #ffeb3b;
+        .main-table tr:nth-child(odd) {
+          background-color: #181818;
         }
 
-        .label-cell {
-            height: 72px;
-            background: #181818;
-            color: #fff !important;
-            font-size: 1.8em;
+        .main-table .target4 { color: white; }
+        .main-table .target4b { background-color: yellow; color: black; }
+
+        .main-table .outputisi,
+        .main-table .outputisired {
+          font-weight: bold;
+          font-size: 18px;
         }
 
-        .metric-cell {
-            height: 214px;
-            font-size: 4.1em;
-            line-height: 1;
-            color: #000 !important;
+        .main-table .outputisi { color: white; }
+        .main-table .outputisired { color: #ff1a1a; }
+
+        .main-table .outday,
+        .main-table .outday1 {
+          font-size: 4.1em;
+          font-weight: 900;
+          color: black;
         }
 
-        .metric-target {
-            background: #fff;
+        .main-table .outday { background-color: #fff; }
+        .main-table .outday1 { background-color: #FFD8D8; }
+
+        .main-table .perday {
+          font-size: 2.5em;
+          font-weight: 900;
+          color: navy;
+          background-color: #add8e6;
+          border: 1px solid black;
         }
 
-        .metric-productivity {
-            background: #ff0;
+        .main-table .isin,
+        .main-table .isi,
+        .main-table .isie {
+          font-size: 4.1em;
+          font-weight: 900;
         }
 
-        .metric-balance {
-            background: #efc4ca;
+        .main-table .isin {
+          background-color: white;
+          color: black;
         }
 
-        .metric-defect {
-            background: #ffd8d8;
+        .main-table .isi {
+          background-color: yellow;
+          color: black;
         }
 
-        .metric-green {
-            color: green !important;
+        .main-table .isie {
+          background-color: #EFC4CA;
         }
 
-        .metric-red {
-            color: red !important;
+        .main-table .bawah,
+        .main-table .bawah1 {
+          font-weight: bold;
+          color: white;
         }
 
-        .percent-cell {
-            height: 130px;
-            background: #add8e6;
-            color: navy !important;
-            font-size: 2.5em;
-            line-height: 1;
-            border-color: #000 !important;
-        }
+        .main-table .bawah { font-size: 1.8em; }
+        .main-table .bawah1 { font-size: 1.5em; }
 
-        .side-cell {
-            width: 20%;
-            padding: 1px !important;
-            vertical-align: top !important;
-            background: #111;
+        .tg {
+          text-align: center;
+          width: 98%;
+          height: 100%;
+          border-collapse: collapse;
+          overflow: hidden;
+          margin-top: 10px;
         }
 
         .date {
@@ -147,7 +143,6 @@
         .table-defect {
             width: 100%;
             border-collapse: collapse;
-            table-layout: fixed;
         }
 
         .histor th,
@@ -167,25 +162,28 @@
             font-weight: 900;
         }
 
-        .hour-cell {
+        .histor .hour-cell {
             color: #fff !important;
             font-size: 12px !important;
         }
 
-        .hour-active {
+        .histor .hour-active {
             background: #ff0 !important;
             color: #000 !important;
         }
 
-        .output-ok {
+        .histor .output-ok {
             color: #fff !important;
             font-size: 18px !important;
         }
 
-        .output-ng {
+        .histor .output-ng {
             color: #ff1a1a !important;
             font-size: 18px !important;
         }
+
+        .metric-green { color: green !important; }
+        .metric-red { color: red !important; }
 
         .top-defect-title {
             text-align: center;
@@ -248,13 +246,13 @@
     </style>
 </head>
 <body x-data="publicDisplay()" x-cloak>
-    <div class="display-frame">
+    <div class="tg">
         <table class="main-table" border="0">
             <tbody>
                 <tr>
-                    <td class="line-cell" x-text="'LINE: ' + (lineData.name || 'Loading...')"></td>
-                    <td colspan="2" rowspan="2" class="model-cell" x-text="lineData.data.model || 'Loading...'"></td>
-                    <td rowspan="7" class="side-cell">
+                    <td style="text-align: center;vertical-align: middle;font-weight:bold;font-size:24px;" x-text="'LINE: ' + (lineData.name || 'Loading...')"></td>
+                    <td colspan="2" rowspan="2" style="text-align:center;vertical-align:middle;font-weight:bold;font-size:24px;white-space:normal;word-break:break-word;overflow-wrap:break-word;" x-text="lineData.data.model || 'Loading...'"></td>
+                    <td rowspan="7" valign="top" style="width:20%; padding:1px; vertical-align:top;">
                         <table class="histor">
                             <thead>
                                 <tr><td colspan="3"><div class="date" id="current-date">Loading...</div></td></tr>
@@ -293,30 +291,30 @@
                     </td>
                 </tr>
                 <tr>
-                    <td class="week-cell" x-text="'WEEK : ' + (lineData.data.labelWeek || '-')"></td>
+                    <td style="text-align: center;vertical-align: middle;font-weight:bold;font-size:20px;" x-text="'WEEK : ' + (lineData.data.labelWeek || '-')"></td>
                 </tr>
                 <tr>
-                    <td class="label-cell">TARGET</td>
-                    <td class="label-cell">BALANCE</td>
-                    <td class="label-cell">PRODUCTIVITY</td>
+                    <td class="bawah">TARGET</td>
+                    <td class="bawah">BALANCE</td>
+                    <td class="bawah">PRODUCTIVITY</td>
                 </tr>
                 <tr>
-                    <td class="metric-cell metric-target" x-text="formatNumber(getCurrentHourTarget())"></td>
-                    <td class="metric-cell metric-balance" :class="calculateCumulativeBalance() < 0 ? 'metric-red' : 'metric-green'" x-text="formatNumber(calculateCumulativeBalance())"></td>
-                    <td class="metric-cell metric-productivity" x-text="formatNumber(lineData.data.outputDay || 0)"></td>
+                    <td class="isin" x-text="formatNumber(getCurrentHourTarget())"></td>
+                    <td class="isie" :class="calculateCumulativeBalance() < 0 ? 'metric-red' : 'metric-green'" :style="Math.abs(calculateCumulativeBalance()).toString().length >= 3 ? 'font-size: 3.8em;' : ''" x-text="formatNumber(calculateCumulativeBalance())"></td>
+                    <td class="isi" x-text="formatNumber(lineData.data.outputDay || 0)"></td>
                 </tr>
                 <tr>
-                    <td class="percent-cell" x-text="calculateTargetProgressPercentage() + '%'"></td>
-                    <td class="percent-cell" x-text="calculateCumulativeBalancePercentage() + '%'"></td>
-                    <td class="percent-cell" x-text="calculateOutputPercentage() + '%'"></td>
+                    <td class="perday" x-text="calculateTargetProgressPercentage() + '%'"></td>
+                    <td class="perday" x-text="calculateCumulativeBalancePercentage() + '%'"></td>
+                    <td class="perday" x-text="calculateOutputPercentage() + '%'"></td>
                 </tr>
                 <tr>
-                    <td colspan="2" class="label-cell">ACT DEFECT</td>
-                    <td class="label-cell">DEFECT %</td>
+                    <td colspan="2" class="bawah">ACT DEFECT</td>
+                    <td class="bawah">DEFECT %</td>
                 </tr>
                 <tr>
-                    <td colspan="2" class="metric-cell metric-defect" :class="(lineData.data.defectRatePercentage || 0) > 3 ? 'metric-red' : 'metric-green'" x-text="formatNumber(lineData.data.actualDefect || 0)"></td>
-                    <td class="metric-cell metric-defect" :class="(lineData.data.defectRatePercentage || 0) > 3 ? 'metric-red' : 'metric-green'" x-text="formatPercent(lineData.data.defectRatePercentage || 0)"></td>
+                    <td colspan="2" class="outday1" :class="(lineData.data.defectRatePercentage || 0) > 3 ? 'metric-red' : 'metric-green'" x-text="formatNumber(lineData.data.actualDefect || 0)"></td>
+                    <td class="outday1" :class="(lineData.data.defectRatePercentage || 0) > 3 ? 'metric-red' : 'metric-green'" x-text="formatPercent(lineData.data.defectRatePercentage || 0)"></td>
                 </tr>
             </tbody>
         </table>

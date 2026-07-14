@@ -7,541 +7,329 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         * {
-            margin: 0;
-            padding: 0;
             box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-        
-        :root {
-            --scale-factor: 1;
-            --safe-pad: 12px;
         }
 
-        html, body {
-            width: 100%;
-            height: 100%;
-        }
-        
+        html,
         body {
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%);
-            color: #e2e8f0;
-            min-height: 100vh;
-            min-height: -webkit-fill-available;
-            overflow: hidden;
-            padding: var(--safe-pad);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            -webkit-text-size-adjust: 100%;
-            text-size-adjust: 100%;
-            overscroll-behavior: none;
-        }
-        
-        .container {
             width: 100%;
             height: 100%;
-            display: flex;
-            flex-direction: column;
-            min-height: 0;
-        }
-        
-        .header {
-            text-align: center;
-            margin-bottom: 20px;
-            padding: 15px;
-            background: rgba(30, 41, 59, 0.7);
-            border-radius: 12px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-            border: 1px solid rgba(100, 116, 139, 0.3);
-        }
-        
-        .line-info {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 10px;
-        }
-        
-        .line-box {
-            flex: 1;
-            padding: 8px;
-            background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
-            border-radius: 8px;
-            margin: 0 8px;
-            box-shadow: 0 4px 15px rgba(124, 58, 237, 0.3);
-        }
-        
-        .model-box {
-            flex: 1;
-            padding: 12px;
-            background: linear-gradient(135deg, #0ea5e9 0%, #0369a1 100%);
-            border-radius: 8px;
-            margin: 0 8px;
-            box-shadow: 0 4px 15px rgba(14, 165, 233, 0.3);
-        }
-        
-        .week-box {
-            padding: 8px 16px;
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            border-radius: 8px;
-            width: 200px;
-            margin: 0 auto;
-            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
-        }
-        
-        .label {
-            font-size: calc(2rem * var(--scale-factor));
-            font-weight: bold;
-            margin-bottom: 4px;
-            color: #f1f5f9;
-            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-        }
-        
-        .value {
-            font-size: calc(2rem * var(--scale-factor));
-            font-weight: bold;
-            color: white;
-            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-        }
-        
-        .main-content {
-            display: flex;
-            flex: 1;
-            gap: 20px;
-            min-height: 0;
-        }
-        
-        .target-section {
-            flex: 2;
-            display: flex;
-            flex-direction: column;
-        }
-        
-        .defect-section {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-        }
-        
-        .section-title {
-            font-size: calc(1.8rem * var(--scale-factor));
-            text-align: center;
-            margin-bottom: 15px;
-            padding: 12px;
-            background: rgba(30, 41, 59, 0.7);
-            border-radius: 8px;
-            border: 1px solid rgba(100, 116, 139, 0.3);
-            color: #f8fafc;
-            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-        }
-        
-        .data-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: 15px;
-            flex: 1;
-        }
-        
-        .data-box {
-            background: rgba(30, 41, 59, 0.7);
-            border-radius: 12px;
-            padding: 10px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-            transition: all 0.3s ease;
-            border: 1px solid rgba(100, 116, 139, 0.3);
-            position: relative;
+            margin: 0;
             overflow: hidden;
         }
-        
-        .data-box::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-        }
-        
-        .data-box:nth-child(1)::before {
-            background: linear-gradient(90deg, #8b5cf6 0%, #7c3aed 100%);
-        }
-        
-        .data-box:nth-child(2)::before {
-            background: linear-gradient(90deg, #0ea5e9 0%, #0369a1 100%);
-        }
-        
-        .data-box:nth-child(3)::before {
-            background: linear-gradient(90deg, #10b981 0%, #059669 100%);
-        }
-        
-        .data-label {
-            font-size: calc(2rem * var(--scale-factor));
-            margin-bottom: 12px;
+
+        body {
+            padding: 12px 18px 0 30px;
+            background: #111;
+            color: #fff;
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 18px;
             text-align: center;
-            color: #cbd5e1;
-            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-            font-weight: bold;
         }
-        
-        .data-value {
-            font-size: calc(7rem * var(--scale-factor));
-            font-weight: bold;
-            text-align: center;
-            color: white;
-            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+
+        [x-cloak] {
+            display: none !important;
         }
-        
-        .percentage {
-            font-size: calc(4rem * var(--scale-factor));
-            margin-top: 8px;
-            font-weight: 600;
-        }
-        
-        .percentage.positive {
-            color: #34d399;
-        }
-        
-        .percentage.negative {
-            color: #f87171;
-        }
-        
-        .percentage.neutral {
-            color: #60a5fa;
-        }
-        
-        .defect-container {
-            display: flex;
-            flex-direction: column;
-            flex: 1;
-            gap: 20px;
-        }
-        
-        .defect-box {
-            background: rgba(30, 41, 59, 0.7);
-            border-radius: 12px;
-            padding: 10px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-            flex: 1;
-            border: 1px solid rgba(100, 116, 139, 0.3);
-            position: relative;
+
+        .display-frame {
+            width: 98%;
+            height: calc(100vh - 12px);
+            border-collapse: collapse;
             overflow: hidden;
         }
-        
-        .defect-box::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: linear-gradient(90deg, #ef4444 0%, #dc2626 100%);
+
+        .main-table {
+            width: 100%;
+            height: 100%;
+            table-layout: fixed;
+            border-collapse: collapse;
         }
-        
-        .defect-box:last-child::before {
-            background: linear-gradient(90deg, #f59e0b 0%, #d97706 100%);
-        }
-        
-        .footer {
+
+        .main-table td,
+        .main-table th {
+            padding: 1px;
+            border: 1px solid #fff;
             text-align: center;
-            margin-top: 20px;
-            padding: 12px;
-            font-size: calc(1.2rem * var(--scale-factor));
-            color: #cbd5e1;
-            background: rgba(30, 41, 59, 0.7);
-            border-radius: 8px;
-            border: 1px solid rgba(100, 116, 139, 0.3);
+            vertical-align: middle;
+            color: #ffeb3b;
+            font-weight: 900;
+            word-wrap: break-word;
         }
-        
-        .datetime {
-            font-size: calc(1.4rem * var(--scale-factor));
+
+        .line-cell {
+            height: 66px;
+            font-size: 24px;
+            color: #ffeb3b;
+        }
+
+        .model-cell {
+            height: 132px;
+            font-size: 24px;
+            color: #ffeb3b;
+            white-space: normal;
+            word-break: break-word;
+            overflow-wrap: break-word;
+        }
+
+        .week-cell {
+            height: 66px;
+            font-size: 20px;
+            color: #ffeb3b;
+        }
+
+        .label-cell {
+            height: 72px;
+            background: #181818;
+            color: #fff !important;
+            font-size: 1.8em;
+        }
+
+        .metric-cell {
+            height: 214px;
+            font-size: 4.1em;
+            line-height: 1;
+            color: #000 !important;
+        }
+
+        .metric-target {
+            background: #fff;
+        }
+
+        .metric-productivity {
+            background: #ff0;
+        }
+
+        .metric-balance {
+            background: #efc4ca;
+        }
+
+        .metric-defect {
+            background: #ffd8d8;
+        }
+
+        .metric-green {
+            color: green !important;
+        }
+
+        .metric-red {
+            color: red !important;
+        }
+
+        .percent-cell {
+            height: 130px;
+            background: #add8e6;
+            color: navy !important;
+            font-size: 2.5em;
+            line-height: 1;
+            border-color: #000 !important;
+        }
+
+        .side-cell {
+            width: 20%;
+            padding: 1px !important;
+            vertical-align: top !important;
+            background: #111;
+        }
+
+        .date {
+            font-size: 18px;
+            font-weight: 900;
+            color: #ffeb3b;
+        }
+
+        .clock {
+            font-size: 20px;
+            font-weight: 900;
+            color: #00b0ff;
+        }
+
+        .histor,
+        .table-defect {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+
+        .histor th,
+        .table-defect th {
+            border: 1px solid #666;
+            background: #222;
+            color: #fff;
+            padding: 1px;
+            font-size: 14px;
+        }
+
+        .histor td,
+        .table-defect td {
+            border: 1px solid #666;
+            padding: 4px;
+            font-size: 14px;
+            font-weight: 900;
+        }
+
+        .hour-cell {
+            color: #fff !important;
+            font-size: 12px !important;
+        }
+
+        .hour-active {
+            background: #ff0 !important;
+            color: #000 !important;
+        }
+
+        .output-ok {
+            color: #fff !important;
+            font-size: 18px !important;
+        }
+
+        .output-ng {
+            color: #ff1a1a !important;
+            font-size: 18px !important;
+        }
+
+        .top-defect-title {
             text-align: center;
-            margin-top: 8px;
-            color: #e2e8f0;
-            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+            font-size: 16px !important;
         }
-        
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); }
+
+        .footer-control {
+            position: fixed;
+            right: 10px;
+            bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: #ccc;
+            font-size: 12px;
+            opacity: 0.4;
         }
-        
-        .pulse {
-            animation: pulse 1s ease;
+
+        .footer-control select {
+            background: #222;
+            color: #fff;
+            border: 1px solid #666;
+            font-size: 12px;
         }
-        
-        .auto-refresh-indicator {
-            animation: pulse 2s infinite;
-        }
-        
-        select {
-            background: rgba(30, 41, 59, 0.8);
-            border: 1px solid rgba(100, 116, 139, 0.5);
-            color: #e2e8f0;
-            border-radius: 5px;
-            padding: 5px 10px;
-            font-size: calc(1rem * var(--scale-factor));
-        }
-        
+
         .error-overlay {
             position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(15, 23, 42, 0.95);
+            inset: 0;
+            z-index: 100;
             display: flex;
             align-items: center;
             justify-content: center;
-            z-index: 100;
+            background: rgba(0, 0, 0, 0.9);
         }
-        
+
         .error-content {
-            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
-            border-radius: 12px;
-            padding: 25px;
-            max-width: 400px;
-            text-align: center;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-            border: 1px solid rgba(100, 116, 139, 0.5);
+            width: 420px;
+            border: 1px solid #666;
+            background: #222;
+            padding: 24px;
         }
-        
+
         .error-title {
-            font-size: calc(1.6rem * var(--scale-factor));
-            color: #f87171;
-            margin-bottom: 12px;
+            color: #ff1a1a;
+            margin: 0 0 12px;
         }
-        
+
         .error-message {
-            font-size: calc(1rem * var(--scale-factor));
+            color: #fff;
             margin-bottom: 16px;
-            color: #cbd5e1;
         }
-        
+
         .error-button {
-            background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 5px;
-            font-size: calc(0.9rem * var(--scale-factor));
+            border: 1px solid #fff;
+            background: #111;
+            color: #fff;
+            padding: 8px 14px;
             cursor: pointer;
-            transition: all 0.3s ease;
-        }
-        
-        .progress-container {
-            width: 100%;
-            height: 10px;
-            background-color: rgba(100, 116, 139, 0.3);
-            border-radius: 5px;
-            margin-top: 8px;
-            overflow: hidden;
-        }
-        
-        .progress-bar {
-            height: 100%;
-            background: linear-gradient(90deg, #8b5cf6 0%, #7c3aed 100%);
-            border-radius: 5px;
-            transition: width 0.5s ease;
-        }
-        
-        @media (max-width: 480px) {
-            :root {
-                --scale-factor: 0.5;
-            }
-        }
-        
-        @media (min-width: 481px) and (max-width: 768px) {
-            :root {
-                --scale-factor: 0.65;
-            }
-        }
-        
-        @media (min-width: 769px) and (max-width: 1024px) {
-            :root {
-                --scale-factor: 0.8;
-            }
-        }
-        
-        @media (min-width: 1025px) and (max-width: 1366px) {
-            :root {
-                --scale-factor: 0.9;
-            }
-        }
-
-        @media (min-width: 1200px) and (max-width: 1366px) and (min-height: 680px) {
-            :root {
-                --scale-factor: 0.95;
-            }
-        }
-        
-        @media (min-width: 1367px) and (max-width: 1920px) {
-            :root {
-                --scale-factor: 1;
-            }
-        }
-        
-        @media (min-width: 1921px) {
-            :root {
-                --scale-factor: 1.1;
-            }
-        }
-        
-        @media (orientation: portrait) {
-            .main-content {
-                flex-direction: column;
-            }
-            
-            .data-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .defect-container {
-                flex-direction: row;
-            }
-            
-            :root {
-                --scale-factor: 0.6;
-            }
-        }
-        
-        @media (max-aspect-ratio: 4/5) {
-            :root {
-                --scale-factor: 0.7;
-            }
-            
-            .main-content {
-                flex-direction: column;
-            }
-            
-            .data-grid {
-                grid-template-columns: 1fr 1fr;
-            }
-        }
-        
-        .no-css-vars .container {
-            transform: scale(0.8);
-        }
-        
-        .model-badge {
-            font-size: calc(1rem * var(--scale-factor));
-            padding: 4px 8px;
-            border-radius: 4px;
-            margin-left: 8px;
-            background: rgba(59, 130, 246, 0.2);
-            color: #93c5fd;
-        }
-        
-        .balance-info {
-            font-size: calc(1.2rem * var(--scale-factor));
-            margin-top: 5px;
-            color: #cbd5e1;
-        }
-
-        @supports (padding: env(safe-area-inset-top)) {
-            :root {
-                --safe-pad: max(12px, env(safe-area-inset-top), env(safe-area-inset-right), env(safe-area-inset-bottom), env(safe-area-inset-left));
-            }
         }
     </style>
 </head>
 <body x-data="publicDisplay()" x-cloak>
-    <div class="container">
-        <div class="header">
-            <div class="line-info">
-                <div class="line-box">
-                    <div class="value" x-text="lineData.name || 'Loading...'"></div>
-                    <div class="value" x-text="lineData.data.labelWeek || 'Loading...'"></div>
-                </div>
-                <div class="model-box">
-                    <div class="value" x-text="lineData.data.model || 'Loading...'"></div>
-                    <div x-show="currentModelId" class="model-badge" x-text="'Model: ' + currentModelId"></div>
-                </div>
-            </div>
-        </div>
-        
-        <div class="main-content">
-            <div class="target-section">
-                <div class="data-grid">
-                    <div class="data-box">
-                        <div class="data-label">TARGET</div>
-                        <div class="data-value" x-text="getCurrentHourTarget()" :class="{'pulse': dataUpdated}"></div>
-                        <div class="percentage neutral" x-text="calculateTargetProgressPercentage() + '%'"></div>
-                        <div class="progress-container">
-                            <div class="progress-bar" :style="'width: ' + Math.min(calculateTargetProgressPercentage(), 100) + '%;'"></div>
-                        </div>
-                        <!-- <div class="balance-info">
-                            Current Hour Target
-                        </div> -->
-                    </div>
-                    <div class="data-box">
-                        <div class="data-label">BALANCE</div>
-                        <div class="data-value" 
-                             x-text="calculateCumulativeBalance()" 
-                             :class="{
-                                 'pulse': dataUpdated,
-                                 'text-green-400': calculateCumulativeBalance() >= 0,
-                                 'text-red-400': calculateCumulativeBalance() < 0
-                             }"></div>
-                        <div class="percentage" 
-                             :class="calculateCumulativeBalance() >= 0 ? 'positive' : 'negative'"
-                             x-text="calculateCumulativeBalancePercentage() + '%'"></div>
-                        <!-- <div class="balance-info">
-                            Accumulated (Running Hours)
-                        </div>
-                        <div class="balance-info text-sm">
-                            Current Hour: <span x-text="getCurrentHourRange()"></span> | 
-                            Balance: <span x-text="calculateCurrentHourBalance()"
-                                       :class="calculateCurrentHourBalance() >= 0 ? 'text-green-300' : 'text-red-300'"></span>
-                        </div> -->
-                    </div>
-                    <div class="data-box">
-                        <div class="data-label">PRODUCTIVITY</div>
-                        <div class="data-value" x-text="lineData.data.outputDay || 0" :class="{'pulse': dataUpdated}"></div>
-                        <div class="percentage" 
-                             :class="calculateOutputPercentage() >= 100 ? 'positive' : (calculateOutputPercentage() >= 80 ? 'neutral' : 'negative')"
-                             x-text="calculateOutputPercentage() + '%'"></div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="defect-section">
-                <div class="defect-container">
-                    <div class="defect-box">
-                        <div class="data-label">DEFECT</div>
-                        <div class="data-value" x-text="lineData.data.actualDefect || 0" :class="{'pulse': dataUpdated}"></div>
-                    </div>
-                    <div class="defect-box">
-                        <div class="data-label">DEFECT RATE</div>
-                        <div class="data-value" 
-                             :class="{'pulse': dataUpdated, 'text-green-400': (lineData.data.defectRatePercentage || 0) <= 5, 'text-yellow-400': (lineData.data.defectRatePercentage || 0) > 5 && (lineData.data.defectRatePercentage || 0) <= 10, 'text-red-400': (lineData.data.defectRatePercentage || 0) > 10}"
-                             x-text="(lineData.data.defectRatePercentage || 0) + '%'"></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <div class="footer">
-            <div class="datetime" id="current-datetime">Loading...</div>
-            <div class="flex items-center justify-center mt-2">
-                <div class="auto-refresh-indicator bg-green-400 rounded-full w-3 h-3 mr-2"></div>
-                <span>Auto Refresh: </span>
-                <select x-model="refreshInterval" @change="changeRefreshInterval" class="ml-2">
-                    <option value="0">Mati</option>
-                    <option value="5000">5 Detik</option>
-                    <option value="10000">10 Detik</option>
-                    <option value="30000">30 Detik</option>
-                    <option value="60000">1 Menit</option>
-                </select>
-            </div>
+    <div class="display-frame">
+        <table class="main-table" border="0">
+            <tbody>
+                <tr>
+                    <td class="line-cell" x-text="'LINE: ' + (lineData.name || 'Loading...')"></td>
+                    <td colspan="2" rowspan="2" class="model-cell" x-text="lineData.data.model || 'Loading...'"></td>
+                    <td rowspan="7" class="side-cell">
+                        <table class="histor">
+                            <thead>
+                                <tr><td colspan="3"><div class="date" id="current-date">Loading...</div></td></tr>
+                                <tr><td colspan="3"><div class="clock" id="current-clock">--:--:--</div></td></tr>
+                                <tr><td colspan="3" style="font-size:14px;color:#fff" x-text="'TARGET : ' + formatNumber(getCurrentHourTarget())"></td></tr>
+                                <tr>
+                                    <th>JAM</th>
+                                    <th>GOOD</th>
+                                    <th>DEFECT</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <template x-for="hour in displayHours" :key="hour.hour">
+                                    <tr>
+                                        <td class="hour-cell" :class="{'hour-active': isActiveHour(hour)}" x-text="compactHour(hour.hour)"></td>
+                                        <td :class="hourlyOutputClass(hour)" x-text="formatNumber(hour.output || 0)"></td>
+                                        <td :class="hourlyDefectClass(hour)" x-text="formatNumber(hour.defect || 0)"></td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                        <table class="table-defect" style="margin-top:5px;color:white;font-weight:bold;">
+                            <thead>
+                                <tr><th colspan="3" class="top-defect-title">TOP 3 DEFECT</th></tr>
+                            </thead>
+                            <tbody>
+                                <template x-for="(item, index) in topDefects" :key="index">
+                                    <tr>
+                                        <td style="width:20%;" x-text="index + 1"></td>
+                                        <td style="text-align:left" x-text="item.name"></td>
+                                        <td style="width:20%;" x-text="item.count"></td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="week-cell" x-text="'WEEK : ' + (lineData.data.labelWeek || '-')"></td>
+                </tr>
+                <tr>
+                    <td class="label-cell">TARGET</td>
+                    <td class="label-cell">BALANCE</td>
+                    <td class="label-cell">PRODUCTIVITY</td>
+                </tr>
+                <tr>
+                    <td class="metric-cell metric-target" x-text="formatNumber(getCurrentHourTarget())"></td>
+                    <td class="metric-cell metric-balance" :class="calculateCumulativeBalance() < 0 ? 'metric-red' : 'metric-green'" x-text="formatNumber(calculateCumulativeBalance())"></td>
+                    <td class="metric-cell metric-productivity" x-text="formatNumber(lineData.data.outputDay || 0)"></td>
+                </tr>
+                <tr>
+                    <td class="percent-cell" x-text="calculateTargetProgressPercentage() + '%'"></td>
+                    <td class="percent-cell" x-text="calculateCumulativeBalancePercentage() + '%'"></td>
+                    <td class="percent-cell" x-text="calculateOutputPercentage() + '%'"></td>
+                </tr>
+                <tr>
+                    <td colspan="2" class="label-cell">ACT DEFECT</td>
+                    <td class="label-cell">DEFECT %</td>
+                </tr>
+                <tr>
+                    <td colspan="2" class="metric-cell metric-defect" :class="(lineData.data.defectRatePercentage || 0) > 3 ? 'metric-red' : 'metric-green'" x-text="formatNumber(lineData.data.actualDefect || 0)"></td>
+                    <td class="metric-cell metric-defect" :class="(lineData.data.defectRatePercentage || 0) > 3 ? 'metric-red' : 'metric-green'" x-text="formatPercent(lineData.data.defectRatePercentage || 0)"></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="footer-control">
+            <span>Auto Refresh</span>
+            <select x-model="refreshInterval" @change="changeRefreshInterval">
+                <option value="0">Mati</option>
+                <option value="5000">5 Detik</option>
+                <option value="10000">10 Detik</option>
+                <option value="30000">30 Detik</option>
+                <option value="60000">1 Menit</option>
+            </select>
         </div>
     </div>
 
@@ -603,8 +391,7 @@
                         this.updateDateTime();
                     }, 1000);
                     
-                    this.setupResponsiveScaling();
-                },
+	                },
 
                 async loadLineData() {
                     try {
@@ -657,43 +444,28 @@
                     this.setupAutoRefresh();
                 },
                 
-                updateDateTime() {
-                    const now = new Date();
-                    const options = { 
-                        weekday: 'long', 
-                        year: 'numeric', 
-                        month: 'long', 
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        second: '2-digit'
-                    };
-                    document.getElementById('current-datetime').textContent = now.toLocaleString('id-ID', options);
-                },
+	                updateDateTime() {
+	                    const now = new Date();
+	                    const dateEl = document.getElementById('current-date');
+	                    const clockEl = document.getElementById('current-clock');
+	                    if (dateEl) {
+	                        dateEl.textContent = now.toLocaleDateString('id-ID', {
+	                            weekday: 'long',
+	                            day: '2-digit',
+	                            month: 'short',
+	                            year: 'numeric'
+	                        });
+	                    }
+	                    if (clockEl) {
+	                        clockEl.textContent = now.toLocaleTimeString('id-ID', {
+	                            hour: '2-digit',
+	                            minute: '2-digit',
+	                            second: '2-digit'
+	                        });
+	                    }
+	                },
                 
-                setupResponsiveScaling() {
-                    const updateScale = () => {
-                        const viewportWidth = window.visualViewport?.width || window.innerWidth;
-                        const viewportHeight = window.visualViewport?.height || window.innerHeight;
-                        const widthScale = viewportWidth / 1920;
-                        const heightScale = viewportHeight / 1080;
-                        let scale = Math.min(widthScale, heightScale);
-
-                        if (viewportHeight > viewportWidth) {
-                            scale = Math.min(scale, 0.78);
-                        }
-
-                        scale = Math.max(0.62, Math.min(scale, 1.15));
-                        document.documentElement.style.setProperty('--scale-factor', scale);
-                    };
-                    
-                    updateScale();
-                    window.addEventListener('resize', updateScale);
-                    window.visualViewport?.addEventListener('resize', updateScale);
-                    window.addEventListener('orientationchange', updateScale);
-                },
-
-                getCurrentTimeInMinutes() {
+	                getCurrentTimeInMinutes() {
                     const now = new Date();
                     return now.getHours() * 60 + now.getMinutes();
                 },
@@ -807,12 +579,73 @@
                     }, 0);
                 },
                 
-                calculateOutputPercentage() {
-                    if (!this.lineData.data.target || this.lineData.data.target === 0) return '0.0';
-                    return ((this.lineData.data.outputDay || 0) / this.lineData.data.target * 100).toFixed(1);
-                }
-            }
-        }
+	                calculateOutputPercentage() {
+	                    if (!this.lineData.data.target || this.lineData.data.target === 0) return '0.0';
+	                    return ((this.lineData.data.outputDay || 0) / this.lineData.data.target * 100).toFixed(1);
+	                },
+
+	                formatNumber(value) {
+	                    return (parseInt(value) || 0).toLocaleString('id-ID');
+	                },
+
+	                formatPercent(value) {
+	                    return `${(parseFloat(value) || 0).toFixed(1)}%`;
+	                },
+
+	                compactHour(value) {
+	                    return String(value || '-').replace(/\s+/g, '');
+	                },
+
+	                isActiveHour(hour) {
+	                    const activeHour = this.getActiveHourData();
+	                    return activeHour && activeHour.hour === hour.hour;
+	                },
+
+	                hourlyOutputClass(hour) {
+	                    return (parseInt(hour.output) || 0) >= (parseInt(hour.targetManual) || 0) ? 'output-ok' : 'output-ng';
+	                },
+
+	                hourlyDefectClass(hour) {
+	                    const output = parseInt(hour.output) || 0;
+	                    const defect = parseInt(hour.defect) || 0;
+	                    const rate = output + defect > 0 ? (defect / (output + defect)) * 100 : 0;
+	                    return rate >= 3 ? 'output-ng' : 'output-ok';
+	                },
+
+	                get displayHours() {
+	                    return (this.lineData.data.hourly_data || []).slice(0, 10);
+	                },
+
+	                get topDefects() {
+	                    const counts = {};
+
+	                    (this.lineData.data.hourly_data || []).forEach(hour => {
+	                        (hour.defectDetails || []).forEach(detail => {
+	                            const name = detail.type || '-';
+	                            counts[name] = (counts[name] || 0) + (parseInt(detail.quantity) || 1);
+	                        });
+	                    });
+
+	                    (this.lineData.data.qcChecks || [])
+	                        .filter(check => check.result === 'defect')
+	                        .forEach(check => {
+	                            const name = check.type || '-';
+	                            counts[name] = (counts[name] || 0) + 1;
+	                        });
+
+	                    const items = Object.entries(counts)
+	                        .map(([name, count]) => ({ name, count }))
+	                        .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
+	                        .slice(0, 3);
+
+	                    while (items.length < 3) {
+	                        items.push({ name: '-', count: '-' });
+	                    }
+
+	                    return items;
+	                }
+	            }
+	        }
         
         document.addEventListener('DOMContentLoaded', function() {
             if (typeof Alpine === 'undefined') {

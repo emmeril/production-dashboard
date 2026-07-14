@@ -1227,6 +1227,24 @@ function summarizeModelDefectCategories(model = {}) {
   };
 }
 
+function getQcCheckHourLabel(model = {}, check = {}) {
+  const index = parseInt(check.hourIndex);
+  if (Number.isInteger(index) && model.hourly_data && model.hourly_data[index]) {
+    return model.hourly_data[index].hour || check.hour || '-';
+  }
+
+  if (check.hour) return check.hour;
+
+  if (check.checkedAt) {
+    const checkedDate = new Date(check.checkedAt);
+    if (!Number.isNaN(checkedDate.getTime())) {
+      return checkedDate.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+    }
+  }
+
+  return '-';
+}
+
 function createProductionSummary(date, lineName = '') {
   return {
     date,
@@ -1661,7 +1679,7 @@ app.post('/api/update-production/:lineName/:modelId', requireLogin, requireLineA
 
 app.post('/api/qc-check/:lineName/:modelId', requireLogin, requireLineAccess, autoCheckDateReset, (req, res) => {
   const { lineName, modelId } = req.params;
-  const { result, type, area, notes } = req.body;
+	  const { result, hourIndex, type, area, notes } = req.body;
   const data = readProductionData();
 
   if (!data.lines[lineName] || !data.lines[lineName].models[modelId]) {
@@ -1676,14 +1694,20 @@ app.post('/api/qc-check/:lineName/:modelId', requireLogin, requireLineAccess, au
     return res.status(400).json({ error: 'Jenis defect dan area defect wajib dipilih' });
   }
 
-  const model = data.lines[lineName].models[modelId];
-  model.qcChecks = Array.isArray(model.qcChecks) ? model.qcChecks : [];
+	  const model = data.lines[lineName].models[modelId];
+	  model.qcChecks = Array.isArray(model.qcChecks) ? model.qcChecks : [];
+	  const parsedHourIndex = parseInt(hourIndex);
+	  const validHourIndex = Number.isInteger(parsedHourIndex) && model.hourly_data && model.hourly_data[parsedHourIndex]
+	    ? parsedHourIndex
+	    : null;
 
-  const qcCheck = {
-    id: generateNumericId(model.qcChecks),
-    result,
-    type: result === 'defect' ? String(type).trim() : '',
-    area: result === 'defect' ? String(area).trim() : '',
+	  const qcCheck = {
+	    id: generateNumericId(model.qcChecks),
+	    result,
+	    hourIndex: validHourIndex,
+	    hour: validHourIndex !== null ? model.hourly_data[validHourIndex].hour : '',
+	    type: result === 'defect' ? String(type).trim() : '',
+	    area: result === 'defect' ? String(area).trim() : '',
     notes: notes ? String(notes).trim() : '',
     checkedAt: new Date().toISOString()
   };
@@ -2530,7 +2554,7 @@ async function generateStyledDateReportExcel(data, date) {
     
     let currentRow = 1;
     
-	    lineSheet.mergeCells(`A${currentRow}:I${currentRow}`);
+	    lineSheet.mergeCells(`A${currentRow}:G${currentRow}`);
     const lineTitle = lineSheet.getCell(`A${currentRow}`);
     lineTitle.value = `PRODUCTION DETAIL - ${lineName} - ${date}`;
     lineTitle.style = titleStyle;
@@ -2567,7 +2591,7 @@ async function generateStyledDateReportExcel(data, date) {
       lineSheet.getCell(`B${currentRow}`).value = (model.defectRatePercentage || 0) + '%';
       currentRow += 2;
       
-	      const hourlyHeaders = ['Jam', 'Target Manual', 'Output', 'Selisih', 'Defect', 'Jenis Defect', 'Defect Area', 'QC Checked', 'Defect Rate %'];
+	      const hourlyHeaders = ['Jam', 'Target Manual', 'Output', 'Selisih', 'Defect', 'QC Checked', 'Defect Rate %'];
       lineSheet.getRow(currentRow).values = hourlyHeaders;
       lineSheet.getRow(currentRow).eachCell((cell) => {
         cell.style = headerStyle;
@@ -2578,17 +2602,13 @@ async function generateStyledDateReportExcel(data, date) {
 	        model.hourly_data.forEach(hour => {
 	          const defectRate = hour.qcChecked > 0 ? ((hour.defect / hour.qcChecked) * 100).toFixed(2) : '0.00';
 	          const selisih = (hour.output || 0) - (hour.targetManual || 0);
-	          const defectCategories = summarizeDefectCategoriesFromDetails(hour.defectDetails || []);
-	          
 	          const row = lineSheet.getRow(currentRow);
 	          row.values = [
-            hour.hour,
-            hour.targetManual || 0,
-            hour.output || 0,
+	            hour.hour,
+	            hour.targetManual || 0,
+	            hour.output || 0,
 	            selisih,
 	            hour.defect || 0,
-	            defectCategories.types,
-	            defectCategories.areas,
 	            hour.qcChecked || 0,
 	            defectRate + '%'
 	          ];
@@ -2600,7 +2620,7 @@ async function generateStyledDateReportExcel(data, date) {
             selisihCell.font = { color: { argb: 'FF0000' }, bold: true };
           }
           
-	          const defectRateCell = row.getCell(9);
+	          const defectRateCell = row.getCell(7);
           const defectRateValue = parseFloat(defectRate);
           if (defectRateValue <= 5) {
             defectRateCell.font = { color: { argb: '00B050' }, bold: true };
@@ -2618,19 +2638,72 @@ async function generateStyledDateReportExcel(data, date) {
         });
       }
       
-      currentRow += 3;
-    });
+	      currentRow += 2;
+
+	      const defectDetailHeaders = ['Jam', 'Jenis Defect', 'Defect Area', 'Qty', 'Notes'];
+	      lineSheet.getRow(currentRow).values = defectDetailHeaders;
+	      lineSheet.getRow(currentRow).eachCell((cell) => {
+	        cell.style = headerStyle;
+	      });
+	      currentRow++;
+
+	      let hasDefectDetail = false;
+	      (model.hourly_data || []).forEach(hour => {
+	        (hour.defectDetails || []).forEach(detail => {
+	          hasDefectDetail = true;
+	          const row = lineSheet.getRow(currentRow);
+	          row.values = [
+	            hour.hour,
+	            detail.type || '-',
+	            detail.area || '-',
+	            parseInt(detail.quantity) || 0,
+	            detail.notes || ''
+	          ];
+	          row.eachCell((cell) => {
+	            cell.style = dataStyle;
+	          });
+	          currentRow++;
+	        });
+	      });
+
+	      (model.qcChecks || [])
+	        .filter(check => check.result === 'defect')
+	        .forEach(check => {
+	          hasDefectDetail = true;
+	          const row = lineSheet.getRow(currentRow);
+	          row.values = [
+	            getQcCheckHourLabel(model, check),
+	            check.type || '-',
+	            check.area || '-',
+	            1,
+	            check.notes || ''
+	          ];
+	          row.eachCell((cell) => {
+	            cell.style = dataStyle;
+	          });
+	          currentRow++;
+	        });
+
+	      if (!hasDefectDetail) {
+	        const row = lineSheet.getRow(currentRow);
+	        row.values = ['-', '-', '-', 0, 'Tidak ada detail defect'];
+	        row.eachCell((cell) => {
+	          cell.style = dataStyle;
+	        });
+	        currentRow++;
+	      }
+
+	      currentRow += 3;
+	    });
     
-    lineSheet.columns = [
-      { width: 15 },
-      { width: 25 },
-      { width: 12 },
-	      { width: 12 },
-	      { width: 12 },
+	    lineSheet.columns = [
+	      { width: 15 },
 	      { width: 32 },
+	      { width: 32 },
+	      { width: 12 },
 	      { width: 32 },
 	      { width: 15 },
-	      { width: 15 }
+	      { width: 18 }
 	    ];
   });
 

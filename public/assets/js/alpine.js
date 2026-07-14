@@ -802,12 +802,13 @@ function dashboard() {
                 const response = await fetch(`/api/qc-check/${this.currentLine}/${this.currentModelId}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        result,
-                        type: this.defectEntry.type,
-                        area: this.defectEntry.area,
-                        notes: this.defectEntry.notes
-                    })
+	                    body: JSON.stringify({
+	                        result,
+	                        hourIndex: this.inputForm.hourIndex,
+	                        type: this.defectEntry.type,
+	                        area: this.defectEntry.area,
+	                        notes: this.defectEntry.notes
+	                    })
                 });
 
                 if (response.ok) {

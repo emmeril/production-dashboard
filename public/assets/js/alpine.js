@@ -1288,7 +1288,7 @@ function dashboard() {
         renderDashboardChart() {
             if (!this.$refs.dashboardChartCanvas || typeof Chart === 'undefined') return;
 
-            const labels = this.dashboardChartData.map(item => `${this.formatShortDate(item.date)} / ${item.lineName}`);
+	            const labels = this.dashboardChartData.map(item => item.lineName || '-');
             const data = this.dashboardChartData;
 
             if (this.dashboardChart) {
@@ -1335,14 +1335,18 @@ function dashboard() {
                     interaction: { mode: 'index', intersect: false },
                     plugins: {
                         legend: { position: 'top', labels: { boxWidth: 12, usePointStyle: true } },
-                        tooltip: {
-                            callbacks: {
-                                afterTitle: items => {
-                                    const item = data[items[0].dataIndex];
-                                    return item ? `Line: ${item.lineName}` : '';
-                                }
-                            }
-                        }
+	                        tooltip: {
+	                            callbacks: {
+	                                title: items => {
+	                                    const item = data[items[0].dataIndex];
+	                                    return item ? item.lineName : '';
+	                                },
+	                                afterTitle: items => {
+	                                    const item = data[items[0].dataIndex];
+	                                    return item ? `Tanggal: ${this.formatShortDate(item.date)}` : '';
+	                                }
+	                            }
+	                        }
                     },
                     scales: {
                         x: { ticks: { maxRotation: 45, minRotation: 0 }, grid: { display: false } },

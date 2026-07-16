@@ -672,7 +672,7 @@
 	                                    </div>
 
 	                                    <div class="min-h-5 text-right text-sm font-semibold text-gray-500 mb-2">
-	                                        <span x-show="isSelectedProductionHourLocked()">Data jam ini sudah terkunci</span>
+	                                        <span x-show="isSelectedProductionHourLocked()" x-text="isProductionHourTooEarly(lineDetail.hourly_data[inputForm.hourIndex]) ? 'Jam produksi ini belum dimulai' : 'Data jam ini sudah terkunci'"></span>
 	                                    </div>
 	                                    <div class="flex justify-end">
 	                                        <button type="submit" :disabled="isSelectedProductionHourLocked()" class="production-save-btn inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">

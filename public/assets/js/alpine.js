@@ -33,6 +33,7 @@ function dashboard() {
         users: [],
         dateReport: [],
         reportDate: new Date().toISOString().split('T')[0],
+        productionClockMinute: null,
 
         // Forms
         inputForm: {
@@ -138,6 +139,8 @@ function dashboard() {
 
         // Initialize
         async init() {
+            this.refreshProductionClock();
+            setInterval(() => this.refreshProductionClock(), 30000);
             await this.checkAuth();
             if (!this.isAuthenticated) {
                 this.setupNavigation();
@@ -879,7 +882,29 @@ function dashboard() {
 	        },
 
 	        isProductionHourLocked(hour) {
-	            return this.currentUser.role === 'operator' && Boolean(hour?.productionLocked);
+	            return this.currentUser.role === 'operator' && (
+	                Boolean(hour?.productionLocked) || this.isProductionHourTooEarly(hour)
+	            );
+	        },
+
+	        isProductionHourTooEarly(hour) {
+	            if (this.currentUser.role !== 'operator') return false;
+
+	            const match = String(hour?.hour || '').match(/^(\d{1,2}):(\d{2})/);
+	            if (!match) return false;
+
+	            const currentMinutes = this.productionClockMinute ?? this.getCurrentProductionMinute();
+	            const startMinutes = (parseInt(match[1], 10) * 60) + parseInt(match[2], 10);
+	            return currentMinutes < startMinutes;
+	        },
+
+	        getCurrentProductionMinute() {
+	            const now = new Date();
+	            return (now.getHours() * 60) + now.getMinutes();
+	        },
+
+	        refreshProductionClock() {
+	            this.productionClockMinute = this.getCurrentProductionMinute();
 	        },
 
 	        isSelectedProductionHourLocked() {
@@ -895,7 +920,11 @@ function dashboard() {
 	            }
 
 	            if (this.isSelectedProductionHourLocked()) {
-	                this.showToast('Data produksi jam ini sudah disimpan dan tidak bisa diubah', 'error');
+	                const hour = this.lineDetail.hourly_data?.[this.inputForm.hourIndex];
+	                const message = this.isProductionHourTooEarly(hour)
+	                    ? 'Jam produksi ini belum dimulai. Silakan input saat jamnya sudah sesuai'
+	                    : 'Data produksi jam ini sudah disimpan dan tidak bisa diubah';
+	                this.showToast(message, 'error');
 	                return;
 	            }
 
@@ -1010,6 +1039,14 @@ function dashboard() {
             }
 
             const hour = this.lineDetail.hourly_data[hourIndex];
+
+	        if (this.isProductionHourLocked(hour)) {
+	            const message = this.isProductionHourTooEarly(hour)
+	                ? 'Jam produksi ini belum dimulai. Silakan input saat jamnya sudah sesuai'
+	                : 'Data produksi jam ini sudah disimpan dan tidak bisa diubah';
+	            this.showToast(message, 'error');
+	            return;
+	        }
 
             try {
                 const response = await fetch(`/api/update-production/${lineName}/${modelId}`, {

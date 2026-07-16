@@ -901,6 +901,41 @@ function isOperatorProductionLocked(req, hour) {
   return req.session.user?.role === 'operator' && Boolean(hour?.productionLocked);
 }
 
+function getJakartaMinutesNow() {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Jakarta',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23'
+  }).formatToParts(new Date());
+  const values = Object.fromEntries(parts.map(part => [part.type, part.value]));
+  return (parseInt(values.hour, 10) * 60) + parseInt(values.minute, 10);
+}
+
+function isOperatorProductionHourTooEarly(req, hour) {
+  if (req.session.user?.role !== 'operator') return false;
+
+  const match = String(hour?.hour || '').match(/^(\d{1,2}):(\d{2})/);
+  if (!match) return false;
+
+  const startMinutes = (parseInt(match[1], 10) * 60) + parseInt(match[2], 10);
+  return getJakartaMinutesNow() < startMinutes;
+}
+
+function rejectUnavailableOperatorProductionHour(req, res, hour) {
+  if (isOperatorProductionLocked(req, hour)) {
+    res.status(403).json({ error: 'Data produksi jam ini sudah disimpan dan tidak bisa diubah' });
+    return true;
+  }
+
+  if (isOperatorProductionHourTooEarly(req, hour)) {
+    res.status(403).json({ error: 'Jam produksi ini belum dimulai. Silakan input saat jamnya sudah sesuai' });
+    return true;
+  }
+
+  return false;
+}
+
 function autoCheckDateReset(req, res, next) {
   checkAndResetDataForNewDay();
   next();
@@ -1675,9 +1710,7 @@ app.post('/api/update-hourly/:lineName', requireLogin, requireLineAccess, autoCh
   }
 
 	  const currentHour = active.model.hourly_data[index];
-	  if (isOperatorProductionLocked(req, currentHour)) {
-	    return res.status(403).json({ error: 'Data produksi jam ini sudah disimpan dan tidak bisa diubah' });
-	  }
+	  if (rejectUnavailableOperatorProductionHour(req, res, currentHour)) return;
 
 	  const nextTargetManual = targetManual !== undefined
 	    ? parseInt(targetManual) || 0
@@ -1728,9 +1761,7 @@ app.post('/api/update-target-manual/:lineName', requireLogin, requireLineAccess,
     return res.status(400).json({ error: 'Invalid hour index' });
   }
 
-	  if (isOperatorProductionLocked(req, active.model.hourly_data[index])) {
-	    return res.status(403).json({ error: 'Data produksi jam ini sudah disimpan dan tidak bisa diubah' });
-	  }
+	  if (rejectUnavailableOperatorProductionHour(req, res, active.model.hourly_data[index])) return;
 
 	  const nextTargetManual = parseInt(targetManual) || 0;
   active.model.hourly_data[index].targetManual = nextTargetManual;
@@ -1765,9 +1796,7 @@ app.post('/api/update-hourly-direct/:lineName', requireLogin, requireLineAccess,
 
 	  const nextOutput = parseInt(output) || 0;
 	  const nextTargetManual = parseInt(targetManual) || 0;
-	  if (isOperatorProductionLocked(req, active.model.hourly_data[index])) {
-	    return res.status(403).json({ error: 'Data produksi jam ini sudah disimpan dan tidak bisa diubah' });
-	  }
+	  if (rejectUnavailableOperatorProductionHour(req, res, active.model.hourly_data[index])) return;
 
 	  active.model.hourly_data[index] = {
 	    ...active.model.hourly_data[index],
@@ -1813,6 +1842,7 @@ app.post('/api/update-hourly/:lineName/:modelId', requireLogin, requireLineAcces
   }
 
   const currentHour = data.lines[lineName].models[modelId].hourly_data[index];
+  if (rejectUnavailableOperatorProductionHour(req, res, currentHour)) return;
   const nextTargetManual = parseInt(targetManual) || currentHour.targetManual || 0;
   const nextOutput = parseInt(output) || 0;
   const nextDefect = parseInt(defect) || 0;
@@ -1861,9 +1891,7 @@ app.post('/api/update-production/:lineName/:modelId', requireLogin, requireLineA
   }
 
 	  const currentHour = model.hourly_data[index];
-	  if (isOperatorProductionLocked(req, currentHour)) {
-	    return res.status(403).json({ error: 'Data produksi jam ini sudah disimpan dan tidak bisa diubah' });
-	  }
+	  if (rejectUnavailableOperatorProductionHour(req, res, currentHour)) return;
 
 	  const nextOutput = parseInt(output) || 0;
 	  const nextTargetManual = parseInt(targetManual) || currentHour.targetManual || 0;
@@ -1961,9 +1989,7 @@ app.post('/api/update-target-manual/:lineName/:modelId', requireLogin, requireLi
 	  }
 
 	  const currentHour = model.hourly_data[index];
-	  if (isOperatorProductionLocked(req, currentHour)) {
-	    return res.status(403).json({ error: 'Data produksi jam ini sudah disimpan dan tidak bisa diubah' });
-	  }
+	  if (rejectUnavailableOperatorProductionHour(req, res, currentHour)) return;
 
 	  model.hourly_data[index].targetManual = parseInt(targetManual);
 	  
@@ -2000,9 +2026,7 @@ app.post('/api/update-hourly-direct/:lineName/:modelId', requireLogin, requireLi
   const selisih = parseInt(output) - parseInt(targetManual);
 
 	  const currentHour = data.lines[lineName].models[modelId].hourly_data[hourIndex];
-	  if (isOperatorProductionLocked(req, currentHour)) {
-	    return res.status(403).json({ error: 'Data produksi jam ini sudah disimpan dan tidak bisa diubah' });
-	  }
+	  if (rejectUnavailableOperatorProductionHour(req, res, currentHour)) return;
 
 	  data.lines[lineName].models[modelId].hourly_data[hourIndex] = {
 	    ...currentHour,

@@ -263,7 +263,7 @@ function dashboard() {
 	        },
 
 	        canManageLines() {
-	            return this.currentUser.role === 'admin';
+	            return ['admin', 'admin_operator_sewing'].includes(this.currentUser.role);
 	        },
 
 	        canManageProduction() {

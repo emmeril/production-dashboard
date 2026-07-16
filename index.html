@@ -829,7 +829,7 @@
                 <div x-show="currentPage === 'admin-management' && canManageLines()" class="fade-in">
                     <div class="mb-6">
 	                        <h1 class="text-2xl font-bold text-gray-800 flex items-center"><i class="fa-solid fa-list-check text-blue-600 mr-3"></i>Management Line</h1>
-	                        <p class="text-gray-600">Kelola lines, model, dan konfigurasi sistem</p>
+	                        <p class="text-gray-600" x-text="currentUser.role === 'admin_operator_sewing' ? 'Tambah, edit, dan lihat line produksi tanpa akses hapus' : 'Kelola lines, model, dan konfigurasi sistem'"></p>
                     </div>
 
                     <!-- Line Management - Untuk admin dan admin_operator -->
@@ -911,7 +911,7 @@
 		                                                    <div class="table-actions">
 		                                                    <button @click="openLineModal(line)" class="btn-action btn-action-primary"><i class="fa-solid fa-pen-to-square"></i>Edit</button>
 		                                                    <button @click="setActiveModel(line.lineName, line.modelId)" class="btn-action btn-action-success"><i class="fa-solid fa-toggle-on"></i>Set Aktif</button>
-		                                                    <button @click="deleteModel(line.lineName, line.modelId)" class="btn-action btn-action-danger" x-show="!line.data.lineActiveModel || line.data.lineActiveModel !== line.modelId"><i class="fa-solid fa-trash"></i>Hapus Model</button>
+		                                                    <button @click="deleteModel(line.lineName, line.modelId)" class="btn-action btn-action-danger" x-show="currentUser.role === 'admin' && (!line.data.lineActiveModel || line.data.lineActiveModel !== line.modelId)"><i class="fa-solid fa-trash"></i>Hapus Model</button>
 		                                                    <button @click="deleteLine(line.lineName)" class="btn-action btn-action-danger" x-show="currentUser.role === 'admin'"><i class="fa-solid fa-trash-can"></i>Hapus Line</button>
 		                                                    </div>
 		                                                </td>

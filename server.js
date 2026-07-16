@@ -874,7 +874,7 @@ function requireAdminOrAdminOperator(req, res, next) {
 }
 
 function requireLineManagementAccess(req, res, next) {
-  if (hasAnyRole(req.session.user, ['admin'])) {
+  if (hasAnyRole(req.session.user, ['admin', 'admin_operator_sewing'])) {
     next();
   } else {
     res.status(403).json({ error: 'Forbidden - Line management access required' });
@@ -2459,7 +2459,7 @@ app.put('/api/lines/:lineName', requireLogin, requireLineManagementAccess, autoC
   });
 });
 
-app.delete('/api/lines/:lineName/models/:modelId', requireLogin, requireLineManagementAccess, (req, res) => {
+app.delete('/api/lines/:lineName/models/:modelId', requireLogin, requireAdmin, (req, res) => {
   const { lineName, modelId } = req.params;
   const data = readProductionData();
 
@@ -3250,7 +3250,7 @@ app.put('/api/operators/:lineName/:operatorId', requireLogin, requireLineManagem
   res.json({ message: 'Operator updated successfully', operator: operators[operatorIndex] });
 });
 
-app.delete('/api/operators/:lineName/:operatorId', requireLogin, requireLineManagementAccess, autoCheckDateReset, (req, res) => {
+app.delete('/api/operators/:lineName/:operatorId', requireLogin, requireAdmin, autoCheckDateReset, (req, res) => {
   const { lineName, operatorId } = req.params;
   const data = readProductionData();
   const active = getActiveModel(data, lineName);

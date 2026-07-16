@@ -275,7 +275,15 @@ function dashboard() {
 	        },
 
 	        canDeleteQc() {
-	            return this.currentUser.role === 'admin';
+	            return ['admin', 'admin_operator_qc'].includes(this.currentUser.role);
+	        },
+
+	        canCorrectProduction() {
+	            return ['admin', 'admin_operator_sewing'].includes(this.currentUser.role);
+	        },
+
+	        canCorrectQc() {
+	            return ['admin', 'admin_operator_qc'].includes(this.currentUser.role);
 	        },
 
 	        isSewingReportViewer() {
@@ -1050,9 +1058,39 @@ function dashboard() {
 	            }
 	        },
 
+	        async editQcCheck(check) {
+	            if (!this.canCorrectQc()) return;
+
+	            const type = prompt('Jenis defect:', check.type || '');
+	            if (type === null) return;
+	            const area = prompt('Area defect:', check.area || '');
+	            if (area === null) return;
+	            const notes = prompt('Keterangan:', check.notes || '');
+	            if (notes === null) return;
+
+	            try {
+	                const response = await fetch(`/api/qc-check/${this.currentLine}/${this.currentModelId}/${check.id}`, {
+	                    method: 'PUT',
+	                    headers: { 'Content-Type': 'application/json' },
+	                    body: JSON.stringify({ type, area, notes })
+	                });
+	                if (!response.ok) {
+	                    const error = await response.json();
+	                    this.showToast(error.error || 'Gagal memperbarui defect', 'error');
+	                    return;
+	                }
+	                this.showToast('Data defect berhasil diperbarui', 'success');
+	                await this.loadLineDetail(this.currentLine, this.currentModelId);
+	                await this.loadDashboardData();
+	            } catch (error) {
+	                console.error('Error updating QC check:', error);
+	                this.showToast('Error memperbarui defect', 'error');
+	            }
+	        },
+
         // Methods for target manual
         async updateTargetManual(lineName, modelId, hourIndex, targetManual) {
-            if (!this.canManageProduction()) {
+            if (!this.canManageProduction() && !this.canCorrectProduction()) {
                 this.showToast('Anda tidak memiliki akses untuk input data', 'error');
                 return;
             }
@@ -1086,7 +1124,7 @@ function dashboard() {
 
         // Update data langsung dari tabel
         async updateHourlyDataDirect(lineName, modelId, hourIndex) {
-            if (!this.canManageProduction()) {
+            if (!this.canManageProduction() && !this.canCorrectProduction()) {
                 this.showToast('Anda tidak memiliki akses untuk input data', 'error');
                 return;
             }
@@ -1660,6 +1698,17 @@ function dashboard() {
                 .slice(0, 1);
         },
 
+	        get allDefectChecks() {
+	            return (this.lineDetail.qcChecks || [])
+	                .filter(check => check.result === 'defect')
+	                .sort((a, b) => new Date(b.checkedAt || 0) - new Date(a.checkedAt || 0));
+	        },
+
+	        get allQcChecks() {
+	            return [...(this.lineDetail.qcChecks || [])]
+	                .sort((a, b) => new Date(b.checkedAt || 0) - new Date(a.checkedAt || 0));
+	        },
+
         get selectedDashboardLineData() {
             return [...(this.dashboardData.lineDaily || [])]
                 .sort((a, b) => new Date(a.date) - new Date(b.date) || a.lineName.localeCompare(b.lineName, undefined, { numeric: true }));
@@ -1700,6 +1749,25 @@ function dashboard() {
                 .map(item => ({ ...item, dates: item.dates.sort((a, b) => new Date(a) - new Date(b)) }))
                 .sort((a, b) => a.lineName.localeCompare(b.lineName, undefined, { numeric: true }));
         },
+
+	        async deleteProductionHour(lineName, modelId, hourIndex) {
+	            if (!this.canCorrectProduction() || !confirm('Hapus hasil sewing pada jam ini?')) return;
+
+	            try {
+	                const response = await fetch(`/api/production/${lineName}/${modelId}/${hourIndex}`, { method: 'DELETE' });
+	                if (!response.ok) {
+	                    const error = await response.json();
+	                    this.showToast(error.error || 'Gagal menghapus hasil sewing', 'error');
+	                    return;
+	                }
+	                this.showToast('Hasil sewing berhasil dihapus', 'success');
+	                await this.loadLineDetail(lineName, modelId);
+	                await this.loadDashboardData();
+	            } catch (error) {
+	                console.error('Error deleting sewing result:', error);
+	                this.showToast('Error menghapus hasil sewing', 'error');
+	            }
+	        },
 
         get dashboardDailyDetails() {
             return this.selectedDashboardLineData

@@ -910,7 +910,7 @@ function requireLineAccess(req, res, next) {
 }
 
 function requireProductionWriteAccess(req, res, next) {
-  if (!hasAnyRole(req.session.user, ['admin', 'operator'])) {
+  if (!hasAnyRole(req.session.user, ['admin', 'admin_operator_sewing', 'operator'])) {
     return res.status(403).json({ error: 'Akses input hasil sewing diperlukan' });
   }
   return next();
@@ -922,7 +922,7 @@ function requireQcWriteAccess(req, res, next) {
 }
 
 function requireQcManageAccess(req, res, next) {
-  if (hasAnyRole(req.session.user, ['admin'])) return next();
+  if (hasAnyRole(req.session.user, ['admin', 'admin_operator_qc'])) return next();
   res.status(403).json({ error: 'Akses kelola hasil QC diperlukan' });
 }
 
@@ -3277,6 +3277,36 @@ app.get('/api/defect-config', requireLogin, (req, res) => {
   res.json(readDefectConfig());
 });
 
+app.delete('/api/production/:lineName/:modelId/:hourIndex', requireLogin, requireLineAccess, requireProductionWriteAccess, autoCheckDateReset, (req, res) => {
+  const { lineName, modelId } = req.params;
+  const index = parseInt(req.params.hourIndex);
+  const data = readProductionData();
+  const model = data.lines?.[lineName]?.models?.[modelId];
+
+  if (!model?.hourly_data || !Number.isInteger(index) || !model.hourly_data[index]) {
+    return res.status(404).json({ error: 'Data produksi per jam tidak ditemukan' });
+  }
+
+  if (req.session.user.role === 'operator') {
+    return res.status(403).json({ error: 'Hanya admin atau Admin Operator Sewing yang dapat menghapus hasil sewing' });
+  }
+
+  const currentHour = model.hourly_data[index];
+  model.hourly_data[index] = {
+    ...currentHour,
+    output: 0,
+    selisih: -(parseInt(currentHour.targetManual) || 0),
+    productionLocked: false,
+    productionLockedAt: null,
+    productionLockedBy: null
+  };
+
+  const summary = recalculateModelTotals(model);
+  writeProductionData(data);
+  updateTodayBackup();
+  res.json({ message: 'Hasil sewing berhasil dihapus', data: model, summary });
+});
+
 app.delete('/api/qc-check/:lineName/:modelId/:checkId', requireLogin, requireLineAccess, requireQcManageAccess, autoCheckDateReset, (req, res) => {
   const { lineName, modelId, checkId } = req.params;
   const data = readProductionData();
@@ -3294,6 +3324,32 @@ app.delete('/api/qc-check/:lineName/:modelId/:checkId', requireLogin, requireLin
   updateTodayBackup();
 
   res.json({ message: 'Data QC berhasil dihapus', deletedCheck, data: model, summary });
+});
+
+app.put('/api/qc-check/:lineName/:modelId/:checkId', requireLogin, requireLineAccess, requireQcManageAccess, autoCheckDateReset, (req, res) => {
+  const { lineName, modelId, checkId } = req.params;
+  const { type, area, notes } = req.body;
+  const data = readProductionData();
+  const model = data.lines?.[lineName]?.models?.[modelId];
+
+  if (!model) return res.status(404).json({ error: 'Line atau model tidak ditemukan' });
+
+  model.qcChecks = Array.isArray(model.qcChecks) ? model.qcChecks : [];
+  const check = model.qcChecks.find(item => String(item.id) === String(checkId));
+  if (!check || check.result !== 'defect') return res.status(404).json({ error: 'Data defect tidak ditemukan' });
+  if (!String(type || '').trim() || !String(area || '').trim()) {
+    return res.status(400).json({ error: 'Jenis defect dan area defect wajib diisi' });
+  }
+
+  check.type = String(type).trim();
+  check.area = String(area).trim();
+  check.notes = String(notes || '').trim();
+  check.updatedAt = new Date().toISOString();
+
+  const summary = recalculateModelTotals(model);
+  writeProductionData(data);
+  updateTodayBackup();
+  res.json({ message: 'Data defect berhasil diperbarui', check, data: model, summary });
 });
 
 app.get('/api/public-display-settings', (req, res) => {

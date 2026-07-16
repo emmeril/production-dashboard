@@ -236,11 +236,11 @@ function dashboard() {
 	                : [lineSummaryNav];
 
 	            if (this.canViewDashboard()) {
-	                this.navigation = [
-	                    ...baseNav,
-	                    { name: 'Management Line', page: 'admin-management', iconClass: 'fa-list-check' },
-                    { name: 'Report', page: 'report', iconClass: 'fa-chart-column' }
-                ];
+	                this.navigation = [...baseNav];
+	                if (this.canManageLines()) {
+	                    this.navigation.push({ name: 'Management Line', page: 'admin-management', iconClass: 'fa-list-check' });
+	                }
+	                this.navigation.push({ name: 'Report', page: 'report', iconClass: 'fa-chart-column' });
 	                if (this.currentUser.role === 'admin') {
 	                    this.navigation.push(
 	                        { name: 'Manajemen User', page: 'user-management', iconClass: 'fa-users-gear' },
@@ -255,7 +255,36 @@ function dashboard() {
 	        },
 
 	        canViewDashboard() {
-	            return this.currentUser.role === 'admin' || this.currentUser.role === 'admin_operator';
+	            return this.currentUser.role === 'admin' || this.isAdminOperator();
+	        },
+
+	        isAdminOperator() {
+	            return ['admin_operator_sewing', 'admin_operator_qc'].includes(this.currentUser.role);
+	        },
+
+	        canManageLines() {
+	            return ['admin', 'admin_operator_sewing'].includes(this.currentUser.role);
+	        },
+
+	        canManageProduction() {
+	            return ['admin', 'admin_operator_sewing', 'operator'].includes(this.currentUser.role);
+	        },
+
+	        canManageQc() {
+	            return ['admin', 'admin_operator_qc', 'operator'].includes(this.currentUser.role);
+	        },
+
+	        canDeleteQc() {
+	            return ['admin', 'admin_operator_qc'].includes(this.currentUser.role);
+	        },
+
+	        roleLabel(role) {
+	            return {
+	                admin: 'Admin',
+	                admin_operator_sewing: 'Admin Operator Sewing',
+	                admin_operator_qc: 'Admin Operator QC',
+	                operator: 'Operator'
+	            }[role] || role;
 	        },
 
 	        getDefaultPage() {
@@ -298,11 +327,11 @@ function dashboard() {
 	            }
 
 	            if (state.currentPage === 'admin-management') {
-	                return this.currentUser.role === 'admin' || this.currentUser.role === 'admin_operator';
+	                return this.canManageLines();
 	            }
 
             if (state.currentPage === 'report') {
-                return this.currentUser.role === 'admin' || this.currentUser.role === 'admin_operator';
+                return this.canViewDashboard();
             }
 
 	            if (state.currentPage === 'user-management' || state.currentPage === 'defect-categories' || state.currentPage === 'public-display-settings' || state.currentPage === 'system-actions') {
@@ -310,7 +339,7 @@ function dashboard() {
 	            }
 
             if (state.currentPage === 'input-data') {
-                return this.currentUser.role !== 'admin_operator';
+                return this.canManageProduction() || this.canManageQc();
             }
 
             return true;
@@ -382,8 +411,7 @@ function dashboard() {
         },
 
         async inputData(lineName, modelId) {
-            // Cek jika user adalah admin_operator, maka tidak boleh input data
-            if (this.currentUser.role === 'admin_operator') {
+            if (!this.canManageProduction() && !this.canManageQc()) {
                 this.showToast('Anda tidak memiliki akses untuk input data', 'error');
                 return;
             }
@@ -913,9 +941,8 @@ function dashboard() {
 	        },
 
 	        async submitProductionData() {
-	            // Cek jika user adalah admin_operator, maka tidak boleh input data
-	            if (this.currentUser.role === 'admin_operator') {
-	                this.showToast('Anda tidak memiliki akses untuk input data', 'error');
+	            if (!this.canManageProduction()) {
+	                this.showToast('Anda tidak memiliki akses untuk input hasil sewing', 'error');
 	                return;
 	            }
 
@@ -957,7 +984,7 @@ function dashboard() {
         },
 
         async submitQcCheck(result) {
-            if (this.currentUser.role === 'admin_operator') {
+            if (!this.canManageQc()) {
                 this.showToast('Anda tidak memiliki akses untuk input QC', 'error');
                 return;
             }
@@ -995,10 +1022,28 @@ function dashboard() {
             }
         },
 
+	        async deleteQcCheck(checkId) {
+	            if (!this.canDeleteQc() || !confirm('Hapus data QC ini?')) return;
+
+	            try {
+	                const response = await fetch(`/api/qc-check/${this.currentLine}/${this.currentModelId}/${checkId}`, { method: 'DELETE' });
+	                if (!response.ok) {
+	                    const error = await response.json();
+	                    this.showToast(error.error || 'Gagal menghapus data QC', 'error');
+	                    return;
+	                }
+	                this.showToast('Data QC berhasil dihapus', 'success');
+	                await this.loadLineDetail(this.currentLine, this.currentModelId);
+	                await this.loadDashboardData();
+	            } catch (error) {
+	                console.error('Error deleting QC check:', error);
+	                this.showToast('Error menghapus data QC', 'error');
+	            }
+	        },
+
         // Methods for target manual
         async updateTargetManual(lineName, modelId, hourIndex, targetManual) {
-            // Cek jika user adalah admin_operator, maka tidak boleh input data
-            if (this.currentUser.role === 'admin_operator') {
+            if (!this.canManageProduction()) {
                 this.showToast('Anda tidak memiliki akses untuk input data', 'error');
                 return;
             }
@@ -1032,8 +1077,7 @@ function dashboard() {
 
         // Update data langsung dari tabel
         async updateHourlyDataDirect(lineName, modelId, hourIndex) {
-            // Cek jika user adalah admin_operator, maka tidak boleh input data
-            if (this.currentUser.role === 'admin_operator') {
+            if (!this.canManageProduction()) {
                 this.showToast('Anda tidak memiliki akses untuk input data', 'error');
                 return;
             }

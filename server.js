@@ -167,7 +167,7 @@ function buildInitialUsersData() {
         "password": hashPassword("adminop123"),
         "name": "Admin Operator",
         "line": "all",
-        "role": "admin_operator"
+        "role": "admin_operator_sewing"
       },
       {
         "id": 3,
@@ -626,6 +626,14 @@ function writeProductionData(data) {
 
 function readUsersData() {
   try {
+    let migrated = false;
+    (usersDataCache.users || []).forEach(user => {
+      if (user.role === 'admin_operator') {
+        user.role = 'admin_operator_sewing';
+        migrated = true;
+      }
+    });
+    if (migrated) void upsertAppData(USERS_DATA_KEY, usersDataCache);
     return usersDataCache;
   } catch (error) {
     console.error('ERROR: Gagal membaca users data cache:', error.message);
@@ -843,8 +851,11 @@ function requireLogin(req, res, next) {
 }
 
 function hasAnyRole(user, allowedRoles) {
-  return Boolean(user && allowedRoles.includes(user.role));
+  const role = user?.role === 'admin_operator' ? 'admin_operator_sewing' : user?.role;
+  return Boolean(role && allowedRoles.includes(role));
 }
+
+const ADMIN_OPERATOR_ROLES = ['admin_operator_sewing', 'admin_operator_qc'];
 
 function requireAdmin(req, res, next) {
   if (hasAnyRole(req.session.user, ['admin'])) {
@@ -855,7 +866,7 @@ function requireAdmin(req, res, next) {
 }
 
 function requireAdminOrAdminOperator(req, res, next) {
-  if (hasAnyRole(req.session.user, ['admin', 'admin_operator'])) {
+  if (hasAnyRole(req.session.user, ['admin', ...ADMIN_OPERATOR_ROLES])) {
     next();
   } else {
     res.status(403).json({ error: 'Forbidden - Admin or Admin Operator access required' });
@@ -863,7 +874,7 @@ function requireAdminOrAdminOperator(req, res, next) {
 }
 
 function requireLineManagementAccess(req, res, next) {
-  if (hasAnyRole(req.session.user, ['admin', 'admin_operator'])) {
+  if (hasAnyRole(req.session.user, ['admin', 'admin_operator_sewing'])) {
     next();
   } else {
     res.status(403).json({ error: 'Forbidden - Line management access required' });
@@ -871,7 +882,7 @@ function requireLineManagementAccess(req, res, next) {
 }
 
 function requireDateReportAccess(req, res, next) {
-  if (hasAnyRole(req.session.user, ['admin', 'admin_operator'])) {
+  if (hasAnyRole(req.session.user, ['admin', ...ADMIN_OPERATOR_ROLES])) {
     next();
   } else {
     res.status(403).json({ error: 'Forbidden - Date report access required' });
@@ -881,20 +892,46 @@ function requireDateReportAccess(req, res, next) {
 function requireLineAccess(req, res, next) {
   const user = req.session.user;
   const lineName = req.params.lineName;
+  const role = user?.role === 'admin_operator' ? 'admin_operator_sewing' : user?.role;
   
   if (!user) {
     return res.status(401).json({ error: 'Unauthorized - Please login' });
   }
 
-  if (user.role === 'admin' || user.role === 'admin_operator') {
+  if (role === 'admin' || ADMIN_OPERATOR_ROLES.includes(role)) {
     return next();
   }
 
-  if (user.role === 'operator' && user.line === lineName) {
+  if (role === 'operator' && user.line === lineName) {
     return next();
   }
 
   res.status(403).json({ error: 'Access denied to this line' });
+}
+
+function requireProductionWriteAccess(req, res, next) {
+  if (!hasAnyRole(req.session.user, ['admin', 'admin_operator_sewing', 'operator'])) {
+    return res.status(403).json({ error: 'Akses input hasil sewing diperlukan' });
+  }
+
+  if (hasAnyRole(req.session.user, ['admin_operator_sewing'])) {
+    const qcFields = ['defect', 'qcChecked', 'defectDetails'];
+    if (qcFields.some(field => Object.prototype.hasOwnProperty.call(req.body || {}, field))) {
+      return res.status(403).json({ error: 'Admin Operator Sewing tidak dapat mengubah hasil QC atau defect' });
+    }
+  }
+
+  return next();
+}
+
+function requireQcWriteAccess(req, res, next) {
+  if (hasAnyRole(req.session.user, ['admin', 'admin_operator_qc', 'operator'])) return next();
+  res.status(403).json({ error: 'Akses input hasil QC diperlukan' });
+}
+
+function requireQcManageAccess(req, res, next) {
+  if (hasAnyRole(req.session.user, ['admin', 'admin_operator_qc'])) return next();
+  res.status(403).json({ error: 'Akses kelola hasil QC diperlukan' });
 }
 
 function isOperatorProductionLocked(req, hour) {
@@ -1665,12 +1702,13 @@ app.post('/api/login', (req, res) => {
   const user = usersData.users.find(u => u.username === username);
 
   if (user && verifyPassword(password, user.password)) {
+    const normalizedRole = user.role === 'admin_operator' ? 'admin_operator_sewing' : user.role;
     req.session.user = {
       id: user.id,
       name: user.name,
       username: user.username,
       line: user.line,
-      role: user.role
+      role: normalizedRole
     };
     res.json({
       message: 'Login successful',
@@ -1688,13 +1726,14 @@ app.post('/api/logout', (req, res) => {
 
 app.get('/api/current-user', (req, res) => {
   if (req.session.user) {
+    if (req.session.user.role === 'admin_operator') req.session.user.role = 'admin_operator_sewing';
     res.json(req.session.user);
   } else {
     res.status(401).json({ error: 'Not logged in' });
   }
 });
 
-app.post('/api/update-hourly/:lineName', requireLogin, requireLineAccess, autoCheckDateReset, (req, res) => {
+app.post('/api/update-hourly/:lineName', requireLogin, requireLineAccess, requireProductionWriteAccess, autoCheckDateReset, (req, res) => {
   const { lineName } = req.params;
   const { hourIndex, output, defect, qcChecked, targetManual, defectDetails } = req.body;
   const data = readProductionData();
@@ -1746,7 +1785,7 @@ app.post('/api/update-hourly/:lineName', requireLogin, requireLineAccess, autoCh
   });
 });
 
-app.post('/api/update-target-manual/:lineName', requireLogin, requireLineAccess, autoCheckDateReset, (req, res) => {
+app.post('/api/update-target-manual/:lineName', requireLogin, requireLineAccess, requireProductionWriteAccess, autoCheckDateReset, (req, res) => {
   const { lineName } = req.params;
   const { hourIndex, targetManual } = req.body;
   const data = readProductionData();
@@ -1779,7 +1818,7 @@ app.post('/api/update-target-manual/:lineName', requireLogin, requireLineAccess,
   });
 });
 
-app.post('/api/update-hourly-direct/:lineName', requireLogin, requireLineAccess, autoCheckDateReset, (req, res) => {
+app.post('/api/update-hourly-direct/:lineName', requireLogin, requireLineAccess, requireProductionWriteAccess, autoCheckDateReset, (req, res) => {
   const { lineName } = req.params;
   const { hourIndex, output, defect, qcChecked, targetManual } = req.body;
   const data = readProductionData();
@@ -1826,7 +1865,7 @@ app.post('/api/update-hourly-direct/:lineName', requireLogin, requireLineAccess,
   });
 });
 
-app.post('/api/update-hourly/:lineName/:modelId', requireLogin, requireLineAccess, autoCheckDateReset, (req, res) => {
+app.post('/api/update-hourly/:lineName/:modelId', requireLogin, requireLineAccess, requireProductionWriteAccess, autoCheckDateReset, (req, res) => {
   const { lineName, modelId } = req.params;
   const { hourIndex, output, defect, qcChecked, targetManual, defectDetails } = req.body;
 
@@ -1875,7 +1914,7 @@ app.post('/api/update-hourly/:lineName/:modelId', requireLogin, requireLineAcces
   });
 });
 
-app.post('/api/update-production/:lineName/:modelId', requireLogin, requireLineAccess, autoCheckDateReset, (req, res) => {
+app.post('/api/update-production/:lineName/:modelId', requireLogin, requireLineAccess, requireProductionWriteAccess, autoCheckDateReset, (req, res) => {
   const { lineName, modelId } = req.params;
   const { hourIndex, output, targetManual } = req.body;
   const data = readProductionData();
@@ -1920,7 +1959,7 @@ app.post('/api/update-production/:lineName/:modelId', requireLogin, requireLineA
   });
 });
 
-app.post('/api/qc-check/:lineName/:modelId', requireLogin, requireLineAccess, autoCheckDateReset, (req, res) => {
+app.post('/api/qc-check/:lineName/:modelId', requireLogin, requireLineAccess, requireQcWriteAccess, autoCheckDateReset, (req, res) => {
   const { lineName, modelId } = req.params;
 	  const { result, hourIndex, type, area, notes } = req.body;
   const data = readProductionData();
@@ -1972,7 +2011,7 @@ app.post('/api/qc-check/:lineName/:modelId', requireLogin, requireLineAccess, au
   });
 });
 
-app.post('/api/update-target-manual/:lineName/:modelId', requireLogin, requireLineAccess, autoCheckDateReset, (req, res) => {
+app.post('/api/update-target-manual/:lineName/:modelId', requireLogin, requireLineAccess, requireProductionWriteAccess, autoCheckDateReset, (req, res) => {
   const { lineName, modelId } = req.params;
   const { hourIndex, targetManual } = req.body;
 
@@ -2013,7 +2052,7 @@ app.post('/api/update-target-manual/:lineName/:modelId', requireLogin, requireLi
 	  });
 });
 
-app.post('/api/update-hourly-direct/:lineName/:modelId', requireLogin, requireLineAccess, autoCheckDateReset, (req, res) => {
+app.post('/api/update-hourly-direct/:lineName/:modelId', requireLogin, requireLineAccess, requireProductionWriteAccess, autoCheckDateReset, (req, res) => {
   const { lineName, modelId } = req.params;
   const { hourIndex, output, defect, qcChecked, targetManual, defectDetails } = req.body;
 
@@ -2241,13 +2280,14 @@ app.post('/api/sync-dates', requireLogin, requireAdmin, (req, res) => {
 
 app.get('/api/lines', requireLogin, autoCheckDateReset, (req, res) => {
   const user = req.session.user;
+  const role = user.role === 'admin_operator' ? 'admin_operator_sewing' : user.role;
   const data = readProductionData();
   
-  if (user.role === 'admin' || user.role === 'admin_operator') {
+  if (role === 'admin' || ADMIN_OPERATOR_ROLES.includes(role)) {
     return res.json(buildLinesResponse(data.lines || {}));
   }
   
-  if (user.role === 'operator') {
+  if (role === 'operator') {
     const operatorLine = {};
     if (data.lines[user.line]) {
       operatorLine[user.line] = data.lines[user.line];
@@ -3224,6 +3264,25 @@ app.get('/api/defect-config', requireLogin, (req, res) => {
   res.json(readDefectConfig());
 });
 
+app.delete('/api/qc-check/:lineName/:modelId/:checkId', requireLogin, requireLineAccess, requireQcManageAccess, autoCheckDateReset, (req, res) => {
+  const { lineName, modelId, checkId } = req.params;
+  const data = readProductionData();
+  const model = data.lines?.[lineName]?.models?.[modelId];
+
+  if (!model) return res.status(404).json({ error: 'Line atau model tidak ditemukan' });
+
+  model.qcChecks = Array.isArray(model.qcChecks) ? model.qcChecks : [];
+  const checkIndex = model.qcChecks.findIndex(check => String(check.id) === String(checkId));
+  if (checkIndex === -1) return res.status(404).json({ error: 'Data QC tidak ditemukan' });
+
+  const [deletedCheck] = model.qcChecks.splice(checkIndex, 1);
+  const summary = recalculateModelTotals(model);
+  writeProductionData(data);
+  updateTodayBackup();
+
+  res.json({ message: 'Data QC berhasil dihapus', deletedCheck, data: model, summary });
+});
+
 app.get('/api/public-display-settings', (req, res) => {
   res.json(readPublicDisplaySettings());
 });
@@ -3352,6 +3411,9 @@ app.delete('/api/defect-areas/:id', requireLogin, requireAdmin, (req, res) => {
 app.post('/api/users', requireLogin, requireAdmin, (req, res) => {
   const { username, password, name, line, role } = req.body;
   const usersData = readUsersData();
+  const allowedRoles = ['admin', 'admin_operator_sewing', 'admin_operator_qc', 'operator'];
+
+  if (!allowedRoles.includes(role)) return res.status(400).json({ error: 'Role tidak valid' });
 
   if (usersData.users.find(u => u.username === username)) {
     return res.status(400).json({ error: 'Username already exists' });
@@ -3383,6 +3445,9 @@ app.put('/api/users/:id', requireLogin, requireAdmin, (req, res) => {
   const userId = parseInt(req.params.id);
   const { username, password, name, line, role } = req.body;
   const usersData = readUsersData();
+  const allowedRoles = ['admin', 'admin_operator_sewing', 'admin_operator_qc', 'operator'];
+
+  if (!allowedRoles.includes(role)) return res.status(400).json({ error: 'Role tidak valid' });
 
   const userIndex = usersData.users.findIndex(u => u.id === userId);
   if (userIndex === -1) {
@@ -3892,7 +3957,7 @@ async function startServer() {
   console.log(`=================================`);
   console.log(`👤 Default Users:`);
   console.log(`- Admin: admin / admin123`);
-  console.log(`- Admin Operator: admin_operator / adminop123`);
+  console.log(`- Admin Operator Sewing: admin_operator / adminop123`);
   console.log(`- Operator: operator1 / password123`);
   console.log(`=================================`);
   });

@@ -142,7 +142,7 @@
             <!-- Page Content -->
             <main class="flex-1 overflow-y-auto p-4 md:p-6">
                 <!-- Dashboard Page -->
-	                <div x-show="currentPage === 'dashboard' && (currentUser.role === 'admin' || currentUser.role === 'admin_operator')" class="fade-in">
+	                <div x-show="currentPage === 'dashboard' && canViewDashboard()" class="fade-in">
                     <div class="mb-6">
 	                        <h1 class="text-2xl font-bold text-gray-800 flex items-center"><i class="fa-solid fa-gauge-high text-blue-600 mr-3"></i>Dashboard Produksi</h1>
 	                        <p class="text-gray-600">Ringkasan performa produksi berdasarkan line</p>
@@ -448,8 +448,7 @@
 	                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
 		                                                <div class="table-actions">
 		                                                <button x-show="currentUser.role !== 'operator'" @click="viewLine(line.lineName, line.modelId)" class="btn-action btn-action-primary"><i class="fa-solid fa-eye"></i>Lihat</button>
-		                                                <!-- Tombol Input hanya untuk operator dan admin, bukan admin_operator -->
-		                                                <button x-show="currentUser.role === 'operator' || currentUser.role === 'admin'" @click="inputData(line.lineName, line.modelId)" class="btn-action btn-action-success"><i class="fa-solid fa-keyboard"></i>Input</button>
+		                                                <button x-show="canManageProduction() || canManageQc()" @click="inputData(line.lineName, line.modelId)" class="btn-action btn-action-success"><i class="fa-solid fa-keyboard"></i>Input</button>
 		                                                </div>
 	                                            </td>
                                         </tr>
@@ -596,18 +595,17 @@
 	                                            <td class="px-6 py-4 whitespace-nowrap">
 	                                                <input type="number" x-model="hour.targetManual" 
 	                                                       @change="updateTargetManual(currentLine, currentModelId, index, hour.targetManual)"
-	                                                       class="input-cell" :disabled="currentUser.role === 'admin_operator' || isProductionHourLocked(hour)">
+		                                                       class="input-cell" :disabled="!canManageProduction() || isProductionHourLocked(hour)">
 	                                            </td>
 	                                            <td class="px-6 py-4 whitespace-nowrap">
 	                                                <input type="number" x-model="hour.output" 
-	                                                       class="input-cell" :disabled="currentUser.role === 'admin_operator' || isProductionHourLocked(hour)">
+		                                                       class="input-cell" :disabled="!canManageProduction() || isProductionHourLocked(hour)">
 	                                            </td>
 	                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium" 
 	                                                :class="hour.output - hour.targetManual >= 0 ? 'text-green-600' : 'text-red-600'"
 	                                                x-text="hour.output - hour.targetManual"></td>
 	                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-	                                                <!-- Tombol Simpan hanya untuk operator dan admin, bukan admin_operator -->
-	                                                <button x-show="currentUser.role !== 'admin_operator'"
+		                                                <button x-show="canManageProduction()"
 	                                                        :disabled="isProductionHourLocked(hour)"
 	                                                        :title="isProductionHourTooEarly(hour) ? 'Jam produksi ini belum dimulai' : (hour.productionLocked ? 'Data jam ini sudah terkunci' : 'Simpan data produksi')"
 	                                                        @click="updateHourlyDataDirect(currentLine, currentModelId, index)"
@@ -627,7 +625,7 @@
                 </div>
 
                 <!-- Input Data Page -->
-                <div x-show="currentPage === 'input-data' && currentUser.role !== 'admin_operator'" class="fade-in">
+                <div x-show="currentPage === 'input-data' && (canManageProduction() || canManageQc())" class="fade-in">
                     <div class="mb-6 flex justify-between items-center">
                         <div>
 	                            <h1 class="text-2xl font-bold text-gray-800 flex items-center"><i class="fa-solid fa-keyboard text-blue-600 mr-3"></i><span x-text="'Input Data - Line ' + currentLine + ' - ' + currentModelId"></span></h1>
@@ -639,9 +637,9 @@
                     </div>
 
 	                    <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
-	                        <div class="bg-white rounded-lg shadow overflow-hidden card-shadow">
-	                            <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
-	                                <h3 class="text-lg leading-6 font-medium text-gray-900 flex items-center"><i class="fa-solid fa-boxes-stacked text-blue-600 mr-2"></i>Hasil Produksi per Jam</h3>
+		                        <div x-show="canManageProduction()" class="bg-white rounded-lg shadow overflow-hidden card-shadow">
+		                            <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+		                                <h3 class="text-lg leading-6 font-medium text-gray-900 flex items-center"><i class="fa-solid fa-boxes-stacked text-blue-600 mr-2"></i>Hasil Produksi per Jam</h3>
 	                                <p class="mt-1 max-w-2xl text-sm text-gray-500">Pilih jam hanya untuk input output produksi</p>
 	                            </div>
 	                            <div class="p-6">
@@ -688,12 +686,20 @@
 	                            </div>
 	                        </div>
 
-	                        <div class="bg-white rounded-lg shadow overflow-hidden card-shadow">
-	                            <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
-	                                <h3 class="text-lg leading-6 font-medium text-gray-900 flex items-center"><i class="fa-solid fa-clipboard-check text-blue-600 mr-2"></i>QC Check</h3>
+		                        <div x-show="canManageQc()" class="bg-white rounded-lg shadow overflow-hidden card-shadow">
+		                            <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+		                                <h3 class="text-lg leading-6 font-medium text-gray-900 flex items-center"><i class="fa-solid fa-clipboard-check text-blue-600 mr-2"></i>QC Check</h3>
 	                                <p class="mt-1 max-w-2xl text-sm text-gray-500">Input QC satu per satu dengan tombol Good atau Defect</p>
 	                            </div>
 	                            <div class="p-6 space-y-6">
+	                                <div x-show="!canManageProduction()">
+	                                    <label for="qc-hour-select" class="block text-sm font-medium text-gray-700 mb-2">Pilih Jam QC</label>
+	                                    <select id="qc-hour-select" x-model="inputForm.hourIndex" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
+	                                        <template x-for="(hour, index) in lineDetail.hourly_data" :key="index">
+	                                            <option :value="index" x-text="hour.hour"></option>
+	                                        </template>
+	                                    </select>
+	                                </div>
 	                                <div class="grid grid-cols-3 gap-3">
 	                                    <div class="bg-gray-50 rounded-lg p-3">
 	                                        <p class="text-xs font-medium text-gray-500">QC Checked</p>
@@ -753,6 +759,7 @@
 	                                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Area</th>
 		                                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Keterangan</th>
 		                                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Update Terakhir</th>
+		                                                    <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
 	                                                </tr>
 	                                            </thead>
 	                                            <tbody class="bg-white divide-y divide-gray-200">
@@ -762,10 +769,13 @@
 	                                                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900" x-text="check.area || '-'"></td>
 		                                                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500" x-text="check.notes || '-'"></td>
 		                                                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500" x-text="formatDateTime(check.checkedAt)"></td>
+		                                                        <td class="px-4 py-3 whitespace-nowrap text-right">
+		                                                            <button x-show="canDeleteQc()" type="button" @click="deleteQcCheck(check.id)" class="btn-action btn-action-danger"><i class="fa-solid fa-trash-can"></i>Hapus</button>
+		                                                        </td>
 		                                                    </tr>
 		                                                </template>
 		                                                <tr x-show="recentDefectChecks.length === 0">
-		                                                    <td colspan="4" class="px-4 py-6 text-center text-sm text-gray-500">Belum ada defect QC.</td>
+		                                                    <td colspan="5" class="px-4 py-6 text-center text-sm text-gray-500">Belum ada defect QC.</td>
 		                                                </tr>
 	                                            </tbody>
 	                                        </table>
@@ -776,47 +786,11 @@
 	                    </div>
 	                </div>
 
-                <!-- Pesan Akses Ditolak untuk Admin Operator di Halaman Input Data -->
-                <div x-show="currentPage === 'input-data' && currentUser.role === 'admin_operator'" class="fade-in">
-                    <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
-                        <div class="flex">
-                            <div class="flex-shrink-0">
-                                <svg class="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
-                                </svg>
-                            </div>
-                            <div class="ml-3">
-                                <h3 class="text-sm font-medium text-yellow-800">
-                                    Akses Dibatasi
-                                </h3>
-                                <div class="mt-2 text-sm text-yellow-700">
-                                    <p>
-                                        Anda login sebagai <span class="font-semibold">Admin Operator</span>. Role ini hanya memiliki akses untuk:
-                                    </p>
-                                    <ul class="list-disc list-inside mt-1">
-                                        <li>Melihat dashboard produksi</li>
-                                        <li>Mengelola line produksi (tambah, edit, hapus)</li>
-                                        <li>Melihat laporan berdasarkan tanggal</li>
-                                    </ul>
-                                    <p class="mt-2">
-                                        Untuk input data produksi, silakan login sebagai <span class="font-semibold">Operator</span> atau <span class="font-semibold">Admin</span>.
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="text-center">
-	                        <button @click="changePage('line-summary')" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-		                            <i class="fa-solid fa-arrow-left mr-2"></i>Kembali ke Ringkasan Line
-                        </button>
-                    </div>
-                </div>
-
                 <!-- Admin Management Page -->
-                <div x-show="currentPage === 'admin-management'" class="fade-in">
+                <div x-show="currentPage === 'admin-management' && canManageLines()" class="fade-in">
                     <div class="mb-6">
 	                        <h1 class="text-2xl font-bold text-gray-800 flex items-center"><i class="fa-solid fa-list-check text-blue-600 mr-3"></i>Management Line</h1>
-                        <p class="text-gray-600" x-text="currentUser.role === 'admin_operator' ? 'Kelola line produksi' : 'Kelola lines, model, dan konfigurasi sistem'"></p>
+                        <p class="text-gray-600" x-text="currentUser.role === 'admin_operator_sewing' ? 'Kelola line produksi sewing' : 'Kelola lines, model, dan konfigurasi sistem'"></p>
                     </div>
 
                     <!-- Line Management - Untuk admin dan admin_operator -->
@@ -999,10 +973,11 @@
                                                     <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full" 
                                                           :class="{
                                                               'bg-purple-100 text-purple-800': user.role === 'admin',
-                                                              'bg-blue-100 text-blue-800': user.role === 'admin_operator',
+                                                              'bg-blue-100 text-blue-800': user.role === 'admin_operator_sewing',
+                                                              'bg-cyan-100 text-cyan-800': user.role === 'admin_operator_qc',
                                                               'bg-green-100 text-green-800': user.role === 'operator'
                                                           }" 
-                                                          x-text="user.role"></span>
+                                                          x-text="roleLabel(user.role)"></span>
                                                 </td>
                                                 <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500" x-text="user.line || '-'"></td>
 	                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-medium">
@@ -1055,7 +1030,7 @@
                     </div>
 
                 <!-- Date-based Reports - Untuk admin dan admin_operator -->
-                <div x-show="currentPage === 'report' && (currentUser.role === 'admin' || currentUser.role === 'admin_operator')" class="bg-white rounded-lg shadow overflow-hidden card-shadow mb-6 fade-in">
+                <div x-show="currentPage === 'report' && canViewDashboard()" class="bg-white rounded-lg shadow overflow-hidden card-shadow mb-6 fade-in">
                         <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
 	                            <h3 class="text-lg leading-6 font-medium text-gray-900 flex items-center"><i class="fa-solid fa-chart-column text-blue-600 mr-2"></i>Laporan Berdasarkan Tanggal</h3>
                             <p class="mt-1 max-w-2xl text-sm text-gray-500">Lihat rekap data produksi berdasarkan tanggal tertentu</p>
@@ -1255,7 +1230,7 @@
 		                            </form>
 		                        </div>
 
-		                        <div class="bg-white rounded-lg shadow overflow-hidden card-shadow">
+			                        <div class="bg-white rounded-lg shadow overflow-hidden card-shadow">
 		                            <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
 		                                <h3 class="text-lg leading-6 font-medium text-gray-900 flex items-center"><i class="fa-solid fa-link text-blue-600 mr-2"></i>Preview Link</h3>
 		                                <p class="mt-1 max-w-2xl text-sm text-gray-500">Gunakan link ini untuk test di browser display</p>
@@ -1311,7 +1286,7 @@
 	                    </div>
 
 	                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-	                        <div class="bg-white rounded-lg shadow overflow-hidden card-shadow">
+		                        <div class="bg-white rounded-lg shadow overflow-hidden card-shadow">
 	                            <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
 	                                <h3 class="text-lg leading-6 font-medium text-gray-900 flex items-center"><i class="fa-solid fa-tags text-blue-600 mr-2"></i>Jenis Defect</h3>
 	                                <p class="mt-1 max-w-2xl text-sm text-gray-500">Contoh: jahitan lepas, kotor, bentuk tidak sesuai</p>
@@ -1556,7 +1531,8 @@
                                 <label for="role" class="block text-sm font-medium text-gray-700">Role</label>
                                 <select id="role" x-model="userModal.data.role" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md" required>
                                     <option value="operator">Operator</option>
-                                    <option value="admin_operator">Admin Operator</option>
+                                    <option value="admin_operator_sewing">Admin Operator Sewing</option>
+                                    <option value="admin_operator_qc">Admin Operator QC</option>
                                     <option value="admin">Admin</option>
                                 </select>
                             </div>

@@ -607,11 +607,16 @@
 	                                                x-text="hour.output - hour.targetManual"></td>
 	                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
 	                                                <!-- Tombol Simpan hanya untuk operator dan admin, bukan admin_operator -->
-	                                                <button x-show="currentUser.role !== 'admin_operator' && !isProductionHourLocked(hour)" @click="updateHourlyDataDirect(currentLine, currentModelId, index)"
-	                                                        class="btn-action btn-action-primary">
+	                                                <button x-show="currentUser.role !== 'admin_operator'"
+	                                                        :disabled="isProductionHourLocked(hour)"
+	                                                        :title="isProductionHourTooEarly(hour) ? 'Jam produksi ini belum dimulai' : (hour.productionLocked ? 'Data jam ini sudah terkunci' : 'Simpan data produksi')"
+	                                                        @click="updateHourlyDataDirect(currentLine, currentModelId, index)"
+	                                                        class="btn-action btn-action-primary disabled:opacity-50 disabled:cursor-not-allowed">
 		                                                    <i class="fa-solid fa-floppy-disk"></i>Simpan
 	                                                </button>
-	                                                <span x-show="isProductionHourLocked(hour)" class="text-xs font-semibold text-gray-500">Terkunci</span>
+	                                                <span x-show="isProductionHourLocked(hour)"
+	                                                      x-text="isProductionHourTooEarly(hour) ? 'Belum waktunya' : 'Terkunci'"
+	                                                      class="text-xs font-semibold text-gray-500"></span>
 	                                            </td>
                                         </tr>
                                     </template>

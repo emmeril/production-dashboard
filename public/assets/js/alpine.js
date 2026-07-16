@@ -263,19 +263,27 @@ function dashboard() {
 	        },
 
 	        canManageLines() {
-	            return ['admin', 'admin_operator_sewing'].includes(this.currentUser.role);
+	            return this.currentUser.role === 'admin';
 	        },
 
 	        canManageProduction() {
-	            return ['admin', 'admin_operator_sewing', 'operator'].includes(this.currentUser.role);
+	            return ['admin', 'operator'].includes(this.currentUser.role);
 	        },
 
 	        canManageQc() {
-	            return ['admin', 'admin_operator_qc', 'operator'].includes(this.currentUser.role);
+	            return ['admin', 'operator'].includes(this.currentUser.role);
 	        },
 
 	        canDeleteQc() {
-	            return ['admin', 'admin_operator_qc'].includes(this.currentUser.role);
+	            return this.currentUser.role === 'admin';
+	        },
+
+	        isSewingReportViewer() {
+	            return this.currentUser.role === 'admin_operator_sewing';
+	        },
+
+	        isQcReportViewer() {
+	            return this.currentUser.role === 'admin_operator_qc';
 	        },
 
 	        roleLabel(role) {
@@ -288,6 +296,7 @@ function dashboard() {
 	        },
 
 	        getDefaultPage() {
+	            if (this.isAdminOperator()) return 'report';
 	            return this.canViewDashboard() ? 'dashboard' : 'line-summary';
 	        },
 

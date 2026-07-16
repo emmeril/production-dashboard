@@ -874,7 +874,7 @@ function requireAdminOrAdminOperator(req, res, next) {
 }
 
 function requireLineManagementAccess(req, res, next) {
-  if (hasAnyRole(req.session.user, ['admin', 'admin_operator_sewing'])) {
+  if (hasAnyRole(req.session.user, ['admin'])) {
     next();
   } else {
     res.status(403).json({ error: 'Forbidden - Line management access required' });
@@ -910,27 +910,19 @@ function requireLineAccess(req, res, next) {
 }
 
 function requireProductionWriteAccess(req, res, next) {
-  if (!hasAnyRole(req.session.user, ['admin', 'admin_operator_sewing', 'operator'])) {
+  if (!hasAnyRole(req.session.user, ['admin', 'operator'])) {
     return res.status(403).json({ error: 'Akses input hasil sewing diperlukan' });
   }
-
-  if (hasAnyRole(req.session.user, ['admin_operator_sewing'])) {
-    const qcFields = ['defect', 'qcChecked', 'defectDetails'];
-    if (qcFields.some(field => Object.prototype.hasOwnProperty.call(req.body || {}, field))) {
-      return res.status(403).json({ error: 'Admin Operator Sewing tidak dapat mengubah hasil QC atau defect' });
-    }
-  }
-
   return next();
 }
 
 function requireQcWriteAccess(req, res, next) {
-  if (hasAnyRole(req.session.user, ['admin', 'admin_operator_qc', 'operator'])) return next();
+  if (hasAnyRole(req.session.user, ['admin', 'operator'])) return next();
   res.status(403).json({ error: 'Akses input hasil QC diperlukan' });
 }
 
 function requireQcManageAccess(req, res, next) {
-  if (hasAnyRole(req.session.user, ['admin', 'admin_operator_qc'])) return next();
+  if (hasAnyRole(req.session.user, ['admin'])) return next();
   res.status(403).json({ error: 'Akses kelola hasil QC diperlukan' });
 }
 
@@ -2660,7 +2652,28 @@ app.get('/api/date-report/:date', requireLogin, requireDateReportAccess, autoChe
     });
     
     console.log(`✅ Laporan tanggal ${date} berhasil dibuat. Jumlah data: ${reportData.length}`);
-    res.json(reportData);
+    const role = req.session.user.role;
+    const scopedReportData = reportData.map(item => {
+      const common = {
+        line: item.line,
+        modelId: item.modelId,
+        labelWeek: item.labelWeek,
+        model: item.model,
+        date: item.date
+      };
+
+      if (role === 'admin_operator_sewing') {
+        return { ...common, target: item.target, output: item.output };
+      }
+
+      if (role === 'admin_operator_qc') {
+        return { ...common, defect: item.defect, qcChecked: item.qcChecked, defectRate: item.defectRate };
+      }
+
+      return item;
+    });
+
+    res.json(scopedReportData);
   } catch (error) {
     console.error('❌ Error generating date report:', error);
     res.status(500).json({ error: 'Failed to generate date report: ' + error.message });
@@ -3093,7 +3106,7 @@ async function generateStyledDateReportExcel(data, date) {
   return workbook;
 }
 
-app.get('/api/export-date-report/:date', requireLogin, requireDateReportAccess, autoCheckDateReset, async (req, res) => {
+app.get('/api/export-date-report/:date', requireLogin, requireAdmin, autoCheckDateReset, async (req, res) => {
   const date = req.params.date;
   
   if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {

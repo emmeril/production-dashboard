@@ -887,7 +887,10 @@ function dashboard() {
                     const url = window.URL.createObjectURL(blob);
                     const a = document.createElement('a');
                     a.href = url;
-                    a.download = `Production_Report_${this.reportDate}.xlsx`;
+	                    const reportName = this.isSewingReportViewer()
+	                        ? 'Sewing_Report'
+	                        : (this.isQcReportViewer() ? 'QC_Report' : 'Production_Report');
+	                    a.download = `${reportName}_${this.reportDate}.xlsx`;
                     document.body.appendChild(a);
                     a.click();
                     window.URL.revokeObjectURL(url);

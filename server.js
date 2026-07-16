@@ -3106,7 +3106,58 @@ async function generateStyledDateReportExcel(data, date) {
   return workbook;
 }
 
-app.get('/api/export-date-report/:date', requireLogin, requireAdmin, autoCheckDateReset, async (req, res) => {
+async function generateScopedDateReportExcel(data, date, role) {
+  const isSewing = role === 'admin_operator_sewing';
+  const workbook = new ExcelJS.Workbook();
+  const sheet = workbook.addWorksheet(isSewing ? 'SUMMARY SEWING' : 'SUMMARY QC');
+  const headers = isSewing
+    ? ['Line', 'Model ID', 'Label/Week', 'Model', 'Target', 'Output', 'Achievement %']
+    : ['Line', 'Model ID', 'Label/Week', 'Model', 'QC Checked', 'Defect', 'Jenis Defect', 'Area Defect', 'Defect Rate %'];
+
+  sheet.mergeCells(1, 1, 1, headers.length);
+  const title = sheet.getCell(1, 1);
+  title.value = `${isSewing ? 'SUMMARY HASIL SEWING' : 'SUMMARY HASIL QC'} - ${date}`;
+  title.font = { bold: true, size: 16, color: { argb: '1F4E78' } };
+  title.alignment = { horizontal: 'center' };
+
+  sheet.getRow(3).values = headers;
+  sheet.getRow(3).eachCell(cell => {
+    cell.font = { bold: true, color: { argb: 'FFFFFF' } };
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: isSewing ? '4472C4' : '00A6A6' } };
+    cell.alignment = { horizontal: 'center' };
+  });
+
+  let rowIndex = 4;
+  Object.entries(data.lines || {}).forEach(([lineName, line]) => {
+    Object.entries(line.models || {}).forEach(([modelId, model]) => {
+      if (model.date && model.date !== date) return;
+
+      const achievement = model.target > 0 ? (((model.outputDay || 0) / model.target) * 100).toFixed(2) : '0.00';
+      const defectCategories = summarizeModelDefectCategories(model);
+      const values = isSewing
+        ? [lineName, modelId, model.labelWeek || '', model.model || '', model.target || 0, model.outputDay || 0, `${achievement}%`]
+        : [lineName, modelId, model.labelWeek || '', model.model || '', model.qcChecking || 0, model.actualDefect || 0, defectCategories.types, defectCategories.areas, `${model.defectRatePercentage || 0}%`];
+
+      const row = sheet.getRow(rowIndex++);
+      row.values = values;
+      row.eachCell(cell => {
+        cell.border = {
+          top: { style: 'thin', color: { argb: 'D9D9D9' } },
+          left: { style: 'thin', color: { argb: 'D9D9D9' } },
+          bottom: { style: 'thin', color: { argb: 'D9D9D9' } },
+          right: { style: 'thin', color: { argb: 'D9D9D9' } }
+        };
+      });
+    });
+  });
+
+  sheet.columns = headers.map((header, index) => ({ width: index === 3 || index === 6 || index === 7 ? 28 : 16 }));
+  sheet.views = [{ state: 'frozen', ySplit: 3 }];
+  sheet.autoFilter = { from: { row: 3, column: 1 }, to: { row: 3, column: headers.length } };
+  return workbook;
+}
+
+app.get('/api/export-date-report/:date', requireLogin, requireDateReportAccess, autoCheckDateReset, async (req, res) => {
   const date = req.params.date;
   
   if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
@@ -3147,9 +3198,15 @@ app.get('/api/export-date-report/:date', requireLogin, requireAdmin, autoCheckDa
       data.lines = filteredLines;
     }
     
-    const workbook = await generateStyledDateReportExcel(data, date);
-    
-    const downloadFilename = `Production_Report_${date}.xlsx`;
+    const role = req.session.user.role;
+    const workbook = ADMIN_OPERATOR_ROLES.includes(role)
+      ? await generateScopedDateReportExcel(data, date, role)
+      : await generateStyledDateReportExcel(data, date);
+
+    const reportName = role === 'admin_operator_sewing'
+      ? 'Sewing_Report'
+      : role === 'admin_operator_qc' ? 'QC_Report' : 'Production_Report';
+    const downloadFilename = `${reportName}_${date}.xlsx`;
     res.setHeader('Content-Disposition', `attachment; filename="${downloadFilename}"`);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     

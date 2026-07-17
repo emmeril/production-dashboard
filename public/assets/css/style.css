@@ -386,6 +386,11 @@
 	            min-height: 320px;
 	        }
 
+	        .dashboard-chart-frame canvas {
+	            pointer-events: auto !important;
+	            touch-action: pan-y;
+	        }
+
 	        .dashboard-daily-scroll {
 	            max-height: 320px;
 	            overflow-y: auto;

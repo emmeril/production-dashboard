@@ -1618,20 +1618,27 @@ function dashboard() {
                         }
                     ]
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    interaction: { mode: 'index', intersect: false },
-                    plugins: {
-                        legend: { position: 'top', labels: { boxWidth: 12, usePointStyle: true } },
+	                options: {
+	                    responsive: true,
+	                    maintainAspectRatio: false,
+	                    events: ['mousemove', 'mouseout', 'click', 'touchstart', 'touchmove'],
+	                    interaction: { mode: 'index', axis: 'x', intersect: false },
+	                    hover: { mode: 'index', axis: 'x', intersect: false },
+	                    plugins: {
+	                        legend: { position: 'top', labels: { boxWidth: 12, usePointStyle: true } },
 	                        tooltip: {
+	                            enabled: true,
+	                            mode: 'index',
+	                            axis: 'x',
+	                            intersect: false,
+	                            position: 'nearest',
 	                            callbacks: {
 	                                title: items => {
-	                                    const item = data[items[0].dataIndex];
+	                                    const item = data[items?.[0]?.dataIndex];
 	                                    return item ? item.lineName : '';
 	                                },
 	                                afterTitle: items => {
-	                                    const item = data[items[0].dataIndex];
+	                                    const item = data[items?.[0]?.dataIndex];
 	                                    if (!item) return '';
 	                                    const dates = item.dates || (item.date ? [item.date] : []);
 	                                    if (!dates.length) return '';

@@ -513,8 +513,8 @@
                     </div>
 
                     <!-- Line Summary -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                        <div class="bg-white rounded-lg shadow p-4 card-shadow">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6" :class="isSewingReportViewer() ? 'lg:grid-cols-2' : (isQcReportViewer() ? 'lg:grid-cols-3' : 'lg:grid-cols-5')">
+                        <div x-show="!isQcReportViewer()" class="bg-white rounded-lg shadow p-4 card-shadow">
                             <div class="flex justify-between items-center">
                                 <div>
                                     <p class="text-sm font-medium text-gray-500">Target Harian</p>
@@ -528,7 +528,7 @@
                             </div>
                         </div>
                         
-                        <div class="bg-white rounded-lg shadow p-4 card-shadow">
+	                        <div x-show="!isQcReportViewer()" class="bg-white rounded-lg shadow p-4 card-shadow">
                             <div class="flex justify-between items-center">
                                 <div>
                                     <p class="text-sm font-medium text-gray-500">Output Harian</p>
@@ -542,10 +542,10 @@
                             </div>
                         </div>
                         
-                        <div class="bg-white rounded-lg shadow p-4 card-shadow">
-                            <div class="flex justify-between items-center">
-                                <div>
-                                    <p class="text-sm font-medium text-gray-500">Defect Rate</p>
+	                        <div x-show="!isSewingReportViewer()" class="bg-white rounded-lg shadow p-4 card-shadow">
+	                            <div class="flex justify-between items-center">
+	                                <div>
+	                                    <p class="text-sm font-medium text-gray-500">Defect Rate</p>
                                     <p class="text-2xl font-bold" :class="lineDetail.defectRatePercentage > 5 ? 'text-red-600' : 'text-green-600'" x-text="lineDetail.defectRatePercentage + '%'"></p>
                                 </div>
                                 <div class="rounded-full bg-red-100 p-3">
@@ -553,10 +553,22 @@
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
                                     </svg>
                                 </div>
-                            </div>
-                        </div>
-                        
-                        <div class="bg-white rounded-lg shadow p-4 card-shadow">
+	                            </div>
+	                        </div>
+
+	                        <div x-show="!isSewingReportViewer()" class="bg-white rounded-lg shadow p-4 card-shadow">
+	                            <div class="flex justify-between items-center">
+	                                <div>
+	                                    <p class="text-sm font-medium text-gray-500">Total Defect</p>
+	                                    <p class="text-2xl font-bold text-red-600" x-text="lineDetail.actualDefect || 0"></p>
+	                                </div>
+	                                <div class="rounded-full bg-orange-100 p-3">
+	                                    <i class="fa-solid fa-circle-xmark text-orange-600 text-2xl"></i>
+	                                </div>
+	                            </div>
+	                        </div>
+
+	                        <div x-show="!isSewingReportViewer()" class="bg-white rounded-lg shadow p-4 card-shadow">
                             <div class="flex justify-between items-center">
                                 <div>
                                     <p class="text-sm font-medium text-gray-500">QC Checking</p>

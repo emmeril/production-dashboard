@@ -1781,11 +1781,13 @@ function dashboard() {
         get selectedDashboardSummary() {
             const summary = [...(this.dashboardData.daily || [])].reverse()[0];
 
-            return summary || {
-                target: 0,
-                output: 0,
-                defectRate: 0
-            };
+	            return summary || {
+	                target: 0,
+	                output: 0,
+	                defect: 0,
+	                qcChecked: 0,
+	                defectRate: 0
+	            };
         },
 
         get dashboardChartData() {

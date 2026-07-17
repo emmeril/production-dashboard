@@ -149,8 +149,8 @@
                     </div>
 
                     <!-- Summary Cards -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                        <div class="bg-white rounded-lg shadow p-4 card-shadow">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6" :class="isSewingReportViewer() ? 'lg:grid-cols-2' : 'lg:grid-cols-4'">
+	                        <div x-show="!isQcReportViewer()" class="bg-white rounded-lg shadow p-4 card-shadow">
                             <div class="flex items-center">
                                 <div class="rounded-full bg-blue-100 p-3 mr-4">
                                     <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -164,7 +164,7 @@
                             </div>
                         </div>
                         
-                        <div class="bg-white rounded-lg shadow p-4 card-shadow">
+	                        <div x-show="!isQcReportViewer()" class="bg-white rounded-lg shadow p-4 card-shadow">
                             <div class="flex items-center">
                                 <div class="rounded-full bg-green-100 p-3 mr-4">
                                     <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -178,7 +178,7 @@
                             </div>
                         </div>
                         
-                        <div class="bg-white rounded-lg shadow p-4 card-shadow">
+	                        <div x-show="!isSewingReportViewer()" class="bg-white rounded-lg shadow p-4 card-shadow">
                             <div class="flex items-center">
                                 <div class="rounded-full bg-red-100 p-3 mr-4">
                                     <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -190,9 +190,45 @@
 	                                    <p class="text-2xl font-bold text-gray-800" x-text="(selectedDashboardSummary.defectRate || 0) + '%'"></p>
                                 </div>
                             </div>
-                        </div>
-                        
-                       <!-- Di bagian Summary Cards, tambahkan x-show pada kartu Operator Aktif -->
+	                        </div>
+
+	                        <div x-show="!isSewingReportViewer()" class="bg-white rounded-lg shadow p-4 card-shadow">
+	                            <div class="flex items-center">
+	                                <div class="rounded-full bg-green-100 p-3 mr-4">
+	                                    <i class="fa-solid fa-circle-check text-green-600 text-2xl"></i>
+	                                </div>
+	                                <div>
+	                                    <p class="text-sm font-medium text-gray-500">Hasil Good</p>
+	                                    <p class="text-2xl font-bold text-green-600" x-text="Math.max((selectedDashboardSummary.qcChecked || 0) - (selectedDashboardSummary.defect || 0), 0)"></p>
+	                                </div>
+	                            </div>
+	                        </div>
+
+	                        <div x-show="!isSewingReportViewer()" class="bg-white rounded-lg shadow p-4 card-shadow">
+	                            <div class="flex items-center">
+	                                <div class="rounded-full bg-orange-100 p-3 mr-4">
+	                                    <i class="fa-solid fa-circle-xmark text-orange-600 text-2xl"></i>
+	                                </div>
+	                                <div>
+	                                    <p class="text-sm font-medium text-gray-500">Total Defect</p>
+	                                    <p class="text-2xl font-bold text-red-600" x-text="selectedDashboardSummary.defect || 0"></p>
+	                                </div>
+	                            </div>
+	                        </div>
+
+	                        <div x-show="!isSewingReportViewer()" class="bg-white rounded-lg shadow p-4 card-shadow">
+	                            <div class="flex items-center">
+	                                <div class="rounded-full bg-cyan-100 p-3 mr-4">
+	                                    <i class="fa-solid fa-clipboard-check text-cyan-700 text-2xl"></i>
+	                                </div>
+	                                <div>
+	                                    <p class="text-sm font-medium text-gray-500">QC Checking</p>
+	                                    <p class="text-2xl font-bold text-gray-800" x-text="selectedDashboardSummary.qcChecked || 0"></p>
+	                                </div>
+	                            </div>
+	                        </div>
+
+	                       <!-- Di bagian Summary Cards, tambahkan x-show pada kartu Operator Aktif -->
 <div class="bg-white rounded-lg shadow p-4 card-shadow" x-show="currentUser.role === 'admin'">
     <div class="flex items-center">
         <div class="rounded-full bg-purple-100 p-3 mr-4">

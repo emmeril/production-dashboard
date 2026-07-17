@@ -641,21 +641,41 @@
 	                                    <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Aksi</th>
 	                                </tr>
 	                            </thead>
-	                            <tbody class="bg-white divide-y divide-gray-200">
-	                                <template x-for="check in allQcChecks" :key="check.id">
-	                                    <tr>
-	                                        <td class="px-4 py-3 text-sm text-gray-700" x-text="check.hour || '-'"></td>
-	                                        <td class="px-4 py-3 text-sm font-semibold" :class="check.result === 'defect' ? 'text-red-600' : 'text-green-600'" x-text="check.result === 'defect' ? 'Defect' : 'Good'"></td>
-	                                        <td class="px-4 py-3 text-sm text-gray-700" x-text="check.type || '-'"></td>
-	                                        <td class="px-4 py-3 text-sm text-gray-700" x-text="check.area || '-'"></td>
-	                                        <td class="px-4 py-3 text-sm text-gray-500" x-text="check.notes || '-'"></td>
-	                                        <td class="px-4 py-3 text-right whitespace-nowrap">
-	                                            <button x-show="check.result === 'defect'" type="button" @click="editQcCheck(check)" class="btn-action btn-action-primary"><i class="fa-solid fa-pen"></i>Edit</button>
-	                                            <button type="button" @click="deleteQcCheck(check.id)" class="btn-action btn-action-danger"><i class="fa-solid fa-trash-can"></i>Hapus</button>
+	                            <template x-for="group in groupedQcChecks" :key="group.key">
+	                                <tbody class="bg-white divide-y divide-gray-200 qc-correction-group">
+	                                    <tr class="qc-group-summary">
+	                                        <td class="px-4 py-3 text-sm font-semibold text-gray-800" x-text="group.hour"></td>
+	                                        <td colspan="4" class="px-4 py-3">
+	                                            <div class="qc-group-counts">
+	                                                <span class="qc-count qc-count-good"><i class="fa-solid fa-check"></i><span x-text="group.goodCount + ' Good'"></span></span>
+	                                                <span class="qc-count qc-count-defect"><i class="fa-solid fa-triangle-exclamation"></i><span x-text="group.defectCount + ' Defect'"></span></span>
+	                                                <span class="text-xs text-gray-500" x-text="group.checks.length + ' pemeriksaan'"></span>
+	                                            </div>
+	                                        </td>
+	                                        <td class="px-4 py-3 text-right">
+	                                            <button type="button" @click="toggleQcGroup(group.key)" class="btn-action btn-action-neutral" :aria-expanded="!!expandedQcGroups[group.key]">
+	                                                <i class="fa-solid" :class="expandedQcGroups[group.key] ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+	                                                <span x-text="expandedQcGroups[group.key] ? 'Tutup' : 'Detail'"></span>
+	                                            </button>
 	                                        </td>
 	                                    </tr>
-	                                </template>
-	                                <tr x-show="allQcChecks.length === 0">
+	                                    <template x-for="check in group.checks" :key="check.id">
+	                                        <tr x-show="expandedQcGroups[group.key]" class="qc-group-detail">
+	                                            <td class="px-4 py-3 text-sm text-gray-400"><i class="fa-solid fa-turn-up fa-rotate-90"></i></td>
+	                                            <td class="px-4 py-3 text-sm font-semibold" :class="check.result === 'defect' ? 'text-red-600' : 'text-green-600'" x-text="check.result === 'defect' ? 'Defect' : 'Good'"></td>
+	                                            <td class="px-4 py-3 text-sm text-gray-700" x-text="check.type || '-'"></td>
+	                                            <td class="px-4 py-3 text-sm text-gray-700" x-text="check.area || '-'"></td>
+	                                            <td class="px-4 py-3 text-sm text-gray-500" x-text="check.notes || '-'"></td>
+	                                            <td class="px-4 py-3 text-right whitespace-nowrap">
+	                                                <button x-show="check.result === 'defect'" type="button" @click="editQcCheck(check)" class="btn-action btn-action-primary"><i class="fa-solid fa-pen"></i>Edit</button>
+	                                                <button type="button" @click="deleteQcCheck(check.id)" class="btn-action btn-action-danger"><i class="fa-solid fa-trash-can"></i>Hapus</button>
+	                                            </td>
+	                                        </tr>
+	                                    </template>
+	                                </tbody>
+	                            </template>
+	                            <tbody class="bg-white">
+	                                <tr x-show="groupedQcChecks.length === 0">
 	                                    <td colspan="6" class="px-4 py-6 text-center text-sm text-gray-500">Belum ada data hasil QC.</td>
 	                                </tr>
 	                            </tbody>

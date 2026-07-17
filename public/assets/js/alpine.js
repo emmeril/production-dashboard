@@ -49,8 +49,9 @@ function dashboard() {
             area: '',
             notes: ''
         },
-        isSavingProduction: false,
-        isSavingQc: false,
+	        isSavingProduction: false,
+	        isSavingQc: false,
+	        expandedQcGroups: {},
 
         defectTypes: [],
         defectAreas: [],
@@ -1103,6 +1104,10 @@ function dashboard() {
 	            }
 	        },
 
+	        toggleQcGroup(groupKey) {
+	            this.expandedQcGroups[groupKey] = !this.expandedQcGroups[groupKey];
+	        },
+
         // Methods for target manual
         async updateTargetManual(lineName, modelId, hourIndex, targetManual) {
             if (!this.canManageProduction() && !this.canCorrectProduction()) {
@@ -1734,6 +1739,31 @@ function dashboard() {
 	        get allQcChecks() {
 	            return [...(this.lineDetail.qcChecks || [])]
 	                .sort((a, b) => new Date(b.checkedAt || 0) - new Date(a.checkedAt || 0));
+	        },
+
+	        get groupedQcChecks() {
+	            const groups = new Map();
+
+	            this.allQcChecks.forEach(check => {
+	                const hour = check.hour || '-';
+	                const group = groups.get(hour) || {
+	                    key: `qc-${hour}`,
+	                    hour,
+	                    goodCount: 0,
+	                    defectCount: 0,
+	                    checks: [],
+	                    latestCheckedAt: check.checkedAt || ''
+	                };
+
+	                group.checks.push(check);
+	                if (check.result === 'defect') group.defectCount++;
+	                else group.goodCount++;
+	                groups.set(hour, group);
+	            });
+
+	            return Array.from(groups.values()).sort((a, b) =>
+	                new Date(b.latestCheckedAt || 0) - new Date(a.latestCheckedAt || 0)
+	            );
 	        },
 
         get selectedDashboardLineData() {

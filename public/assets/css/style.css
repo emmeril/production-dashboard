@@ -391,6 +391,45 @@
 	            touch-action: pan-y;
 	        }
 
+	        .qc-correction-group + .qc-correction-group .qc-group-summary td {
+	            border-top: 4px solid #f3f4f6;
+	        }
+
+	        .qc-group-summary {
+	            background: #f9fafb;
+	        }
+
+	        .qc-group-counts {
+	            display: flex;
+	            flex-wrap: wrap;
+	            align-items: center;
+	            gap: 0.5rem;
+	        }
+
+	        .qc-count {
+	            display: inline-flex;
+	            align-items: center;
+	            gap: 0.3rem;
+	            border-radius: 999px;
+	            padding: 0.2rem 0.55rem;
+	            font-size: 0.75rem;
+	            font-weight: 700;
+	        }
+
+	        .qc-count-good {
+	            color: #166534;
+	            background: #dcfce7;
+	        }
+
+	        .qc-count-defect {
+	            color: #991b1b;
+	            background: #fee2e2;
+	        }
+
+	        .qc-group-detail {
+	            background: #fff;
+	        }
+
 	        .dashboard-daily-scroll {
 	            max-height: 320px;
 	            overflow-y: auto;

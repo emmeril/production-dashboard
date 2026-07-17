@@ -628,6 +628,36 @@
 	                    <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
 	                        <h3 class="text-lg leading-6 font-medium text-gray-900 flex items-center"><i class="fa-solid fa-clipboard-check text-blue-600 mr-2"></i>Koreksi Hasil QC</h3>
 	                        <p class="mt-1 max-w-2xl text-sm text-gray-500">Edit defect atau hapus hasil QC jika terjadi kesalahan input operator</p>
+	                        <div class="filter-toolbar line-management-toolbar mt-4 mb-0">
+	                            <div class="filter-group">
+	                                <div class="filter-control filter-control-search has-icon">
+	                                    <i class="fa-solid fa-magnifying-glass filter-control-icon"></i>
+	                                    <input type="text" x-model="qcSearchTerm" @input="qcCurrentPage = 1" placeholder="Cari jam, defect, area..." class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+	                                </div>
+	                            </div>
+	                            <div class="filter-group">
+	                                <div class="filter-control filter-control-select has-icon">
+	                                    <i class="fa-solid fa-filter filter-control-icon"></i>
+	                                    <select x-model="qcResultFilter" @change="qcCurrentPage = 1" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+	                                        <option value="">Semua Hasil</option>
+	                                        <option value="good">Good</option>
+	                                        <option value="defect">Defect</option>
+	                                    </select>
+	                                </div>
+	                            </div>
+	                            <div class="filter-group">
+	                                <span class="filter-caption"><i class="fa-solid fa-table-list"></i>Tampilkan</span>
+	                                <div class="filter-control filter-control-page-size">
+	                                    <select x-model="qcItemsPerPage" @change="qcCurrentPage = 1" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+	                                        <option value="5">5</option>
+	                                        <option value="10">10</option>
+	                                        <option value="20">20</option>
+	                                        <option value="50">50</option>
+	                                    </select>
+	                                </div>
+	                                <span class="filter-caption">per halaman</span>
+	                            </div>
+	                        </div>
 	                    </div>
 	                    <div class="overflow-x-auto">
 	                        <table class="min-w-full divide-y divide-gray-200">
@@ -641,45 +671,41 @@
 	                                    <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Aksi</th>
 	                                </tr>
 	                            </thead>
-	                            <template x-for="group in groupedQcChecks" :key="group.key">
-	                                <tbody class="bg-white divide-y divide-gray-200 qc-correction-group">
-	                                    <tr class="qc-group-summary">
-	                                        <td class="px-4 py-3 text-sm font-semibold text-gray-800" x-text="group.hour"></td>
-	                                        <td colspan="4" class="px-4 py-3">
-	                                            <div class="qc-group-counts">
-	                                                <span class="qc-count qc-count-good"><i class="fa-solid fa-check"></i><span x-text="group.goodCount + ' Good'"></span></span>
-	                                                <span class="qc-count qc-count-defect"><i class="fa-solid fa-triangle-exclamation"></i><span x-text="group.defectCount + ' Defect'"></span></span>
-	                                                <span class="text-xs text-gray-500" x-text="group.checks.length + ' pemeriksaan'"></span>
-	                                            </div>
-	                                        </td>
-	                                        <td class="px-4 py-3 text-right">
-	                                            <button type="button" @click="toggleQcGroup(group.key)" class="btn-action btn-action-neutral" :aria-expanded="!!expandedQcGroups[group.key]">
-	                                                <i class="fa-solid" :class="expandedQcGroups[group.key] ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
-	                                                <span x-text="expandedQcGroups[group.key] ? 'Tutup' : 'Detail'"></span>
-	                                            </button>
+	                            <tbody class="bg-white divide-y divide-gray-200">
+	                                <template x-for="check in paginatedQcChecks" :key="check.id">
+	                                    <tr>
+	                                        <td class="px-4 py-3 text-sm text-gray-700" x-text="check.hour || '-'"></td>
+	                                        <td class="px-4 py-3 text-sm font-semibold" :class="check.result === 'defect' ? 'text-red-600' : 'text-green-600'" x-text="check.result === 'defect' ? 'Defect' : 'Good'"></td>
+	                                        <td class="px-4 py-3 text-sm text-gray-700" x-text="check.type || '-'"></td>
+	                                        <td class="px-4 py-3 text-sm text-gray-700" x-text="check.area || '-'"></td>
+	                                        <td class="px-4 py-3 text-sm text-gray-500" x-text="check.notes || '-'"></td>
+	                                        <td class="px-4 py-3 text-right whitespace-nowrap">
+	                                            <button x-show="check.result === 'defect'" type="button" @click="editQcCheck(check)" class="btn-action btn-action-primary"><i class="fa-solid fa-pen"></i>Edit</button>
+	                                            <button type="button" @click="deleteQcCheck(check.id)" class="btn-action btn-action-danger"><i class="fa-solid fa-trash-can"></i>Hapus</button>
 	                                        </td>
 	                                    </tr>
-	                                    <template x-for="check in group.checks" :key="check.id">
-	                                        <tr x-show="expandedQcGroups[group.key]" class="qc-group-detail">
-	                                            <td class="px-4 py-3 text-sm text-gray-400"><i class="fa-solid fa-turn-up fa-rotate-90"></i></td>
-	                                            <td class="px-4 py-3 text-sm font-semibold" :class="check.result === 'defect' ? 'text-red-600' : 'text-green-600'" x-text="check.result === 'defect' ? 'Defect' : 'Good'"></td>
-	                                            <td class="px-4 py-3 text-sm text-gray-700" x-text="check.type || '-'"></td>
-	                                            <td class="px-4 py-3 text-sm text-gray-700" x-text="check.area || '-'"></td>
-	                                            <td class="px-4 py-3 text-sm text-gray-500" x-text="check.notes || '-'"></td>
-	                                            <td class="px-4 py-3 text-right whitespace-nowrap">
-	                                                <button x-show="check.result === 'defect'" type="button" @click="editQcCheck(check)" class="btn-action btn-action-primary"><i class="fa-solid fa-pen"></i>Edit</button>
-	                                                <button type="button" @click="deleteQcCheck(check.id)" class="btn-action btn-action-danger"><i class="fa-solid fa-trash-can"></i>Hapus</button>
-	                                            </td>
-	                                        </tr>
-	                                    </template>
-	                                </tbody>
-	                            </template>
-	                            <tbody class="bg-white">
-	                                <tr x-show="groupedQcChecks.length === 0">
+	                                </template>
+	                                <tr x-show="filteredQcChecks.length === 0">
 	                                    <td colspan="6" class="px-4 py-6 text-center text-sm text-gray-500">Belum ada data hasil QC.</td>
 	                                </tr>
 	                            </tbody>
 	                        </table>
+	                    </div>
+	                    <div x-show="filteredQcChecks.length > 0" class="bg-white px-4 py-3 flex flex-wrap gap-3 items-center justify-between border-t border-gray-200 sm:px-6">
+	                        <div class="text-sm text-gray-700">
+	                            Menampilkan <span x-text="(qcCurrentPage - 1) * qcItemsPerPage + 1"></span> sampai
+	                            <span x-text="Math.min(qcCurrentPage * qcItemsPerPage, filteredQcChecks.length)"></span> dari
+	                            <span x-text="filteredQcChecks.length"></span> hasil
+	                        </div>
+	                        <div class="flex space-x-1">
+	                            <button @click="qcCurrentPage = 1" :disabled="qcCurrentPage === 1" :class="{'pagination-btn disabled': qcCurrentPage === 1, 'pagination-btn': qcCurrentPage !== 1}">&laquo;</button>
+	                            <button @click="qcCurrentPage--" :disabled="qcCurrentPage === 1" :class="{'pagination-btn disabled': qcCurrentPage === 1, 'pagination-btn': qcCurrentPage !== 1}">&lsaquo;</button>
+	                            <template x-for="page in qcPages" :key="page">
+	                                <button @click="qcCurrentPage = page" :class="{'pagination-btn active': page === qcCurrentPage, 'pagination-btn': page !== qcCurrentPage}" x-text="page"></button>
+	                            </template>
+	                            <button @click="qcCurrentPage++" :disabled="qcCurrentPage >= totalQcPages" :class="{'pagination-btn disabled': qcCurrentPage >= totalQcPages, 'pagination-btn': qcCurrentPage < totalQcPages}">&rsaquo;</button>
+	                            <button @click="qcCurrentPage = totalQcPages" :disabled="qcCurrentPage >= totalQcPages" :class="{'pagination-btn disabled': qcCurrentPage >= totalQcPages, 'pagination-btn': qcCurrentPage < totalQcPages}">&raquo;</button>
+	                        </div>
 	                    </div>
 	                </div>
                 </div>

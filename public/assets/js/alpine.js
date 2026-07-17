@@ -51,7 +51,6 @@ function dashboard() {
         },
 	        isSavingProduction: false,
 	        isSavingQc: false,
-	        expandedQcGroups: {},
 
         defectTypes: [],
         defectAreas: [],
@@ -138,7 +137,13 @@ function dashboard() {
 
         // Date report pagination
         currentReportPage: 1,
-        reportPerPage: 10,
+	        reportPerPage: 10,
+
+	        // QC correction pagination
+	        qcCurrentPage: 1,
+	        qcItemsPerPage: 10,
+	        qcSearchTerm: '',
+	        qcResultFilter: '',
 
         // Initialize
         async init() {
@@ -423,12 +428,15 @@ function dashboard() {
 	            }
 	        },
 
-        viewLine(lineName, modelId) {
-            this.currentLine = lineName;
-            this.currentModelId = modelId;
-            this.loadLineDetail(lineName, modelId);
-            this.changePage('line-detail');
-        },
+	        viewLine(lineName, modelId) {
+	            this.currentLine = lineName;
+	            this.currentModelId = modelId;
+	            this.qcCurrentPage = 1;
+	            this.qcSearchTerm = '';
+	            this.qcResultFilter = '';
+	            this.loadLineDetail(lineName, modelId);
+	            this.changePage('line-detail');
+	        },
 
         async inputData(lineName, modelId) {
             if (!this.canManageProduction() && !this.canManageQc()) {
@@ -1067,6 +1075,7 @@ function dashboard() {
 	                }
 	                this.showToast('Data QC berhasil dihapus', 'success');
 	                await this.loadLineDetail(this.currentLine, this.currentModelId);
+	                this.qcCurrentPage = Math.min(this.qcCurrentPage, this.totalQcPages);
 	                await this.loadDashboardData();
 	            } catch (error) {
 	                console.error('Error deleting QC check:', error);
@@ -1102,10 +1111,6 @@ function dashboard() {
 	                console.error('Error updating QC check:', error);
 	                this.showToast('Error memperbarui defect', 'error');
 	            }
-	        },
-
-	        toggleQcGroup(groupKey) {
-	            this.expandedQcGroups[groupKey] = !this.expandedQcGroups[groupKey];
 	        },
 
         // Methods for target manual
@@ -1741,29 +1746,31 @@ function dashboard() {
 	                .sort((a, b) => new Date(b.checkedAt || 0) - new Date(a.checkedAt || 0));
 	        },
 
-	        get groupedQcChecks() {
-	            const groups = new Map();
+	        get filteredQcChecks() {
+	            const search = this.qcSearchTerm.trim().toLowerCase();
 
-	            this.allQcChecks.forEach(check => {
-	                const hour = check.hour || '-';
-	                const group = groups.get(hour) || {
-	                    key: `qc-${hour}`,
-	                    hour,
-	                    goodCount: 0,
-	                    defectCount: 0,
-	                    checks: [],
-	                    latestCheckedAt: check.checkedAt || ''
-	                };
+	            return this.allQcChecks.filter(check => {
+	                const matchesResult = !this.qcResultFilter || check.result === this.qcResultFilter;
+	                const matchesSearch = !search || [check.hour, check.type, check.area, check.notes]
+	                    .some(value => String(value || '').toLowerCase().includes(search));
 
-	                group.checks.push(check);
-	                if (check.result === 'defect') group.defectCount++;
-	                else group.goodCount++;
-	                groups.set(hour, group);
+	                return matchesResult && matchesSearch;
 	            });
+	        },
 
-	            return Array.from(groups.values()).sort((a, b) =>
-	                new Date(b.latestCheckedAt || 0) - new Date(a.latestCheckedAt || 0)
-	            );
+	        get paginatedQcChecks() {
+	            const start = (this.qcCurrentPage - 1) * this.qcItemsPerPage;
+	            return this.filteredQcChecks.slice(start, start + Number(this.qcItemsPerPage));
+	        },
+
+	        get totalQcPages() {
+	            return Math.max(1, Math.ceil(this.filteredQcChecks.length / this.qcItemsPerPage));
+	        },
+
+	        get qcPages() {
+	            const start = Math.max(1, Math.min(this.qcCurrentPage - 2, this.totalQcPages - 4));
+	            const end = Math.min(this.totalQcPages, start + 4);
+	            return Array.from({ length: end - start + 1 }, (_, index) => start + index);
 	        },
 
         get selectedDashboardLineData() {

@@ -607,6 +607,7 @@
 	                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
 		                                                <button x-show="canCorrectProduction()"
 	                                                        :title="isProductionHourTooEarly(hour) ? 'Jam produksi ini belum dimulai' : (hour.productionLocked ? 'Data jam ini sudah terkunci' : 'Simpan data produksi')"
+	                                                        :disabled="isSavingProduction || isProductionHourLocked(hour)"
 	                                                        @click="updateHourlyDataDirect(currentLine, currentModelId, index)"
 	                                                        class="btn-action btn-action-primary disabled:opacity-50 disabled:cursor-not-allowed">
 		                                                    <i class="fa-solid fa-floppy-disk"></i>Simpan
@@ -717,7 +718,7 @@
 	                                        <span x-show="isSelectedProductionHourLocked()" x-text="isProductionHourTooEarly(lineDetail.hourly_data[inputForm.hourIndex]) ? 'Jam produksi ini belum dimulai' : 'Data jam ini sudah terkunci'"></span>
 	                                    </div>
 	                                    <div class="flex justify-end">
-	                                        <button type="submit" :disabled="isSelectedProductionHourLocked()" class="production-save-btn inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+	                                        <button type="submit" :disabled="isSelectedProductionHourLocked() || isSavingProduction" class="production-save-btn inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
 	                                            <i class="fa-solid fa-floppy-disk mr-2"></i>Simpan Produksi
 	                                        </button>
 	                                    </div>
@@ -780,10 +781,10 @@
 	                                </div>
 
 	                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-	                                    <button type="button" @click="submitQcCheck('good')" class="inline-flex justify-center items-center px-4 py-3 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700">
+	                                    <button type="button" @click="submitQcCheck('good')" :disabled="isSavingQc" class="inline-flex justify-center items-center px-4 py-3 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed">
 	                                        <i class="fa-solid fa-circle-check mr-2"></i>Good
 	                                    </button>
-	                                    <button type="button" @click="submitQcCheck('defect')" class="inline-flex justify-center items-center px-4 py-3 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700">
+	                                    <button type="button" @click="submitQcCheck('defect')" :disabled="isSavingQc" class="inline-flex justify-center items-center px-4 py-3 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed">
 	                                        <i class="fa-solid fa-triangle-exclamation mr-2"></i>Defect
 	                                    </button>
 	                                </div>

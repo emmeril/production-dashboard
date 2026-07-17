@@ -49,6 +49,8 @@ function dashboard() {
             area: '',
             notes: ''
         },
+        isSavingProduction: false,
+        isSavingQc: false,
 
         defectTypes: [],
         defectAreas: [],
@@ -961,6 +963,8 @@ function dashboard() {
 	        },
 
 	        async submitProductionData() {
+	            if (this.isSavingProduction) return;
+
 	            if (!this.canManageProduction()) {
 	                this.showToast('Anda tidak memiliki akses untuk input hasil sewing', 'error');
 	                return;
@@ -975,8 +979,9 @@ function dashboard() {
 	                return;
 	            }
 
-            try {
-                const response = await fetch(`/api/update-production/${this.currentLine}/${this.currentModelId}`, {
+	            this.isSavingProduction = true;
+	            try {
+	                const response = await fetch(`/api/update-production/${this.currentLine}/${this.currentModelId}`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -997,25 +1002,30 @@ function dashboard() {
                     const error = await response.json();
                     this.showToast(error.error || 'Failed to save data', 'error');
                 }
-            } catch (error) {
-                console.error('Error saving hourly data:', error);
-                this.showToast('Error saving data', 'error');
-            }
-        },
+	            } catch (error) {
+	                console.error('Error saving hourly data:', error);
+	                this.showToast('Error saving data', 'error');
+	            } finally {
+	                this.isSavingProduction = false;
+	            }
+	        },
 
-        async submitQcCheck(result) {
-            if (!this.canManageQc()) {
-                this.showToast('Anda tidak memiliki akses untuk input QC', 'error');
-                return;
-            }
+	        async submitQcCheck(result) {
+	            if (this.isSavingQc) return;
+
+	            if (!this.canManageQc()) {
+	                this.showToast('Anda tidak memiliki akses untuk input QC', 'error');
+	                return;
+	            }
 
             if (result === 'defect' && (!this.defectEntry.type || !this.defectEntry.area)) {
                 this.showToast('Pilih jenis defect dan area defect terlebih dahulu', 'error');
                 return;
             }
 
-            try {
-                const response = await fetch(`/api/qc-check/${this.currentLine}/${this.currentModelId}`, {
+	            this.isSavingQc = true;
+	            try {
+	                const response = await fetch(`/api/qc-check/${this.currentLine}/${this.currentModelId}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
 	                    body: JSON.stringify({
@@ -1036,11 +1046,13 @@ function dashboard() {
                     const error = await response.json();
                     this.showToast(error.error || 'Gagal menyimpan QC check', 'error');
                 }
-            } catch (error) {
-                console.error('Error saving QC check:', error);
-                this.showToast('Error saving QC check', 'error');
-            }
-        },
+	            } catch (error) {
+	                console.error('Error saving QC check:', error);
+	                this.showToast('Error saving QC check', 'error');
+	            } finally {
+	                this.isSavingQc = false;
+	            }
+	        },
 
 	        async deleteQcCheck(checkId) {
 	            if (!this.canDeleteQc() || !confirm('Hapus data QC ini?')) return;
@@ -1126,10 +1138,12 @@ function dashboard() {
         },
 
         // Update data langsung dari tabel
-        async updateHourlyDataDirect(lineName, modelId, hourIndex) {
-            if (!this.canManageProduction() && !this.canCorrectProduction()) {
-                this.showToast('Anda tidak memiliki akses untuk input data', 'error');
-                return;
+	        async updateHourlyDataDirect(lineName, modelId, hourIndex) {
+	            if (this.isSavingProduction) return;
+
+	            if (!this.canManageProduction() && !this.canCorrectProduction()) {
+	                this.showToast('Anda tidak memiliki akses untuk input data', 'error');
+	                return;
             }
 
             const hour = this.lineDetail.hourly_data[hourIndex];
@@ -1142,8 +1156,9 @@ function dashboard() {
 	            return;
 	        }
 
-            try {
-                const response = await fetch(`/api/update-production/${lineName}/${modelId}`, {
+	            this.isSavingProduction = true;
+	            try {
+	                const response = await fetch(`/api/update-production/${lineName}/${modelId}`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -1163,11 +1178,13 @@ function dashboard() {
                     const error = await response.json();
                     this.showToast(error.error || 'Failed to save data', 'error');
                 }
-            } catch (error) {
-                console.error('Error saving hourly data:', error);
-                this.showToast('Error saving data', 'error');
-            }
-        },
+	            } catch (error) {
+	                console.error('Error saving hourly data:', error);
+	                this.showToast('Error saving data', 'error');
+	            } finally {
+	                this.isSavingProduction = false;
+	            }
+	        },
 
         // Export methods
         async exportLineExcel(lineName, modelId) {

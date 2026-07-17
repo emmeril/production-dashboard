@@ -37,6 +37,7 @@ let usersDataCache = { users: [] };
 let defectConfigCache = { defectTypes: [], defectAreas: [] };
 let publicDisplaySettingsCache = {};
 let databaseInitialized = false;
+const appDataWriteQueues = new Map();
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -356,14 +357,27 @@ function parsePayload(payload, fallback) {
 }
 
 async function upsertAppData(key, data) {
-  try {
-    await AppData.upsert({
-      key,
-      payload: JSON.stringify(data)
+  const payload = JSON.stringify(data);
+  const previousWrite = appDataWriteQueues.get(key) || Promise.resolve();
+
+  const nextWrite = previousWrite
+    .catch(() => {})
+    .then(async () => {
+      try {
+        await AppData.upsert({ key, payload });
+      } catch (error) {
+        console.error(`ERROR: Gagal menyimpan ${key} ke database:`, error.message);
+      }
     });
-  } catch (error) {
-    console.error(`❌ ERROR: Gagal menyimpan ${key} ke database:`, error.message);
-  }
+
+  appDataWriteQueues.set(key, nextWrite);
+  nextWrite.finally(() => {
+    if (appDataWriteQueues.get(key) === nextWrite) {
+      appDataWriteQueues.delete(key);
+    }
+  }).catch(() => {});
+
+  return nextWrite;
 }
 
 async function initSequelizeStorage() {
@@ -1886,6 +1900,9 @@ app.post('/api/update-hourly/:lineName/:modelId', requireLogin, requireLineAcces
     qcChecked: parseInt(qcChecked) || 0,
     targetManual: nextTargetManual,
     defectDetails: Array.isArray(defectDetails) ? defectDetails : (currentHour.defectDetails || []),
+    productionLocked: req.session.user?.role === 'operator' ? true : Boolean(currentHour.productionLocked),
+    productionLockedAt: req.session.user?.role === 'operator' ? new Date().toISOString() : currentHour.productionLockedAt,
+    productionLockedBy: req.session.user?.role === 'operator' ? req.session.user.username : currentHour.productionLockedBy,
     selisih: selisih
   };
 
@@ -2569,7 +2586,7 @@ app.get('/api/line/:lineName', requireLogin, requireLineAccess, autoCheckDateRes
   });
 });
 
-app.post('/api/update-line/:lineName/:modelId', requireLogin, requireLineAccess, autoCheckDateReset, (req, res) => {
+app.post('/api/update-line/:lineName/:modelId', requireLogin, requireLineAccess, requireLineManagementAccess, autoCheckDateReset, (req, res) => {
   const { lineName, modelId } = req.params;
   const newData = req.body;
 
@@ -2579,15 +2596,30 @@ app.post('/api/update-line/:lineName/:modelId', requireLogin, requireLineAccess,
     return res.status(404).json({ error: 'Line or model not found' });
   }
 
-  data.lines[lineName].models[modelId] = { ...data.lines[lineName].models[modelId], ...newData };
-
   const model = data.lines[lineName].models[modelId];
-  const qcChecking = model.qcChecking || 0;
-  const actualDefect = model.actualDefect || 0;
+  if (Object.prototype.hasOwnProperty.call(newData, 'labelWeek')) {
+    model.labelWeek = String(newData.labelWeek || '').trim();
+  }
+  if (Object.prototype.hasOwnProperty.call(newData, 'model')) {
+    model.model = String(newData.model || '').trim();
+  }
+  if (Object.prototype.hasOwnProperty.call(newData, 'date')) {
+    model.date = String(newData.date || '').trim();
+  }
+  if (Object.prototype.hasOwnProperty.call(newData, 'target')) {
+    const nextTarget = parseInt(newData.target);
+    if (!Number.isNaN(nextTarget)) {
+      model.targetPerHour = Math.round(nextTarget / 8);
+      (model.hourly_data || []).forEach(hour => {
+        if (hour.hour !== "11:00 - 13:00") {
+          hour.targetManual = model.targetPerHour;
+          hour.selisih = (parseInt(hour.output) || 0) - model.targetPerHour;
+        }
+      });
+    }
+  }
 
-  let defectRatePercentage = (qcChecking > 0) ? (actualDefect / qcChecking) * 100 : 0;
-
-  model.defectRatePercentage = parseFloat(defectRatePercentage.toFixed(2));
+  recalculateModelTotals(model);
 
   writeProductionData(data);
   

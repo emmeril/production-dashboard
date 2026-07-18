@@ -68,10 +68,10 @@
         <!-- Sidebar -->
 	        <div class="hidden md:flex md:flex-shrink-0">
 	            <div class="flex flex-col bg-gradient-custom transition-all duration-200" :class="sidebarCollapsed ? 'w-20' : 'w-64'">
-	                <div class="flex items-center h-16 px-4 bg-blue-800" :class="sidebarCollapsed ? 'justify-center' : 'justify-between'">
-	                    <span x-show="!sidebarCollapsed" class="text-white text-xl font-bold whitespace-nowrap">Production Dashboard</span>
-	                    <button @click="sidebarCollapsed = !sidebarCollapsed" class="inline-flex items-center justify-center h-9 w-9 rounded-md text-blue-100 hover:bg-blue-700 hover:text-white focus:outline-none focus:ring-2 focus:ring-white" :title="sidebarCollapsed ? 'Maximize sidebar' : 'Minimize sidebar'">
-	                        <i class="fa-solid" :class="sidebarCollapsed ? 'fa-angles-right' : 'fa-angles-left'"></i>
+	                <div class="sidebar-brand flex items-center h-16 px-4 bg-blue-800" :class="sidebarCollapsed ? 'justify-center' : 'justify-between'">
+	                    <span x-show="!sidebarCollapsed" class="sidebar-brand-title text-white font-bold whitespace-nowrap">Production Dashboard</span>
+	                    <button @click="sidebarCollapsed = !sidebarCollapsed" class="sidebar-toggle inline-flex flex-shrink-0 items-center justify-center h-9 w-9 rounded-md text-blue-100 hover:bg-blue-700 hover:text-white focus:outline-none focus:ring-2 focus:ring-white" :title="sidebarCollapsed ? 'Buka sidebar' : 'Tutup sidebar'" :aria-label="sidebarCollapsed ? 'Buka sidebar' : 'Tutup sidebar'">
+	                        <i class="fa-solid" :class="sidebarCollapsed ? 'fa-arrow-right' : 'fa-bars'"></i>
 	                    </button>
 	                </div>
 	                <div class="flex flex-col flex-1 overflow-y-auto">
@@ -404,7 +404,6 @@
 	                                            <option value="50">50</option>
 	                                            </select>
 	                                        </div>
-	                                        <span class="filter-caption">per halaman</span>
 	                                    </div>
 	                                </div>
                             </div>
@@ -505,10 +504,10 @@
                         <!-- Pagination Controls for Dashboard -->
                         <div class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
                             <div class="flex-1 flex justify-between items-center">
-                                <div class="text-sm text-gray-700">
-                                    Menampilkan <span x-text="(dashboardCurrentPage - 1) * dashboardItemsPerPage + 1"></span> sampai 
-                                    <span x-text="Math.min(dashboardCurrentPage * dashboardItemsPerPage, filteredDashboardLines.length)"></span> dari 
-                                    <span x-text="filteredDashboardLines.length"></span> hasil
+                                <div class="text-sm font-medium text-gray-700">
+                                    <span x-text="(dashboardCurrentPage - 1) * dashboardItemsPerPage + 1"></span>
+                                    <span class="mx-1">-</span>
+                                    <span x-text="Math.min(dashboardCurrentPage * dashboardItemsPerPage, filteredDashboardLines.length)"></span>
                                 </div>
                                 <div class="flex space-x-1">
                                     <button @click="dashboardCurrentPage = 1" :disabled="dashboardCurrentPage === 1" 
@@ -725,7 +724,6 @@
 	                                        <option value="50">50</option>
 	                                    </select>
 	                                </div>
-	                                <span class="filter-caption">per halaman</span>
 	                            </div>
 	                        </div>
 	                    </div>
@@ -762,10 +760,10 @@
 	                        </table>
 	                    </div>
 	                    <div x-show="filteredQcChecks.length > 0" class="bg-white px-4 py-3 flex flex-wrap gap-3 items-center justify-between border-t border-gray-200 sm:px-6">
-	                        <div class="text-sm text-gray-700">
-	                            Menampilkan <span x-text="(qcCurrentPage - 1) * qcItemsPerPage + 1"></span> sampai
-	                            <span x-text="Math.min(qcCurrentPage * qcItemsPerPage, filteredQcChecks.length)"></span> dari
-	                            <span x-text="filteredQcChecks.length"></span> hasil
+	                        <div class="text-sm font-medium text-gray-700">
+	                            <span x-text="(qcCurrentPage - 1) * qcItemsPerPage + 1"></span>
+	                            <span class="mx-1">-</span>
+	                            <span x-text="Math.min(qcCurrentPage * qcItemsPerPage, filteredQcChecks.length)"></span>
 	                        </div>
 	                        <div class="flex space-x-1">
 	                            <button @click="qcCurrentPage = 1" :disabled="qcCurrentPage === 1" :class="{'pagination-btn disabled': qcCurrentPage === 1, 'pagination-btn': qcCurrentPage !== 1}">&laquo;</button>
@@ -991,7 +989,6 @@
 	                                        <option value="50">50</option>
 	                                        </select>
 	                                    </div>
-	                                    <span class="filter-caption">per halaman</span>
 	                                </div>
 	                            </div>
                             
@@ -1040,10 +1037,10 @@
                             
                             <!-- Pagination Controls for Lines -->
                             <div class="flex items-center justify-between mt-4">
-                                <div class="text-sm text-gray-700">
-                                    Menampilkan <span x-text="(currentLinePage - 1) * linesPerPage + 1"></span> sampai 
-                                    <span x-text="Math.min(currentLinePage * linesPerPage, filteredLines.length)"></span> dari 
-                                    <span x-text="filteredLines.length"></span> hasil
+                                <div class="text-sm font-medium text-gray-700">
+                                    <span x-text="(currentLinePage - 1) * linesPerPage + 1"></span>
+                                    <span class="mx-1">-</span>
+                                    <span x-text="Math.min(currentLinePage * linesPerPage, filteredLines.length)"></span>
                                 </div>
                                 <div class="flex space-x-1">
                                     <button @click="currentLinePage = 1" :disabled="currentLinePage === 1" 
@@ -1105,7 +1102,6 @@
 	                                        <option value="50">50</option>
 	                                        </select>
 	                                    </div>
-	                                    <span class="filter-caption">per halaman</span>
 	                                </div>
 	                            </div>
                             
@@ -1150,10 +1146,10 @@
                             
                             <!-- Pagination Controls for Users -->
                             <div class="flex items-center justify-between mt-4">
-                                <div class="text-sm text-gray-700">
-                                    Menampilkan <span x-text="(currentUserPage - 1) * usersPerPage + 1"></span> sampai 
-                                    <span x-text="Math.min(currentUserPage * usersPerPage, filteredUsers.length)"></span> dari 
-                                    <span x-text="filteredUsers.length"></span> hasil
+                                <div class="text-sm font-medium text-gray-700">
+                                    <span x-text="(currentUserPage - 1) * usersPerPage + 1"></span>
+                                    <span class="mx-1">-</span>
+                                    <span x-text="Math.min(currentUserPage * usersPerPage, filteredUsers.length)"></span>
                                 </div>
                                 <div class="flex space-x-1">
                                     <button @click="currentUserPage = 1" :disabled="currentUserPage === 1" 
@@ -1224,7 +1220,6 @@
 	                                            <option value="50">50</option>
 	                                            </select>
 	                                        </div>
-	                                        <span class="filter-caption">per halaman</span>
 	                                    </div>
                                 </div>
                                 
@@ -1265,10 +1260,10 @@
                                 
                                 <!-- Pagination Controls for Date Report -->
                                 <div class="flex items-center justify-between mt-4">
-                                    <div class="text-sm text-gray-700">
-                                        Menampilkan <span x-text="(currentReportPage - 1) * reportPerPage + 1"></span> sampai 
-                                        <span x-text="Math.min(currentReportPage * reportPerPage, dateReport.length)"></span> dari 
-                                        <span x-text="dateReport.length"></span> hasil
+                                    <div class="text-sm font-medium text-gray-700">
+                                        <span x-text="(currentReportPage - 1) * reportPerPage + 1"></span>
+                                        <span class="mx-1">-</span>
+                                        <span x-text="Math.min(currentReportPage * reportPerPage, dateReport.length)"></span>
                                     </div>
                                     <div class="flex space-x-1">
                                         <button @click="currentReportPage = 1" :disabled="currentReportPage === 1" 
@@ -1507,7 +1502,7 @@
 	                                </table>
 	                            </div>
 	                            <div x-show="filteredDefectTypes.length > 0" class="bg-white px-4 py-3 flex flex-wrap gap-3 items-center justify-between border-t border-gray-200">
-	                                <div class="text-sm text-gray-700">Menampilkan <span x-text="(defectTypeCurrentPage - 1) * Number(defectTypeItemsPerPage) + 1"></span> sampai <span x-text="Math.min(defectTypeCurrentPage * Number(defectTypeItemsPerPage), filteredDefectTypes.length)"></span> dari <span x-text="filteredDefectTypes.length"></span> hasil</div>
+	                                <div class="text-sm font-medium text-gray-700"><span x-text="(defectTypeCurrentPage - 1) * Number(defectTypeItemsPerPage) + 1"></span><span class="mx-1">-</span><span x-text="Math.min(defectTypeCurrentPage * Number(defectTypeItemsPerPage), filteredDefectTypes.length)"></span></div>
 	                                <div class="flex space-x-1">
 	                                    <button @click="defectTypeCurrentPage--" :disabled="defectTypeCurrentPage === 1" class="pagination-btn" :class="{'disabled': defectTypeCurrentPage === 1}">&lsaquo;</button>
 	                                    <template x-for="page in defectTypePages" :key="page"><button @click="defectTypeCurrentPage = page" class="pagination-btn" :class="{'active': page === defectTypeCurrentPage}" x-text="page"></button></template>
@@ -1579,7 +1574,7 @@
 	                                </table>
 	                            </div>
 	                            <div x-show="filteredDefectAreas.length > 0" class="bg-white px-4 py-3 flex flex-wrap gap-3 items-center justify-between border-t border-gray-200">
-	                                <div class="text-sm text-gray-700">Menampilkan <span x-text="(defectAreaCurrentPage - 1) * Number(defectAreaItemsPerPage) + 1"></span> sampai <span x-text="Math.min(defectAreaCurrentPage * Number(defectAreaItemsPerPage), filteredDefectAreas.length)"></span> dari <span x-text="filteredDefectAreas.length"></span> hasil</div>
+	                                <div class="text-sm font-medium text-gray-700"><span x-text="(defectAreaCurrentPage - 1) * Number(defectAreaItemsPerPage) + 1"></span><span class="mx-1">-</span><span x-text="Math.min(defectAreaCurrentPage * Number(defectAreaItemsPerPage), filteredDefectAreas.length)"></span></div>
 	                                <div class="flex space-x-1">
 	                                    <button @click="defectAreaCurrentPage--" :disabled="defectAreaCurrentPage === 1" class="pagination-btn" :class="{'disabled': defectAreaCurrentPage === 1}">&lsaquo;</button>
 	                                    <template x-for="page in defectAreaPages" :key="page"><button @click="defectAreaCurrentPage = page" class="pagination-btn" :class="{'active': page === defectAreaCurrentPage}" x-text="page"></button></template>

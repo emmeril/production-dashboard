@@ -754,6 +754,24 @@ h3,
     border-bottom-color: rgba(255, 255, 255, 0.09);
 }
 
+.sidebar-brand {
+    gap: 0.6rem;
+}
+
+.sidebar-brand-title {
+    min-width: 0;
+    font-size: 0.95rem;
+    letter-spacing: -0.035em;
+}
+
+.sidebar-toggle {
+    margin-left: auto;
+}
+
+.sidebar-brand.justify-center .sidebar-toggle {
+    margin-left: 0;
+}
+
 nav a.group {
     min-height: 46px;
     border-radius: 10px !important;

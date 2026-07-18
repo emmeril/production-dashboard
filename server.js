@@ -940,6 +940,11 @@ function requireQcManageAccess(req, res, next) {
   res.status(403).json({ error: 'Akses kelola hasil QC diperlukan' });
 }
 
+function requireDefectCategoryAccess(req, res, next) {
+  if (hasAnyRole(req.session.user, ['admin', 'admin_operator_qc'])) return next();
+  res.status(403).json({ error: 'Akses kelola kategori defect diperlukan' });
+}
+
 function isOperatorProductionLocked(req, hour) {
   return req.session.user?.role === 'operator' && Boolean(hour?.productionLocked);
 }
@@ -3455,7 +3460,7 @@ app.get('/api/defect-types', requireLogin, (req, res) => {
   res.json((config.defectTypes || []).filter(type => type.active !== false));
 });
 
-app.post('/api/defect-types', requireLogin, requireAdmin, (req, res) => {
+app.post('/api/defect-types', requireLogin, requireDefectCategoryAccess, (req, res) => {
   const { name, severity = 'minor', active = true } = req.body;
   const config = readDefectConfig();
   config.defectTypes = config.defectTypes || [];
@@ -3471,7 +3476,7 @@ app.post('/api/defect-types', requireLogin, requireAdmin, (req, res) => {
   res.json({ message: 'Defect type created successfully', defectType });
 });
 
-app.put('/api/defect-types/:id', requireLogin, requireAdmin, (req, res) => {
+app.put('/api/defect-types/:id', requireLogin, requireDefectCategoryAccess, (req, res) => {
   const { id } = req.params;
   const { name, severity = 'minor', active = true } = req.body;
   const config = readDefectConfig();
@@ -3493,7 +3498,7 @@ app.put('/api/defect-types/:id', requireLogin, requireAdmin, (req, res) => {
   res.json({ message: 'Defect type updated successfully', defectType });
 });
 
-app.delete('/api/defect-types/:id', requireLogin, requireAdmin, (req, res) => {
+app.delete('/api/defect-types/:id', requireLogin, requireDefectCategoryAccess, (req, res) => {
   const { id } = req.params;
   const config = readDefectConfig();
   const index = (config.defectTypes || []).findIndex(type => String(type.id) === String(id));
@@ -3513,7 +3518,7 @@ app.get('/api/defect-areas', requireLogin, (req, res) => {
   res.json((config.defectAreas || []).filter(area => area.active !== false));
 });
 
-app.post('/api/defect-areas', requireLogin, requireAdmin, (req, res) => {
+app.post('/api/defect-areas', requireLogin, requireDefectCategoryAccess, (req, res) => {
   const { name, severity = 'minor', active = true } = req.body;
   const config = readDefectConfig();
   config.defectAreas = config.defectAreas || [];
@@ -3529,7 +3534,7 @@ app.post('/api/defect-areas', requireLogin, requireAdmin, (req, res) => {
   res.json({ message: 'Defect area created successfully', defectArea });
 });
 
-app.put('/api/defect-areas/:id', requireLogin, requireAdmin, (req, res) => {
+app.put('/api/defect-areas/:id', requireLogin, requireDefectCategoryAccess, (req, res) => {
   const { id } = req.params;
   const { name, severity = 'minor', active = true } = req.body;
   const config = readDefectConfig();
@@ -3551,7 +3556,7 @@ app.put('/api/defect-areas/:id', requireLogin, requireAdmin, (req, res) => {
   res.json({ message: 'Defect area updated successfully', defectArea });
 });
 
-app.delete('/api/defect-areas/:id', requireLogin, requireAdmin, (req, res) => {
+app.delete('/api/defect-areas/:id', requireLogin, requireDefectCategoryAccess, (req, res) => {
   const { id } = req.params;
   const config = readDefectConfig();
   const index = (config.defectAreas || []).findIndex(area => String(area.id) === String(id));

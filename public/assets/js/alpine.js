@@ -249,13 +249,15 @@ function dashboard() {
 	                    this.navigation.push({ name: 'Management Line', page: 'admin-management', iconClass: 'fa-list-check' });
 	                }
 	                this.navigation.push({ name: 'Report', page: 'report', iconClass: 'fa-chart-column' });
-	                if (this.currentUser.role === 'admin') {
+                if (this.currentUser.role === 'admin') {
 	                    this.navigation.push(
 	                        { name: 'Manajemen User', page: 'user-management', iconClass: 'fa-users-gear' },
 	                        { name: 'Kategori Defect', page: 'defect-categories', iconClass: 'fa-triangle-exclamation' },
 	                        { name: 'Public Display', page: 'public-display-settings', iconClass: 'fa-tv' },
-	                        { name: 'Aksi Sistem', page: 'system-actions', iconClass: 'fa-screwdriver-wrench' }
-	                    );
+                        { name: 'Aksi Sistem', page: 'system-actions', iconClass: 'fa-screwdriver-wrench' }
+                    );
+                } else if (this.canManageDefectCategories()) {
+                    this.navigation.push({ name: 'Kategori Defect', page: 'defect-categories', iconClass: 'fa-triangle-exclamation' });
 	                }
 	            } else {
 	                this.navigation = baseNav;
@@ -272,6 +274,10 @@ function dashboard() {
 
 	        canManageLines() {
 	            return ['admin', 'admin_operator_sewing'].includes(this.currentUser.role);
+	        },
+
+	        canManageDefectCategories() {
+	            return ['admin', 'admin_operator_qc'].includes(this.currentUser.role);
 	        },
 
 	        canManageProduction() {
@@ -360,7 +366,9 @@ function dashboard() {
             }
 
 	            if (state.currentPage === 'user-management' || state.currentPage === 'defect-categories' || state.currentPage === 'public-display-settings' || state.currentPage === 'system-actions') {
-	                return this.currentUser.role === 'admin';
+	                return state.currentPage === 'defect-categories'
+	                    ? this.canManageDefectCategories()
+	                    : this.currentUser.role === 'admin';
 	            }
 
             if (state.currentPage === 'input-data') {

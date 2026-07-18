@@ -1442,6 +1442,19 @@
 		                            <div class="p-4 border-b border-gray-200">
 		                                <div class="filter-toolbar line-management-toolbar mb-0">
 		                                <div class="filter-group">
+		                                <span class="filter-caption"><i class="fa-solid fa-magnifying-glass"></i>Pencarian</span>
+		                                <div class="filter-control">
+		                                    <i class="fa-solid fa-magnifying-glass filter-control-icon"></i>
+		                                    <input type="text" x-model="defectTypeSearchTerm" @input="defectTypeCurrentPage = 1" placeholder="Cari jenis defect..." class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+		                                </div>
+		                                </div>
+		                                <div class="filter-group">
+		                                <span class="filter-caption"><i class="fa-solid fa-table-list"></i>Tampilkan</span>
+		                                <select x-model="defectTypeItemsPerPage" @change="defectTypeCurrentPage = 1" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+		                                    <option value="5">5</option><option value="10">10</option><option value="20">20</option><option value="50">50</option>
+		                                </select>
+		                                </div>
+		                                <div class="filter-group">
 		                                <button type="button" @click="openDefectCategoryModal('type')" class="btn-compact inline-flex justify-center items-center border border-transparent font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
 		                                    <i class="fa-solid fa-plus mr-2"></i>Tambah Jenis Defect
 		                                </button>
@@ -1459,7 +1472,7 @@
 	                                        </tr>
 	                                    </thead>
 	                                    <tbody class="bg-white divide-y divide-gray-200">
-	                                        <template x-for="type in defectTypes" :key="type.id">
+	                                        <template x-for="type in paginatedDefectTypes" :key="type.id">
 	                                            <tr>
 	                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900" x-text="type.name"></td>
 	                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-semibold">
@@ -1478,11 +1491,19 @@
 	                                                </td>
 	                                            </tr>
 	                                        </template>
-	                                        <tr x-show="defectTypes.length === 0">
-	                                            <td colspan="4" class="px-4 py-6 text-center text-sm text-gray-500">Belum ada jenis defect.</td>
+	                                        <tr x-show="filteredDefectTypes.length === 0">
+	                                            <td colspan="4" class="px-4 py-6 text-center text-sm text-gray-500" x-text="defectTypeSearchTerm ? 'Jenis defect tidak ditemukan.' : 'Belum ada jenis defect.'"></td>
 	                                        </tr>
 	                                    </tbody>
 	                                </table>
+	                            </div>
+	                            <div x-show="filteredDefectTypes.length > 0" class="bg-white px-4 py-3 flex flex-wrap gap-3 items-center justify-between border-t border-gray-200">
+	                                <div class="text-sm text-gray-700">Menampilkan <span x-text="(defectTypeCurrentPage - 1) * Number(defectTypeItemsPerPage) + 1"></span> sampai <span x-text="Math.min(defectTypeCurrentPage * Number(defectTypeItemsPerPage), filteredDefectTypes.length)"></span> dari <span x-text="filteredDefectTypes.length"></span> hasil</div>
+	                                <div class="flex space-x-1">
+	                                    <button @click="defectTypeCurrentPage--" :disabled="defectTypeCurrentPage === 1" class="pagination-btn" :class="{'disabled': defectTypeCurrentPage === 1}">&lsaquo;</button>
+	                                    <template x-for="page in defectTypePages" :key="page"><button @click="defectTypeCurrentPage = page" class="pagination-btn" :class="{'active': page === defectTypeCurrentPage}" x-text="page"></button></template>
+	                                    <button @click="defectTypeCurrentPage++" :disabled="defectTypeCurrentPage >= totalDefectTypePages" class="pagination-btn" :class="{'disabled': defectTypeCurrentPage >= totalDefectTypePages}">&rsaquo;</button>
+	                                </div>
 	                            </div>
 	                        </div>
 
@@ -1493,6 +1514,19 @@
 	                            </div>
 		                            <div class="p-4 border-b border-gray-200">
 		                                <div class="filter-toolbar line-management-toolbar mb-0">
+		                                <div class="filter-group">
+		                                <span class="filter-caption"><i class="fa-solid fa-magnifying-glass"></i>Pencarian</span>
+		                                <div class="filter-control">
+		                                    <i class="fa-solid fa-magnifying-glass filter-control-icon"></i>
+		                                    <input type="text" x-model="defectAreaSearchTerm" @input="defectAreaCurrentPage = 1" placeholder="Cari area defect..." class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+		                                </div>
+		                                </div>
+		                                <div class="filter-group">
+		                                <span class="filter-caption"><i class="fa-solid fa-table-list"></i>Tampilkan</span>
+		                                <select x-model="defectAreaItemsPerPage" @change="defectAreaCurrentPage = 1" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+		                                    <option value="5">5</option><option value="10">10</option><option value="20">20</option><option value="50">50</option>
+		                                </select>
+		                                </div>
 		                                <div class="filter-group">
 		                                <button type="button" @click="openDefectCategoryModal('area')" class="btn-compact inline-flex justify-center items-center border border-transparent font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
 		                                    <i class="fa-solid fa-plus mr-2"></i>Tambah Area Defect
@@ -1511,7 +1545,7 @@
 	                                        </tr>
 	                                    </thead>
 	                                    <tbody class="bg-white divide-y divide-gray-200">
-	                                        <template x-for="area in defectAreas" :key="area.id">
+	                                        <template x-for="area in paginatedDefectAreas" :key="area.id">
 	                                            <tr>
 	                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900" x-text="area.name"></td>
 	                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-semibold">
@@ -1530,11 +1564,19 @@
 	                                                </td>
 	                                            </tr>
 	                                        </template>
-	                                        <tr x-show="defectAreas.length === 0">
-	                                            <td colspan="4" class="px-4 py-6 text-center text-sm text-gray-500">Belum ada area defect.</td>
+	                                        <tr x-show="filteredDefectAreas.length === 0">
+	                                            <td colspan="4" class="px-4 py-6 text-center text-sm text-gray-500" x-text="defectAreaSearchTerm ? 'Area defect tidak ditemukan.' : 'Belum ada area defect.'"></td>
 	                                        </tr>
 	                                    </tbody>
 	                                </table>
+	                            </div>
+	                            <div x-show="filteredDefectAreas.length > 0" class="bg-white px-4 py-3 flex flex-wrap gap-3 items-center justify-between border-t border-gray-200">
+	                                <div class="text-sm text-gray-700">Menampilkan <span x-text="(defectAreaCurrentPage - 1) * Number(defectAreaItemsPerPage) + 1"></span> sampai <span x-text="Math.min(defectAreaCurrentPage * Number(defectAreaItemsPerPage), filteredDefectAreas.length)"></span> dari <span x-text="filteredDefectAreas.length"></span> hasil</div>
+	                                <div class="flex space-x-1">
+	                                    <button @click="defectAreaCurrentPage--" :disabled="defectAreaCurrentPage === 1" class="pagination-btn" :class="{'disabled': defectAreaCurrentPage === 1}">&lsaquo;</button>
+	                                    <template x-for="page in defectAreaPages" :key="page"><button @click="defectAreaCurrentPage = page" class="pagination-btn" :class="{'active': page === defectAreaCurrentPage}" x-text="page"></button></template>
+	                                    <button @click="defectAreaCurrentPage++" :disabled="defectAreaCurrentPage >= totalDefectAreaPages" class="pagination-btn" :class="{'disabled': defectAreaCurrentPage >= totalDefectAreaPages}">&rsaquo;</button>
+	                                </div>
 	                            </div>
 	                        </div>
 	                    </div>

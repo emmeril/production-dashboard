@@ -145,6 +145,14 @@ function dashboard() {
 	        qcSearchTerm: '',
 	        qcResultFilter: '',
 
+	        // Defect category pagination
+	        defectTypeCurrentPage: 1,
+	        defectTypeItemsPerPage: 10,
+	        defectTypeSearchTerm: '',
+	        defectAreaCurrentPage: 1,
+	        defectAreaItemsPerPage: 10,
+	        defectAreaSearchTerm: '',
+
         // Initialize
         async init() {
             this.refreshProductionClock();
@@ -676,6 +684,8 @@ function dashboard() {
                     const config = await response.json();
                     this.defectTypes = config.defectTypes || [];
                     this.defectAreas = config.defectAreas || [];
+	                this.defectTypeCurrentPage = Math.max(1, Math.min(this.defectTypeCurrentPage, this.totalDefectTypePages || 1));
+	                this.defectAreaCurrentPage = Math.max(1, Math.min(this.defectAreaCurrentPage, this.totalDefectAreaPages || 1));
                 } else {
                     this.showToast('Gagal memuat kategori defect', 'error');
                 }
@@ -1719,6 +1729,56 @@ function dashboard() {
         get activeDefectAreas() {
             return (this.defectAreas || []).filter(area => area.active !== false);
         },
+
+	        get filteredDefectTypes() {
+	            const search = this.defectTypeSearchTerm.trim().toLowerCase();
+	            return (this.defectTypes || []).filter(type => !search ||
+	                [type.name, type.severity, type.active !== false ? 'aktif' : 'nonaktif']
+	                    .some(value => String(value || '').toLowerCase().includes(search))
+	            );
+	        },
+
+	        get paginatedDefectTypes() {
+	            const perPage = Number(this.defectTypeItemsPerPage);
+	            const start = (this.defectTypeCurrentPage - 1) * perPage;
+	            return this.filteredDefectTypes.slice(start, start + perPage);
+	        },
+
+	        get totalDefectTypePages() {
+	            return Math.ceil(this.filteredDefectTypes.length / Number(this.defectTypeItemsPerPage));
+	        },
+
+	        get defectTypePages() {
+	            return this.paginationPages(this.defectTypeCurrentPage, this.totalDefectTypePages);
+	        },
+
+	        get filteredDefectAreas() {
+	            const search = this.defectAreaSearchTerm.trim().toLowerCase();
+	            return (this.defectAreas || []).filter(area => !search ||
+	                [area.name, area.severity, area.active !== false ? 'aktif' : 'nonaktif']
+	                    .some(value => String(value || '').toLowerCase().includes(search))
+	            );
+	        },
+
+	        get paginatedDefectAreas() {
+	            const perPage = Number(this.defectAreaItemsPerPage);
+	            const start = (this.defectAreaCurrentPage - 1) * perPage;
+	            return this.filteredDefectAreas.slice(start, start + perPage);
+	        },
+
+	        get totalDefectAreaPages() {
+	            return Math.ceil(this.filteredDefectAreas.length / Number(this.defectAreaItemsPerPage));
+	        },
+
+	        get defectAreaPages() {
+	            return this.paginationPages(this.defectAreaCurrentPage, this.totalDefectAreaPages);
+	        },
+
+	        paginationPages(currentPage, totalPages) {
+	            const start = Math.max(1, Math.min(currentPage - 2, totalPages - 4));
+	            const end = Math.min(totalPages, start + 4);
+	            return Array.from({ length: Math.max(0, end - start + 1) }, (_, index) => start + index);
+	        },
 
         get defectCategoryModalTitle() {
             const action = this.defectCategoryModal.id ? 'Edit' : 'Tambah';

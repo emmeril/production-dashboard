@@ -248,7 +248,6 @@ function dashboard() {
 	                if (this.canManageLines()) {
 	                    this.navigation.push({ name: 'Management Line', page: 'admin-management', iconClass: 'fa-list-check' });
 	                }
-	                this.navigation.push({ name: 'Report', page: 'report', iconClass: 'fa-chart-column' });
                 if (this.currentUser.role === 'admin') {
 	                    this.navigation.push(
 	                        { name: 'Manajemen User', page: 'user-management', iconClass: 'fa-users-gear' },
@@ -259,6 +258,7 @@ function dashboard() {
                 } else if (this.canManageDefectCategories()) {
                     this.navigation.push({ name: 'Kategori Defect', page: 'defect-categories', iconClass: 'fa-triangle-exclamation' });
 	                }
+	                this.navigation.push({ name: 'Report', page: 'report', iconClass: 'fa-chart-column' });
 	            } else {
 	                this.navigation = baseNav;
 	            }

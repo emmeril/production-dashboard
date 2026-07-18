@@ -3,7 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Production Dashboard System</title>
+	<title>Production Dashboard System</title>
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
 		    <script src="https://cdn.tailwindcss.com"></script>
 		    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
 		    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -11,11 +14,12 @@
 	    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
         <link rel="stylesheet" href="./public/assets/css/style.css">
 </head>
-<body class="bg-gray-100 font-sans" x-data="dashboard()" x-cloak>
+<body class="dashboard-app bg-gray-100" x-data="dashboard()" x-cloak>
     <!-- Login Screen -->
     <div x-show="!isAuthenticated" class="min-h-screen flex items-center justify-center bg-gradient-custom py-12 px-4 sm:px-6 lg:px-8">
-        <div class="max-w-md w-full space-y-8 bg-white p-8 rounded-xl shadow-lg">
+        <div class="login-card max-w-md w-full space-y-8 bg-white p-8 rounded-xl shadow-lg">
             <div>
+                <div class="login-mark" aria-hidden="true"><i class="fa-solid fa-chart-line"></i></div>
                 <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">
                     Production Dashboard
                 </h2>
@@ -24,14 +28,20 @@
                 </p>
             </div>
             <form class="mt-8 space-y-6" @submit.prevent="login">
-                <div class="rounded-md shadow-sm -space-y-px">
+                <div class="login-fields space-y-4">
                     <div>
                         <label for="username" class="sr-only">Username</label>
-                        <input id="username" x-model="loginForm.username" name="username" type="text" required class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm" placeholder="Username">
+                        <div class="login-input-wrap">
+                            <i class="fa-regular fa-user login-input-icon" aria-hidden="true"></i>
+                            <input id="username" x-model="loginForm.username" name="username" type="text" required autocomplete="username" class="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm" placeholder="Masukkan username">
+                        </div>
                     </div>
                     <div>
                         <label for="password" class="sr-only">Password</label>
-                        <input id="password" x-model="loginForm.password" name="password" type="password" required class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm" placeholder="Password">
+                        <div class="login-input-wrap">
+                            <i class="fa-solid fa-lock login-input-icon" aria-hidden="true"></i>
+                            <input id="password" x-model="loginForm.password" name="password" type="password" required autocomplete="current-password" class="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm" placeholder="Masukkan password">
+                        </div>
                     </div>
                 </div>
 
@@ -40,7 +50,7 @@
                 </div>
 
                 <div>
-                    <button type="submit" class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    <button type="submit" class="group relative w-full flex items-center justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                         <span class="absolute left-0 inset-y-0 flex items-center pl-3">
                             <svg class="h-5 w-5 text-blue-500 group-hover:text-blue-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                                 <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" />
@@ -140,7 +150,7 @@
             </div>
 
             <!-- Page Content -->
-            <main class="flex-1 overflow-y-auto p-4 md:p-6">
+            <main class="dashboard-content flex-1 overflow-y-auto p-4 md:p-6">
                 <!-- Dashboard Page -->
 	                <div x-show="currentPage === 'dashboard' && canViewDashboard()" class="fade-in">
                     <div class="mb-6">
@@ -1200,8 +1210,8 @@
 	                            </div>
 
                             <!-- Date Report Results with Pagination -->
-                            <div x-show="dateReport && dateReport.length > 0" class="mt-4">
-                                <div class="flex justify-between items-center mb-4">
+	                            <div x-show="dateReport && dateReport.length > 0" class="report-results mt-4">
+	                                <div class="report-results-header flex justify-between items-center mb-4">
 	                                    <h4 class="text-lg font-medium text-gray-900 flex items-center"><i class="fa-solid fa-table-list text-blue-600 mr-2"></i>Hasil Laporan Tanggal: <span class="ml-1" x-text="reportDate"></span></h4>
                                     
 	                                    <div class="filter-group">
@@ -1407,7 +1417,7 @@
 	                            <p class="mt-1 max-w-2xl text-sm text-gray-500">Gunakan aksi ini hanya saat perlu administrasi data sistem</p>
 	                        </div>
 		                        <div class="p-4">
-		                            <div class="filter-toolbar line-management-toolbar mb-0">
+	                            <div class="filter-toolbar line-management-toolbar system-actions-toolbar mb-0">
 		                                <div class="filter-group">
 		                                <button @click="createBackup()" class="btn-compact inline-flex justify-center items-center border border-transparent font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
 		                                    <i class="fa-solid fa-database mr-2"></i>Buat Backup

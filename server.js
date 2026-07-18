@@ -71,26 +71,63 @@ function getToday() {
   }).format(new Date());
 }
 
+const PRODUCTION_HOURS = [
+  "07:00 - 08:00",
+  "08:00 - 09:00",
+  "09:00 - 10:00",
+  "10:00 - 11:00",
+  "13:00 - 14:00",
+  "14:00 - 15:00",
+  "15:00 - 16:00",
+  "16:00 - 17:00"
+];
+
+function distributeDailyTarget(target) {
+  const dailyTarget = Math.max(0, parseInt(target) || 0);
+  const baseTarget = Math.floor(dailyTarget / PRODUCTION_HOURS.length);
+  const remainder = dailyTarget % PRODUCTION_HOURS.length;
+
+  return PRODUCTION_HOURS.map((hour, index) => ({
+    hour,
+    target: baseTarget + (index < remainder ? 1 : 0)
+  }));
+}
+
+function createHourlyData(target) {
+  const distributedTargets = distributeDailyTarget(target);
+  const hourlyData = distributedTargets.slice(0, 4).map(({ hour, target: targetManual }) => ({
+    hour, output: 0, defect: 0, qcChecked: 0, targetManual, selisih: 0
+  }));
+
+  hourlyData.push({ hour: "11:00 - 13:00", output: 0, defect: 0, qcChecked: 0, targetManual: 0, selisih: 0 });
+  distributedTargets.slice(4).forEach(({ hour, target: targetManual }) => {
+    hourlyData.push({ hour, output: 0, defect: 0, qcChecked: 0, targetManual, selisih: 0 });
+  });
+
+  return hourlyData;
+}
+
+function applyDailyTarget(model, target) {
+  const distributedTargets = distributeDailyTarget(target);
+  const targetsByHour = new Map(distributedTargets.map(item => [item.hour, item.target]));
+
+  model.targetPerHour = Math.round((parseInt(target) || 0) / PRODUCTION_HOURS.length);
+  (model.hourly_data || []).forEach(hour => {
+    const targetManual = targetsByHour.get(hour.hour) || 0;
+    hour.targetManual = targetManual;
+    hour.selisih = (parseInt(hour.output) || 0) - targetManual;
+  });
+}
+
 function resetLineData(line) {
-  const targetPerHour = Math.round(line.target / 8);
-  
   return {
     ...line,
+    targetPerHour: Math.round(line.target / PRODUCTION_HOURS.length),
     outputDay: 0,
     qcChecking: 0,
     actualDefect: 0,
     defectRatePercentage: 0,
-    hourly_data: [
-      { hour: "07:00 - 08:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
-      { hour: "08:00 - 09:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
-      { hour: "09:00 - 10:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
-      { hour: "10:00 - 11:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
-      { hour: "11:00 - 13:00", output: 0, defect: 0, qcChecked: 0, targetManual: 0, selisih: 0 },
-      { hour: "13:00 - 14:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
-      { hour: "14:00 - 15:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
-      { hour: "15:00 - 16:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
-      { hour: "16:00 - 17:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
-    ],
+    hourly_data: createHourlyData(line.target),
     operators: line.operators ? line.operators.map(operator => ({
       ...operator,
       output: 0,
@@ -102,7 +139,7 @@ function resetLineData(line) {
 
 function buildInitialProductionData() {
   const today = getToday();
-  const targetPerHour = Math.round(180 / 8);
+  const targetPerHour = Math.round(180 / PRODUCTION_HOURS.length);
 
   return {
     "lines": {
@@ -119,17 +156,7 @@ function buildInitialProductionData() {
             "qcChecking": 0,
             "actualDefect": 0,
             "defectRatePercentage": 0,
-            "hourly_data": [
-              { hour: "07:00 - 08:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
-              { hour: "08:00 - 09:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
-              { hour: "09:00 - 10:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
-              { hour: "10:00 - 11:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
-              { hour: "11:00 - 13:00", output: 0, defect: 0, qcChecked: 0, targetManual: 0, selisih: 0 },
-              { hour: "13:00 - 14:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
-              { hour: "14:00 - 15:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
-              { hour: "15:00 - 16:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
-              { hour: "16:00 - 17:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
-            ],
+            "hourly_data": createHourlyData(180),
             "operators": [
               {
                 "id": 1,
@@ -325,7 +352,7 @@ function buildPublicModelResponse(model) {
   const response = { ...model };
 
   if (!response.targetPerHour) {
-    response.targetPerHour = Math.round((response.target || 0) / 8);
+    response.targetPerHour = Math.round((response.target || 0) / PRODUCTION_HOURS.length);
   }
 
   response.defectBreakdown = calculateDefectSeverityBreakdown(response, defectConfig);
@@ -2332,7 +2359,7 @@ app.post('/api/lines', requireLogin, requireLineManagementAccess, (req, res) => 
   }
 
   const lineDate = date || getToday();
-  const targetPerHour = Math.round(target / 8);
+  const targetPerHour = Math.round(target / PRODUCTION_HOURS.length);
   const modelId = 'model1';
 
   data.lines[lineName] = {
@@ -2348,17 +2375,7 @@ app.post('/api/lines', requireLogin, requireLineManagementAccess, (req, res) => 
         qcChecking: 0,
         actualDefect: 0,
         defectRatePercentage: 0,
-        hourly_data: [
-          { hour: "07:00 - 08:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
-          { hour: "08:00 - 09:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
-          { hour: "09:00 - 10:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
-          { hour: "10:00 - 11:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
-          { hour: "11:00 - 13:00", output: 0, defect: 0, qcChecked: 0, targetManual: 0, selisih: 0 },
-          { hour: "13:00 - 14:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
-          { hour: "14:00 - 15:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
-          { hour: "15:00 - 16:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
-          { hour: "16:00 - 17:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
-        ],
+        hourly_data: createHourlyData(target),
         operators: []
       }
     },
@@ -2390,7 +2407,7 @@ app.post('/api/lines/:lineName/models', requireLogin, requireLineManagementAcces
   }
 
   const lineDate = date || getToday();
-  const targetPerHour = Math.round(target / 8);
+  const targetPerHour = Math.round(target / PRODUCTION_HOURS.length);
   
   const modelCount = Object.keys(data.lines[lineName].models).length;
   const modelId = `model${modelCount + 1}`;
@@ -2406,17 +2423,7 @@ app.post('/api/lines/:lineName/models', requireLogin, requireLineManagementAcces
     qcChecking: 0,
     actualDefect: 0,
     defectRatePercentage: 0,
-    hourly_data: [
-      { hour: "07:00 - 08:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
-      { hour: "08:00 - 09:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
-      { hour: "09:00 - 10:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
-      { hour: "10:00 - 11:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
-      { hour: "11:00 - 13:00", output: 0, defect: 0, qcChecked: 0, targetManual: 0, selisih: 0 },
-      { hour: "13:00 - 14:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
-      { hour: "14:00 - 15:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
-      { hour: "15:00 - 16:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
-      { hour: "16:00 - 17:00", output: 0, defect: 0, qcChecked: 0, targetManual: targetPerHour, selisih: 0 },
-    ],
+    hourly_data: createHourlyData(target),
     operators: []
   };
 
@@ -2451,18 +2458,11 @@ app.put('/api/lines/:lineName', requireLogin, requireLineManagementAccess, autoC
   data.lines[lineName].models[targetModelId].labelWeek = labelWeek;
   data.lines[lineName].models[targetModelId].model = model;
   data.lines[lineName].models[targetModelId].target = newTarget;
-  data.lines[lineName].models[targetModelId].targetPerHour = Math.round(newTarget / 8);
+  applyDailyTarget(data.lines[lineName].models[targetModelId], newTarget);
   
   if (date) {
     data.lines[lineName].models[targetModelId].date = date;
   }
-
-  data.lines[lineName].models[targetModelId].hourly_data.forEach(hour => {
-    if (hour.hour !== "11:00 - 13:00") {
-      hour.targetManual = data.lines[lineName].models[targetModelId].targetPerHour;
-      hour.selisih = hour.output - hour.targetManual;
-    }
-  });
 
   let totalTarget = 0;
   data.lines[lineName].models[targetModelId].hourly_data.forEach(hour => {
@@ -2614,13 +2614,7 @@ app.post('/api/update-line/:lineName/:modelId', requireLogin, requireLineAccess,
   if (Object.prototype.hasOwnProperty.call(newData, 'target')) {
     const nextTarget = parseInt(newData.target);
     if (!Number.isNaN(nextTarget)) {
-      model.targetPerHour = Math.round(nextTarget / 8);
-      (model.hourly_data || []).forEach(hour => {
-        if (hour.hour !== "11:00 - 13:00") {
-          hour.targetManual = model.targetPerHour;
-          hour.selisih = (parseInt(hour.output) || 0) - model.targetPerHour;
-        }
-      });
+      applyDailyTarget(model, nextTarget);
     }
   }
 

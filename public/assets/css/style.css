@@ -24,6 +24,15 @@
 	            font-feature-settings: "tnum";
 	        }
 
+	        button {
+	            display: inline-flex;
+	            align-items: center;
+	            justify-content: center;
+	            line-height: 1.25;
+	            text-align: center;
+	            vertical-align: middle;
+	        }
+
 	        .bg-gradient-custom {
 	            background: linear-gradient(180deg, var(--sidebar) 0%, #2f353a 52%, var(--sidebar-2) 100%);
 	        }

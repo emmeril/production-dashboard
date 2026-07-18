@@ -2001,6 +2001,17 @@ app.post('/api/update-production/:lineName/:modelId', requireLogin, requireLineA
 });
 
 app.post('/api/qc-check/:lineName/:modelId', requireLogin, requireLineAccess, requireQcWriteAccess, autoCheckDateReset, (req, res) => {
+  if (req.session.user?.role === 'operator') {
+    const jakartaTimeParts = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Asia/Jakarta', hour: 'numeric', minute: 'numeric', hour12: false
+    }).formatToParts(new Date());
+    const jakartaHour = Number(jakartaTimeParts.find(part => part.type === 'hour')?.value || 0) % 24;
+    const jakartaMinute = Number(jakartaTimeParts.find(part => part.type === 'minute')?.value || 0);
+    const currentMinutes = jakartaHour * 60 + jakartaMinute;
+    if (currentMinutes < 7 * 60 || currentMinutes >= 17 * 60) {
+      return res.status(403).json({ error: 'Input QC operator hanya dapat dilakukan pukul 07:00-17:00' });
+    }
+  }
   const { lineName, modelId } = req.params;
 	  const { result, hourIndex, type, area, notes } = req.body;
   const data = readProductionData();

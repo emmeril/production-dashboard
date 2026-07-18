@@ -52,6 +52,20 @@ function dashboard() {
 	        isSavingProduction: false,
 	        isSavingQc: false,
 
+        // QC input for operators is available only during the 07:00-17:00 shift.
+        isQcWithinWorkingHours() {
+            if (this.currentUser?.role !== 'operator') return true;
+            // Keep Alpine reactive to the clock refresh while checking Jakarta time.
+            this.productionClockMinute;
+            const parts = new Intl.DateTimeFormat('en-US', {
+                timeZone: 'Asia/Jakarta', hour: 'numeric', minute: 'numeric', hour12: false
+            }).formatToParts(new Date());
+            const hour = Number(parts.find(part => part.type === 'hour')?.value || 0) % 24;
+            const minute = Number(parts.find(part => part.type === 'minute')?.value || 0);
+            const minutes = hour * 60 + minute;
+            return minutes >= 7 * 60 && minutes < 17 * 60;
+        },
+
         defectTypes: [],
         defectAreas: [],
 
@@ -1039,6 +1053,11 @@ function dashboard() {
 
 	        async submitQcCheck(result) {
 	            if (this.isSavingQc) return;
+
+            if (!this.isQcWithinWorkingHours()) {
+                this.showToast('Input QC operator hanya dapat dilakukan pukul 07:00-17:00', 'error');
+                return;
+            }
 
 	            if (!this.canManageQc()) {
 	                this.showToast('Anda tidak memiliki akses untuk input QC', 'error');

@@ -895,10 +895,10 @@
 	                                </div>
 
 	                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-	                                    <button type="button" @click="submitQcCheck('good')" :disabled="isSavingQc" class="inline-flex justify-center items-center px-4 py-3 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                                    <button type="button" @click="submitQcCheck('good')" :disabled="isSavingQc || !isQcWithinWorkingHours()" :title="!isQcWithinWorkingHours() ? 'Input QC operator hanya dapat dilakukan pukul 07:00-17:00' : ''" class="inline-flex justify-center items-center px-4 py-3 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed">
 	                                        <i class="fa-solid fa-circle-check mr-2"></i>Good
 	                                    </button>
-	                                    <button type="button" @click="submitQcCheck('defect')" :disabled="isSavingQc" class="inline-flex justify-center items-center px-4 py-3 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                                    <button type="button" @click="submitQcCheck('defect')" :disabled="isSavingQc || !isQcWithinWorkingHours()" :title="!isQcWithinWorkingHours() ? 'Input QC operator hanya dapat dilakukan pukul 07:00-17:00' : ''" class="inline-flex justify-center items-center px-4 py-3 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed">
 	                                        <i class="fa-solid fa-triangle-exclamation mr-2"></i>Defect
 	                                    </button>
 	                                </div>

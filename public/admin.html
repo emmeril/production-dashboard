@@ -22,6 +22,7 @@
             <button class="tab-button active" data-tab="line-management">Line Management</button>
             <button class="tab-button" data-tab="user-management">User Management</button>
             <button class="tab-button" data-tab="defect-management">Defect Management</button>
+            <button class="tab-button" data-tab="work-schedule-management">Hari Kerja</button>
             <button class="tab-button" data-tab="history-management">History Data</button>
         </div>
 
@@ -193,6 +194,40 @@
                         </table>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <div id="work-schedule-management" class="tab-content">
+            <div class="work-schedule-container">
+                <h2>PENGATURAN HARI & JAM KERJA</h2>
+                <p class="schedule-description">Role selain admin hanya dapat menambah, mengubah, atau menghapus data pada jadwal aktif ini. Zona waktu yang digunakan adalah WIB (Asia/Jakarta).</p>
+                <form id="work-schedule-form">
+                    <label class="schedule-enabled">
+                        <input type="checkbox" id="work-schedule-enabled">
+                        Aktifkan pembatasan jam kerja
+                    </label>
+                    <div class="work-days-grid">
+                        <label><input type="checkbox" name="work-day" value="1"> Senin</label>
+                        <label><input type="checkbox" name="work-day" value="2"> Selasa</label>
+                        <label><input type="checkbox" name="work-day" value="3"> Rabu</label>
+                        <label><input type="checkbox" name="work-day" value="4"> Kamis</label>
+                        <label><input type="checkbox" name="work-day" value="5"> Jumat</label>
+                        <label><input type="checkbox" name="work-day" value="6"> Sabtu</label>
+                        <label><input type="checkbox" name="work-day" value="0"> Minggu</label>
+                    </div>
+                    <div class="schedule-time-grid">
+                        <div class="form-group">
+                            <label for="work-start-time">Jam Mulai</label>
+                            <input type="time" id="work-start-time" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="work-end-time">Jam Selesai</label>
+                            <input type="time" id="work-end-time" required>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn-primary">Simpan Pengaturan</button>
+                    <div id="work-schedule-message" aria-live="polite"></div>
+                </form>
             </div>
         </div>
 

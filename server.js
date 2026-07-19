@@ -32,10 +32,12 @@ const PRODUCTION_DATA_KEY = 'production_data';
 const USERS_DATA_KEY = 'users_data';
 const DEFECT_CONFIG_KEY = 'defect_config';
 const PUBLIC_DISPLAY_SETTINGS_KEY = 'public_display_settings';
+const WORK_SCHEDULE_SETTINGS_KEY = 'work_schedule_settings';
 let productionDataCache = { lines: {}, activeLine: '' };
 let usersDataCache = { users: [] };
 let defectConfigCache = { defectTypes: [], defectAreas: [] };
 let publicDisplaySettingsCache = {};
+let workScheduleSettingsCache = {};
 let databaseInitialized = false;
 const appDataWriteQueues = new Map();
 
@@ -254,6 +256,33 @@ function buildInitialPublicDisplaySettings() {
   };
 }
 
+function buildInitialWorkScheduleSettings() {
+  return {
+    enabled: true,
+    workDays: [1, 2, 3, 4, 5, 6],
+    startTime: '07:00',
+    endTime: '17:00'
+  };
+}
+
+function normalizeTimeSetting(value, fallback) {
+  return /^([01]\d|2[0-3]):[0-5]\d$/.test(String(value || '')) ? String(value) : fallback;
+}
+
+function normalizeWorkScheduleSettings(settings = {}) {
+  const defaults = buildInitialWorkScheduleSettings();
+  const workDays = Array.isArray(settings.workDays)
+    ? [...new Set(settings.workDays.map(Number).filter(day => Number.isInteger(day) && day >= 0 && day <= 6))]
+    : defaults.workDays;
+
+  return {
+    enabled: settings.enabled !== false,
+    workDays,
+    startTime: normalizeTimeSetting(settings.startTime, defaults.startTime),
+    endTime: normalizeTimeSetting(settings.endTime, defaults.endTime)
+  };
+}
+
 function normalizeNumberSetting(value, fallback, min, max) {
   const number = Number(value);
   if (Number.isNaN(number)) return fallback;
@@ -419,6 +448,7 @@ async function initSequelizeStorage() {
     let usersRow = await AppData.findByPk(USERS_DATA_KEY);
     let defectConfigRow = await AppData.findByPk(DEFECT_CONFIG_KEY);
     let publicDisplaySettingsRow = await AppData.findByPk(PUBLIC_DISPLAY_SETTINGS_KEY);
+    let workScheduleSettingsRow = await AppData.findByPk(WORK_SCHEDULE_SETTINGS_KEY);
 
     if (!productionRow) {
       let initialProductionData = buildInitialProductionData();
@@ -460,6 +490,11 @@ async function initSequelizeStorage() {
       publicDisplaySettingsRow = await AppData.findByPk(PUBLIC_DISPLAY_SETTINGS_KEY);
     }
 
+    if (!workScheduleSettingsRow) {
+      await upsertAppData(WORK_SCHEDULE_SETTINGS_KEY, buildInitialWorkScheduleSettings());
+      workScheduleSettingsRow = await AppData.findByPk(WORK_SCHEDULE_SETTINGS_KEY);
+    }
+
     productionDataCache = parsePayload(
       productionRow ? productionRow.payload : '',
       buildInitialProductionData()
@@ -475,6 +510,10 @@ async function initSequelizeStorage() {
     publicDisplaySettingsCache = normalizePublicDisplaySettings(parsePayload(
       publicDisplaySettingsRow ? publicDisplaySettingsRow.payload : '',
       buildInitialPublicDisplaySettings()
+    ));
+    workScheduleSettingsCache = normalizeWorkScheduleSettings(parsePayload(
+      workScheduleSettingsRow ? workScheduleSettingsRow.payload : '',
+      buildInitialWorkScheduleSettings()
     ));
 
     databaseInitialized = true;
@@ -631,6 +670,7 @@ function initializeDataFiles() {
     usersDataCache = buildInitialUsersData();
     defectConfigCache = buildInitialDefectConfig();
     publicDisplaySettingsCache = buildInitialPublicDisplaySettings();
+    workScheduleSettingsCache = buildInitialWorkScheduleSettings();
   }
 
   const historyDir = path.join(__dirname, 'history');
@@ -729,6 +769,17 @@ function writePublicDisplaySettings(data) {
     console.error('ERROR: Gagal menulis public display settings ke cache:', error.message);
     return readPublicDisplaySettings();
   }
+}
+
+function readWorkScheduleSettings() {
+  workScheduleSettingsCache = normalizeWorkScheduleSettings(workScheduleSettingsCache);
+  return workScheduleSettingsCache;
+}
+
+function writeWorkScheduleSettings(data) {
+  workScheduleSettingsCache = normalizeWorkScheduleSettings(data);
+  void upsertAppData(WORK_SCHEDULE_SETTINGS_KEY, workScheduleSettingsCache);
+  return workScheduleSettingsCache;
 }
 
 function generateUserId(users) {
@@ -1015,6 +1066,33 @@ function autoCheckDateReset(req, res, next) {
   checkAndResetDataForNewDay();
   next();
 }
+
+function isWithinWorkSchedule() {
+  const schedule = readWorkScheduleSettings();
+  if (!schedule.enabled) return true;
+  const now = new Date();
+  const dayParts = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Jakarta', weekday: 'short' }).format(now);
+  const dayMap = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+  const day = dayMap[dayParts];
+  if (!schedule.workDays.includes(day)) return false;
+  const toMinutes = value => Number(value.slice(0, 2)) * 60 + Number(value.slice(3));
+  const current = getJakartaMinutesNow();
+  const start = toMinutes(schedule.startTime);
+  const end = toMinutes(schedule.endTime);
+  return start <= end ? current >= start && current < end : current >= start || current < end;
+}
+
+function requireWorkScheduleForWrite(req, res, next) {
+  if (!req.session.user || hasAnyRole(req.session.user, ['admin']) || isWithinWorkSchedule()) return next();
+  return res.status(403).json({ error: 'Perubahan data hanya dapat dilakukan pada hari dan jam kerja yang ditentukan' });
+}
+
+// Enforce the schedule for every non-admin mutation, including direct API calls.
+app.use('/api', (req, res, next) => {
+  if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) return next();
+  if (['/login', '/logout'].includes(req.path)) return next();
+  return requireWorkScheduleForWrite(req, res, next);
+});
 
 // ENDPOINT UNTUK MENDAPATKAN DAFTAR BACKUP DATA
 app.get('/api/backup-history', requireLogin, requireAdmin, (req, res) => {
@@ -3458,6 +3536,15 @@ app.get('/api/public-display-settings', (req, res) => {
 app.put('/api/public-display-settings', requireLogin, requireAdmin, (req, res) => {
   const settings = writePublicDisplaySettings(req.body || {});
   res.json({ message: 'Public display settings updated successfully', settings });
+});
+
+app.get('/api/work-schedule-settings', requireLogin, requireAdmin, (req, res) => {
+  res.json(readWorkScheduleSettings());
+});
+
+app.put('/api/work-schedule-settings', requireLogin, requireAdmin, (req, res) => {
+  const settings = writeWorkScheduleSettings(req.body || {});
+  res.json({ message: 'Pengaturan hari kerja berhasil disimpan', settings });
 });
 
 app.get('/api/defect-types', requireLogin, (req, res) => {

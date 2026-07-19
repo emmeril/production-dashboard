@@ -54,9 +54,62 @@ function initTabs() {
                 fetchHistoryFiles();
             } else if (tabName === 'defect-management') {
                 fetchDefects();
+            } else if (tabName === 'work-schedule-management') {
+                fetchWorkSchedule();
             }
         });
     });
+}
+
+async function fetchWorkSchedule() {
+    const message = document.getElementById('work-schedule-message');
+    try {
+        const response = await fetch('/api/work-schedule-settings');
+        if (!response.ok) throw new Error('Gagal mengambil pengaturan hari kerja');
+        const settings = await response.json();
+        document.getElementById('work-schedule-enabled').checked = settings.enabled;
+        document.getElementById('work-start-time').value = settings.startTime;
+        document.getElementById('work-end-time').value = settings.endTime;
+        document.querySelectorAll('input[name="work-day"]').forEach(input => {
+            input.checked = settings.workDays.includes(Number(input.value));
+        });
+        message.className = '';
+        message.textContent = '';
+    } catch (error) {
+        message.className = 'error-message';
+        message.textContent = error.message;
+    }
+}
+
+async function saveWorkSchedule(event) {
+    event.preventDefault();
+    const message = document.getElementById('work-schedule-message');
+    const workDays = [...document.querySelectorAll('input[name="work-day"]:checked')].map(input => Number(input.value));
+    if (workDays.length === 0) {
+        message.className = 'error-message';
+        message.textContent = 'Pilih minimal satu hari kerja.';
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/work-schedule-settings', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                enabled: document.getElementById('work-schedule-enabled').checked,
+                workDays,
+                startTime: document.getElementById('work-start-time').value,
+                endTime: document.getElementById('work-end-time').value
+            })
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || 'Gagal menyimpan pengaturan');
+        message.className = 'success-message';
+        message.textContent = result.message;
+    } catch (error) {
+        message.className = 'error-message';
+        message.textContent = error.message;
+    }
 }
 
 async function fetchLines() {
@@ -1502,6 +1555,7 @@ function initializeAdmin() {
     document.getElementById('add-type-btn').addEventListener('click', showDefectTypeModal);
     document.getElementById('add-area-btn').addEventListener('click', showDefectAreaModal);
     document.getElementById('refresh-defects-btn').addEventListener('click', fetchDefects);
+    document.getElementById('work-schedule-form').addEventListener('submit', saveWorkSchedule);
     
     // History management event listeners
     document.getElementById('create-backup-btn').addEventListener('click', createBackup);

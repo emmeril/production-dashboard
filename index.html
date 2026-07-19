@@ -153,9 +153,8 @@
             <main class="dashboard-content flex-1 overflow-y-auto p-4 md:p-6">
                 <div x-show="isWorkScheduleLocked()" class="work-schedule-lock-notice" role="status">
                     <i class="fa-solid fa-clock"></i>
-                    <span>Di luar hari atau jam kerja. Semua tombol aksi dinonaktifkan sampai jadwal kerja berikutnya.</span>
+                    <span>Di luar hari atau jam kerja. Tombol tambah, simpan, edit, dan hapus dinonaktifkan sampai jadwal kerja berikutnya.</span>
                 </div>
-                <fieldset :disabled="isWorkScheduleLocked()" class="contents">
                 <!-- Dashboard Page -->
 	                <div x-show="currentPage === 'dashboard' && canViewDashboard()" class="fade-in">
                     <div class="mb-6">
@@ -498,7 +497,7 @@
 	                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
 		                                                <div class="table-actions">
 		                                                <button x-show="currentUser.role === 'admin' || isAdminOperator()" @click="viewLine(line.lineName, line.modelId)" class="btn-action btn-action-primary"><i class="fa-solid fa-eye"></i>Lihat</button>
-		                                                <button x-show="canManageProduction() || canManageQc()" @click="inputData(line.lineName, line.modelId)" class="btn-action btn-action-success"><i class="fa-solid fa-keyboard"></i>Input</button>
+		                                                <button x-show="canManageProduction() || canManageQc()" @click="inputData(line.lineName, line.modelId)" :disabled="isWorkScheduleLocked()" class="schedule-action btn-action btn-action-success"><i class="fa-solid fa-keyboard"></i>Input</button>
 		                                                </div>
 	                                            </td>
                                         </tr>
@@ -681,12 +680,12 @@
 	                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
 		                                                <button x-show="canCorrectProduction()"
 	                                                        :title="isProductionHourTooEarly(hour) ? 'Jam produksi ini belum dimulai' : (hour.productionLocked ? 'Data jam ini sudah terkunci' : 'Simpan data produksi')"
-	                                                        :disabled="isSavingProduction || isProductionHourLocked(hour)"
+	                                                        :disabled="isSavingProduction || isProductionHourLocked(hour) || isWorkScheduleLocked()"
 	                                                        @click="updateHourlyDataDirect(currentLine, currentModelId, index)"
-	                                                        class="btn-action btn-action-primary disabled:opacity-50 disabled:cursor-not-allowed">
+	                                                        class="schedule-action btn-action btn-action-primary disabled:opacity-50 disabled:cursor-not-allowed">
 		                                                    <i class="fa-solid fa-floppy-disk"></i>Simpan
 	                                                </button>
-	                                                <button x-show="canCorrectProduction()" @click="deleteProductionHour(currentLine, currentModelId, index)" class="btn-action btn-action-danger"><i class="fa-solid fa-trash-can"></i>Hapus</button>
+	                                                <button x-show="canCorrectProduction()" @click="deleteProductionHour(currentLine, currentModelId, index)" :disabled="isWorkScheduleLocked()" class="schedule-action btn-action btn-action-danger"><i class="fa-solid fa-trash-can"></i>Hapus</button>
 	                                                <span x-show="isProductionHourLocked(hour)"
 	                                                      x-text="isProductionHourTooEarly(hour) ? 'Belum waktunya' : 'Terkunci'"
 	                                                      class="text-xs font-semibold text-gray-500"></span>
@@ -753,8 +752,8 @@
 	                                        <td class="px-4 py-3 text-sm text-gray-700" x-text="check.area || '-'"></td>
 	                                        <td class="px-4 py-3 text-sm text-gray-500" x-text="check.notes || '-'"></td>
 	                                        <td class="px-4 py-3 text-right whitespace-nowrap">
-	                                            <button x-show="check.result === 'defect'" type="button" @click="editQcCheck(check)" class="btn-action btn-action-primary"><i class="fa-solid fa-pen"></i>Edit</button>
-	                                            <button type="button" @click="deleteQcCheck(check.id)" class="btn-action btn-action-danger"><i class="fa-solid fa-trash-can"></i>Hapus</button>
+	                                            <button x-show="check.result === 'defect'" type="button" @click="editQcCheck(check)" :disabled="isWorkScheduleLocked()" class="schedule-action btn-action btn-action-primary"><i class="fa-solid fa-pen"></i>Edit</button>
+	                                            <button type="button" @click="deleteQcCheck(check.id)" :disabled="isWorkScheduleLocked()" class="schedule-action btn-action btn-action-danger"><i class="fa-solid fa-trash-can"></i>Hapus</button>
 	                                        </td>
 	                                    </tr>
 	                                </template>
@@ -837,7 +836,7 @@
 	                                        <span x-show="isSelectedProductionHourLocked()" x-text="isProductionHourTooEarly(lineDetail.hourly_data[inputForm.hourIndex]) ? 'Jam produksi ini belum dimulai' : 'Data jam ini sudah terkunci'"></span>
 	                                    </div>
 	                                    <div class="flex justify-end">
-	                                        <button type="submit" :disabled="isSelectedProductionHourLocked() || isSavingProduction" class="production-save-btn inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+	                                        <button type="submit" :disabled="isSelectedProductionHourLocked() || isSavingProduction || isWorkScheduleLocked()" class="schedule-action production-save-btn inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
 	                                            <i class="fa-solid fa-floppy-disk mr-2"></i>Simpan Produksi
 	                                        </button>
 	                                    </div>
@@ -900,10 +899,10 @@
 	                                </div>
 
 	                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                    <button type="button" @click="submitQcCheck('good')" :disabled="isSavingQc || !isQcWithinWorkingHours()" :title="!isQcWithinWorkingHours() ? 'Input QC hanya dapat dilakukan pada hari dan jam kerja' : ''" class="inline-flex justify-center items-center px-4 py-3 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                                    <button type="button" @click="submitQcCheck('good')" :disabled="isSavingQc || !isQcWithinWorkingHours()" :title="!isQcWithinWorkingHours() ? 'Input QC hanya dapat dilakukan pada hari dan jam kerja' : ''" class="schedule-action inline-flex justify-center items-center px-4 py-3 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed">
 	                                        <i class="fa-solid fa-circle-check mr-2"></i>Good
 	                                    </button>
-                                    <button type="button" @click="submitQcCheck('defect')" :disabled="isSavingQc || !isQcWithinWorkingHours()" :title="!isQcWithinWorkingHours() ? 'Input QC hanya dapat dilakukan pada hari dan jam kerja' : ''" class="inline-flex justify-center items-center px-4 py-3 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                                    <button type="button" @click="submitQcCheck('defect')" :disabled="isSavingQc || !isQcWithinWorkingHours()" :title="!isQcWithinWorkingHours() ? 'Input QC hanya dapat dilakukan pada hari dan jam kerja' : ''" class="schedule-action inline-flex justify-center items-center px-4 py-3 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed">
 	                                        <i class="fa-solid fa-triangle-exclamation mr-2"></i>Defect
 	                                    </button>
 	                                </div>
@@ -929,7 +928,7 @@
 		                                                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500" x-text="check.notes || '-'"></td>
 		                                                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500" x-text="formatDateTime(check.checkedAt)"></td>
 		                                                        <td class="px-4 py-3 whitespace-nowrap text-right">
-		                                                            <button x-show="canDeleteQc()" type="button" @click="deleteQcCheck(check.id)" class="btn-action btn-action-danger"><i class="fa-solid fa-trash-can"></i>Hapus</button>
+		                                                            <button x-show="canDeleteQc()" type="button" @click="deleteQcCheck(check.id)" :disabled="isWorkScheduleLocked()" class="schedule-action btn-action btn-action-danger"><i class="fa-solid fa-trash-can"></i>Hapus</button>
 		                                                        </td>
 		                                                    </tr>
 		                                                </template>
@@ -961,11 +960,11 @@
                         <div class="p-4">
 	                            <div class="filter-toolbar line-management-toolbar">
 	                                <div class="filter-group">
-		                                <button @click="openLineModal()" class="btn-compact inline-flex justify-center items-center border border-transparent font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+		                                <button @click="openLineModal()" :disabled="isWorkScheduleLocked()" class="schedule-action btn-compact inline-flex justify-center items-center border border-transparent font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
 		                                    <i class="fa-solid fa-plus mr-2"></i>Tambah Line Baru
 		                                </button>
 
-		                                <button @click="openModelModal()" class="btn-compact inline-flex justify-center items-center border border-transparent font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+		                                <button @click="openModelModal()" :disabled="isWorkScheduleLocked()" class="schedule-action btn-compact inline-flex justify-center items-center border border-transparent font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
 		                                    <i class="fa-solid fa-cubes-stacked mr-2"></i>Tambah Model ke Line
 		                                </button>
 	                                </div>
@@ -1028,8 +1027,8 @@
                                                 </td>
 	                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-medium">
 		                                                    <div class="table-actions">
-		                                                    <button @click="openLineModal(line)" class="btn-action btn-action-primary"><i class="fa-solid fa-pen-to-square"></i>Edit</button>
-		                                                    <button @click="setActiveModel(line.lineName, line.modelId)" class="btn-action btn-action-success"><i class="fa-solid fa-toggle-on"></i>Set Aktif</button>
+		                                                    <button @click="openLineModal(line)" :disabled="isWorkScheduleLocked()" class="schedule-action btn-action btn-action-primary"><i class="fa-solid fa-pen-to-square"></i>Edit</button>
+		                                                    <button @click="setActiveModel(line.lineName, line.modelId)" :disabled="isWorkScheduleLocked()" class="schedule-action btn-action btn-action-success"><i class="fa-solid fa-toggle-on"></i>Set Aktif</button>
 		                                                    <button @click="deleteModel(line.lineName, line.modelId)" class="btn-action btn-action-danger" x-show="currentUser.role === 'admin' && (!line.data.lineActiveModel || line.data.lineActiveModel !== line.modelId)"><i class="fa-solid fa-trash"></i>Hapus Model</button>
 		                                                    <button @click="deleteLine(line.lineName)" class="btn-action btn-action-danger" x-show="currentUser.role === 'admin'"><i class="fa-solid fa-trash-can"></i>Hapus Line</button>
 		                                                    </div>
@@ -1514,7 +1513,7 @@
 		                                </select>
 		                                </div>
 		                                <div class="filter-group">
-		                                <button type="button" @click="openDefectCategoryModal('type')" class="btn-compact inline-flex justify-center items-center border border-transparent font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
+		                                <button type="button" @click="openDefectCategoryModal('type')" :disabled="isWorkScheduleLocked()" class="schedule-action btn-compact inline-flex justify-center items-center border border-transparent font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
 		                                    <i class="fa-solid fa-plus mr-2"></i>Tambah Jenis Defect
 		                                </button>
 		                                </div>
@@ -1539,13 +1538,13 @@
 	                                                </td>
 	                                                <td class="px-4 py-3 whitespace-nowrap">
 	                                                    <div class="table-actions">
-	                                                    <button @click="toggleDefectType(type)" class="btn-action" :class="type.active !== false ? 'btn-action-success' : 'btn-action-neutral'" x-text="type.active !== false ? 'Aktif' : 'Nonaktif'"></button>
+	                                                    <button @click="toggleDefectType(type)" :disabled="isWorkScheduleLocked()" class="schedule-action btn-action" :class="type.active !== false ? 'btn-action-success' : 'btn-action-neutral'" x-text="type.active !== false ? 'Aktif' : 'Nonaktif'"></button>
 	                                                    </div>
 	                                                </td>
 	                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-medium">
 	                                                    <div class="table-actions">
-	                                                    <button @click="editDefectType(type)" class="btn-action btn-action-primary"><i class="fa-solid fa-pen-to-square"></i>Edit</button>
-	                                                    <button @click="deleteDefectType(type.id)" class="btn-action btn-action-danger"><i class="fa-solid fa-trash"></i>Hapus</button>
+	                                                    <button @click="editDefectType(type)" :disabled="isWorkScheduleLocked()" class="schedule-action btn-action btn-action-primary"><i class="fa-solid fa-pen-to-square"></i>Edit</button>
+	                                                    <button @click="deleteDefectType(type.id)" :disabled="isWorkScheduleLocked()" class="schedule-action btn-action btn-action-danger"><i class="fa-solid fa-trash"></i>Hapus</button>
 	                                                    </div>
 	                                                </td>
 	                                            </tr>
@@ -1586,7 +1585,7 @@
 		                                </select>
 		                                </div>
 		                                <div class="filter-group">
-		                                <button type="button" @click="openDefectCategoryModal('area')" class="btn-compact inline-flex justify-center items-center border border-transparent font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
+		                                <button type="button" @click="openDefectCategoryModal('area')" :disabled="isWorkScheduleLocked()" class="schedule-action btn-compact inline-flex justify-center items-center border border-transparent font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
 		                                    <i class="fa-solid fa-plus mr-2"></i>Tambah Area Defect
 		                                </button>
 		                                </div>
@@ -1611,13 +1610,13 @@
 	                                                </td>
 	                                                <td class="px-4 py-3 whitespace-nowrap">
 	                                                    <div class="table-actions">
-	                                                    <button @click="toggleDefectArea(area)" class="btn-action" :class="area.active !== false ? 'btn-action-success' : 'btn-action-neutral'" x-text="area.active !== false ? 'Aktif' : 'Nonaktif'"></button>
+	                                                    <button @click="toggleDefectArea(area)" :disabled="isWorkScheduleLocked()" class="schedule-action btn-action" :class="area.active !== false ? 'btn-action-success' : 'btn-action-neutral'" x-text="area.active !== false ? 'Aktif' : 'Nonaktif'"></button>
 	                                                    </div>
 	                                                </td>
 	                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-medium">
 	                                                    <div class="table-actions">
-	                                                    <button @click="editDefectArea(area)" class="btn-action btn-action-primary"><i class="fa-solid fa-pen-to-square"></i>Edit</button>
-	                                                    <button @click="deleteDefectArea(area.id)" class="btn-action btn-action-danger"><i class="fa-solid fa-trash"></i>Hapus</button>
+	                                                    <button @click="editDefectArea(area)" :disabled="isWorkScheduleLocked()" class="schedule-action btn-action btn-action-primary"><i class="fa-solid fa-pen-to-square"></i>Edit</button>
+	                                                    <button @click="deleteDefectArea(area.id)" :disabled="isWorkScheduleLocked()" class="schedule-action btn-action btn-action-danger"><i class="fa-solid fa-trash"></i>Hapus</button>
 	                                                    </div>
 	                                                </td>
 	                                            </tr>
@@ -1639,7 +1638,6 @@
 	                        </div>
 	                    </div>
 	                </div>
-	            </fieldset>
 	            </main>
         </div>
     </div>
@@ -1686,7 +1684,7 @@
                         </div>
                     </div>
                     <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                        <button type="submit" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm">
+                        <button type="submit" :disabled="isWorkScheduleLocked()" class="schedule-action w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm">
 	                            <i class="fa-solid fa-floppy-disk mr-2"></i>Simpan
                         </button>
                         <button type="button" @click="lineModal.open = false" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
@@ -1740,7 +1738,7 @@
                         </div>
                     </div>
                     <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                        <button type="submit" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm">
+                        <button type="submit" :disabled="isWorkScheduleLocked()" class="schedule-action w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm">
 	                            <i class="fa-solid fa-plus mr-2"></i>Tambah Model
                         </button>
                         <button type="button" @click="modelModal.open = false" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
@@ -1838,7 +1836,7 @@
 	                        </div>
 	                    </div>
 	                    <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-	                        <button type="submit" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm">
+	                        <button type="submit" :disabled="isWorkScheduleLocked()" class="schedule-action w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm">
 	                            <i class="fa-solid mr-2" :class="defectCategoryModal.id ? 'fa-floppy-disk' : 'fa-plus'"></i><span x-text="defectCategoryModal.id ? 'Update' : 'Tambah'"></span>
 	                        </button>
 	                        <button type="button" @click="closeDefectCategoryModal()" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">

@@ -123,6 +123,12 @@ function dashboard() {
 	            percentFontSize: 40,
 	            refreshInterval: 10000
 	        },
+	        workScheduleSettings: {
+	            enabled: true,
+	            workDays: [1, 2, 3, 4, 5, 6],
+	            startTime: '07:00',
+	            endTime: '17:00'
+	        },
 
         // Toast notification
         toast: {
@@ -274,6 +280,7 @@ function dashboard() {
 	                    this.navigation.push(
 	                        { name: 'Manajemen User', page: 'user-management', iconClass: 'fa-users-gear' },
 	                        { name: 'Kategori Defect', page: 'defect-categories', iconClass: 'fa-triangle-exclamation' },
+	                        { name: 'Hari Kerja', page: 'work-schedule-settings', iconClass: 'fa-calendar-days' },
 	                        { name: 'Public Display', page: 'public-display-settings', iconClass: 'fa-tv' },
                         { name: 'Aksi Sistem', page: 'system-actions', iconClass: 'fa-screwdriver-wrench' }
                     );
@@ -387,7 +394,7 @@ function dashboard() {
                 return this.canViewDashboard();
             }
 
-	            if (state.currentPage === 'user-management' || state.currentPage === 'defect-categories' || state.currentPage === 'public-display-settings' || state.currentPage === 'system-actions') {
+	            if (state.currentPage === 'user-management' || state.currentPage === 'defect-categories' || state.currentPage === 'work-schedule-settings' || state.currentPage === 'public-display-settings' || state.currentPage === 'system-actions') {
 	                return state.currentPage === 'defect-categories'
 	                    ? this.canManageDefectCategories()
 	                    : this.currentUser.role === 'admin';
@@ -433,6 +440,10 @@ function dashboard() {
 	            if (this.currentPage === 'public-display-settings') {
 	                await this.loadPublicDisplaySettings();
 	            }
+
+	            if (this.currentPage === 'work-schedule-settings') {
+	                await this.loadWorkScheduleSettings();
+	            }
 	        },
 
 	        changePage(page) {
@@ -455,6 +466,9 @@ function dashboard() {
 	            }
 	            if (page === 'public-display-settings') {
 	                this.loadPublicDisplaySettings();
+	            }
+	            if (page === 'work-schedule-settings') {
+	                this.loadWorkScheduleSettings();
 	            }
 	        },
 
@@ -887,6 +901,38 @@ function dashboard() {
 
 	        resetPublicDisplaySettings() {
 	            this.publicDisplaySettings = this.normalizePublicDisplaySettings();
+	        },
+
+	        async loadWorkScheduleSettings() {
+	            try {
+	                const response = await fetch('/api/work-schedule-settings');
+	                if (!response.ok) throw new Error('Gagal memuat pengaturan hari kerja');
+	                this.workScheduleSettings = await response.json();
+	            } catch (error) {
+	                console.error('Error loading work schedule settings:', error);
+	                this.showToast(error.message, 'error');
+	            }
+	        },
+
+	        async saveWorkScheduleSettings() {
+	            if (!this.workScheduleSettings.workDays.length) {
+	                this.showToast('Pilih minimal satu hari kerja', 'error');
+	                return;
+	            }
+	            try {
+	                const response = await fetch('/api/work-schedule-settings', {
+	                    method: 'PUT',
+	                    headers: { 'Content-Type': 'application/json' },
+	                    body: JSON.stringify(this.workScheduleSettings)
+	                });
+	                const result = await response.json();
+	                if (!response.ok) throw new Error(result.error || 'Gagal menyimpan pengaturan hari kerja');
+	                this.workScheduleSettings = result.settings;
+	                this.showToast(result.message, 'success');
+	            } catch (error) {
+	                console.error('Error saving work schedule settings:', error);
+	                this.showToast(error.message, 'error');
+	            }
 	        },
 
 	        publicDisplayPreviewUrl(defectMode = 'all') {

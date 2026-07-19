@@ -818,16 +818,15 @@
 		                    return String(value || '').trim().toLowerCase();
 		                },
 
-		                getDefectSeverity(type, area) {
-		                    const lookups = this.lineData.data.defectSeverityLookups || { types: {}, areas: {} };
+		                getDefectSeverity(type) {
+		                    const lookups = this.lineData.data.defectSeverityLookups || { types: {} };
 		                    const typeSeverity = lookups.types?.[this.normalizeDefectKey(type)];
-		                    const areaSeverity = lookups.areas?.[this.normalizeDefectKey(area)];
 
-		                    return typeSeverity === 'major' || areaSeverity === 'major' ? 'major' : 'minor';
+		                    return typeSeverity === 'major' ? 'major' : 'minor';
 		                },
 
 		                matchesDefectMode(type, area) {
-		                    return this.defectMode === 'all' || this.getDefectSeverity(type, area) === this.defectMode;
+		                    return this.defectMode === 'all' || this.getDefectSeverity(type) === this.defectMode;
 		                },
 
 		                selectedDefectBreakdown() {

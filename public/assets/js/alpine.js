@@ -748,7 +748,7 @@ function dashboard() {
 	                kind,
 	                id: item ? item.id : null,
 	                name: item ? item.name : '',
-	                severity: item?.severity || 'minor'
+	                severity: kind === 'type' ? (item?.severity || 'minor') : ''
 	            };
 	        },
 
@@ -773,7 +773,7 @@ function dashboard() {
 	            const saved = await this.saveDefectCategory(kind, {
 	                id: this.defectCategoryModal.id,
 	                name,
-	                severity: this.defectCategoryModal.severity || 'minor',
+	                severity: kind === 'type' ? (this.defectCategoryModal.severity || 'minor') : undefined,
 	                active: true
 	            });
             if (saved) this.closeDefectCategoryModal();
@@ -792,7 +792,6 @@ function dashboard() {
             await this.saveDefectCategory('area', {
 	                id: area.id,
 	                name: area.name,
-	                severity: area.severity || 'minor',
 	                active: area.active === false
 	            });
         },
@@ -802,10 +801,12 @@ function dashboard() {
                 const collection = kind === 'type' ? 'defect-types' : 'defect-areas';
                 const url = payload.id ? `/api/${collection}/${payload.id}` : `/api/${collection}`;
                 const method = payload.id ? 'PUT' : 'POST';
+	            const body = { name: payload.name, active: payload.active };
+	            if (kind === 'type') body.severity = payload.severity || 'minor';
                 const response = await fetch(url, {
                     method,
                     headers: { 'Content-Type': 'application/json' },
-	                    body: JSON.stringify({ name: payload.name, severity: payload.severity || 'minor', active: payload.active })
+	                    body: JSON.stringify(body)
 	                });
 
                 if (response.ok) {
@@ -1861,7 +1862,7 @@ function dashboard() {
 	        get filteredDefectAreas() {
 	            const search = this.defectAreaSearchTerm.trim().toLowerCase();
 	            return (this.defectAreas || []).filter(area => !search ||
-	                [area.name, area.severity, area.active !== false ? 'aktif' : 'nonaktif']
+	                [area.name, area.active !== false ? 'aktif' : 'nonaktif']
 	                    .some(value => String(value || '').toLowerCase().includes(search))
 	            );
 	        },

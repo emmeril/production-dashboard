@@ -1596,7 +1596,6 @@
 	                                    <thead class="bg-gray-50">
 	                                        <tr>
 	                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama</th>
-	                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kategori</th>
 	                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
 	                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
 	                                        </tr>
@@ -1605,9 +1604,6 @@
 	                                        <template x-for="area in paginatedDefectAreas" :key="area.id">
 	                                            <tr>
 	                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900" x-text="area.name"></td>
-	                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-semibold">
-	                                                    <span class="inline-flex px-2 py-1 text-xs rounded-full" :class="(area.severity || 'minor') === 'major' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'" x-text="(area.severity || 'minor') === 'major' ? 'Major' : 'Minor'"></span>
-	                                                </td>
 	                                                <td class="px-4 py-3 whitespace-nowrap">
 	                                                    <div class="table-actions">
 	                                                    <button @click="toggleDefectArea(area)" :disabled="isWorkScheduleLocked()" class="schedule-action btn-action" :class="area.active !== false ? 'btn-action-success' : 'btn-action-neutral'" x-text="area.active !== false ? 'Aktif' : 'Nonaktif'"></button>
@@ -1622,7 +1618,7 @@
 	                                            </tr>
 	                                        </template>
 	                                        <tr x-show="filteredDefectAreas.length === 0">
-	                                            <td colspan="4" class="px-4 py-6 text-center text-sm text-gray-500" x-text="defectAreaSearchTerm ? 'Area defect tidak ditemukan.' : 'Belum ada area defect.'"></td>
+	                                            <td colspan="3" class="px-4 py-6 text-center text-sm text-gray-500" x-text="defectAreaSearchTerm ? 'Area defect tidak ditemukan.' : 'Belum ada area defect.'"></td>
 	                                        </tr>
 	                                    </tbody>
 	                                </table>
@@ -1826,9 +1822,9 @@
 	                            <label for="defect-category-name" class="block text-sm font-medium text-gray-700" x-text="defectCategoryModal.kind === 'type' ? 'Nama Jenis Defect' : 'Nama Area Defect'"></label>
 	                            <input type="text" id="defect-category-name" x-model="defectCategoryModal.name" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" :placeholder="defectCategoryModal.kind === 'type' ? 'Contoh: Jahitan lepas' : 'Contoh: Kepala'" required>
 	                        </div>
-	                        <div>
+	                        <div x-show="defectCategoryModal.kind === 'type'">
 	                            <label for="defect-category-severity" class="block text-sm font-medium text-gray-700">Kategori</label>
-	                            <select id="defect-category-severity" x-model="defectCategoryModal.severity" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md" required>
+	                            <select id="defect-category-severity" x-model="defectCategoryModal.severity" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md" :required="defectCategoryModal.kind === 'type'">
 	                                <option value="minor">Minor</option>
 	                                <option value="major">Major</option>
 	                            </select>

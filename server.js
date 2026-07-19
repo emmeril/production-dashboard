@@ -219,9 +219,9 @@ function buildInitialDefectConfig() {
       { id: 3, name: 'Bentuk tidak sesuai', severity: 'major', active: true }
     ],
     defectAreas: [
-      { id: 1, name: 'Kepala', severity: 'major', active: true },
-      { id: 2, name: 'Badan', severity: 'minor', active: true },
-      { id: 3, name: 'Kaki', severity: 'minor', active: true }
+      { id: 1, name: 'Kepala', active: true },
+      { id: 2, name: 'Badan', active: true },
+      { id: 3, name: 'Kaki', active: true }
     ]
   };
 }
@@ -236,10 +236,7 @@ function normalizeDefectConfig(config = {}) {
       ...type,
       severity: normalizeDefectSeverity(type.severity)
     })),
-    defectAreas: (config.defectAreas || []).map(area => ({
-      ...area,
-      severity: normalizeDefectSeverity(area.severity)
-    }))
+    defectAreas: (config.defectAreas || []).map(({ severity, ...area }) => area)
   };
 }
 
@@ -310,26 +307,18 @@ function normalizeDefectKey(value) {
 
 function buildDefectSeverityMaps(config = readDefectConfig()) {
   const typeMap = new Map();
-  const areaMap = new Map();
 
   (config.defectTypes || []).forEach(type => {
     const key = normalizeDefectKey(type.name);
     if (key) typeMap.set(key, normalizeDefectSeverity(type.severity));
   });
 
-  (config.defectAreas || []).forEach(area => {
-    const key = normalizeDefectKey(area.name);
-    if (key) areaMap.set(key, normalizeDefectSeverity(area.severity));
-  });
-
-  return { typeMap, areaMap };
+  return { typeMap };
 }
 
-function getDefectSeverity(type, area, severityMaps) {
+function getDefectSeverity(type, severityMaps) {
   const typeSeverity = severityMaps.typeMap.get(normalizeDefectKey(type));
-  const areaSeverity = severityMaps.areaMap.get(normalizeDefectKey(area));
-
-  return typeSeverity === 'major' || areaSeverity === 'major' ? 'major' : 'minor';
+  return typeSeverity === 'major' ? 'major' : 'minor';
 }
 
 function buildEmptyDefectBreakdown(qcChecking) {
@@ -348,7 +337,7 @@ function calculateDefectSeverityBreakdown(model, config = readDefectConfig()) {
 
   const addDefect = (type, area, quantity = 1) => {
     const count = Math.max(parseInt(quantity) || 1, 0);
-    const severity = getDefectSeverity(type, area, severityMaps);
+    const severity = getDefectSeverity(type, severityMaps);
 
     breakdown.all.count += count;
     breakdown[severity].count += count;
@@ -397,8 +386,7 @@ function buildPublicModelResponse(model) {
   }
 
   response.defectSeverityLookups = {
-    types: Object.fromEntries(severityMaps.typeMap),
-    areas: Object.fromEntries(severityMaps.areaMap)
+    types: Object.fromEntries(severityMaps.typeMap)
   };
 
   return response;
@@ -3631,7 +3619,7 @@ app.get('/api/defect-areas', requireLogin, (req, res) => {
 });
 
 app.post('/api/defect-areas', requireLogin, requireDefectCategoryAccess, (req, res) => {
-  const { name, severity = 'minor', active = true } = req.body;
+  const { name, active = true } = req.body;
   const config = readDefectConfig();
   config.defectAreas = config.defectAreas || [];
 
@@ -3639,7 +3627,7 @@ app.post('/api/defect-areas', requireLogin, requireDefectCategoryAccess, (req, r
     return res.status(400).json({ error: 'Defect area name is required' });
   }
 
-  const defectArea = { id: generateNumericId(config.defectAreas), name: name.trim(), severity: normalizeDefectSeverity(severity), active: Boolean(active) };
+  const defectArea = { id: generateNumericId(config.defectAreas), name: name.trim(), active: Boolean(active) };
   config.defectAreas.push(defectArea);
   writeDefectConfig(config);
 
@@ -3648,7 +3636,7 @@ app.post('/api/defect-areas', requireLogin, requireDefectCategoryAccess, (req, r
 
 app.put('/api/defect-areas/:id', requireLogin, requireDefectCategoryAccess, (req, res) => {
   const { id } = req.params;
-  const { name, severity = 'minor', active = true } = req.body;
+  const { name, active = true } = req.body;
   const config = readDefectConfig();
   const defectArea = (config.defectAreas || []).find(area => String(area.id) === String(id));
 
@@ -3661,7 +3649,7 @@ app.put('/api/defect-areas/:id', requireLogin, requireDefectCategoryAccess, (req
   }
 
   defectArea.name = name.trim();
-  defectArea.severity = normalizeDefectSeverity(severity);
+  delete defectArea.severity;
   defectArea.active = Boolean(active);
   writeDefectConfig(config);
 

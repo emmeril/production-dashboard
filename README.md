@@ -137,7 +137,6 @@ File dan folder penting:
 | `history/data_YYYY-MM-DD.json` | Backup data per tanggal. |
 | `history/backups/` | Arsip backup dengan timestamp. |
 | `public-display.html` | Tampilan public display monitor. |
-| `DISPLAY LINE.html` | Referensi layout display line. |
 
 Sistem menjalankan auto-check tanggal dan membuat backup harian saat server berjalan.
 

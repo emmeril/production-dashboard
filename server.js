@@ -886,11 +886,16 @@ function createArchiveBackup() {
     const data = readProductionData();
     const today = getToday();
     const timestamp = new Date().getTime();
-    const archiveFile = path.join(__dirname, 'history', 'backups', `data_${today}_${timestamp}.json`);
+    const archiveFile = path.join(
+      __dirname,
+      'history',
+      'backups',
+      `data_${today}_${timestamp}_${crypto.randomBytes(4).toString('hex')}.json`
+    );
     
     // Buat arsip dengan timestamp
     fs.writeFileSync(archiveFile, JSON.stringify(data, null, 2));
-    console.log(`💾 Arsip backup dibuat: data_${today}_${timestamp}.json`);
+    console.log(`💾 Arsip backup dibuat: ${path.basename(archiveFile)}`);
     
     return archiveFile;
   } catch (error) {
@@ -2192,25 +2197,35 @@ app.post('/api/update-hourly-direct/:lineName/:modelId', requireLogin, requireLi
     return res.status(404).json({ error: 'Line, model or hourly data not found' });
   }
 
-  const selisih = parseInt(output) - parseInt(targetManual);
+  const index = parseInt(hourIndex);
+  const model = data.lines[lineName].models[modelId];
+  if (!Number.isInteger(index) || index < 0 || index >= model.hourly_data.length) {
+    return res.status(400).json({ error: 'Invalid hour index' });
+  }
 
-	  const currentHour = data.lines[lineName].models[modelId].hourly_data[hourIndex];
-	  if (rejectUnavailableOperatorProductionHour(req, res, currentHour)) return;
+  const nextOutput = parseInt(output) || 0;
+  const nextDefect = parseInt(defect) || 0;
+  const nextQcChecked = parseInt(qcChecked) || 0;
+  const nextTargetManual = parseInt(targetManual) || 0;
+  const selisih = nextOutput - nextTargetManual;
 
-	  data.lines[lineName].models[modelId].hourly_data[hourIndex] = {
-	    ...currentHour,
-	    output: parseInt(output),
-	    defect: parseInt(defect),
-	    qcChecked: parseInt(qcChecked),
-	    targetManual: parseInt(targetManual),
-	    defectDetails: Array.isArray(defectDetails) ? defectDetails : (currentHour.defectDetails || []),
-	    productionLocked: req.session.user?.role === 'operator' ? true : Boolean(currentHour.productionLocked),
-	    productionLockedAt: req.session.user?.role === 'operator' ? new Date().toISOString() : currentHour.productionLockedAt,
-	    productionLockedBy: req.session.user?.role === 'operator' ? req.session.user.username : currentHour.productionLockedBy,
-	    selisih: selisih
-	  };
+  const currentHour = model.hourly_data[index];
+  if (rejectUnavailableOperatorProductionHour(req, res, currentHour)) return;
 
-  const summary = recalculateModelTotals(data.lines[lineName].models[modelId]);
+  model.hourly_data[index] = {
+    ...currentHour,
+    output: nextOutput,
+    defect: nextDefect,
+    qcChecked: nextQcChecked,
+    targetManual: nextTargetManual,
+    defectDetails: Array.isArray(defectDetails) ? defectDetails : (currentHour.defectDetails || []),
+    productionLocked: req.session.user?.role === 'operator' ? true : Boolean(currentHour.productionLocked),
+    productionLockedAt: req.session.user?.role === 'operator' ? new Date().toISOString() : currentHour.productionLockedAt,
+    productionLockedBy: req.session.user?.role === 'operator' ? req.session.user.username : currentHour.productionLockedBy,
+    selisih
+  };
+
+  const summary = recalculateModelTotals(model);
 
   writeProductionData(data);
   
@@ -2219,10 +2234,10 @@ app.post('/api/update-hourly-direct/:lineName/:modelId', requireLogin, requireLi
   
   res.json({
     message: 'Hourly data updated successfully.',
-    data: data.lines[lineName].models[modelId],
+    data: model,
     summary: {
       ...summary,
-      defectRate: data.lines[lineName].models[modelId].defectRatePercentage.toFixed(2) + '%'
+      defectRate: model.defectRatePercentage.toFixed(2) + '%'
     }
   });
 });

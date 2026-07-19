@@ -1,9 +1,11 @@
 {
   "name": "production-dashboard",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node server.js",
+    "check": "node --check server.js && node --check public/assets/js/alpine.js",
+    "test": "npm run check"
   },
   "keywords": [],
   "author": "",

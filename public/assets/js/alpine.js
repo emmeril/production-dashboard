@@ -140,6 +140,8 @@ function dashboard() {
         linesPerPage: 10,
         lineSearchTerm: '',
         lineStatusFilter: '',
+        lineDetailController: null,
+        lineDetailRequestId: 0,
 
         // Users pagination
         currentUserPage: 1,
@@ -599,6 +601,12 @@ function dashboard() {
         },
 
         async loadLineDetail(lineName, modelId) {
+            const requestId = ++this.lineDetailRequestId;
+            if (this.lineDetailController) {
+                this.lineDetailController.abort();
+            }
+            this.lineDetailController = new AbortController();
+
             try {
                 let url;
                 if (modelId) {
@@ -607,9 +615,14 @@ function dashboard() {
                     url = `/api/line/${lineName}`;
                 }
 
-                const response = await fetch(url);
+                const response = await fetch(url, { signal: this.lineDetailController.signal });
+                if (requestId !== this.lineDetailRequestId) return;
+
                 if (response.ok) {
-                    this.lineDetail = await response.json();
+                    const lineDetail = await response.json();
+                    if (requestId !== this.lineDetailRequestId) return;
+
+                    this.lineDetail = lineDetail;
                     if (!modelId && this.lineDetail.modelId) {
                         this.currentModelId = this.lineDetail.modelId;
                     }
@@ -618,8 +631,13 @@ function dashboard() {
                     this.showToast('Failed to load line detail', 'error');
                 }
             } catch (error) {
+                if (error.name === 'AbortError') return;
                 console.error('Error loading line detail:', error);
                 this.showToast('Error loading line detail', 'error');
+            } finally {
+                if (requestId === this.lineDetailRequestId) {
+                    this.lineDetailController = null;
+                }
             }
         },
 

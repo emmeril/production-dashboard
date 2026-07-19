@@ -53,10 +53,10 @@ pnpm install
 
 ## Menjalankan Aplikasi
 
-Package script `start` belum didefinisikan, jadi jalankan server langsung:
+Jalankan server dengan package script:
 
 ```bash
-node server.js
+npm start
 ```
 
 Default server berjalan di:
@@ -148,6 +148,14 @@ Sistem menjalankan auto-check tanggal dan membuat backup harian saat server berj
 - Public display memakai `public-display.html` dan mengambil data dari `/api/public/line/:lineName/:modelId`.
 
 ## Validasi Cepat
+
+Jalankan seluruh pemeriksaan sintaks:
+
+```bash
+npm test
+```
+
+Atau periksa file secara terpisah:
 
 Cek sintaks server:
 

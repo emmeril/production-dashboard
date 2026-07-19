@@ -386,8 +386,11 @@
 	                    refreshInterval: 10000
 	                },
 	                errorMessage: '',
-	                refreshInterval: 10000,
+                refreshInterval: 10000,
                 refreshTimer: null,
+                refreshController: null,
+                refreshRequestId: 0,
+                dataUpdatedTimer: null,
                 dataUpdated: false,
 
                 async init() {
@@ -417,6 +420,12 @@
 	                },
 
                 async loadLineData() {
+                    const requestId = ++this.refreshRequestId;
+                    if (this.refreshController) {
+                        this.refreshController.abort();
+                    }
+                    this.refreshController = new AbortController();
+
                     try {
                         let url;
                         if (this.currentModelId) {
@@ -425,28 +434,41 @@
                             url = `/api/public/line/${this.lineData.name}`;
                         }
                         
-                        let response = await fetch(url);
+                        let response = await fetch(url, { signal: this.refreshController.signal });
                         
                         if (!response.ok) {
-                            response = await fetch(`/api/line/${this.lineData.name}${this.currentModelId ? '/' + this.currentModelId : ''}`);
+                            response = await fetch(
+                                `/api/line/${this.lineData.name}${this.currentModelId ? '/' + this.currentModelId : ''}`,
+                                { signal: this.refreshController.signal }
+                            );
                         }
+
+                        if (requestId !== this.refreshRequestId) return;
                         
                         if (response.ok) {
                             const data = await response.json();
+                            if (requestId !== this.refreshRequestId) return;
                             this.lineData.data = data;
                             this.errorMessage = '';
                             
                             this.dataUpdated = true;
-                            setTimeout(() => {
+                            if (this.dataUpdatedTimer) clearTimeout(this.dataUpdatedTimer);
+                            this.dataUpdatedTimer = setTimeout(() => {
                                 this.dataUpdated = false;
                             }, 1000);
                         } else {
                             const error = await response.json();
+                            if (requestId !== this.refreshRequestId) return;
                             this.errorMessage = error.error || 'Gagal memuat data line';
                         }
                     } catch (error) {
+                        if (error.name === 'AbortError') return;
                         console.error('Error loading line data:', error);
                         this.errorMessage = 'Terjadi kesalahan saat memuat data';
+                    } finally {
+                        if (requestId === this.refreshRequestId) {
+                            this.refreshController = null;
+                        }
                     }
                 },
 

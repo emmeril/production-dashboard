@@ -17,14 +17,19 @@
             <button id="logout-btn" class="btn-logout">LOGOUT</button>
         </div>
 
-        <!-- Management Tabs -->
-        <div class="management-tabs">
-            <button class="tab-button active" data-tab="line-management">Line Management</button>
-            <button class="tab-button" data-tab="user-management">User Management</button>
-            <button class="tab-button" data-tab="defect-management">Defect Management</button>
-            <button class="tab-button" data-tab="work-schedule-management">Hari Kerja</button>
-            <button class="tab-button" data-tab="history-management">History Data</button>
-        </div>
+        <div class="admin-workspace">
+            <aside class="admin-sidebar">
+                <div class="sidebar-heading">MENU ADMIN</div>
+                <nav class="management-tabs" aria-label="Menu admin">
+                    <button class="tab-button active" data-tab="line-management">Line Management</button>
+                    <button class="tab-button" data-tab="user-management">User Management</button>
+                    <button class="tab-button" data-tab="defect-management">Defect Management</button>
+                    <button class="tab-button" data-tab="work-schedule-management">Hari Kerja</button>
+                    <button class="tab-button" data-tab="history-management">History Data</button>
+                </nav>
+            </aside>
+
+            <main class="admin-content">
 
         <!-- Line Management Tab -->
         <div id="line-management" class="tab-content active">
@@ -352,6 +357,8 @@
                     </div>
                 </div>
             </div>
+        </div>
+            </main>
         </div>
     </div>
 

@@ -253,6 +253,25 @@
 	            transform: none !important;
 	        }
 
+	        fieldset:disabled button {
+	            cursor: not-allowed !important;
+	            opacity: 0.5 !important;
+	        }
+
+	        .work-schedule-lock-notice {
+	            display: flex;
+	            align-items: center;
+	            gap: 0.65rem;
+	            margin-bottom: 1rem;
+	            padding: 0.8rem 1rem;
+	            border: 1px solid #f59e0b;
+	            border-radius: 0.5rem;
+	            background: #fffbeb;
+	            color: #92400e;
+	            font-size: 0.875rem;
+	            font-weight: 600;
+	        }
+
 	        .production-save-btn:disabled {
 	            background-color: #9ca3af !important;
 	            border-color: #9ca3af !important;

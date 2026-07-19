@@ -3538,7 +3538,7 @@ app.put('/api/public-display-settings', requireLogin, requireAdmin, (req, res) =
   res.json({ message: 'Public display settings updated successfully', settings });
 });
 
-app.get('/api/work-schedule-settings', requireLogin, requireAdmin, (req, res) => {
+app.get('/api/work-schedule-settings', requireLogin, (req, res) => {
   res.json(readWorkScheduleSettings());
 });
 

@@ -52,18 +52,9 @@ function dashboard() {
 	        isSavingProduction: false,
 	        isSavingQc: false,
 
-        // QC input for operators is available only during the 07:00-17:00 shift.
+        // QC follows the same configurable work schedule as every non-admin action.
         isQcWithinWorkingHours() {
-            if (this.currentUser?.role !== 'operator') return true;
-            // Keep Alpine reactive to the clock refresh while checking Jakarta time.
-            this.productionClockMinute;
-            const parts = new Intl.DateTimeFormat('en-US', {
-                timeZone: 'Asia/Jakarta', hour: 'numeric', minute: 'numeric', hour12: false
-            }).formatToParts(new Date());
-            const hour = Number(parts.find(part => part.type === 'hour')?.value || 0) % 24;
-            const minute = Number(parts.find(part => part.type === 'minute')?.value || 0);
-            const minutes = hour * 60 + minute;
-            return minutes >= 7 * 60 && minutes < 17 * 60;
+            return !this.isWorkScheduleLocked();
         },
 
         defectTypes: [],
@@ -182,6 +173,7 @@ function dashboard() {
                 this.setupNavigation();
                 return;
             }
+            await this.loadWorkScheduleSettings();
             this.setupNavigation();
             const initialRoute = this.getInitialRouteState();
             if (this.isAuthenticated && initialRoute && this.canUseRouteState(initialRoute)) {
@@ -225,6 +217,7 @@ function dashboard() {
                     this.currentUser = data.user;
                     this.isAuthenticated = true;
                     this.loginError = '';
+                    await this.loadWorkScheduleSettings();
                     this.setupNavigation();
                     const initialRoute = this.getInitialRouteState();
                     if (initialRoute && this.canUseRouteState(initialRoute)) {
@@ -914,6 +907,32 @@ function dashboard() {
 	            }
 	        },
 
+	        isWorkScheduleLocked() {
+	            if (!this.isAuthenticated || this.currentUser?.role === 'admin') return false;
+	            if (!this.workScheduleSettings?.enabled) return false;
+
+	            // Reference the clock tick so Alpine reevaluates the lock every 30 seconds.
+	            this.productionClockMinute;
+	            const now = new Date();
+	            const weekday = new Intl.DateTimeFormat('en-US', {
+	                timeZone: 'Asia/Jakarta', weekday: 'short'
+	            }).format(now);
+	            const day = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 }[weekday];
+	            if (!this.workScheduleSettings.workDays.includes(day)) return true;
+
+	            const current = this.getCurrentProductionMinute();
+	            const toMinutes = value => {
+	                const [hour, minute] = String(value || '00:00').split(':').map(Number);
+	                return (hour * 60) + minute;
+	            };
+	            const start = toMinutes(this.workScheduleSettings.startTime);
+	            const end = toMinutes(this.workScheduleSettings.endTime);
+	            const withinTime = start <= end
+	                ? current >= start && current < end
+	                : current >= start || current < end;
+	            return !withinTime;
+	        },
+
 	        async saveWorkScheduleSettings() {
 	            if (!this.workScheduleSettings.workDays.length) {
 	                this.showToast('Pilih minimal satu hari kerja', 'error');
@@ -1036,8 +1055,12 @@ function dashboard() {
 	        },
 
 	        getCurrentProductionMinute() {
-	            const now = new Date();
-	            return (now.getHours() * 60) + now.getMinutes();
+	            const parts = new Intl.DateTimeFormat('en-US', {
+	                timeZone: 'Asia/Jakarta', hour: 'numeric', minute: 'numeric', hour12: false
+	            }).formatToParts(new Date());
+	            const hour = Number(parts.find(part => part.type === 'hour')?.value || 0) % 24;
+	            const minute = Number(parts.find(part => part.type === 'minute')?.value || 0);
+	            return (hour * 60) + minute;
 	        },
 
 	        refreshProductionClock() {

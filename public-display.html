@@ -243,10 +243,14 @@
             padding: 8px 14px;
             cursor: pointer;
         }
+
+        .schedule-overlay .error-title {
+            color: #ffeb3b;
+        }
     </style>
 </head>
 <body x-data="publicDisplay()" :style="displayCssVars()" x-cloak>
-    <div class="tg">
+    <div class="tg" x-show="scheduleLoaded && isWithinWorkSchedule">
         <table class="main-table" border="0">
             <tbody>
                 <tr>
@@ -337,8 +341,18 @@
         </div>
     </div>
 
+    <template x-if="scheduleLoaded && !isWithinWorkSchedule">
+        <div class="error-overlay schedule-overlay">
+            <div class="error-content">
+                <h2 class="error-title">DI LUAR JAM KERJA</h2>
+                <p class="error-message">Data produksi akan ditampilkan kembali pada hari dan jam kerja yang telah diatur oleh admin.</p>
+                <p class="error-message" x-text="workScheduleDescription()"></p>
+            </div>
+        </div>
+    </template>
+
     <!-- Error Overlay -->
-    <template x-if="errorMessage">
+    <template x-if="errorMessage && isWithinWorkSchedule">
         <div class="error-overlay">
             <div class="error-content">
                 <h2 class="error-title">Error</h2>
@@ -385,7 +399,15 @@
 	                    percentFontSize: 40,
 	                    refreshInterval: 10000
 	                },
-	                errorMessage: '',
+                errorMessage: '',
+                scheduleLoaded: false,
+                isWithinWorkSchedule: false,
+                workScheduleSettings: {
+                    enabled: true,
+                    workDays: [],
+                    startTime: '07:00',
+                    endTime: '17:00'
+                },
                 refreshInterval: 10000,
                 refreshTimer: null,
                 refreshController: null,
@@ -407,19 +429,22 @@
 	                    this.lineData.name = lineName;
 	                    this.currentModelId = modelId || '';
 	                    this.defectMode = ['all', 'major', 'minor'].includes(defectMode) ? defectMode : 'all';
-	                    await this.loadDisplaySettings();
-	                    await this.loadLineData();
+	                    await Promise.all([this.loadDisplaySettings(), this.loadWorkScheduleStatus()]);
+	                    if (this.isWithinWorkSchedule) await this.loadLineData();
                     
                     this.setupAutoRefresh();
                     
                     this.updateDateTime();
                     setInterval(() => {
                         this.updateDateTime();
+                        this.refreshWorkScheduleState();
                     }, 1000);
                     
 	                },
 
                 async loadLineData() {
+                    if (!this.scheduleLoaded || !this.isWithinWorkSchedule) return;
+
                     const requestId = ++this.refreshRequestId;
                     if (this.refreshController) {
                         this.refreshController.abort();
@@ -436,7 +461,7 @@
                         
                         let response = await fetch(url, { signal: this.refreshController.signal });
                         
-                        if (!response.ok) {
+                        if (!response.ok && response.status !== 403) {
                             response = await fetch(
                                 `/api/line/${this.lineData.name}${this.currentModelId ? '/' + this.currentModelId : ''}`,
                                 { signal: this.refreshController.signal }
@@ -459,6 +484,13 @@
                         } else {
                             const error = await response.json();
                             if (requestId !== this.refreshRequestId) return;
+                            if (response.status === 403) {
+                                this.isWithinWorkSchedule = false;
+                                this.lineData.data = this.emptyLineData();
+                                this.errorMessage = '';
+                                await this.loadWorkScheduleStatus();
+                                return;
+                            }
                             this.errorMessage = error.error || 'Gagal memuat data line';
                         }
                     } catch (error) {
@@ -472,14 +504,97 @@
                     }
                 },
 
+                async loadWorkScheduleStatus() {
+                    try {
+                        const wasWithinSchedule = this.isWithinWorkSchedule;
+                        const response = await fetch('/api/public/work-schedule-status');
+                        if (!response.ok) throw new Error('Gagal memuat jadwal kerja');
+                        const result = await response.json();
+                        this.workScheduleSettings = result.settings;
+                        this.isWithinWorkSchedule = result.withinWorkSchedule;
+
+                        if (wasWithinSchedule && !this.isWithinWorkSchedule) {
+                            this.lineData.data = this.emptyLineData();
+                            this.errorMessage = '';
+                        }
+                    } catch (error) {
+                        console.error('Error loading work schedule status:', error);
+                        this.isWithinWorkSchedule = false;
+                    } finally {
+                        this.scheduleLoaded = true;
+                    }
+                },
+
+                refreshWorkScheduleState() {
+                    if (!this.scheduleLoaded) return;
+                    const wasWithinSchedule = this.isWithinWorkSchedule;
+                    this.isWithinWorkSchedule = this.calculateWithinWorkSchedule();
+
+                    if (wasWithinSchedule && !this.isWithinWorkSchedule) {
+                        this.lineData.data = this.emptyLineData();
+                        this.errorMessage = '';
+                    } else if (!wasWithinSchedule && this.isWithinWorkSchedule) {
+                        this.loadLineData();
+                    }
+                },
+
+                calculateWithinWorkSchedule() {
+                    const schedule = this.workScheduleSettings;
+                    if (!schedule?.enabled) return true;
+
+                    const now = new Date();
+                    const weekday = new Intl.DateTimeFormat('en-US', {
+                        timeZone: 'Asia/Jakarta', weekday: 'short'
+                    }).format(now);
+                    const day = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 }[weekday];
+                    if (!schedule.workDays.map(Number).includes(day)) return false;
+
+                    const jakartaTime = new Intl.DateTimeFormat('en-GB', {
+                        timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
+                    }).formatToParts(now);
+                    const part = type => Number(jakartaTime.find(item => item.type === type)?.value || 0);
+                    const current = (part('hour') * 60) + part('minute');
+                    const toMinutes = value => {
+                        const [hour, minute] = String(value || '00:00').split(':').map(Number);
+                        return (hour * 60) + minute;
+                    };
+                    const start = toMinutes(schedule.startTime);
+                    const end = toMinutes(schedule.endTime);
+                    return start <= end
+                        ? current >= start && current < end
+                        : current >= start || current < end;
+                },
+
+                emptyLineData() {
+                    return {
+                        labelWeek: '', model: '', date: '', target: 0, targetPerHour: 0,
+                        outputDay: 0, qcChecking: 0, actualDefect: 0, defectRatePercentage: 0,
+                        defectBreakdown: {
+                            all: { count: 0, rate: 0 },
+                            major: { count: 0, rate: 0 },
+                            minor: { count: 0, rate: 0 }
+                        },
+                        hourly_data: [], operators: []
+                    };
+                },
+
+                workScheduleDescription() {
+                    const schedule = this.workScheduleSettings;
+                    if (!schedule?.enabled) return '';
+                    const names = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+                    const days = (schedule.workDays || []).map(day => names[Number(day)]).filter(Boolean).join(', ');
+                    return `${days || 'Tidak ada hari kerja'} | ${schedule.startTime} - ${schedule.endTime} WIB`;
+                },
+
                 setupAutoRefresh() {
                     if (this.refreshTimer) {
                         clearInterval(this.refreshTimer);
                     }
 
                     if (this.refreshInterval > 0) {
-                        this.refreshTimer = setInterval(() => {
-                            this.loadLineData();
+                        this.refreshTimer = setInterval(async () => {
+                            await this.loadWorkScheduleStatus();
+                            if (this.isWithinWorkSchedule) await this.loadLineData();
                         }, this.refreshInterval);
                     }
                 },

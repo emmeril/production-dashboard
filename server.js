@@ -3557,6 +3557,11 @@ app.get('/api/work-schedule-settings', requireLogin, (req, res) => {
   res.json(readWorkScheduleSettings());
 });
 
+app.get('/api/public/work-schedule-status', (req, res) => {
+  const settings = readWorkScheduleSettings();
+  res.json({ settings, withinWorkSchedule: isWithinWorkSchedule() });
+});
+
 app.put('/api/work-schedule-settings', requireLogin, requireAdmin, (req, res) => {
   const settings = writeWorkScheduleSettings(req.body || {});
   res.json({ message: 'Pengaturan hari kerja berhasil disimpan', settings });
@@ -4110,6 +4115,10 @@ app.get('/api/export/:lineName', requireLogin, requireLineAccess, autoCheckDateR
 });
 
 app.get('/api/public/line/:lineName', autoCheckDateReset, (req, res) => {
+  if (!isWithinWorkSchedule()) {
+    return res.status(403).json({ error: 'Public display hanya tersedia pada hari dan jam kerja' });
+  }
+
   const lineName = req.params.lineName;
   const data = readProductionData();
   
@@ -4128,6 +4137,10 @@ app.get('/api/public/line/:lineName', autoCheckDateReset, (req, res) => {
 });
 
 app.get('/api/public/line/:lineName/:modelId', autoCheckDateReset, (req, res) => {
+  if (!isWithinWorkSchedule()) {
+    return res.status(403).json({ error: 'Public display hanya tersedia pada hari dan jam kerja' });
+  }
+
   const { lineName, modelId } = req.params;
   const data = readProductionData();
   

@@ -1537,7 +1537,7 @@
 	                                            <tr>
 	                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900" x-text="type.name"></td>
 	                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-semibold">
-	                                                    <span class="inline-flex px-2 py-1 text-xs rounded-full" :class="(type.severity || 'minor') === 'major' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'" x-text="(type.severity || 'minor') === 'major' ? 'Major' : 'Minor'"></span>
+	                                                    <span class="inline-flex px-2 py-1 text-xs rounded-full" :class="(type.severity || 'minor') === 'critical' ? 'bg-red-600 text-white' : ((type.severity || 'minor') === 'major' ? 'bg-orange-100 text-orange-800' : 'bg-yellow-100 text-yellow-800')" x-text="(type.severity || 'minor') === 'critical' ? 'Critical' : ((type.severity || 'minor') === 'major' ? 'Major' : 'Minor')"></span>
 	                                                </td>
 	                                                <td class="px-4 py-3 whitespace-nowrap">
 	                                                    <div class="table-actions">
@@ -1830,6 +1830,7 @@
 	                            <select id="defect-category-severity" x-model="defectCategoryModal.severity" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md" :required="defectCategoryModal.kind === 'type'">
 	                                <option value="minor">Minor</option>
 	                                <option value="major">Major</option>
+	                                <option value="critical">Critical</option>
 	                            </select>
 	                        </div>
 	                        </div>

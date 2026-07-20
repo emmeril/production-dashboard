@@ -327,6 +327,7 @@
 	            <span>Defect</span>
 	            <select x-model="defectMode" @change="changeDefectMode">
 	                <option value="all">Semua</option>
+	                <option value="critical">Critical</option>
 	                <option value="major">Major</option>
 	                <option value="minor">Minor</option>
 	            </select>
@@ -428,7 +429,7 @@
 
 	                    this.lineData.name = lineName;
 	                    this.currentModelId = modelId || '';
-	                    this.defectMode = ['all', 'major', 'minor'].includes(defectMode) ? defectMode : 'all';
+	                    this.defectMode = ['all', 'critical', 'major', 'minor'].includes(defectMode) ? defectMode : 'all';
 	                    await Promise.all([this.loadDisplaySettings(), this.loadWorkScheduleStatus()]);
 	                    if (this.isWithinWorkSchedule) await this.loadLineData();
                     
@@ -571,6 +572,7 @@
                         outputDay: 0, qcChecking: 0, actualDefect: 0, defectRatePercentage: 0,
                         defectBreakdown: {
                             all: { count: 0, rate: 0 },
+                            critical: { count: 0, rate: 0 },
                             major: { count: 0, rate: 0 },
                             minor: { count: 0, rate: 0 }
                         },
@@ -605,7 +607,7 @@
 	                },
 
 	                changeDefectMode() {
-	                    if (!['all', 'major', 'minor'].includes(this.defectMode)) {
+	                    if (!['all', 'critical', 'major', 'minor'].includes(this.defectMode)) {
 	                        this.defectMode = 'all';
 	                    }
 
@@ -822,7 +824,7 @@
 		                    const lookups = this.lineData.data.defectSeverityLookups || { types: {} };
 		                    const typeSeverity = lookups.types?.[this.normalizeDefectKey(type)];
 
-		                    return typeSeverity === 'major' ? 'major' : 'minor';
+		                    return ['major', 'critical'].includes(typeSeverity) ? typeSeverity : 'minor';
 		                },
 
 		                matchesDefectMode(type, area) {
@@ -852,6 +854,7 @@
 		                },
 
 		                defectTitle() {
+		                    if (this.defectMode === 'critical') return 'CRITICAL DEFECT';
 		                    if (this.defectMode === 'major') return 'MAJOR DEFECT';
 		                    if (this.defectMode === 'minor') return 'MINOR DEFECT';
 		                    return 'ACT DEFECT';

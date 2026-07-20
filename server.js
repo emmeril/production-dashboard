@@ -227,7 +227,7 @@ function buildInitialDefectConfig() {
 }
 
 function normalizeDefectSeverity(value) {
-  return value === 'major' ? 'major' : 'minor';
+  return ['minor', 'major', 'critical'].includes(value) ? value : 'minor';
 }
 
 function normalizeDefectConfig(config = {}) {
@@ -318,12 +318,13 @@ function buildDefectSeverityMaps(config = readDefectConfig()) {
 
 function getDefectSeverity(type, severityMaps) {
   const typeSeverity = severityMaps.typeMap.get(normalizeDefectKey(type));
-  return typeSeverity === 'major' ? 'major' : 'minor';
+  return ['major', 'critical'].includes(typeSeverity) ? typeSeverity : 'minor';
 }
 
 function buildEmptyDefectBreakdown(qcChecking) {
   return {
     all: { count: 0, rate: 0 },
+    critical: { count: 0, rate: 0 },
     major: { count: 0, rate: 0 },
     minor: { count: 0, rate: 0 },
     qcChecking: parseInt(qcChecking) || 0
@@ -355,7 +356,7 @@ function calculateDefectSeverityBreakdown(model, config = readDefectConfig()) {
     });
   }
 
-  ['all', 'major', 'minor'].forEach(key => {
+  ['all', 'critical', 'major', 'minor'].forEach(key => {
     breakdown[key].rate = qcChecking > 0
       ? parseFloat(((breakdown[key].count / qcChecking) * 100).toFixed(2))
       : 0;

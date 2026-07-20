@@ -1810,8 +1810,8 @@ function dashboard() {
 	                        x: {
 	                            ticks: {
 	                                autoSkip: false,
-	                                maxRotation: 0,
-	                                minRotation: 0,
+	                                maxRotation: 45,
+	                                minRotation: 45,
 	                                padding: 2,
 	                                font: { size: 8, lineHeight: 1.1 }
 	                            },

@@ -1240,6 +1240,7 @@
 	                                                <th x-show="!isSewingReportViewer()" scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Defect</th>
 	                                                <th x-show="!isSewingReportViewer()" scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">QC Checked</th>
 	                                                <th x-show="!isSewingReportViewer()" scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Defect Rate</th>
+	                                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
                                             </tr>
                                         </thead>
                                         <tbody class="bg-white divide-y divide-gray-200">
@@ -1256,6 +1257,11 @@
 	                                                    <td x-show="!isSewingReportViewer()" class="px-4 py-3 whitespace-nowrap text-sm font-medium"
                                                         :class="line.defectRate > 5 ? 'text-red-600' : 'text-green-600'"
                                                         x-text="line.defectRate + '%'"></td>
+	                                                    <td class="px-4 py-3 whitespace-nowrap text-sm">
+	                                                        <button type="button" @click="exportDateReportLine(line)" class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500" :title="'Export detail ' + line.line + ' - ' + line.modelId">
+	                                                            <i class="fa-solid fa-file-excel mr-1.5"></i>Excel
+	                                                        </button>
+	                                                    </td>
                                                 </tr>
                                             </template>
                                         </tbody>

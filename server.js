@@ -3280,6 +3280,102 @@ async function generateScopedDateReportExcel(data, date, role) {
   return workbook;
 }
 
+async function generateScopedLineReportExcel(modelData, lineName, modelId, role) {
+  const isSewing = role === 'admin_operator_sewing' || role === 'admin_operator';
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = 'Production Dashboard System';
+
+  const summary = workbook.addWorksheet(isSewing ? 'SUMMARY SEWING' : 'SUMMARY QC');
+  const title = isSewing ? 'DETAIL HASIL SEWING' : 'DETAIL HASIL QC';
+  const headerColor = isSewing ? '4472C4' : '00A6A6';
+  const summaryRows = isSewing
+    ? [
+        ['Line', lineName],
+        ['Model ID', modelId],
+        ['Label/Week', modelData.labelWeek || ''],
+        ['Model', modelData.model || ''],
+        ['Tanggal', modelData.date || ''],
+        ['Target', modelData.target || 0],
+        ['Output', modelData.outputDay || 0],
+        ['Achievement', `${modelData.target > 0 ? (((modelData.outputDay || 0) / modelData.target) * 100).toFixed(2) : '0.00'}%`]
+      ]
+    : [
+        ['Line', lineName],
+        ['Model ID', modelId],
+        ['Label/Week', modelData.labelWeek || ''],
+        ['Model', modelData.model || ''],
+        ['Tanggal', modelData.date || ''],
+        ['QC Checked', modelData.qcChecking || 0],
+        ['Good', Math.max(0, (modelData.qcChecking || 0) - (modelData.actualDefect || 0))],
+        ['Defect', modelData.actualDefect || 0],
+        ['Defect Rate', `${modelData.defectRatePercentage || 0}%`]
+      ];
+
+  summary.mergeCells('A1:B1');
+  summary.getCell('A1').value = `${title} - ${lineName}`;
+  summary.getCell('A1').font = { bold: true, size: 16, color: { argb: '1F4E78' } };
+  summary.getCell('A1').alignment = { horizontal: 'center' };
+  summaryRows.forEach((values, index) => {
+    const row = summary.getRow(index + 3);
+    row.values = values;
+    row.getCell(1).font = { bold: true };
+  });
+  summary.columns = [{ width: 22 }, { width: 32 }];
+
+  const detail = workbook.addWorksheet(isSewing ? 'DETAIL PER JAM' : 'DETAIL PEMERIKSAAN');
+  const headers = isSewing
+    ? ['Jam', 'Target Manual', 'Output', 'Selisih', 'Achievement %']
+    : ['No', 'Jam', 'Hasil', 'Jenis Defect', 'Area Defect', 'Catatan', 'Waktu Pemeriksaan'];
+  detail.getRow(1).values = headers;
+  detail.getRow(1).eachCell(cell => {
+    cell.font = { bold: true, color: { argb: 'FFFFFF' } };
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: headerColor } };
+    cell.alignment = { horizontal: 'center' };
+  });
+
+  if (isSewing) {
+    (modelData.hourly_data || []).forEach((hour, index) => {
+      const target = hour.targetManual || 0;
+      const output = hour.output || 0;
+      detail.addRow([hour.hour || '', target, output, output - target, `${target > 0 ? ((output / target) * 100).toFixed(2) : '0.00'}%`]);
+    });
+  } else {
+    const qcChecks = modelData.qcChecks || [];
+    if (qcChecks.length > 0) {
+      qcChecks.forEach((check, index) => {
+        detail.addRow([
+          index + 1,
+          check.hour || '',
+          check.result === 'defect' ? 'Defect' : 'Good',
+          check.type || '',
+          check.area || '',
+          check.notes || '',
+          check.checkedAt ? new Date(check.checkedAt).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' }) : ''
+        ]);
+      });
+    } else {
+      // Arsip lama menyimpan rekap QC per jam sebelum pencatatan per pemeriksaan tersedia.
+      (modelData.hourly_data || []).filter(hour => (hour.qcChecked || 0) > 0).forEach((hour, index) => {
+        const categories = summarizeDefectCategoriesFromDetails(hour.defectDetails || []);
+        detail.addRow([
+          index + 1,
+          hour.hour || '',
+          `Rekap: ${hour.qcChecked || 0} checked / ${hour.defect || 0} defect`,
+          categories.types,
+          categories.areas,
+          '',
+          ''
+        ]);
+      });
+    }
+  }
+
+  detail.columns = headers.map((header, index) => ({ width: index >= 3 ? 24 : 16 }));
+  detail.views = [{ state: 'frozen', ySplit: 1 }];
+  detail.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: headers.length } };
+  return workbook;
+}
+
 app.get('/api/export-date-report/:date', requireLogin, requireDateReportAccess, autoCheckDateReset, async (req, res) => {
   const date = req.params.date;
   
@@ -3338,6 +3434,43 @@ app.get('/api/export-date-report/:date', requireLogin, requireDateReportAccess, 
   } catch (error) {
     console.error('❌ Export date report error:', error);
     res.status(500).json({ error: 'Failed to export date report: ' + error.message });
+  }
+});
+
+app.get('/api/export-date-report/:date/:lineName/:modelId', requireLogin, requireDateReportAccess, autoCheckDateReset, async (req, res) => {
+  const { date, lineName, modelId } = req.params;
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return res.status(400).json({ error: 'Format tanggal tidak valid. Gunakan format: YYYY-MM-DD' });
+  }
+
+  try {
+    const backupFile = path.join(__dirname, 'history', `data_${date}.json`);
+    const data = fs.existsSync(backupFile)
+      ? JSON.parse(fs.readFileSync(backupFile, 'utf8'))
+      : readProductionData();
+    const modelData = data.lines?.[lineName]?.models?.[modelId];
+
+    if (!modelData || modelData.date !== date) {
+      return res.status(404).json({ error: 'Detail line/model untuk tanggal tersebut tidak ditemukan' });
+    }
+
+    const role = req.session.user.role;
+    const workbook = ADMIN_OPERATOR_ROLES.includes(role) || role === 'admin_operator'
+      ? await generateScopedLineReportExcel(modelData, lineName, modelId, role)
+      : await generateStyledExcelData(modelData, lineName, modelId);
+    const safeLineName = lineName.replace(/[^a-zA-Z0-9_-]/g, '_');
+    const safeModelId = modelId.replace(/[^a-zA-Z0-9_-]/g, '_');
+    const reportName = role === 'admin_operator_sewing' || role === 'admin_operator'
+      ? 'Sewing_Detail'
+      : role === 'admin_operator_qc' ? 'QC_Detail' : 'Production_QC_Detail';
+    const fileName = `${reportName}_${safeLineName}_${safeModelId}_${date}.xlsx`;
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    await workbook.xlsx.write(res);
+  } catch (error) {
+    console.error('Export detail date report error:', error);
+    res.status(500).json({ error: 'Failed to export line detail: ' + error.message });
   }
 });
 

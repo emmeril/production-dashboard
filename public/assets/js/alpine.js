@@ -1033,6 +1033,43 @@ function dashboard() {
             }
         },
 
+        async exportDateReportLine(line) {
+            if (!this.reportDate || !line?.line || !line?.modelId) {
+                this.showToast('Data line untuk export tidak lengkap', 'error');
+                return;
+            }
+
+            try {
+                const date = encodeURIComponent(this.reportDate);
+                const lineName = encodeURIComponent(line.line);
+                const modelId = encodeURIComponent(line.modelId);
+                const response = await fetch(`/api/export-date-report/${date}/${lineName}/${modelId}`);
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    this.showToast(error.error || 'Gagal export detail line', 'error');
+                    return;
+                }
+
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                const reportName = this.isSewingReportViewer()
+                    ? 'Sewing_Detail'
+                    : (this.isQcReportViewer() ? 'QC_Detail' : 'Production_QC_Detail');
+                a.download = `${reportName}_${line.line}_${line.modelId}_${this.reportDate}.xlsx`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+                this.showToast(`Detail ${line.line} berhasil diexport`, 'success');
+            } catch (error) {
+                console.error('Error exporting line detail:', error);
+                this.showToast('Error export detail line', 'error');
+            }
+        },
+
         // Input data methods
         resetInputForm() {
             this.inputForm = {

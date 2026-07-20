@@ -1730,11 +1730,11 @@ function summarizeProductionSnapshotByLine(data, date) {
     const line = data.lines[lineName];
     const summary = createProductionSummary(date, lineName);
 
-    Object.keys(line.models || {}).forEach(modelId => {
-      const model = line.models[modelId];
-      if (model.date && model.date !== date) return;
-      addModelToProductionSummary(summary, model);
-    });
+    const activeModelId = line.activeModel;
+    const activeModel = activeModelId ? line.models?.[activeModelId] : null;
+    if (activeModel && (!activeModel.date || activeModel.date === date)) {
+      addModelToProductionSummary(summary, activeModel);
+    }
 
     if (summary.modelCount > 0) {
       summary.lineCount = 1;
@@ -1756,6 +1756,8 @@ app.get('/api/dashboard-summary', requireLogin, requireAdminOrAdminOperator, aut
   try {
     const snapshotsByDate = new Map();
     const historyDir = path.join(__dirname, 'history');
+    const currentData = readProductionData();
+    const managedLineNames = new Set(Object.keys(currentData.lines || {}));
 
     if (fs.existsSync(historyDir)) {
       fs.readdirSync(historyDir)
@@ -1771,7 +1773,7 @@ app.get('/api/dashboard-summary', requireLogin, requireAdminOrAdminOperator, aut
         });
     }
 
-    snapshotsByDate.set(getToday(), readProductionData());
+    snapshotsByDate.set(getToday(), currentData);
 
     const totalAreaCounts = {};
     const totalTypeCounts = {};
@@ -1784,6 +1786,7 @@ app.get('/api/dashboard-summary', requireLogin, requireAdminOrAdminOperator, aut
     const lineDaily = [];
     Array.from(snapshotsByDate.entries()).forEach(([date, data]) => {
       summarizeProductionSnapshotByLine(data, date).forEach(item => {
+        if (!managedLineNames.has(item.lineName)) return;
         lineNames.add(item.lineName);
         lineDaily.push(item);
       });

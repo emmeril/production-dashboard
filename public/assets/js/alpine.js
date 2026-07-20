@@ -1358,31 +1358,6 @@ function dashboard() {
 	            }
 	        },
 
-        // Export methods
-        async exportLineExcel(lineName, modelId) {
-            try {
-                const response = await fetch(`/api/export/${lineName}/${modelId}`);
-                if (response.ok) {
-                    const blob = await response.blob();
-                    const url = window.URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `Production_Report_${lineName}_${modelId}_${new Date().toISOString().split('T')[0]}.xlsx`;
-                    document.body.appendChild(a);
-                    a.click();
-                    window.URL.revokeObjectURL(url);
-                    document.body.removeChild(a);
-                    this.showToast('Excel exported successfully', 'success');
-                } else {
-                    const error = await response.json();
-                    this.showToast(error.error || 'Failed to export Excel', 'error');
-                }
-            } catch (error) {
-                console.error('Error exporting Excel:', error);
-                this.showToast('Error exporting Excel', 'error');
-            }
-        },
-
         // Admin management methods
         openLineModal(line = null) {
             if (line) {

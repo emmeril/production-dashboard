@@ -4188,53 +4188,6 @@ async function generateStyledExcelData(modelData, lineName, modelId) {
   return workbook;
 }
 
-app.get('/api/export/:lineName/:modelId', requireLogin, requireLineAccess, autoCheckDateReset, async (req, res) => {
-  const { lineName, modelId } = req.params;
-
-  const data = readProductionData();
-  
-  if (!data.lines[lineName] || !data.lines[lineName].models[modelId]) {
-    return res.status(404).json({ error: 'Line or model not found' });
-  }
-
-  const modelData = data.lines[lineName].models[modelId];
-
-  try {
-    const workbook = await generateStyledExcelData(modelData, lineName, modelId);
-    
-    const fileName = `Production_Report_${lineName}_${modelId}_${new Date().toISOString().split('T')[0]}.xlsx`;
-    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    
-    await workbook.xlsx.write(res);
-    console.log(`✅ Export Excel dengan styling untuk ${lineName}-${modelId} berhasil`);
-  } catch (error) {
-    console.error('❌ Export error:', error);
-    res.status(500).json({ error: 'Failed to generate Excel file' });
-  }
-});
-
-app.get('/api/export/:lineName', requireLogin, requireLineAccess, autoCheckDateReset, async (req, res) => {
-  const { lineName } = req.params;
-  const data = readProductionData();
-  const active = getActiveModel(data, lineName);
-
-  if (!active) {
-    return res.status(404).json({ error: 'Line or active model not found' });
-  }
-
-  try {
-    const workbook = await generateStyledExcelData(active.model, lineName, active.modelId);
-    const fileName = `Production_Report_${lineName}_${active.modelId}_${new Date().toISOString().split('T')[0]}.xlsx`;
-    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    await workbook.xlsx.write(res);
-  } catch (error) {
-    console.error('Export error:', error);
-    res.status(500).json({ error: 'Failed to export data: ' + error.message });
-  }
-});
-
 app.get('/api/public/line/:lineName', autoCheckDateReset, (req, res) => {
   if (!isWithinWorkSchedule()) {
     return res.status(403).json({ error: 'Public display hanya tersedia pada hari dan jam kerja' });

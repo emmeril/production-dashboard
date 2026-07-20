@@ -125,7 +125,6 @@ Endpoint utama:
 | --- | --- |
 | `GET /api/date-report/:date` | Data laporan tanggal. |
 | `GET /api/export-date-report/:date` | Export laporan tanggal ke Excel. |
-| `GET /api/export/:lineName/:modelId` | Export line/model tertentu. |
 
 ## Data dan Backup
 

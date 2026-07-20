@@ -1726,8 +1726,8 @@ function dashboard() {
 
 	            const labels = this.dashboardChartData.map(item => [
 	                item.lineName || '-',
-	                `Label/Week: ${item.labelWeek || '-'}`,
-	                `Model: ${item.model || '-'}`
+	                item.labelWeek || '-',
+	                item.model || '-'
 	            ]);
             const data = this.dashboardChartData;
 
@@ -1749,7 +1749,8 @@ function dashboard() {
                             backgroundColor: 'rgba(0, 123, 255, 0.55)',
                             borderColor: '#007bff',
                             borderWidth: 1,
-                            borderRadius: 4
+                            borderRadius: 4,
+	                            maxBarThickness: 22
                         },
                         {
                             label: 'Output',
@@ -1757,7 +1758,8 @@ function dashboard() {
                             backgroundColor: 'rgba(40, 167, 69, 0.6)',
                             borderColor: '#28a745',
                             borderWidth: 1,
-                            borderRadius: 4
+                            borderRadius: 4,
+	                            maxBarThickness: 22
                         },
                         {
                             label: 'Defect',
@@ -1765,7 +1767,8 @@ function dashboard() {
                             backgroundColor: 'rgba(220, 53, 69, 0.6)',
                             borderColor: '#dc3545',
                             borderWidth: 1,
-                            borderRadius: 4
+                            borderRadius: 4,
+	                            maxBarThickness: 22
                         }
                     ]
                 },
@@ -1776,7 +1779,7 @@ function dashboard() {
 	                    interaction: { mode: 'index', axis: 'x', intersect: false },
 	                    hover: { mode: 'index', axis: 'x', intersect: false },
 	                    plugins: {
-	                        legend: { position: 'top', labels: { boxWidth: 12, usePointStyle: true } },
+	                        legend: { position: 'top', labels: { boxWidth: 10, usePointStyle: true, font: { size: 10 } } },
 	                        tooltip: {
 	                            enabled: true,
 	                            mode: 'index',
@@ -1793,8 +1796,8 @@ function dashboard() {
 	                                    if (!item) return '';
 	                                    const dates = item.dates || (item.date ? [item.date] : []);
 	                                    const details = [
-	                                        `Label/Week: ${item.labelWeek || '-'}`,
-	                                        `Model: ${item.model || '-'}`
+	                                        item.labelWeek || '-',
+	                                        item.model || '-'
 	                                    ];
 	                                    if (dates.length === 1) details.push(`Tanggal: ${this.formatShortDate(dates[0])}`);
 	                                    if (dates.length > 1) details.push(`Tanggal: ${this.formatShortDate(dates[0])} - ${this.formatShortDate(dates[dates.length - 1])}`);
@@ -1804,10 +1807,20 @@ function dashboard() {
 	                        }
                     },
                     scales: {
-                        x: { ticks: { maxRotation: 45, minRotation: 0 }, grid: { display: false } },
+	                        x: {
+	                            ticks: {
+	                                autoSkip: false,
+	                                maxRotation: 0,
+	                                minRotation: 0,
+	                                padding: 2,
+	                                font: { size: 8, lineHeight: 1.1 }
+	                            },
+	                            grid: { display: false }
+	                        },
 	                        y: {
 	                            beginAtZero: true,
-	                            title: { display: true, text: 'Qty' },
+	                            ticks: { font: { size: 9 } },
+	                            title: { display: true, text: 'Qty', font: { size: 10 } },
 	                            grid: { color: 'rgba(222, 226, 230, 0.7)' }
 	                        }
 	                    }

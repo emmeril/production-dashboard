@@ -1724,7 +1724,11 @@ function dashboard() {
         renderDashboardChart() {
             if (!this.$refs.dashboardChartCanvas || typeof Chart === 'undefined') return;
 
-	            const labels = this.dashboardChartData.map(item => item.lineName || '-');
+	            const labels = this.dashboardChartData.map(item => [
+	                item.lineName || '-',
+	                `Label/Week: ${item.labelWeek || '-'}`,
+	                `Model: ${item.model || '-'}`
+	            ]);
             const data = this.dashboardChartData;
 
             if (this.dashboardChart) {
@@ -1788,9 +1792,13 @@ function dashboard() {
 	                                    const item = data[items?.[0]?.dataIndex];
 	                                    if (!item) return '';
 	                                    const dates = item.dates || (item.date ? [item.date] : []);
-	                                    if (!dates.length) return '';
-	                                    if (dates.length === 1) return `Tanggal: ${this.formatShortDate(dates[0])}`;
-	                                    return `Tanggal: ${this.formatShortDate(dates[0])} - ${this.formatShortDate(dates[dates.length - 1])}`;
+	                                    const details = [
+	                                        `Label/Week: ${item.labelWeek || '-'}`,
+	                                        `Model: ${item.model || '-'}`
+	                                    ];
+	                                    if (dates.length === 1) details.push(`Tanggal: ${this.formatShortDate(dates[0])}`);
+	                                    if (dates.length > 1) details.push(`Tanggal: ${this.formatShortDate(dates[0])} - ${this.formatShortDate(dates[dates.length - 1])}`);
+	                                    return details;
 	                                }
 	                            }
 	                        }
@@ -1825,6 +1833,16 @@ function dashboard() {
                 .map(([name, count]) => ({ name, count }))
                 .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
                 .slice(0, 5);
+        },
+
+        formatDashboardCounter(counter = {}) {
+            const items = Object.entries(counter || {})
+                .filter(([name, count]) => name && (parseInt(count) || 0) > 0)
+                .sort((a, b) => (parseInt(b[1]) || 0) - (parseInt(a[1]) || 0) || a[0].localeCompare(b[0]));
+
+            return items.length
+                ? items.map(([name, count]) => `${name} (${parseInt(count) || 0})`).join(', ')
+                : '-';
         },
 
         showToast(message, type = 'info') {
@@ -1984,6 +2002,9 @@ function dashboard() {
                 const lineName = item.lineName || '-';
                 const current = groupedByLine.get(lineName) || {
                     lineName,
+                    modelId: item.modelId || '',
+                    labelWeek: item.labelWeek || '',
+                    model: item.model || '',
                     target: 0,
                     output: 0,
                     defect: 0,

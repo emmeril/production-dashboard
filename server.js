@@ -1787,6 +1787,14 @@ app.get('/api/dashboard-summary', requireLogin, requireAdminOrAdminOperator, aut
     Array.from(snapshotsByDate.entries()).forEach(([date, data]) => {
       summarizeProductionSnapshotByLine(data, date).forEach(item => {
         if (!managedLineNames.has(item.lineName)) return;
+
+        const managedLine = currentData.lines[item.lineName];
+        const activeModelId = managedLine?.activeModel;
+        const activeModel = activeModelId ? managedLine.models?.[activeModelId] : null;
+        item.modelId = activeModelId || '';
+        item.labelWeek = activeModel?.labelWeek || '';
+        item.model = activeModel?.model || '';
+
         lineNames.add(item.lineName);
         lineDaily.push(item);
       });

@@ -1574,6 +1574,11 @@ function summarizeDefectCategoriesFromDetails(details = []) {
   };
 }
 
+function getDefectSeverityLabel(type, config = readDefectConfig()) {
+  const severity = getDefectSeverity(type, buildDefectSeverityMaps(config));
+  return severity.charAt(0).toUpperCase() + severity.slice(1);
+}
+
 function summarizeModelDefectCategories(model = {}) {
   const typeCounts = {};
   const areaCounts = {};
@@ -2759,6 +2764,7 @@ app.get('/api/date-report/:date', requireLogin, requireDateReportAccess, autoChe
         
         // Filter berdasarkan tanggal yang diminta
         if (model.date === date) {
+          const defectBreakdown = calculateDefectSeverityBreakdown(model);
           reportData.push({
             line: lineName,
             modelId: modelId,
@@ -2768,6 +2774,9 @@ app.get('/api/date-report/:date', requireLogin, requireDateReportAccess, autoChe
             target: model.target || 0,
             output: model.outputDay || 0,
             defect: model.actualDefect || 0,
+            criticalDefect: defectBreakdown.critical.count,
+            majorDefect: defectBreakdown.major.count,
+            minorDefect: defectBreakdown.minor.count,
             qcChecked: model.qcChecking || 0,
             defectRate: model.defectRatePercentage || 0
           });
@@ -2791,7 +2800,7 @@ app.get('/api/date-report/:date', requireLogin, requireDateReportAccess, autoChe
       }
 
       if (role === 'admin_operator_qc') {
-        return { ...common, defect: item.defect, qcChecked: item.qcChecked, defectRate: item.defectRate };
+        return { ...common, defect: item.defect, criticalDefect: item.criticalDefect, majorDefect: item.majorDefect, minorDefect: item.minorDefect, qcChecked: item.qcChecked, defectRate: item.defectRate };
       }
 
       return item;
@@ -2875,7 +2884,7 @@ async function generateStyledDateReportExcel(data, date) {
   summarySheet.getCell('A5').value = 'Total Lines';
   summarySheet.getCell('B5').value = Object.keys(data.lines).length;
   
-	  const headers = ['Line', 'Model ID', 'Label/Week', 'Model', 'Target', 'Output', 'Achievement %', 'Defect', 'Jenis Defect', 'Defect Area', 'QC Checked', 'Defect Rate %'];
+	  const headers = ['Line', 'Model ID', 'Label/Week', 'Model', 'Target', 'Output', 'Achievement %', 'Defect', 'Critical', 'Major', 'Minor', 'Jenis Defect', 'Defect Area', 'QC Checked', 'Defect Rate %'];
   summarySheet.getRow(7).values = headers;
   summarySheet.getRow(7).eachCell((cell) => {
     cell.style = headerStyle;
@@ -2893,6 +2902,7 @@ async function generateStyledDateReportExcel(data, date) {
 	      const model = line.models[modelId];
 	      const achievement = model.target > 0 ? ((model.outputDay || 0) / model.target * 100).toFixed(2) + '%' : '0%';
 	      const defectCategories = summarizeModelDefectCategories(model);
+	      const defectBreakdown = calculateDefectSeverityBreakdown(model);
 	      
 	      const row = summarySheet.getRow(rowIndex);
 	      row.values = [
@@ -2904,6 +2914,9 @@ async function generateStyledDateReportExcel(data, date) {
 	        model.outputDay || 0,
 	        achievement,
 	        model.actualDefect || 0,
+	        defectBreakdown.critical.count,
+	        defectBreakdown.major.count,
+	        defectBreakdown.minor.count,
 	        defectCategories.types,
 	        defectCategories.areas,
 	        model.qcChecking || 0,
@@ -2920,7 +2933,7 @@ async function generateStyledDateReportExcel(data, date) {
         achievementCell.font = { color: { argb: 'FF0000' }, bold: true };
       }
       
-	      const defectRateCell = row.getCell(12);
+	      const defectRateCell = row.getCell(15);
       const defectRateValue = model.defectRatePercentage || 0;
       if (defectRateValue <= 5) {
         defectRateCell.font = { color: { argb: '00B050' }, bold: true };
@@ -2958,6 +2971,9 @@ async function generateStyledDateReportExcel(data, date) {
 	    totalDefect,
 	    '',
 	    '',
+	    '',
+	    '',
+	    '',
 	    totalQCChecked,
 	    totalDefectRate
 	  ];
@@ -2973,6 +2989,9 @@ async function generateStyledDateReportExcel(data, date) {
     { width: 12 },
     { width: 12 },
 	    { width: 15 },
+	    { width: 12 },
+	    { width: 12 },
+	    { width: 12 },
 	    { width: 12 },
 	    { width: 32 },
 	    { width: 32 },
@@ -3072,7 +3091,7 @@ async function generateStyledDateReportExcel(data, date) {
       
 	      currentRow += 2;
 
-	      const defectDetailHeaders = ['Jam', 'Jenis Defect', 'Defect Area', 'Qty', 'Notes'];
+	      const defectDetailHeaders = ['Jam', 'Jenis Defect', 'Kategori', 'Defect Area', 'Qty', 'Notes'];
 	      lineSheet.getRow(currentRow).values = defectDetailHeaders;
 	      lineSheet.getRow(currentRow).eachCell((cell) => {
 	        cell.style = headerStyle;
@@ -3087,6 +3106,7 @@ async function generateStyledDateReportExcel(data, date) {
 	          row.values = [
 	            hour.hour,
 	            detail.type || '-',
+	            getDefectSeverityLabel(detail.type),
 	            detail.area || '-',
 	            parseInt(detail.quantity) || 0,
 	            detail.notes || ''
@@ -3106,6 +3126,7 @@ async function generateStyledDateReportExcel(data, date) {
 	          row.values = [
 	            getQcCheckHourLabel(model, check),
 	            check.type || '-',
+	            getDefectSeverityLabel(check.type),
 	            check.area || '-',
 	            1,
 	            check.notes || ''
@@ -3118,7 +3139,7 @@ async function generateStyledDateReportExcel(data, date) {
 
 	      if (!hasDefectDetail) {
 	        const row = lineSheet.getRow(currentRow);
-	        row.values = ['-', '-', '-', 0, 'Tidak ada detail defect'];
+	        row.values = ['-', '-', '-', '-', 0, 'Tidak ada detail defect'];
 	        row.eachCell((cell) => {
 	          cell.style = dataStyle;
 	        });
@@ -3236,7 +3257,7 @@ async function generateScopedDateReportExcel(data, date, role) {
   const sheet = workbook.addWorksheet(isSewing ? 'SUMMARY SEWING' : 'SUMMARY QC');
   const headers = isSewing
     ? ['Line', 'Model ID', 'Label/Week', 'Model', 'Target', 'Output', 'Achievement %']
-    : ['Line', 'Model ID', 'Label/Week', 'Model', 'QC Checked', 'Defect', 'Jenis Defect', 'Area Defect', 'Defect Rate %'];
+    : ['Line', 'Model ID', 'Label/Week', 'Model', 'QC Checked', 'Defect', 'Critical', 'Major', 'Minor', 'Jenis Defect', 'Area Defect', 'Defect Rate %'];
 
   sheet.mergeCells(1, 1, 1, headers.length);
   const title = sheet.getCell(1, 1);
@@ -3258,9 +3279,10 @@ async function generateScopedDateReportExcel(data, date, role) {
 
       const achievement = model.target > 0 ? (((model.outputDay || 0) / model.target) * 100).toFixed(2) : '0.00';
       const defectCategories = summarizeModelDefectCategories(model);
+      const defectBreakdown = calculateDefectSeverityBreakdown(model);
       const values = isSewing
         ? [lineName, modelId, model.labelWeek || '', model.model || '', model.target || 0, model.outputDay || 0, `${achievement}%`]
-        : [lineName, modelId, model.labelWeek || '', model.model || '', model.qcChecking || 0, model.actualDefect || 0, defectCategories.types, defectCategories.areas, `${model.defectRatePercentage || 0}%`];
+        : [lineName, modelId, model.labelWeek || '', model.model || '', model.qcChecking || 0, model.actualDefect || 0, defectBreakdown.critical.count, defectBreakdown.major.count, defectBreakdown.minor.count, defectCategories.types, defectCategories.areas, `${model.defectRatePercentage || 0}%`];
 
       const row = sheet.getRow(rowIndex++);
       row.values = values;
@@ -3275,7 +3297,7 @@ async function generateScopedDateReportExcel(data, date, role) {
     });
   });
 
-  sheet.columns = headers.map((header, index) => ({ width: index === 3 || index === 6 || index === 7 ? 28 : 16 }));
+  sheet.columns = headers.map(header => ({ width: ['Model', 'Jenis Defect', 'Area Defect'].includes(header) ? 28 : 16 }));
   sheet.views = [{ state: 'frozen', ySplit: 3 }];
   sheet.autoFilter = { from: { row: 3, column: 1 }, to: { row: 3, column: headers.length } };
   return workbook;
@@ -3289,6 +3311,7 @@ async function generateScopedLineReportExcel(modelData, lineName, modelId, role)
   const summary = workbook.addWorksheet(isSewing ? 'SUMMARY SEWING' : 'SUMMARY QC');
   const title = isSewing ? 'DETAIL HASIL SEWING' : 'DETAIL HASIL QC';
   const headerColor = isSewing ? '4472C4' : '00A6A6';
+  const defectBreakdown = calculateDefectSeverityBreakdown(modelData);
   const summaryRows = isSewing
     ? [
         ['Line', lineName],
@@ -3309,6 +3332,9 @@ async function generateScopedLineReportExcel(modelData, lineName, modelId, role)
         ['QC Checked', modelData.qcChecking || 0],
         ['Good', Math.max(0, (modelData.qcChecking || 0) - (modelData.actualDefect || 0))],
         ['Defect', modelData.actualDefect || 0],
+        ['Critical Defect', defectBreakdown.critical.count],
+        ['Major Defect', defectBreakdown.major.count],
+        ['Minor Defect', defectBreakdown.minor.count],
         ['Defect Rate', `${modelData.defectRatePercentage || 0}%`]
       ];
 
@@ -3326,7 +3352,7 @@ async function generateScopedLineReportExcel(modelData, lineName, modelId, role)
   const detail = workbook.addWorksheet(isSewing ? 'DETAIL PER JAM' : 'DETAIL PEMERIKSAAN');
   const headers = isSewing
     ? ['Jam', 'Target Manual', 'Output', 'Selisih', 'Achievement %']
-    : ['No', 'Jam', 'Hasil', 'Jenis Defect', 'Area Defect', 'Catatan', 'Waktu Pemeriksaan'];
+    : ['No', 'Jam', 'Hasil', 'Jenis Defect', 'Kategori', 'Area Defect', 'Catatan', 'Waktu Pemeriksaan'];
   detail.getRow(1).values = headers;
   detail.getRow(1).eachCell(cell => {
     cell.font = { bold: true, color: { argb: 'FFFFFF' } };
@@ -3349,6 +3375,7 @@ async function generateScopedLineReportExcel(modelData, lineName, modelId, role)
           check.hour || '',
           check.result === 'defect' ? 'Defect' : 'Good',
           check.type || '',
+          check.result === 'defect' ? getDefectSeverityLabel(check.type) : '',
           check.area || '',
           check.notes || '',
           check.checkedAt ? new Date(check.checkedAt).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' }) : ''
@@ -3363,6 +3390,7 @@ async function generateScopedLineReportExcel(modelData, lineName, modelId, role)
           hour.hour || '',
           `Rekap: ${hour.qcChecked || 0} checked / ${hour.defect || 0} defect`,
           categories.types,
+          '-',
           categories.areas,
           '',
           ''
@@ -3965,13 +3993,14 @@ async function generateStyledExcelData(modelData, lineName, modelId) {
   summarySheet.getCell('A7').value = 'Date';
   summarySheet.getCell('B7').value = modelData.date || '';
   
-	  const headers = ['Metric', 'Value', 'Target per Hour', 'Output/Hari', 'QC Checking', 'Actual Defect', 'Jenis Defect', 'Defect Area', 'Defect Rate (%)'];
+	  const headers = ['Metric', 'Value', 'Target per Hour', 'Output/Hari', 'QC Checking', 'Actual Defect', 'Critical', 'Major', 'Minor', 'Jenis Defect', 'Defect Area', 'Defect Rate (%)'];
 	  summarySheet.getRow(9).values = headers;
   summarySheet.getRow(9).eachCell((cell) => {
     cell.style = headerStyle;
   });
   
 	  const modelDefectCategories = summarizeModelDefectCategories(modelData);
+	  const modelDefectBreakdown = calculateDefectSeverityBreakdown(modelData);
 	  
 	  const dataRow1 = summarySheet.getRow(10);
 	  dataRow1.values = [
@@ -3981,6 +4010,9 @@ async function generateStyledExcelData(modelData, lineName, modelId) {
 	    modelData.outputDay || 0,
 	    modelData.qcChecking || 0,
 	    modelData.actualDefect || 0,
+	    modelDefectBreakdown.critical.count,
+	    modelDefectBreakdown.major.count,
+	    modelDefectBreakdown.minor.count,
 	    modelDefectCategories.types,
 	    modelDefectCategories.areas,
 	    (modelData.defectRatePercentage || 0) + '%'
@@ -4001,6 +4033,9 @@ async function generateStyledExcelData(modelData, lineName, modelId) {
 	    '',
 	    '',
 	    '',
+	    '',
+	    '',
+	    '',
 	    ''
 	  ];
   dataRow2.eachCell((cell) => {
@@ -4014,6 +4049,9 @@ async function generateStyledExcelData(modelData, lineName, modelId) {
     { width: 15 },
 	    { width: 15 },
 	    { width: 15 },
+	    { width: 12 },
+	    { width: 12 },
+	    { width: 12 },
 	    { width: 32 },
 	    { width: 32 },
 	    { width: 15 }

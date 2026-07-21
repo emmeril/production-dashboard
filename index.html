@@ -1575,6 +1575,15 @@
 		                                </div>
 		                                </div>
 		                                <div class="filter-group">
+		                                <span class="filter-caption"><i class="fa-solid fa-filter"></i>Kategori</span>
+		                                <select x-model="defectTypeSeverityFilter" @change="defectTypeCurrentPage = 1" aria-label="Filter jenis defect berdasarkan kategori" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+		                                    <option value="">Semua</option>
+		                                    <option value="critical">Critical</option>
+		                                    <option value="major">Major</option>
+		                                    <option value="minor">Minor</option>
+		                                </select>
+		                                </div>
+		                                <div class="filter-group">
 		                                <span class="filter-caption"><i class="fa-solid fa-table-list"></i>Tampilkan</span>
 		                                <select x-model="defectTypeItemsPerPage" @change="defectTypeCurrentPage = 1" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
 		                                    <option value="5">5</option><option value="10">10</option><option value="20">20</option><option value="50">50</option>
@@ -1618,7 +1627,7 @@
 	                                            </tr>
 	                                        </template>
 	                                        <tr x-show="filteredDefectTypes.length === 0">
-	                                            <td colspan="4" class="px-4 py-6 text-center text-sm text-gray-500" x-text="defectTypeSearchTerm ? 'Jenis defect tidak ditemukan.' : 'Belum ada jenis defect.'"></td>
+	                                            <td colspan="4" class="px-4 py-6 text-center text-sm text-gray-500" x-text="defectTypeSearchTerm || defectTypeSeverityFilter ? 'Jenis defect tidak ditemukan untuk filter yang dipilih.' : 'Belum ada jenis defect.'"></td>
 	                                        </tr>
 	                                    </tbody>
 	                                </table>

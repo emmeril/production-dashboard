@@ -181,6 +181,7 @@ function dashboard() {
 	        defectTypeCurrentPage: 1,
 	        defectTypeItemsPerPage: 10,
 	        defectTypeSearchTerm: '',
+	        defectTypeSeverityFilter: '',
 	        defectAreaCurrentPage: 1,
 	        defectAreaItemsPerPage: 10,
 	        defectAreaSearchTerm: '',
@@ -2022,10 +2023,14 @@ function dashboard() {
 
 	        get filteredDefectTypes() {
 	            const search = this.defectTypeSearchTerm.trim().toLowerCase();
-	            return (this.defectTypes || []).filter(type => !search ||
-	                [type.name, type.severity, type.active !== false ? 'aktif' : 'nonaktif']
-	                    .some(value => String(value || '').toLowerCase().includes(search))
-	            );
+	            const severity = this.defectTypeSeverityFilter;
+	            return (this.defectTypes || []).filter(type => {
+	                const typeSeverity = type.severity || 'minor';
+	                const matchesSearch = !search ||
+	                    [type.name, typeSeverity, type.active !== false ? 'aktif' : 'nonaktif']
+	                        .some(value => String(value || '').toLowerCase().includes(search));
+	                return matchesSearch && (!severity || typeSeverity === severity);
+	            });
 	        },
 
 	        get paginatedDefectTypes() {

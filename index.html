@@ -310,7 +310,10 @@
 	                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Output</th>
 	                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">QC</th>
 	                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Good</th>
-	                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Defect</th>
+	                                            <th class="px-4 py-3 whitespace-nowrap text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Defect</th>
+	                                            <th class="px-4 py-3 text-left text-xs font-medium text-red-700 uppercase tracking-wider">Critical</th>
+	                                            <th class="px-4 py-3 text-left text-xs font-medium text-orange-700 uppercase tracking-wider">Major</th>
+	                                            <th class="px-4 py-3 text-left text-xs font-medium text-yellow-700 uppercase tracking-wider">Minor</th>
 	                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rate</th>
 	                                            <th class="px-4 py-3 whitespace-nowrap text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Defect Area</th>
 	                                            <th class="px-4 py-3 whitespace-nowrap text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jenis Defect</th>
@@ -328,13 +331,16 @@
 	                                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700" x-text="day.qcChecked"></td>
 	                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-semibold text-green-600" x-text="Math.max((day.qcChecked || 0) - (day.defect || 0), 0)"></td>
 	                                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700" x-text="day.defect"></td>
+	                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-semibold text-red-700" x-text="day.criticalDefect || 0"></td>
+	                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-semibold text-orange-700" x-text="day.majorDefect || 0"></td>
+	                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-semibold text-yellow-700" x-text="day.minorDefect || 0"></td>
 	                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-semibold" :class="day.defectRate > 5 ? 'text-red-600' : 'text-green-600'" x-text="day.defectRate + '%'"></td>
 	                                                <td class="px-4 py-3 min-w-48 whitespace-nowrap text-sm text-gray-700" :title="formatDashboardCounter(day.areaCounts)" x-text="formatDashboardCounter(day.areaCounts)"></td>
 	                                                <td class="px-4 py-3 min-w-48 whitespace-nowrap text-sm text-gray-700" :title="formatDashboardCounter(day.typeCounts)" x-text="formatDashboardCounter(day.typeCounts)"></td>
 	                                            </tr>
 	                                        </template>
 	                                        <tr x-show="dashboardDailyDetails.length === 0">
-	                                            <td colspan="12" class="px-4 py-8 text-center text-sm text-gray-500">Belum ada detail data line.</td>
+	                                            <td colspan="15" class="px-4 py-8 text-center text-sm text-gray-500">Belum ada detail data line.</td>
 	                                        </tr>
 	                                    </tbody>
 	                                </table>

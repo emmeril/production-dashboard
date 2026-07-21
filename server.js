@@ -1782,6 +1782,9 @@ function createProductionSummary(date, lineName = '') {
     target: 0,
     output: 0,
     defect: 0,
+    criticalDefect: 0,
+    majorDefect: 0,
+    minorDefect: 0,
     qcChecked: 0,
     defectRate: 0,
     areaCounts: {},
@@ -1789,12 +1792,17 @@ function createProductionSummary(date, lineName = '') {
   };
 }
 
-function addModelToProductionSummary(summary, model) {
+function addModelToProductionSummary(summary, model, defectConfig = readDefectConfig()) {
   summary.modelCount += 1;
   summary.target += parseInt(model.target) || 0;
   summary.output += parseInt(model.outputDay) || 0;
   summary.defect += parseInt(model.actualDefect) || 0;
   summary.qcChecked += parseInt(model.qcChecking) || 0;
+
+  const defectBreakdown = calculateDefectSeverityBreakdown(model, defectConfig);
+  summary.criticalDefect += defectBreakdown.critical.count;
+  summary.majorDefect += defectBreakdown.major.count;
+  summary.minorDefect += defectBreakdown.minor.count;
 
   (model.hourly_data || []).forEach(hour => {
     (hour.defectDetails || []).forEach(detail => {
@@ -1819,7 +1827,7 @@ function finalizeProductionSummary(summary) {
   return summary;
 }
 
-function summarizeProductionSnapshot(data, date) {
+function summarizeProductionSnapshot(data, date, defectConfig = readDefectConfig()) {
   const summary = {
     date,
     lineCount: 0,
@@ -1827,6 +1835,9 @@ function summarizeProductionSnapshot(data, date) {
     target: 0,
     output: 0,
     defect: 0,
+    criticalDefect: 0,
+    majorDefect: 0,
+    minorDefect: 0,
     qcChecked: 0,
     defectRate: 0,
     areaCounts: {},
@@ -1847,6 +1858,11 @@ function summarizeProductionSnapshot(data, date) {
       summary.output += parseInt(model.outputDay) || 0;
       summary.defect += parseInt(model.actualDefect) || 0;
       summary.qcChecked += parseInt(model.qcChecking) || 0;
+
+      const defectBreakdown = calculateDefectSeverityBreakdown(model, defectConfig);
+      summary.criticalDefect += defectBreakdown.critical.count;
+      summary.majorDefect += defectBreakdown.major.count;
+      summary.minorDefect += defectBreakdown.minor.count;
 
       (model.hourly_data || []).forEach(hour => {
         (hour.defectDetails || []).forEach(detail => {
@@ -1874,7 +1890,7 @@ function summarizeProductionSnapshot(data, date) {
   return summary;
 }
 
-function summarizeProductionSnapshotByLine(data, date) {
+function summarizeProductionSnapshotByLine(data, date, defectConfig = readDefectConfig()) {
   const summaries = [];
 
   Object.keys(data.lines || {}).forEach(lineName => {
@@ -1887,7 +1903,7 @@ function summarizeProductionSnapshotByLine(data, date) {
       if (!activeModel || (activeModel.date && activeModel.date !== date)) return;
 
       const summary = createProductionSummary(date, lineName);
-      addModelToProductionSummary(summary, activeModel);
+      addModelToProductionSummary(summary, activeModel, defectConfig);
       if (summary.modelCount > 0) {
         summary.lineCount = 1;
         summary.modelId = activeModelId;
@@ -1913,6 +1929,7 @@ app.get('/api/dashboard-summary', requireLogin, requireAdminOrAdminOperator, aut
     const snapshotsByDate = new Map();
     const historyDir = path.join(__dirname, 'history');
     const currentData = readProductionData();
+    const defectConfig = readDefectConfig();
     const managedLineNames = new Set(Object.keys(currentData.lines || {}));
 
     if (fs.existsSync(historyDir)) {
@@ -1935,13 +1952,13 @@ app.get('/api/dashboard-summary', requireLogin, requireAdminOrAdminOperator, aut
     const totalTypeCounts = {};
     const lineNames = new Set();
     const daily = Array.from(snapshotsByDate.entries())
-      .map(([date, data]) => summarizeProductionSnapshot(data, date))
+      .map(([date, data]) => summarizeProductionSnapshot(data, date, defectConfig))
       .filter(item => item.modelCount > 0)
       .sort((a, b) => new Date(a.date) - new Date(b.date));
 
     const lineDaily = [];
     Array.from(snapshotsByDate.entries()).forEach(([date, data]) => {
-      summarizeProductionSnapshotByLine(data, date).forEach(item => {
+      summarizeProductionSnapshotByLine(data, date, defectConfig).forEach(item => {
         if (!managedLineNames.has(item.lineName)) return;
 
         lineNames.add(item.lineName);
@@ -4659,9 +4676,11 @@ if (require.main === module) {
 
 module.exports = {
   app,
+  calculateDefectSeverityBreakdown,
   extractHistoryDate,
   generateModelId,
   getToday,
   isValidDateInput,
-  parseNonNegativeInteger
+  parseNonNegativeInteger,
+  summarizeProductionSnapshotByLine
 };

@@ -671,28 +671,16 @@ function dashboard() {
                 modelCount++;
             });
 
-            // PERBAIKAN: Hitung operator aktif dari data users.json
-            let activeOperators = 0;
-            try {
-                const response = await fetch('/api/users');
-                if (response.ok) {
-                    const users = await response.json();
-                    // Hitung user dengan role 'operator'
-                    activeOperators = users.filter(user => user.role === 'operator').length;
-                }
-            } catch (error) {
-                console.error('Error loading users for operator count:', error);
-            }
-
-            let dashboardSummary = { daily: [], lineDaily: [], lines: [], topDefectAreas: [], topDefectTypes: [] };
-            try {
-                const response = await fetch('/api/dashboard-summary');
-                if (response.ok) {
-                    dashboardSummary = await response.json();
-                }
-            } catch (error) {
-                console.error('Error loading dashboard summary:', error);
-            }
+	        // Kedua endpoint ini tidak saling bergantung, jadi muat bersamaan.
+            const [usersResult, summaryResult] = await Promise.allSettled([
+                fetch('/api/users').then(response => response.ok ? response.json() : []),
+                fetch('/api/dashboard-summary').then(response => response.ok ? response.json() : null)
+            ]);
+            const users = usersResult.status === 'fulfilled' ? usersResult.value : [];
+            const activeOperators = users.filter(user => user.role === 'operator').length;
+            const dashboardSummary = summaryResult.status === 'fulfilled' && summaryResult.value
+                ? summaryResult.value
+                : { daily: [], lineDaily: [], lines: [], topDefectAreas: [], topDefectTypes: [] };
 
             this.dashboardData = {
                 totalOutput: totalOutput,
@@ -1853,6 +1841,7 @@ function dashboard() {
 	                options: {
 	                    responsive: true,
 	                    maintainAspectRatio: false,
+	                    animation: false,
 	                    events: ['mousemove', 'mouseout', 'click', 'touchstart', 'touchmove'],
 	                    interaction: { mode: 'index', axis: 'x', intersect: false },
 	                    hover: { mode: 'index', axis: 'x', intersect: false },

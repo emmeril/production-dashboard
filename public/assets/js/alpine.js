@@ -150,6 +150,7 @@ function dashboard() {
         dashboardCurrentPage: 1,
         dashboardItemsPerPage: 10,
         dashboardSearchTerm: '',
+        dashboardLineFilter: '',
         dashboardStatusFilter: '',
 
         // Lines pagination
@@ -628,6 +629,10 @@ function dashboard() {
                     if (this.lineNameFilter && !this.availableManagementLines.includes(this.lineNameFilter)) {
                         this.lineNameFilter = '';
                         this.currentLinePage = 1;
+                    }
+                    if (this.dashboardLineFilter && !this.availableManagementLines.includes(this.dashboardLineFilter)) {
+                        this.dashboardLineFilter = '';
+                        this.dashboardCurrentPage = 1;
                     }
                 } else {
                     console.error('Failed to load lines');
@@ -2257,6 +2262,8 @@ function dashboard() {
                     line.data.labelWeek.toLowerCase().includes(searchTerm) ||
                     line.data.model.toLowerCase().includes(searchTerm);
 
+                const matchesLine = !this.dashboardLineFilter || line.lineName === this.dashboardLineFilter;
+
                 // Status filter
                 let matchesStatus = true;
                 if (this.dashboardStatusFilter) {
@@ -2269,7 +2276,7 @@ function dashboard() {
                     }
                 }
 
-                return matchesSearch && matchesStatus;
+                return matchesSearch && matchesLine && matchesStatus;
             });
         },
 

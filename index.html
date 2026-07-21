@@ -412,13 +412,22 @@
 	                                    <div class="filter-group">
 	                                        <div class="filter-control filter-control-search has-icon">
 	                                            <i class="fa-solid fa-magnifying-glass filter-control-icon"></i>
-	                                            <input type="text" x-model="dashboardSearchTerm" placeholder="Cari line atau model..." class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+	                                            <input type="text" x-model="dashboardSearchTerm" @input="dashboardCurrentPage = 1" placeholder="Cari line atau model..." class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
 	                                        </div>
 	                                    </div>
 	                                    <div class="filter-group">
 	                                        <div class="filter-control filter-control-select has-icon">
+	                                            <i class="fa-solid fa-industry filter-control-icon"></i>
+	                                            <select x-model="dashboardLineFilter" @change="dashboardCurrentPage = 1" aria-label="Filter ringkasan berdasarkan line" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+	                                                <option value="">Semua Line</option>
+	                                                <template x-for="lineName in availableManagementLines" :key="lineName">
+	                                                    <option :value="lineName" x-text="lineName"></option>
+	                                                </template>
+	                                            </select>
+	                                        </div>
+	                                        <div class="filter-control filter-control-select has-icon">
 	                                            <i class="fa-solid fa-filter filter-control-icon"></i>
-	                                            <select x-model="dashboardStatusFilter" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+	                                            <select x-model="dashboardStatusFilter" @change="dashboardCurrentPage = 1" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
 	                                            <option value="">Semua Status</option>
 	                                            <option value="on-target">On Target</option>
 	                                            <option value="behind">Behind</option>
@@ -429,7 +438,7 @@
 	                                    <div class="filter-group">
 	                                        <span class="filter-caption"><i class="fa-solid fa-table-list"></i>Tampilkan</span>
 	                                        <div class="filter-control filter-control-page-size">
-	                                            <select x-model="dashboardItemsPerPage" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+	                                            <select x-model="dashboardItemsPerPage" @change="dashboardCurrentPage = 1" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
 	                                            <option value="5">5</option>
 	                                            <option value="10">10</option>
 	                                            <option value="20">20</option>

@@ -272,7 +272,7 @@
                                 <template x-for="hour in displayHours" :key="hour.hour">
                                     <tr>
                                         <td class="hour-cell" :class="{'hour-active': isActiveHour(hour)}" x-text="compactHour(hour.hour)"></td>
-                                        <td :class="hourlyOutputClass(hour)" x-text="formatNumber(hour.output || 0)"></td>
+                                        <td :class="hourlyQcGoodClass(hour)" x-text="formatNumber(hourlyQcGoodCount(hour))"></td>
                                         <td :class="hourlyDefectClass(hour)" x-text="formatNumber(hour.defect || 0)"></td>
                                     </tr>
                                 </template>
@@ -883,6 +883,14 @@
 	                hourlyOutputClass(hour) {
 	                    return (parseInt(hour.output) || 0) >= (parseInt(hour.targetManual) || 0) ? 'output-ok' : 'output-ng';
 	                },
+
+                    hourlyQcGoodCount(hour) {
+                        return Math.max((parseInt(hour.qcChecked) || 0) - (parseInt(hour.defect) || 0), 0);
+                    },
+
+                    hourlyQcGoodClass(hour) {
+                        return this.hourlyQcGoodCount(hour) > 0 ? 'output-ok' : 'output-ng';
+                    },
 
 	                hourlyDefectClass(hour) {
 	                    const output = parseInt(hour.output) || 0;

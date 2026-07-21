@@ -579,14 +579,18 @@ function dashboard() {
                     Object.keys(data).forEach(lineName => {
                         const line = data[lineName];
                         if (line.models) {
-                            Object.keys(line.models).forEach(modelId => {
+                            const modelIds = Object.keys(line.models);
+                            modelIds.forEach((modelId, index) => {
                                 this.linesWithModels.push({
                                     key: `${lineName}-${modelId}`,
                                     lineName: lineName,
                                     modelId: modelId,
+                                    modelCount: modelIds.length,
+                                    isFirstModel: index === 0,
                                     data: {
                                         ...line.models[modelId],
-                                        lineActiveModel: line.activeModel
+                                        lineActiveModel: line.activeModel,
+                                        lineActiveModels: Array.isArray(line.activeModels) ? line.activeModels : (line.activeModel ? [line.activeModel] : [])
                                     }
                                 });
                             });
@@ -1538,10 +1542,9 @@ function dashboard() {
                 this.showToast('Error deleting model', 'error');
             }
         },
-
         async setActiveModel(lineName, modelId) {
             try {
-                const response = await fetch(`/api/lines/${lineName}/active-model`, {
+                const response = await fetch('/api/lines/' + encodeURIComponent(lineName) + '/active-model', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -1549,21 +1552,26 @@ function dashboard() {
                     body: JSON.stringify({ modelId: modelId })
                 });
 
+                const result = await response.json();
                 if (response.ok) {
-                    this.showToast(`Active model set to ${modelId}`, 'success');
+                    this.showToast(result.message || 'Status model aktif diperbarui', 'success');
                     await this.loadLines();
+                    await this.loadDashboardData();
                 } else {
-                    const error = await response.json();
-                    this.showToast(error.error || 'Failed to set active model', 'error');
+                    this.showToast(result.error || 'Failed to update active model', 'error');
                 }
             } catch (error) {
-                console.error('Error setting active model:', error);
-                this.showToast('Error setting active model', 'error');
+                console.error('Error updating active model:', error);
+                this.showToast('Error updating active model', 'error');
             }
         },
 
-        async deleteLine(lineName) {
-            if (!confirm(`Are you sure you want to delete line ${lineName}?`)) {
+        async deleteLine(lineName, modelCount = 1) {
+            const confirmationMessage = modelCount > 1
+                ? `Hapus line ${lineName} beserta seluruh ${modelCount} model di dalamnya? Tindakan ini tidak dapat dibatalkan.`
+                : `Hapus line ${lineName}? Tindakan ini tidak dapat dibatalkan.`;
+
+            if (!confirm(confirmationMessage)) {
                 return;
             }
 
@@ -1573,7 +1581,7 @@ function dashboard() {
                 });
 
                 if (response.ok) {
-                    this.showToast('Line deleted successfully', 'success');
+                    this.showToast(`Line ${lineName} berhasil dihapus`, 'success');
                     await this.loadLines();
                     await this.loadDashboardData();
                 } else {

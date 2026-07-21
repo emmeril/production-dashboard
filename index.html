@@ -1022,7 +1022,7 @@
                                                 <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900" x-text="line.lineName"></td>
                                                 <td class="px-4 py-3 whitespace-nowrap">
                                                     <span class="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded" x-text="line.modelId"></span>
-                                                    <span x-show="line.data.lineActiveModel === line.modelId" class="ml-1 px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded">Aktif</span>
+                                                    <span x-show="(line.data.lineActiveModels || []).includes(line.modelId)" class="ml-1 px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded">Aktif</span>
                                                 </td>
                                                 <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500" x-text="line.data.labelWeek"></td>
                                                 <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500" x-text="line.data.model"></td>
@@ -1035,9 +1035,9 @@
 	                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-medium">
 		                                                    <div class="table-actions">
 		                                                    <button @click="openLineModal(line)" :disabled="isWorkScheduleLocked()" class="schedule-action btn-action btn-action-primary"><i class="fa-solid fa-pen-to-square"></i>Edit</button>
-		                                                    <button @click="setActiveModel(line.lineName, line.modelId)" :disabled="isWorkScheduleLocked()" class="schedule-action btn-action btn-action-success"><i class="fa-solid fa-toggle-on"></i>Set Aktif</button>
-		                                                    <button @click="deleteModel(line.lineName, line.modelId)" class="btn-action btn-action-danger" x-show="currentUser.role === 'admin' && (!line.data.lineActiveModel || line.data.lineActiveModel !== line.modelId)"><i class="fa-solid fa-trash"></i>Hapus Model</button>
-		                                                    <button @click="deleteLine(line.lineName)" class="btn-action btn-action-danger" x-show="currentUser.role === 'admin'"><i class="fa-solid fa-trash-can"></i>Hapus Line</button>
+		                                                    <button @click="setActiveModel(line.lineName, line.modelId)" :disabled="isWorkScheduleLocked()" class="schedule-action btn-action" :class="(line.data.lineActiveModels || []).includes(line.modelId) ? 'btn-action-neutral' : 'btn-action-success'"><i class="fa-solid" :class="(line.data.lineActiveModels || []).includes(line.modelId) ? 'fa-toggle-off' : 'fa-toggle-on'"></i><span x-text="(line.data.lineActiveModels || []).includes(line.modelId) ? 'Nonaktifkan' : 'Aktifkan'"></span></button>
+		                                                    <button @click="deleteModel(line.lineName, line.modelId)" class="btn-action btn-action-danger" x-show="currentUser.role === 'admin' && !(line.data.lineActiveModels || []).includes(line.modelId)"><i class="fa-solid fa-trash"></i>Hapus Model</button>
+		                                                    <button @click="deleteLine(line.lineName, line.modelCount)" class="btn-action btn-action-danger" x-show="currentUser.role === 'admin' && line.isFirstModel"><i class="fa-solid fa-trash-can"></i><span x-text="line.modelCount > 1 ? 'Hapus Line dan Model' : 'Hapus Line'"></span></button>
 		                                                    </div>
 		                                                </td>
                                             </tr>

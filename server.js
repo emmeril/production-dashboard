@@ -173,7 +173,8 @@ function buildInitialProductionData() {
             ]
           }
         },
-        "activeModel": "model1"
+        "activeModel": "model1",
+        "activeModels": ["model1"]
       }
     },
     "activeLine": "F1-5A"
@@ -527,7 +528,8 @@ function backupDataBeforeReset(data, today) {
       const line = data.lines[lineName];
       backupData.lines[lineName] = {
         models: {},
-        activeModel: line.activeModel
+        activeModel: line.activeModel,
+        activeModels: Array.isArray(line.activeModels) ? [...line.activeModels] : (line.activeModel ? [line.activeModel] : [])
       };
       
       Object.keys(line.models).forEach(modelId => {
@@ -786,14 +788,33 @@ function getActiveModel(data, lineName) {
   const line = data.lines[lineName];
   if (!line) return null;
 
-  const activeModelId = line.activeModel || Object.keys(line.models || {})[0];
-  if (!activeModelId || !line.models[activeModelId]) return null;
+  const normalizedLine = ensureLineActiveModels(line);
+  const activeModelId = normalizedLine.activeModels[0] || normalizedLine.activeModel || Object.keys(normalizedLine.models || {})[0];
+  if (!activeModelId || !normalizedLine.models[activeModelId]) return null;
 
   return {
-    line,
+    line: normalizedLine,
     modelId: activeModelId,
-    model: line.models[activeModelId]
+    model: normalizedLine.models[activeModelId]
   };
+}
+
+function ensureLineActiveModels(line) {
+  if (!line || typeof line !== 'object') return line;
+
+  const models = line.models || {};
+  const modelIds = Object.keys(models);
+  const currentActiveModels = Array.isArray(line.activeModels)
+    ? line.activeModels.map(String).filter(modelId => models[modelId])
+    : [];
+  const legacyActiveModel = line.activeModel && models[line.activeModel] ? [String(line.activeModel)] : [];
+  const fallbackModel = modelIds.length > 0 ? [modelIds[0]] : [];
+  const activeModels = currentActiveModels.length > 0 ? currentActiveModels : (legacyActiveModel.length > 0 ? legacyActiveModel : fallbackModel);
+
+  line.activeModels = [...new Set(activeModels)];
+  line.activeModel = line.activeModels[0] || null;
+
+  return line;
 }
 
 function recalculateModelTotals(model) {
@@ -844,12 +865,13 @@ function buildLinesResponse(lines) {
   const response = {};
 
   Object.keys(lines || {}).forEach(lineName => {
-    const line = lines[lineName];
-    const activeModelId = line.activeModel || Object.keys(line.models || {})[0];
+    const line = ensureLineActiveModels(lines[lineName]);
+    const activeModelId = line.activeModels[0] || line.activeModel || Object.keys(line.models || {})[0];
     const activeModel = activeModelId ? line.models[activeModelId] : null;
 
     response[lineName] = {
       ...line,
+      activeModels: line.activeModels || [],
       activeModel: activeModelId,
       target: activeModel ? activeModel.target : 0,
       targetPerHour: activeModel ? activeModel.targetPerHour : 0,
@@ -2515,7 +2537,8 @@ app.post('/api/lines', requireLogin, requireLineManagementAccess, (req, res) => 
         operators: []
       }
     },
-    activeModel: modelId
+    activeModel: modelId,
+    activeModels: [modelId]
   };
 
   writeProductionData(data);
@@ -2635,9 +2658,17 @@ app.delete('/api/lines/:lineName/models/:modelId', requireLogin, requireAdmin, (
 
   delete data.lines[lineName].models[modelId];
 
+  if (Array.isArray(data.lines[lineName].activeModels)) {
+    data.lines[lineName].activeModels = data.lines[lineName].activeModels.filter(activeId => activeId !== modelId);
+  }
+
   if (data.lines[lineName].activeModel === modelId) {
-    const remainingModels = Object.keys(data.lines[lineName].models);
-    data.lines[lineName].activeModel = remainingModels[0];
+    const remainingActive = (data.lines[lineName].activeModels || []).filter(activeId => data.lines[lineName].models[activeId]);
+    data.lines[lineName].activeModel = remainingActive[0] || Object.keys(data.lines[lineName].models)[0];
+  }
+
+  if (!Array.isArray(data.lines[lineName].activeModels) || data.lines[lineName].activeModels.length === 0) {
+    data.lines[lineName].activeModels = [data.lines[lineName].activeModel];
   }
 
   writeProductionData(data);
@@ -2678,15 +2709,32 @@ app.post('/api/lines/:lineName/active-model', requireLogin, requireLineManagemen
     return res.status(404).json({ error: 'Model not found' });
   }
 
-  data.lines[lineName].activeModel = modelId;
+  const line = ensureLineActiveModels(data.lines[lineName]);
+  const activeModels = new Set(line.activeModels || []);
+  const isActive = activeModels.has(modelId);
+
+  if (isActive) {
+    if (activeModels.size <= 1) {
+      return res.status(400).json({ error: 'Line harus memiliki minimal 1 model aktif' });
+    }
+    activeModels.delete(modelId);
+  } else {
+    activeModels.add(modelId);
+  }
+
+  line.activeModels = Array.from(activeModels);
+  line.activeModel = line.activeModels[0] || null;
   writeProductionData(data);
   
-  // ✅ UPDATE BACKUP HARI INI
+  // UPDATE BACKUP HARI INI
   updateTodayBackup();
   
   res.json({ 
-    message: `Active model for line ${lineName} set to ${modelId}`,
-    activeModel: modelId
+    message: isActive
+      ? 'Model ' + modelId + ' dinonaktifkan dari line ' + lineName
+      : 'Model ' + modelId + ' diaktifkan pada line ' + lineName,
+    activeModel: line.activeModel,
+    activeModels: line.activeModels
   });
 });
 
@@ -2714,16 +2762,15 @@ app.get('/api/line/:lineName', requireLogin, requireLineAccess, autoCheckDateRes
     return res.status(404).json({ error: 'Line not found' });
   }
 
-  const activeModelId = data.lines[lineName].activeModel;
-  if (!activeModelId || !data.lines[lineName].models[activeModelId]) {
+  const activeModel = getActiveModel(data, lineName);
+  if (!activeModel) {
     return res.status(404).json({ error: 'Active model not found' });
   }
 
-  const modelData = data.lines[lineName].models[activeModelId];
   res.json({ 
     line: lineName,
-    modelId: activeModelId,
-    ...modelData 
+    modelId: activeModel.modelId,
+    ...activeModel.model 
   });
 });
 
@@ -4277,14 +4324,40 @@ app.get('/api/public/line/:lineName', autoCheckDateReset, (req, res) => {
     return res.status(404).json({ error: 'Line not found' });
   }
 
-  const activeModelId = data.lines[lineName].activeModel;
-  if (!activeModelId || !data.lines[lineName].models[activeModelId]) {
+  const activeModel = getActiveModel(data, lineName);
+  if (!activeModel) {
     return res.status(404).json({ error: 'Active model not found' });
   }
 
-  const modelData = data.lines[lineName].models[activeModelId];
+  res.json(buildPublicModelResponse(activeModel.model));
+});
 
-  res.json(buildPublicModelResponse(modelData));
+app.get('/api/public/line/:lineName/active-models', autoCheckDateReset, (req, res) => {
+  if (!isWithinWorkSchedule()) {
+    return res.status(403).json({ error: 'Public display hanya tersedia pada hari dan jam kerja' });
+  }
+
+  const { lineName } = req.params;
+  const data = readProductionData();
+
+  if (!data.lines[lineName]) {
+    return res.status(404).json({ error: 'Line not found' });
+  }
+
+  const line = ensureLineActiveModels(data.lines[lineName]);
+  const activeModels = (line.activeModels || []).filter(modelId => line.models?.[modelId]);
+
+  if (activeModels.length === 0) {
+    return res.status(404).json({ error: 'Active model not found' });
+  }
+
+  res.json({
+    lineName,
+    activeModels: activeModels.map(modelId => ({
+      modelId,
+      data: buildPublicModelResponse(line.models[modelId])
+    }))
+  });
 });
 
 app.get('/api/public/line/:lineName/:modelId', autoCheckDateReset, (req, res) => {

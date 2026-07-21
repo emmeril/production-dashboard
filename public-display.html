@@ -390,7 +390,10 @@
 	                    }
 	                },
 	                currentModelId: '',
-	                defectMode: 'all',
+                explicitModelId: '',
+                activeModelIds: [],
+                rotationIndex: 0,
+                defectMode: 'all',
 	                displaySettings: {
 	                    layoutWidth: 98,
 	                    marginLeft: 30,
@@ -429,7 +432,8 @@
 	                    }
 
 	                    this.lineData.name = lineName;
-	                    this.currentModelId = modelId || '';
+                    this.explicitModelId = modelId || '';
+                    this.currentModelId = modelId || '';
 	                    this.defectMode = ['all', 'critical', 'major', 'minor'].includes(defectMode) ? defectMode : 'all';
 	                    await Promise.all([this.loadDisplaySettings(), this.loadWorkScheduleStatus()]);
 	                    if (this.isWithinWorkSchedule) await this.loadLineData();
@@ -443,7 +447,6 @@
                     }, 1000);
                     
 	                },
-
                 async loadLineData() {
                     if (!this.scheduleLoaded || !this.isWithinWorkSchedule) return;
 
@@ -454,30 +457,55 @@
                     this.refreshController = new AbortController();
 
                     try {
-                        let url;
-                        if (this.currentModelId) {
-                            url = `/api/public/line/${this.lineData.name}/${this.currentModelId}`;
+                        let response;
+                        let selectedModelId = this.explicitModelId || '';
+                        const encodedLineName = encodeURIComponent(this.lineData.name);
+
+                        if (!selectedModelId) {
+                            const activeModelsResponse = await fetch('/api/public/line/' + encodedLineName + '/active-models', { signal: this.refreshController.signal });
+                            if (!activeModelsResponse.ok) {
+                                if (activeModelsResponse.status === 403) {
+                                    this.isWithinWorkSchedule = false;
+                                    this.lineData.data = this.emptyLineData();
+                                    this.errorMessage = '';
+                                    await this.loadWorkScheduleStatus();
+                                    return;
+                                }
+                                throw new Error('Gagal memuat daftar model aktif');
+                            }
+
+                            const activeModelsPayload = await activeModelsResponse.json();
+                            this.activeModelIds = (activeModelsPayload.activeModels || [])
+                                .map(item => item.modelId)
+                                .filter(Boolean);
+
+                            if (this.activeModelIds.length === 0) {
+                                throw new Error('Tidak ada model aktif untuk line ini');
+                            }
+
+                            const rotationSlot = this.rotationIndex % this.activeModelIds.length;
+                            selectedModelId = this.activeModelIds[rotationSlot];
+                            this.rotationIndex = (rotationSlot + 1) % this.activeModelIds.length;
                         } else {
-                            url = `/api/public/line/${this.lineData.name}`;
+                            this.activeModelIds = [selectedModelId];
                         }
-                        
-                        let response = await fetch(url, { signal: this.refreshController.signal });
-                        
+
+                        const encodedModelId = encodeURIComponent(selectedModelId);
+                        response = await fetch('/api/public/line/' + encodedLineName + '/' + encodedModelId, { signal: this.refreshController.signal });
+
                         if (!response.ok && response.status !== 403) {
-                            response = await fetch(
-                                `/api/line/${this.lineData.name}${this.currentModelId ? '/' + this.currentModelId : ''}`,
-                                { signal: this.refreshController.signal }
-                            );
+                            response = await fetch('/api/line/' + encodedLineName + '/' + encodedModelId, { signal: this.refreshController.signal });
                         }
 
                         if (requestId !== this.refreshRequestId) return;
-                        
+
                         if (response.ok) {
                             const data = await response.json();
                             if (requestId !== this.refreshRequestId) return;
                             this.lineData.data = data;
+                            this.currentModelId = selectedModelId;
                             this.errorMessage = '';
-                            
+
                             this.dataUpdated = true;
                             if (this.dataUpdatedTimer) clearTimeout(this.dataUpdatedTimer);
                             this.dataUpdatedTimer = setTimeout(() => {
@@ -498,7 +526,7 @@
                     } catch (error) {
                         if (error.name === 'AbortError') return;
                         console.error('Error loading line data:', error);
-                        this.errorMessage = 'Terjadi kesalahan saat memuat data';
+                        this.errorMessage = error.message || 'Terjadi kesalahan saat memuat data';
                     } finally {
                         if (requestId === this.refreshRequestId) {
                             this.refreshController = null;

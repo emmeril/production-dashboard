@@ -300,8 +300,8 @@
 	                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Good</th>
 	                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Defect</th>
 	                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rate</th>
-	                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Defect Area</th>
-	                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jenis Defect</th>
+	                                            <th class="px-4 py-3 whitespace-nowrap text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Defect Area</th>
+	                                            <th class="px-4 py-3 whitespace-nowrap text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jenis Defect</th>
 	                                        </tr>
 	                                    </thead>
 	                                    <tbody class="bg-white divide-y divide-gray-200">
@@ -317,8 +317,8 @@
 	                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-semibold text-green-600" x-text="Math.max((day.qcChecked || 0) - (day.defect || 0), 0)"></td>
 	                                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700" x-text="day.defect"></td>
 	                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-semibold" :class="day.defectRate > 5 ? 'text-red-600' : 'text-green-600'" x-text="day.defectRate + '%'"></td>
-	                                                <td class="px-4 py-3 min-w-48 text-sm text-gray-700" :title="formatDashboardCounter(day.areaCounts)" x-text="formatDashboardCounter(day.areaCounts)"></td>
-	                                                <td class="px-4 py-3 min-w-48 text-sm text-gray-700" :title="formatDashboardCounter(day.typeCounts)" x-text="formatDashboardCounter(day.typeCounts)"></td>
+	                                                <td class="px-4 py-3 min-w-48 whitespace-nowrap text-sm text-gray-700" :title="formatDashboardCounter(day.areaCounts)" x-text="formatDashboardCounter(day.areaCounts)"></td>
+	                                                <td class="px-4 py-3 min-w-48 whitespace-nowrap text-sm text-gray-700" :title="formatDashboardCounter(day.typeCounts)" x-text="formatDashboardCounter(day.typeCounts)"></td>
 	                                            </tr>
 	                                        </template>
 	                                        <tr x-show="dashboardDailyDetails.length === 0">

@@ -1789,6 +1789,7 @@ function dashboard() {
 
 	            const labels = this.dashboardChartData.map(item => [
 	                item.lineName || '-',
+	                this.formatShortDate(item.date),
 	                item.labelWeek || '-',
 	                item.model || '-'
 	            ]);
@@ -2072,32 +2073,34 @@ function dashboard() {
         },
 
         get dashboardChartData() {
-            const groupedByLine = new Map();
+            const groupedByLineDateModel = new Map();
 
             this.selectedDashboardLineData.forEach(item => {
                 const lineName = item.lineName || '-';
-                const current = groupedByLine.get(lineName) || {
+                const date = item.date || '';
+                const modelId = item.modelId || item.model || '';
+                const key = `${date}|${lineName}|${modelId}`;
+                const current = groupedByLineDateModel.get(key) || {
                     lineName,
                     modelId: item.modelId || '',
                     labelWeek: item.labelWeek || '',
                     model: item.model || '',
+                    date,
                     target: 0,
                     output: 0,
-                    defect: 0,
-                    dates: []
+                    defect: 0
                 };
 
                 current.target += parseInt(item.target) || 0;
                 current.output += parseInt(item.output) || 0;
                 current.defect += parseInt(item.defect) || 0;
-                if (item.date && !current.dates.includes(item.date)) current.dates.push(item.date);
-
-                groupedByLine.set(lineName, current);
+                groupedByLineDateModel.set(key, current);
             });
 
-            return Array.from(groupedByLine.values())
-                .map(item => ({ ...item, dates: item.dates.sort((a, b) => new Date(a) - new Date(b)) }))
-                .sort((a, b) => a.lineName.localeCompare(b.lineName, undefined, { numeric: true }));
+            return Array.from(groupedByLineDateModel.values())
+                .sort((a, b) => new Date(a.date) - new Date(b.date)
+                    || a.lineName.localeCompare(b.lineName, undefined, { numeric: true })
+                    || a.model.localeCompare(b.model));
         },
 
 	        async deleteProductionHour(lineName, modelId, hourIndex) {

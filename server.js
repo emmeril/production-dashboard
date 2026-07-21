@@ -1796,18 +1796,23 @@ function summarizeProductionSnapshotByLine(data, date) {
 
   Object.keys(data.lines || {}).forEach(lineName => {
     const line = data.lines[lineName];
-    const summary = createProductionSummary(date, lineName);
+    const normalizedLine = ensureLineActiveModels(line);
+    const activeModelIds = normalizedLine.activeModels || [];
 
-    const activeModelId = line.activeModel;
-    const activeModel = activeModelId ? line.models?.[activeModelId] : null;
-    if (activeModel && (!activeModel.date || activeModel.date === date)) {
+    activeModelIds.forEach(activeModelId => {
+      const activeModel = normalizedLine.models?.[activeModelId];
+      if (!activeModel || (activeModel.date && activeModel.date !== date)) return;
+
+      const summary = createProductionSummary(date, lineName);
       addModelToProductionSummary(summary, activeModel);
-    }
-
-    if (summary.modelCount > 0) {
-      summary.lineCount = 1;
-      summaries.push(finalizeProductionSummary(summary));
-    }
+      if (summary.modelCount > 0) {
+        summary.lineCount = 1;
+        summary.modelId = activeModelId;
+        summary.labelWeek = activeModel.labelWeek || '';
+        summary.model = activeModel.model || '';
+        summaries.push(finalizeProductionSummary(summary));
+      }
+    });
   });
 
   return summaries;
@@ -1855,13 +1860,6 @@ app.get('/api/dashboard-summary', requireLogin, requireAdminOrAdminOperator, aut
     Array.from(snapshotsByDate.entries()).forEach(([date, data]) => {
       summarizeProductionSnapshotByLine(data, date).forEach(item => {
         if (!managedLineNames.has(item.lineName)) return;
-
-        const managedLine = currentData.lines[item.lineName];
-        const activeModelId = managedLine?.activeModel;
-        const activeModel = activeModelId ? managedLine.models?.[activeModelId] : null;
-        item.modelId = activeModelId || '';
-        item.labelWeek = activeModel?.labelWeek || '';
-        item.model = activeModel?.model || '';
 
         lineNames.add(item.lineName);
         lineDaily.push(item);

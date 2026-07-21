@@ -1783,20 +1783,29 @@ function buildDateReportRows(data, date) {
   return Object.entries(filteredData.lines || {}).flatMap(([lineName, line]) =>
     Object.entries(line.models || {}).map(([modelId, model]) => {
       const defectBreakdown = calculateDefectSeverityBreakdown(model);
+      const defectCategories = summarizeModelDefectCategories(model);
+      const target = model.target || 0;
+      const output = model.outputDay || 0;
+      const defect = model.actualDefect || 0;
+      const qcChecked = model.qcChecking || 0;
       return {
         line: lineName,
         modelId,
         labelWeek: model.labelWeek,
         model: model.model,
         date: model.date,
-        target: model.target || 0,
-        output: model.outputDay || 0,
-        defect: model.actualDefect || 0,
+        target,
+        output,
+        achievement: target > 0 ? parseFloat(((output / target) * 100).toFixed(2)) : 0,
+        defect,
         criticalDefect: defectBreakdown.critical.count,
         majorDefect: defectBreakdown.major.count,
         minorDefect: defectBreakdown.minor.count,
-        qcChecked: model.qcChecking || 0,
-        defectRate: model.defectRatePercentage || 0
+        qcChecked,
+        good: Math.max(qcChecked - defect, 0),
+        defectRate: model.defectRatePercentage || 0,
+        defectAreas: defectCategories.areas,
+        defectTypes: defectCategories.types
       };
     })
   );
@@ -3143,7 +3152,7 @@ async function generateStyledDateReportExcel(data, date) {
 
   const summarySheet = workbook.addWorksheet('SUMMARY');
   
-	  summarySheet.mergeCells('A1:L1');
+	  summarySheet.mergeCells('A1:Q1');
   const titleCell = summarySheet.getCell('A1');
   titleCell.value = 'PRODUCTION REPORT SUMMARY - ' + date;
   titleCell.style = titleStyle;
@@ -3155,7 +3164,7 @@ async function generateStyledDateReportExcel(data, date) {
   summarySheet.getCell('A5').value = 'Total Lines';
   summarySheet.getCell('B5').value = Object.keys(data.lines).length;
   
-	  const headers = ['Line', 'Model ID', 'Label/Week', 'Model', 'Target', 'Output', 'Achievement %', 'Defect', 'Critical', 'Major', 'Minor', 'Jenis Defect', 'Defect Area', 'QC Checked', 'Defect Rate %'];
+	  const headers = ['Tanggal', 'Line', 'Model ID', 'Label/Week', 'Model', 'Target', 'Output', 'Achievement %', 'QC Checked', 'Good', 'Defect', 'Critical', 'Major', 'Minor', 'Defect Rate %', 'Defect Area', 'Jenis Defect'];
   summarySheet.getRow(7).values = headers;
   summarySheet.getRow(7).eachCell((cell) => {
     cell.style = headerStyle;
@@ -3166,6 +3175,7 @@ async function generateStyledDateReportExcel(data, date) {
   let totalOutput = 0;
   let totalDefect = 0;
   let totalQCChecked = 0;
+  let totalGood = 0;
   
   Object.keys(data.lines).forEach(lineName => {
     const line = data.lines[lineName];
@@ -3177,6 +3187,7 @@ async function generateStyledDateReportExcel(data, date) {
 	      
 	      const row = summarySheet.getRow(rowIndex);
 	      row.values = [
+        model.date || date,
         lineName,
         modelId,
         model.labelWeek || '',
@@ -3184,17 +3195,18 @@ async function generateStyledDateReportExcel(data, date) {
         model.target || 0,
 	        model.outputDay || 0,
 	        achievement,
+	        model.qcChecking || 0,
+	        Math.max((model.qcChecking || 0) - (model.actualDefect || 0), 0),
 	        model.actualDefect || 0,
 	        defectBreakdown.critical.count,
 	        defectBreakdown.major.count,
 	        defectBreakdown.minor.count,
-	        defectCategories.types,
+	        (model.defectRatePercentage || 0) + '%',
 	        defectCategories.areas,
-	        model.qcChecking || 0,
-	        (model.defectRatePercentage || 0) + '%'
+	        defectCategories.types
 	      ];
       
-      const achievementCell = row.getCell(7);
+      const achievementCell = row.getCell(8);
       const achievementValue = parseFloat(achievement);
       if (achievementValue >= 100) {
         achievementCell.font = { color: { argb: '00B050' }, bold: true };
@@ -3222,6 +3234,7 @@ async function generateStyledDateReportExcel(data, date) {
       totalOutput += model.outputDay || 0;
       totalDefect += model.actualDefect || 0;
       totalQCChecked += model.qcChecking || 0;
+      totalGood += Math.max((model.qcChecking || 0) - (model.actualDefect || 0), 0);
       
       rowIndex++;
     });
@@ -3236,38 +3249,42 @@ async function generateStyledDateReportExcel(data, date) {
     '',
     '',
     '',
+    '',
     totalTarget,
 	    totalOutput,
 	    totalAchievement,
+	    totalQCChecked,
+	    totalGood,
 	    totalDefect,
 	    '',
 	    '',
 	    '',
+	    totalDefectRate,
 	    '',
-	    '',
-	    totalQCChecked,
-	    totalDefectRate
+	    ''
 	  ];
   totalRow.eachCell((cell) => {
     cell.style = totalStyle;
   });
   
   summarySheet.columns = [
-    { width: 15 },
-    { width: 12 },
-    { width: 15 },
-    { width: 30 },
-    { width: 12 },
-    { width: 12 },
+	    { width: 14 },
+	    { width: 15 },
+	    { width: 12 },
+	    { width: 15 },
+	    { width: 30 },
+	    { width: 12 },
+	    { width: 12 },
 	    { width: 15 },
 	    { width: 12 },
 	    { width: 12 },
 	    { width: 12 },
 	    { width: 12 },
-	    { width: 32 },
-	    { width: 32 },
+	    { width: 12 },
+	    { width: 12 },
 	    { width: 15 },
-	    { width: 15 }
+	    { width: 32 },
+	    { width: 32 }
 	  ];
 
   Object.keys(data.lines).forEach(lineName => {
@@ -3276,7 +3293,7 @@ async function generateStyledDateReportExcel(data, date) {
     
     let currentRow = 1;
     
-	    lineSheet.mergeCells(`A${currentRow}:G${currentRow}`);
+	    lineSheet.mergeCells(`A${currentRow}:H${currentRow}`);
     const lineTitle = lineSheet.getCell(`A${currentRow}`);
     lineTitle.value = `PRODUCTION DETAIL - ${lineName} - ${date}`;
     lineTitle.style = titleStyle;
@@ -3308,12 +3325,24 @@ async function generateStyledDateReportExcel(data, date) {
       lineSheet.getCell(`A${currentRow}`).value = 'Output';
       lineSheet.getCell(`B${currentRow}`).value = model.outputDay || 0;
       currentRow++;
+
+      lineSheet.getCell(`A${currentRow}`).value = 'QC Checked';
+      lineSheet.getCell(`B${currentRow}`).value = model.qcChecking || 0;
+      currentRow++;
+
+      lineSheet.getCell(`A${currentRow}`).value = 'Good';
+      lineSheet.getCell(`B${currentRow}`).value = Math.max((model.qcChecking || 0) - (model.actualDefect || 0), 0);
+      currentRow++;
+
+      lineSheet.getCell(`A${currentRow}`).value = 'Total Defect';
+      lineSheet.getCell(`B${currentRow}`).value = model.actualDefect || 0;
+      currentRow++;
       
       lineSheet.getCell(`A${currentRow}`).value = 'Defect Rate';
       lineSheet.getCell(`B${currentRow}`).value = (model.defectRatePercentage || 0) + '%';
       currentRow += 2;
       
-	      const hourlyHeaders = ['Jam', 'Target Manual', 'Output', 'Selisih', 'Defect', 'QC Checked', 'Defect Rate %'];
+	      const hourlyHeaders = ['Jam', 'Target Manual', 'Output', 'Selisih', 'Defect', 'QC Checked', 'Good', 'Defect Rate %'];
       lineSheet.getRow(currentRow).values = hourlyHeaders;
       lineSheet.getRow(currentRow).eachCell((cell) => {
         cell.style = headerStyle;
@@ -3332,6 +3361,7 @@ async function generateStyledDateReportExcel(data, date) {
 	            selisih,
 	            hour.defect || 0,
 	            hour.qcChecked || 0,
+	            Math.max((hour.qcChecked || 0) - (hour.defect || 0), 0),
 	            defectRate + '%'
 	          ];
           
@@ -3342,7 +3372,7 @@ async function generateStyledDateReportExcel(data, date) {
             selisihCell.font = { color: { argb: 'FF0000' }, bold: true };
           }
           
-	          const defectRateCell = row.getCell(7);
+	          const defectRateCell = row.getCell(8);
           const defectRateValue = parseFloat(defectRate);
           if (defectRateValue <= 5) {
             defectRateCell.font = { color: { argb: '00B050' }, bold: true };
@@ -3427,6 +3457,7 @@ async function generateStyledDateReportExcel(data, date) {
 	      { width: 12 },
 	      { width: 32 },
 	      { width: 15 },
+	      { width: 12 },
 	      { width: 18 }
 	    ];
   });
@@ -4228,7 +4259,7 @@ async function generateStyledExcelData(modelData, lineName, modelId) {
   
   const summarySheet = workbook.addWorksheet('SUMMARY');
   
-	  summarySheet.mergeCells('A1:I1');
+	  summarySheet.mergeCells('A1:M1');
   const titleCell = summarySheet.getCell('A1');
   titleCell.value = 'PRODUCTION REPORT SUMMARY';
   titleCell.style = titleStyle;
@@ -4244,7 +4275,7 @@ async function generateStyledExcelData(modelData, lineName, modelId) {
   summarySheet.getCell('A7').value = 'Date';
   summarySheet.getCell('B7').value = modelData.date || '';
   
-	  const headers = ['Metric', 'Value', 'Target per Hour', 'Output/Hari', 'QC Checking', 'Actual Defect', 'Critical', 'Major', 'Minor', 'Jenis Defect', 'Defect Area', 'Defect Rate (%)'];
+	  const headers = ['Metric', 'Value', 'Target per Hour', 'Output/Hari', 'QC Checking', 'Good', 'Actual Defect', 'Critical', 'Major', 'Minor', 'Defect Area', 'Jenis Defect', 'Defect Rate (%)'];
 	  summarySheet.getRow(9).values = headers;
   summarySheet.getRow(9).eachCell((cell) => {
     cell.style = headerStyle;
@@ -4260,12 +4291,13 @@ async function generateStyledExcelData(modelData, lineName, modelId) {
     modelData.targetPerHour || 0,
 	    modelData.outputDay || 0,
 	    modelData.qcChecking || 0,
+	    Math.max((modelData.qcChecking || 0) - (modelData.actualDefect || 0), 0),
 	    modelData.actualDefect || 0,
 	    modelDefectBreakdown.critical.count,
 	    modelDefectBreakdown.major.count,
 	    modelDefectBreakdown.minor.count,
-	    modelDefectCategories.types,
 	    modelDefectCategories.areas,
+	    modelDefectCategories.types,
 	    (modelData.defectRatePercentage || 0) + '%'
 	  ];
   dataRow1.eachCell((cell) => {
@@ -4280,6 +4312,7 @@ async function generateStyledExcelData(modelData, lineName, modelId) {
     achievement,
     '',
     '',
+	    '',
 	    '',
 	    '',
 	    '',
@@ -4303,6 +4336,7 @@ async function generateStyledExcelData(modelData, lineName, modelId) {
 	    { width: 12 },
 	    { width: 12 },
 	    { width: 12 },
+	    { width: 12 },
 	    { width: 32 },
 	    { width: 32 },
 	    { width: 15 }
@@ -4310,12 +4344,12 @@ async function generateStyledExcelData(modelData, lineName, modelId) {
   
   const hourlySheet = workbook.addWorksheet('HOURLY DATA');
   
-	  hourlySheet.mergeCells('A1:I1');
+	  hourlySheet.mergeCells('A1:J1');
   const hourlyTitle = hourlySheet.getCell('A1');
   hourlyTitle.value = 'HOURLY PRODUCTION DATA';
   hourlyTitle.style = titleStyle;
   
-	  const hourlyHeaders = ['Jam', 'Target Manual', 'Output', 'Selisih (Output - Target)', 'Defect', 'Jenis Defect', 'Defect Area', 'QC Checked', 'Defect Rate (%)'];
+	  const hourlyHeaders = ['Jam', 'Target Manual', 'Output', 'Selisih (Output - Target)', 'Defect', 'Jenis Defect', 'Defect Area', 'QC Checked', 'Good', 'Defect Rate (%)'];
   hourlySheet.getRow(3).values = hourlyHeaders;
   hourlySheet.getRow(3).eachCell((cell) => {
     cell.style = headerStyle;
@@ -4343,6 +4377,7 @@ async function generateStyledExcelData(modelData, lineName, modelId) {
 	        defectCategories.types,
 	        defectCategories.areas,
 	        hour.qcChecked || 0,
+	        Math.max((hour.qcChecked || 0) - (hour.defect || 0), 0),
 	        defectRate + '%'
 	      ];
       
@@ -4353,7 +4388,7 @@ async function generateStyledExcelData(modelData, lineName, modelId) {
         selisihCell.font = { color: { argb: 'FF0000' }, bold: true };
       }
       
-	      const defectRateCell = row.getCell(9);
+	      const defectRateCell = row.getCell(10);
       const defectRateValue = parseFloat(defectRate);
       if (defectRateValue <= 5) {
         defectRateCell.font = { color: { argb: '00B050' }, bold: true };
@@ -4389,6 +4424,7 @@ async function generateStyledExcelData(modelData, lineName, modelId) {
 	    '',
 	    '',
 	    totalQCChecked,
+	    Math.max(totalQCChecked - totalDefect, 0),
 	    totalDefectRate + '%'
 	  ];
   totalRow.eachCell((cell) => {
@@ -4404,6 +4440,7 @@ async function generateStyledExcelData(modelData, lineName, modelId) {
 	    { width: 32 },
 	    { width: 32 },
 	    { width: 15 },
+	    { width: 12 },
 	    { width: 15 }
 	  ];
   
@@ -4647,6 +4684,7 @@ module.exports = {
   extractHistoryDate,
   filterProductionDataByDate,
   generateModelId,
+  generateStyledDateReportExcel,
   getToday,
   hasDateReportAccess,
   isValidDateInput,

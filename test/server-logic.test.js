@@ -7,6 +7,7 @@ const {
   extractHistoryDate,
   filterProductionDataByDate,
   generateModelId,
+  generateStyledDateReportExcel,
   hasDateReportAccess,
   isValidDateInput,
   parseNonNegativeInteger,
@@ -93,8 +94,8 @@ test('date report exposes the same complete production and QC fields for every v
             qcChecking: 50,
             defectRatePercentage: 4,
             qcChecks: [
-              { result: 'defect', type: 'Open seam' },
-              { result: 'defect', type: 'Loose thread' }
+              { result: 'defect', type: 'Open seam', area: 'Body' },
+              { result: 'defect', type: 'Loose thread', area: 'Head' }
             ]
           }
         }
@@ -106,12 +107,54 @@ test('date report exposes the same complete production and QC fields for every v
 
   assert.deepEqual(
     Object.keys(row),
-    ['line', 'modelId', 'labelWeek', 'model', 'date', 'target', 'output', 'defect', 'criticalDefect', 'majorDefect', 'minorDefect', 'qcChecked', 'defectRate']
+    ['line', 'modelId', 'labelWeek', 'model', 'date', 'target', 'output', 'achievement', 'defect', 'criticalDefect', 'majorDefect', 'minorDefect', 'qcChecked', 'good', 'defectRate', 'defectAreas', 'defectTypes']
   );
   assert.equal(row.target, 100);
   assert.equal(row.output, 90);
+  assert.equal(row.achievement, 90);
   assert.equal(row.qcChecked, 50);
+  assert.equal(row.good, 48);
   assert.equal(row.defect, 2);
+  assert.equal(row.defectAreas, 'Body (1), Head (1)');
+  assert.equal(row.defectTypes, 'Loose thread (1), Open seam (1)');
+});
+
+test('Excel summary matches the complete daily report structure', async () => {
+  const data = {
+    lines: {
+      'Line 1': {
+        models: {
+          model1: {
+            date: '2026-07-21',
+            labelWeek: 'W30',
+            model: 'Model A',
+            target: 100,
+            outputDay: 90,
+            actualDefect: 2,
+            qcChecking: 50,
+            defectRatePercentage: 4,
+            hourly_data: [],
+            qcChecks: [
+              { result: 'defect', type: 'Open seam', area: 'Body' },
+              { result: 'defect', type: 'Loose thread', area: 'Head' }
+            ]
+          }
+        }
+      }
+    }
+  };
+
+  const workbook = await generateStyledDateReportExcel(data, '2026-07-21');
+  const summary = workbook.getWorksheet('SUMMARY');
+
+  assert.deepEqual(
+    summary.getRow(7).values.slice(1),
+    ['Tanggal', 'Line', 'Model ID', 'Label/Week', 'Model', 'Target', 'Output', 'Achievement %', 'QC Checked', 'Good', 'Defect', 'Critical', 'Major', 'Minor', 'Defect Rate %', 'Defect Area', 'Jenis Defect']
+  );
+  assert.equal(summary.getRow(8).getCell(9).value, 50);
+  assert.equal(summary.getRow(8).getCell(10).value, 48);
+  assert.equal(summary.getRow(8).getCell(16).value, 'Body (1), Head (1)');
+  assert.equal(summary.getRow(8).getCell(17).value, 'Loose thread (1), Open seam (1)');
 });
 
 test('date filtering keeps report exports scoped without mutating live data', () => {

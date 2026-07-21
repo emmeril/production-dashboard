@@ -264,7 +264,7 @@
 	                                <div class="flex flex-wrap items-center justify-between gap-3">
 	                                    <div>
 	                                        <h3 class="text-lg leading-6 font-medium text-gray-900 flex items-center"><i class="fa-solid fa-chart-simple text-blue-600 mr-2"></i>Chart Akumulasi Data Tiap Hari</h3>
-	                                        <p class="mt-1 max-w-2xl text-sm text-gray-500">Data harian ditampilkan per line dan berpindah otomatis seperti slideshow</p>
+	                                        <p class="mt-1 max-w-2xl text-sm text-gray-500">Data model aktif dari Management Line, ditampilkan per line seperti slideshow</p>
 	                                    </div>
 	                                    <div class="chart-legend">
 	                                        <span><span class="legend-dot chart-bar-target"></span>Target</span>
@@ -296,7 +296,7 @@
 	                        <div class="bg-white rounded-lg shadow overflow-hidden card-shadow">
 	                            <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
 	                                <h3 class="text-lg leading-6 font-medium text-gray-900 flex items-center"><i class="fa-solid fa-calendar-day text-blue-600 mr-2"></i>Detail Data Per Hari</h3>
-		                                <p class="mt-1 max-w-2xl text-sm text-gray-500">Daftar line yang tersedia untuk hari ini</p>
+	                                <p class="mt-1 max-w-2xl text-sm text-gray-500">Daftar model aktif dari Management Line untuk hari ini</p>
 	                            </div>
 		                            <div class="dashboard-daily-scroll overflow-x-auto">
 	                                <table class="min-w-full divide-y divide-gray-200">
@@ -320,7 +320,7 @@
 	                                        </tr>
 	                                    </thead>
 	                                    <tbody class="bg-white divide-y divide-gray-200">
-	                                        <template x-for="day in dashboardDailyDetails" :key="day.date + '-' + day.lineName">
+	                                        <template x-for="day in dashboardDailyDetails" :key="day.date + '-' + day.lineName + '-' + (day.modelId || day.model || '')">
 	                                            <tr>
 	                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900" x-text="formatShortDate(day.date)"></td>
 	                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900" x-text="day.lineName"></td>

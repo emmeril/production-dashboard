@@ -1,5 +1,8 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const vm = require('node:vm');
 
 const {
   buildDateReportRows,
@@ -77,6 +80,50 @@ test('daily line summary separates critical, major, and minor defects', () => {
   assert.equal(summary.majorDefect, 1);
   assert.equal(summary.minorDefect, 1);
   assert.equal(breakdown.all.count, 3);
+});
+
+test('daily line summary includes every active management-line model only', () => {
+  const data = {
+    lines: {
+      'Line 1': {
+        activeModels: ['model1', 'model2'],
+        models: {
+          model1: { date: '2026-07-21', model: 'Model A', outputDay: 10 },
+          model2: { date: '2026-07-21', model: 'Model B', outputDay: 20 },
+          model3: { date: '2026-07-21', model: 'Model C', outputDay: 30 }
+        }
+      }
+    }
+  };
+
+  const summaries = summarizeProductionSnapshotByLine(data, '2026-07-21');
+
+  assert.deepEqual(summaries.map(summary => summary.modelId), ['model1', 'model2']);
+  assert.deepEqual(summaries.map(summary => summary.model), ['Model A', 'Model B']);
+  assert.equal(summaries.reduce((total, summary) => total + summary.output, 0), 30);
+});
+
+test('dashboard chart includes only models active in Management Line', () => {
+  const context = { console, Date, Intl, Map, Math, Set, parseInt };
+  const alpineSource = fs.readFileSync(path.join(__dirname, '..', 'public/assets/js/alpine.js'), 'utf8');
+  vm.runInNewContext(alpineSource, context);
+
+  const dashboard = context.dashboard();
+  dashboard.linesWithModels = [
+    { lineName: 'Line 1', modelId: 'model1', data: { lineActiveModels: ['model1', 'model2'] } },
+    { lineName: 'Line 1', modelId: 'model2', data: { lineActiveModels: ['model1', 'model2'] } },
+    { lineName: 'Line 1', modelId: 'model3', data: { lineActiveModels: ['model1', 'model2'] } }
+  ];
+  dashboard.dashboardData.lineDaily = [
+    { date: '2026-07-22', lineName: 'Line 1', modelId: 'model1', model: 'Model A', output: 10 },
+    { date: '2026-07-22', lineName: 'Line 1', modelId: 'model2', model: 'Model B', output: 20 },
+    { date: '2026-07-22', lineName: 'Line 1', modelId: 'model3', model: 'Model C', output: 30 }
+  ];
+
+  assert.deepEqual(
+    Array.from(dashboard.allDashboardChartData, item => item.modelId),
+    ['model1', 'model2']
+  );
 });
 
 test('date report exposes the same complete production and QC fields for every viewer', () => {

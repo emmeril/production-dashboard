@@ -2196,28 +2196,31 @@ function dashboard() {
 
         get allDashboardChartData() {
             const groupedByLineDateModel = new Map();
+            const activeModelKeys = this.activeManagementModelKeys;
 
-            this.selectedDashboardLineData.forEach(item => {
-                const lineName = item.lineName || '-';
-                const date = item.date || '';
-                const modelId = item.modelId || item.model || '';
-                const key = `${date}|${lineName}|${modelId}`;
-                const current = groupedByLineDateModel.get(key) || {
-                    lineName,
-                    modelId: item.modelId || '',
-                    labelWeek: item.labelWeek || '',
-                    model: item.model || '',
-                    date,
-                    target: 0,
-                    output: 0,
-                    defect: 0
-                };
+            this.selectedDashboardLineData
+                .filter(item => activeModelKeys.has(`${item.lineName}|${item.modelId}`))
+                .forEach(item => {
+                    const lineName = item.lineName || '-';
+                    const date = item.date || '';
+                    const modelId = item.modelId || item.model || '';
+                    const key = `${date}|${lineName}|${modelId}`;
+                    const current = groupedByLineDateModel.get(key) || {
+                        lineName,
+                        modelId: item.modelId || '',
+                        labelWeek: item.labelWeek || '',
+                        model: item.model || '',
+                        date,
+                        target: 0,
+                        output: 0,
+                        defect: 0
+                    };
 
-                current.target += parseInt(item.target) || 0;
-                current.output += parseInt(item.output) || 0;
-                current.defect += parseInt(item.defect) || 0;
-                groupedByLineDateModel.set(key, current);
-            });
+                    current.target += parseInt(item.target) || 0;
+                    current.output += parseInt(item.output) || 0;
+                    current.defect += parseInt(item.defect) || 0;
+                    groupedByLineDateModel.set(key, current);
+                });
 
             return Array.from(groupedByLineDateModel.values())
                 .sort((a, b) => new Date(a.date) - new Date(b.date)
@@ -2281,10 +2284,20 @@ function dashboard() {
 	            }
 	        },
 
+        get activeManagementModelKeys() {
+            return new Set((this.linesWithModels || [])
+                .filter(line => (line.data.lineActiveModels || []).includes(line.modelId))
+                .map(line => `${line.lineName}|${line.modelId}`));
+        },
+
         get dashboardDailyDetails() {
+            const activeModelKeys = this.activeManagementModelKeys;
+
             return this.selectedDashboardLineData
-                .filter(item => item.date === this.currentDateKey())
-                .sort((a, b) => a.lineName.localeCompare(b.lineName, undefined, { numeric: true }));
+                .filter(item => item.date === this.currentDateKey()
+                    && activeModelKeys.has(`${item.lineName}|${item.modelId}`))
+                .sort((a, b) => a.lineName.localeCompare(b.lineName, undefined, { numeric: true })
+                    || (a.modelId || '').localeCompare(b.modelId || '', undefined, { numeric: true }));
         },
 
         get selectedDashboardTopDefectAreas() {

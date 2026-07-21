@@ -810,6 +810,18 @@ function recalculateModelTotals(model) {
   if (Array.isArray(model.qcChecks)) {
     totalQCChecked = model.qcChecks.length;
     totalDefect = model.qcChecks.filter(check => check.result === 'defect').length;
+    // Keep hourly QC columns aligned with the individual QC records.
+    (model.hourly_data || []).forEach(hour => {
+      hour.qcChecked = 0;
+      hour.defect = 0;
+    });
+    model.qcChecks.forEach(check => {
+      const index = parseInt(check.hourIndex);
+      if (Number.isInteger(index) && model.hourly_data[index]) {
+        model.hourly_data[index].qcChecked = (parseInt(model.hourly_data[index].qcChecked) || 0) + 1;
+        if (check.result === 'defect') model.hourly_data[index].defect = (parseInt(model.hourly_data[index].defect) || 0) + 1;
+      }
+    });
   } else {
     (model.hourly_data || []).forEach(hour => {
       totalDefect += parseInt(hour.defect) || 0;

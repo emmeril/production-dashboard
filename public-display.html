@@ -690,8 +690,12 @@
 	                },
                 
 	                getCurrentTimeInMinutes() {
-                    const now = new Date();
-                    return now.getHours() * 60 + now.getMinutes();
+                    const parts = new Intl.DateTimeFormat('en-US', {
+                        timeZone: 'Asia/Jakarta', hour: 'numeric', minute: 'numeric', hour12: false
+                    }).formatToParts(new Date());
+                    const hour = Number(parts.find(part => part.type === 'hour')?.value || 0) % 24;
+                    const minute = Number(parts.find(part => part.type === 'minute')?.value || 0);
+                    return hour * 60 + minute;
                 },
 
                 parseHourRange(hourRange) {

@@ -34,6 +34,7 @@ function dashboard() {
         dateReport: [],
         reportDate: new Date().toISOString().split('T')[0],
         productionClockMinute: null,
+        qcHourIndex: 0,
 
         // Forms
         inputForm: {
@@ -1078,6 +1079,7 @@ function dashboard() {
                 targetManual: 0,
                 defectDetails: []
             };
+            this.qcHourIndex = 0;
             this.resetDefectEntry();
         },
 
@@ -1118,6 +1120,23 @@ function dashboard() {
 	            const minute = Number(parts.find(part => part.type === 'minute')?.value || 0);
 	            return (hour * 60) + minute;
 	        },
+
+        getCurrentProductionHourIndex() {
+            const minutes = this.productionClockMinute ?? this.getCurrentProductionMinute();
+            const hours = this.lineDetail.hourly_data || [];
+            return hours.findIndex(hour => {
+                const match = String(hour.hour || '').match(/^(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})/);
+                if (!match) return false;
+                const start = Number(match[1]) * 60 + Number(match[2]);
+                const end = Number(match[3]) * 60 + Number(match[4]);
+                return minutes >= start && minutes < end;
+            });
+        },
+
+        selectCurrentQcHour() {
+            const index = this.getCurrentProductionHourIndex();
+            if (index >= 0) this.qcHourIndex = index;
+        },
 
 	        refreshProductionClock() {
 	            this.productionClockMinute = this.getCurrentProductionMinute();
@@ -1194,6 +1213,7 @@ function dashboard() {
                 return;
             }
 
+	            this.selectCurrentQcHour();
 	            this.isSavingQc = true;
 	            try {
 	                const response = await fetch(`/api/qc-check/${this.currentLine}/${this.currentModelId}`, {
@@ -1201,7 +1221,7 @@ function dashboard() {
                     headers: { 'Content-Type': 'application/json' },
 	                    body: JSON.stringify({
 	                        result,
-	                        hourIndex: this.inputForm.hourIndex,
+	                        hourIndex: this.qcHourIndex,
 	                        type: this.defectEntry.type,
 	                        area: this.defectEntry.area,
 	                        notes: this.defectEntry.notes

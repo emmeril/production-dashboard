@@ -1512,7 +1512,7 @@ app.get('/api/export-backup/:filename', requireLogin, requireAdmin, async (req, 
         lineSheet.getCell(`B${currentRow}`).value = model.model || '';
         currentRow++;
         
-        lineSheet.getCell(`A${currentRow}`).value = 'Date';
+	      lineSheet.getCell(`A${currentRow}`).value = 'Tanggal';
         lineSheet.getCell(`B${currentRow}`).value = model.date || '';
         currentRow++;
         
@@ -3154,17 +3154,17 @@ async function generateStyledDateReportExcel(data, date) {
   
 	  summarySheet.mergeCells('A1:Q1');
   const titleCell = summarySheet.getCell('A1');
-  titleCell.value = 'PRODUCTION REPORT SUMMARY - ' + date;
+	  titleCell.value = 'LAPORAN PRODUKSI DAN QC - ' + date;
   titleCell.style = titleStyle;
   
-  summarySheet.getCell('A3').value = 'Generated Date';
+	  summarySheet.getCell('A3').value = 'Tanggal Export';
   summarySheet.getCell('B3').value = new Date().toLocaleString('id-ID');
-  summarySheet.getCell('A4').value = 'Report Date';
+	  summarySheet.getCell('A4').value = 'Tanggal Laporan';
   summarySheet.getCell('B4').value = date;
-  summarySheet.getCell('A5').value = 'Total Lines';
+	  summarySheet.getCell('A5').value = 'Total Line';
   summarySheet.getCell('B5').value = Object.keys(data.lines).length;
   
-	  const headers = ['Tanggal', 'Line', 'Model ID', 'Label/Week', 'Model', 'Target', 'Output', 'Achievement %', 'QC Checked', 'Good', 'Defect', 'Critical', 'Major', 'Minor', 'Defect Rate %', 'Defect Area', 'Jenis Defect'];
+	  const headers = ['Tanggal', 'Line', 'Model ID', 'Label/Week', 'Model', 'Target', 'Output', 'Achievement', 'QC Checked', 'Good', 'Total Defect', 'Critical', 'Major', 'Minor', 'Defect Rate', 'Defect Area', 'Jenis Defect'];
   summarySheet.getRow(7).values = headers;
   summarySheet.getRow(7).eachCell((cell) => {
     cell.style = headerStyle;
@@ -3295,7 +3295,7 @@ async function generateStyledDateReportExcel(data, date) {
     
 	    lineSheet.mergeCells(`A${currentRow}:H${currentRow}`);
     const lineTitle = lineSheet.getCell(`A${currentRow}`);
-    lineTitle.value = `PRODUCTION DETAIL - ${lineName} - ${date}`;
+	    lineTitle.value = `DETAIL LAPORAN PRODUKSI DAN QC - ${lineName} - ${date}`;
     lineTitle.style = titleStyle;
     currentRow += 2;
 
@@ -3342,7 +3342,7 @@ async function generateStyledDateReportExcel(data, date) {
       lineSheet.getCell(`B${currentRow}`).value = (model.defectRatePercentage || 0) + '%';
       currentRow += 2;
       
-	      const hourlyHeaders = ['Jam', 'Target Manual', 'Output', 'Selisih', 'Defect', 'QC Checked', 'Good', 'Defect Rate %'];
+	      const hourlyHeaders = ['Jam', 'Target Manual', 'Output', 'Selisih', 'Total Defect', 'QC Checked', 'Good', 'Defect Rate'];
       lineSheet.getRow(currentRow).values = hourlyHeaders;
       lineSheet.getRow(currentRow).eachCell((cell) => {
         cell.style = headerStyle;
@@ -3466,10 +3466,10 @@ async function generateStyledDateReportExcel(data, date) {
   
   performanceSheet.mergeCells('A1:E1');
   const performanceTitle = performanceSheet.getCell('A1');
-  performanceTitle.value = 'PERFORMANCE OVERVIEW - ' + date;
+	  performanceTitle.value = 'RINGKASAN PERFORMA - ' + date;
   performanceTitle.style = titleStyle;
   
-  const performanceHeaders = ['Line', 'Total Target', 'Total Output', 'Achievement %', 'Overall Status'];
+	  const performanceHeaders = ['Line', 'Total Target', 'Total Output', 'Achievement', 'Status'];
   performanceSheet.getRow(3).values = performanceHeaders;
   performanceSheet.getRow(3).eachCell((cell) => {
     cell.style = headerStyle;
@@ -3488,7 +3488,7 @@ async function generateStyledDateReportExcel(data, date) {
     });
     
     const achievement = lineTarget > 0 ? ((lineOutput / lineTarget) * 100).toFixed(2) + '%' : '0%';
-    const status = lineOutput >= lineTarget ? 'ON TARGET' : 'BELOW TARGET';
+	    const status = lineOutput >= lineTarget ? 'SESUAI TARGET' : 'DI BAWAH TARGET';
     
     const row = performanceSheet.getRow(perfRowIndex);
     row.values = [
@@ -3510,7 +3510,7 @@ async function generateStyledDateReportExcel(data, date) {
     }
     
     const statusCell = row.getCell(5);
-    if (status === 'ON TARGET') {
+	    if (status === 'SESUAI TARGET') {
       statusCell.font = { color: { argb: '00B050' }, bold: true };
       statusCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'C6EFCE' } };
     } else {
@@ -3528,7 +3528,7 @@ async function generateStyledDateReportExcel(data, date) {
   });
   
   const totalAchievementPerf = totalTarget > 0 ? ((totalOutput / totalTarget) * 100).toFixed(2) + '%' : '0%';
-  const overallStatus = totalOutput >= totalTarget ? 'ON TARGET' : 'BELOW TARGET';
+	  const overallStatus = totalOutput >= totalTarget ? 'SESUAI TARGET' : 'DI BAWAH TARGET';
   
   const totalPerfRow = performanceSheet.getRow(perfRowIndex);
   totalPerfRow.values = [
@@ -4261,7 +4261,7 @@ async function generateStyledExcelData(modelData, lineName, modelId) {
   
 	  summarySheet.mergeCells('A1:M1');
   const titleCell = summarySheet.getCell('A1');
-  titleCell.value = 'PRODUCTION REPORT SUMMARY';
+	  titleCell.value = 'DETAIL LAPORAN PRODUKSI DAN QC';
   titleCell.style = titleStyle;
   
   summarySheet.getCell('A3').value = 'Line';
@@ -4272,10 +4272,10 @@ async function generateStyledExcelData(modelData, lineName, modelId) {
   summarySheet.getCell('B5').value = modelData.labelWeek || '';
   summarySheet.getCell('A6').value = 'Model';
   summarySheet.getCell('B6').value = modelData.model || '';
-  summarySheet.getCell('A7').value = 'Date';
+	  summarySheet.getCell('A7').value = 'Tanggal';
   summarySheet.getCell('B7').value = modelData.date || '';
   
-	  const headers = ['Metric', 'Value', 'Target per Hour', 'Output/Hari', 'QC Checking', 'Good', 'Actual Defect', 'Critical', 'Major', 'Minor', 'Defect Area', 'Jenis Defect', 'Defect Rate (%)'];
+	  const headers = ['Metrik', 'Nilai', 'Target per Hour', 'Output/Hari', 'QC Checked', 'Good', 'Total Defect', 'Critical', 'Major', 'Minor', 'Defect Area', 'Jenis Defect', 'Defect Rate'];
 	  summarySheet.getRow(9).values = headers;
   summarySheet.getRow(9).eachCell((cell) => {
     cell.style = headerStyle;
@@ -4286,7 +4286,7 @@ async function generateStyledExcelData(modelData, lineName, modelId) {
 	  
 	  const dataRow1 = summarySheet.getRow(10);
 	  dataRow1.values = [
-	    'Production Data',
+	    'Data Produksi',
     modelData.target || 0,
     modelData.targetPerHour || 0,
 	    modelData.outputDay || 0,
@@ -4308,7 +4308,7 @@ async function generateStyledExcelData(modelData, lineName, modelId) {
   
   const dataRow2 = summarySheet.getRow(11);
   dataRow2.values = [
-    'Performance',
+	    'Performa',
     achievement,
     '',
     '',
@@ -4349,7 +4349,7 @@ async function generateStyledExcelData(modelData, lineName, modelId) {
   hourlyTitle.value = 'HOURLY PRODUCTION DATA';
   hourlyTitle.style = titleStyle;
   
-	  const hourlyHeaders = ['Jam', 'Target Manual', 'Output', 'Selisih (Output - Target)', 'Defect', 'Jenis Defect', 'Defect Area', 'QC Checked', 'Good', 'Defect Rate (%)'];
+	  const hourlyHeaders = ['Jam', 'Target Manual', 'Output', 'Selisih (Output - Target)', 'Total Defect', 'Jenis Defect', 'Defect Area', 'QC Checked', 'Good', 'Defect Rate'];
   hourlySheet.getRow(3).values = hourlyHeaders;
   hourlySheet.getRow(3).eachCell((cell) => {
     cell.style = headerStyle;

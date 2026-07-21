@@ -149,8 +149,9 @@ test('Excel summary matches the complete daily report structure', async () => {
 
   assert.deepEqual(
     summary.getRow(7).values.slice(1),
-    ['Tanggal', 'Line', 'Model ID', 'Label/Week', 'Model', 'Target', 'Output', 'Achievement %', 'QC Checked', 'Good', 'Defect', 'Critical', 'Major', 'Minor', 'Defect Rate %', 'Defect Area', 'Jenis Defect']
+    ['Tanggal', 'Line', 'Model ID', 'Label/Week', 'Model', 'Target', 'Output', 'Achievement', 'QC Checked', 'Good', 'Total Defect', 'Critical', 'Major', 'Minor', 'Defect Rate', 'Defect Area', 'Jenis Defect']
   );
+  assert.equal(summary.getCell('A1').value, 'LAPORAN PRODUKSI DAN QC - 2026-07-21');
   assert.equal(summary.getRow(8).getCell(9).value, 50);
   assert.equal(summary.getRow(8).getCell(10).value, 48);
   assert.equal(summary.getRow(8).getCell(16).value, 'Body (1), Head (1)');

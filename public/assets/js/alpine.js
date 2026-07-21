@@ -1122,29 +1122,15 @@ function dashboard() {
 	        },
 
         getCurrentProductionHourIndex() {
-            const minutes = this.productionClockMinute ?? this.getCurrentProductionMinute();
+            const minutes = this.getCurrentProductionMinute();
             const hours = this.lineDetail.hourly_data || [];
-            const productionHours = hours
-                .map((hour, index) => ({ hour, index }))
-                .filter(({ hour }) => (parseInt(hour.targetManual) || 0) > 0);
-
-            const activeHour = productionHours.find(({ hour }) => {
+            return hours.findIndex(hour => {
                 const match = String(hour.hour || '').match(/^(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})/);
                 if (!match) return false;
                 const start = Number(match[1]) * 60 + Number(match[2]);
                 const end = Number(match[3]) * 60 + Number(match[4]);
                 return minutes >= start && minutes < end;
             });
-            if (activeHour) return activeHour.index;
-
-            const previousHour = [...productionHours].reverse().find(({ hour }) => {
-                const match = String(hour.hour || '').match(/^(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})/);
-                if (!match) return false;
-                const end = Number(match[3]) * 60 + Number(match[4]);
-                return minutes >= end;
-            });
-
-            return previousHour?.index ?? productionHours[0]?.index ?? -1;
         },
 
         selectCurrentQcHour() {

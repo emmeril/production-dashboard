@@ -876,9 +876,11 @@
 	                },
 
 	                isActiveHour(hour) {
-	                    const activeHour = this.getActiveHourData();
-	                    return activeHour && activeHour.hour === hour.hour;
-	                },
+                    const range = this.parseHourRange(hour?.hour);
+                    if (!range) return false;
+                    const currentTime = this.getCurrentTimeInMinutes();
+                    return currentTime >= range.start && currentTime < range.end;
+                },
 
 	                hourlyOutputClass(hour) {
 	                    return (parseInt(hour.output) || 0) >= (parseInt(hour.targetManual) || 0) ? 'output-ok' : 'output-ng';

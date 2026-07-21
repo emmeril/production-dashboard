@@ -723,18 +723,25 @@
                     }
 
                     const currentTime = this.getCurrentTimeInMinutes();
-                    for (const hour of this.lineData.data.hourly_data) {
+                    const productionHours = this.lineData.data.hourly_data.filter(hour => {
                         const range = this.parseHourRange(hour.hour);
-                        if (!range) {
-                            continue;
-                        }
+                        return range && (parseInt(hour.targetManual) || 0) > 0;
+                    });
 
+                    for (const hour of productionHours) {
+                        const range = this.parseHourRange(hour.hour);
                         if (currentTime >= range.start && currentTime < range.end) {
                             return hour;
                         }
                     }
 
-                    return null;
+                    // During breaks or after working hours, keep the latest production result visible.
+                    const previousHour = [...productionHours].reverse().find(hour => {
+                        const range = this.parseHourRange(hour.hour);
+                        return range && currentTime >= range.end;
+                    });
+
+                    return previousHour || productionHours[0] || null;
                 },
 
                 reduceHoursUntilCurrent(reducer, initialValue) {

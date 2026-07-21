@@ -274,10 +274,19 @@
 	                                </div>
 		                            </div>
 		                            <div class="p-4">
+		                                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+		                                    <select x-model="dashboardChartDateRange" @change="resetDashboardChartPage()" class="rounded-md border-gray-300 text-sm"><option value="7">7 hari terakhir</option><option value="14">14 hari terakhir</option><option value="30">30 hari terakhir</option><option value="all">Semua tanggal</option></select>
+		                                    <select x-model="dashboardChartLine" @change="resetDashboardChartPage()" class="rounded-md border-gray-300 text-sm"><option value="">Semua line</option><template x-for="lineName in dashboardChartAvailableLines" :key="lineName"><option :value="lineName" x-text="lineName"></option></template></select>
+		                                    <select x-model.number="dashboardChartLinesPerPage" @change="resetDashboardChartPage()" class="rounded-md border-gray-300 text-sm"><option :value="2">2 line / halaman</option><option :value="5">5 line / halaman</option><option :value="10">10 line / halaman</option></select>
+		                                </div>
 		                                <div x-show="dashboardChartData.length > 0" class="dashboard-chart-frame">
 		                                    <canvas x-ref="dashboardChartCanvas"></canvas>
 		                                </div>
 		                                <div x-show="dashboardChartData.length === 0" class="px-4 py-10 text-center text-sm text-gray-500">Belum ada data harian untuk chart.</div>
+		                                <div x-show="dashboardChartFilteredLines.length > 0" class="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-gray-600">
+		                                    <span x-text="`Menampilkan ${dashboardChartFilteredLines.length} line`"></span>
+		                                    <div class="flex items-center gap-2"><button @click="changeDashboardChartPage(dashboardChartCurrentPage - 1)" :disabled="dashboardChartCurrentPage === 1" class="pagination-btn">Sebelumnya</button><span x-text="`Halaman ${dashboardChartCurrentPage} dari ${dashboardChartTotalPages}`"></span><button @click="changeDashboardChartPage(dashboardChartCurrentPage + 1)" :disabled="dashboardChartCurrentPage === dashboardChartTotalPages" class="pagination-btn">Berikutnya</button></div>
+		                                </div>
 		                            </div>
 	                        </div>
 

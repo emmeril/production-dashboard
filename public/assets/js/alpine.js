@@ -30,6 +30,10 @@ function dashboard() {
             topDefectTypes: []
         },
         dashboardChart: null,
+        dashboardChartDateRange: '7',
+        dashboardChartLine: '',
+        dashboardChartLinesPerPage: 5,
+        dashboardChartCurrentPage: 1,
         users: [],
         dateReport: [],
         reportDate: new Date().toISOString().split('T')[0],
@@ -1784,6 +1788,16 @@ function dashboard() {
             return `${year}-${month}-${day}`;
         },
 
+        resetDashboardChartPage() {
+            this.dashboardChartCurrentPage = 1;
+            this.$nextTick(() => this.renderDashboardChart());
+        },
+
+        changeDashboardChartPage(page) {
+            this.dashboardChartCurrentPage = Math.max(1, Math.min(page, this.dashboardChartTotalPages));
+            this.$nextTick(() => this.renderDashboardChart());
+        },
+
         renderDashboardChart() {
             if (!this.$refs.dashboardChartCanvas || typeof Chart === 'undefined') return;
 
@@ -2072,7 +2086,7 @@ function dashboard() {
 	            };
         },
 
-        get dashboardChartData() {
+        get allDashboardChartData() {
             const groupedByLineDateModel = new Map();
 
             this.selectedDashboardLineData.forEach(item => {
@@ -2101,6 +2115,42 @@ function dashboard() {
                 .sort((a, b) => new Date(a.date) - new Date(b.date)
                     || a.lineName.localeCompare(b.lineName, undefined, { numeric: true })
                     || a.model.localeCompare(b.model));
+        },
+
+        get dashboardChartAvailableLines() {
+            return [...new Set(this.allDashboardChartData.map(item => item.lineName))]
+                .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+        },
+
+        get filteredDashboardChartData() {
+            let data = this.allDashboardChartData;
+            if (this.dashboardChartDateRange !== 'all') {
+                const dates = data.map(item => item.date).filter(Boolean).sort();
+                const latest = dates[dates.length - 1];
+                if (latest) {
+                    const cutoff = new Date(`${latest}T00:00:00`);
+                    cutoff.setDate(cutoff.getDate() - Number(this.dashboardChartDateRange) + 1);
+                    data = data.filter(item => new Date(`${item.date}T00:00:00`) >= cutoff);
+                }
+            }
+            return this.dashboardChartLine
+                ? data.filter(item => item.lineName === this.dashboardChartLine)
+                : data;
+        },
+
+        get dashboardChartFilteredLines() {
+            return [...new Set(this.filteredDashboardChartData.map(item => item.lineName))]
+                .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+        },
+
+        get dashboardChartTotalPages() {
+            return Math.max(1, Math.ceil(this.dashboardChartFilteredLines.length / Number(this.dashboardChartLinesPerPage)));
+        },
+
+        get dashboardChartData() {
+            const start = (this.dashboardChartCurrentPage - 1) * Number(this.dashboardChartLinesPerPage);
+            const visible = new Set(this.dashboardChartFilteredLines.slice(start, start + Number(this.dashboardChartLinesPerPage)));
+            return this.filteredDashboardChartData.filter(item => visible.has(item.lineName));
         },
 
 	        async deleteProductionHour(lineName, modelId, hourIndex) {

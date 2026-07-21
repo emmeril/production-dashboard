@@ -45,12 +45,19 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('.'));
 
+const sessionSecret = process.env.SESSION_SECRET;
+if (!sessionSecret) {
+  console.warn('SESSION_SECRET is not set; using an ephemeral session secret. Set SESSION_SECRET in production.');
+}
+
 app.use(session({
-  secret: 'production-board-secret-key-2024',
+  secret: sessionSecret || crypto.randomBytes(32).toString('hex'),
   resave: false,
   saveUninitialized: false,
-  cookie: { 
+  cookie: {
     secure: false,
+    httpOnly: true,
+    sameSite: 'lax',
     maxAge: 24 * 60 * 60 * 1000
   }
 }));
@@ -962,6 +969,18 @@ function readHistoryData(filename) {
   }
 }
 
+function isSafeBackupFilename(filename) {
+  return typeof filename === 'string'
+    && path.basename(filename) === filename
+    && /^(?:data_|backup_pre_reset_)[A-Za-z0-9_.-]+\.json$/.test(filename);
+}
+
+function isSafeHistoryFilename(filename) {
+  return typeof filename === 'string'
+    && path.basename(filename) === filename
+    && /^data_[A-Za-z0-9_.-]+\.json$/.test(filename);
+}
+
 function requireLogin(req, res, next) {
   if (req.session.user) {
     next();
@@ -1184,7 +1203,7 @@ app.get('/api/backup-history', requireLogin, requireAdmin, (req, res) => {
 app.post('/api/restore-backup/:filename', requireLogin, requireAdmin, (req, res) => {
   const { filename } = req.params;
   
-  if (!filename.endsWith('.json')) {
+  if (!isSafeBackupFilename(filename)) {
     return res.status(400).json({ error: 'Invalid backup filename' });
   }
 
@@ -1251,7 +1270,7 @@ app.post('/api/restore-backup/:filename', requireLogin, requireAdmin, (req, res)
 app.get('/api/export-backup/:filename', requireLogin, requireAdmin, async (req, res) => {
   const { filename } = req.params;
   
-  if (!filename.endsWith('.json')) {
+  if (!isSafeBackupFilename(filename)) {
     return res.status(400).json({ error: 'Invalid backup filename' });
   }
 
@@ -1873,8 +1892,11 @@ app.get('/api/dashboard-summary', requireLogin, requireAdminOrAdminOperator, aut
 
 app.post('/api/login', (req, res) => {
   const { username, password } = req.body;
+  if (typeof username !== 'string' || typeof password !== 'string' || !username.trim() || !password) {
+    return res.status(400).json({ error: 'Username and password are required' });
+  }
   const usersData = readUsersData();
-  const user = usersData.users.find(u => u.username === username);
+  const user = usersData.users.find(u => u.username === username.trim());
 
   if (user && verifyPassword(password, user.password)) {
     const normalizedRole = user.role === 'admin_operator' ? 'admin_operator_sewing' : user.role;
@@ -2309,7 +2331,7 @@ app.get('/api/history/files', requireLogin, requireAdmin, (req, res) => {
 app.get('/api/history/:filename', requireLogin, requireAdmin, (req, res) => {
   const { filename } = req.params;
   
-  if (!filename.startsWith('data_') || !filename.endsWith('.json')) {
+  if (!isSafeHistoryFilename(filename)) {
     return res.status(400).json({ error: 'Invalid filename' });
   }
 
@@ -2328,7 +2350,7 @@ app.get('/api/history/:filename', requireLogin, requireAdmin, (req, res) => {
 app.get('/api/history/:filename/export', requireLogin, requireAdmin, (req, res) => {
   const { filename } = req.params;
   
-  if (!filename.startsWith('data_') || !filename.endsWith('.json')) {
+  if (!isSafeHistoryFilename(filename)) {
     return res.status(400).json({ error: 'Invalid filename' });
   }
 
@@ -3924,8 +3946,13 @@ app.post('/api/users', requireLogin, requireAdmin, (req, res) => {
   const allowedRoles = ['admin', 'admin_operator_sewing', 'admin_operator_qc', 'operator'];
 
   if (!allowedRoles.includes(role)) return res.status(400).json({ error: 'Role tidak valid' });
+  if (typeof username !== 'string' || !username.trim()) return res.status(400).json({ error: 'Username is required' });
+  if (typeof password !== 'string' || !password) return res.status(400).json({ error: 'Password is required' });
+  if (typeof name !== 'string' || !name.trim()) return res.status(400).json({ error: 'Name is required' });
 
-  if (usersData.users.find(u => u.username === username)) {
+  const normalizedUsername = username.trim();
+
+  if (usersData.users.find(u => u.username === normalizedUsername)) {
     return res.status(400).json({ error: 'Username already exists' });
   }
 
@@ -3933,9 +3960,9 @@ app.post('/api/users', requireLogin, requireAdmin, (req, res) => {
 
   const newUser = {
     id: newId,
-    username,
+    username: normalizedUsername,
     password: hashPassword(password),
-    name,
+    name: name.trim(),
     line,
     role
   };
@@ -3958,20 +3985,24 @@ app.put('/api/users/:id', requireLogin, requireAdmin, (req, res) => {
   const allowedRoles = ['admin', 'admin_operator_sewing', 'admin_operator_qc', 'operator'];
 
   if (!allowedRoles.includes(role)) return res.status(400).json({ error: 'Role tidak valid' });
+  if (typeof username !== 'string' || !username.trim()) return res.status(400).json({ error: 'Username is required' });
+  if (typeof name !== 'string' || !name.trim()) return res.status(400).json({ error: 'Name is required' });
+
+  const normalizedUsername = username.trim();
 
   const userIndex = usersData.users.findIndex(u => u.id === userId);
   if (userIndex === -1) {
     return res.status(404).json({ error: 'User not found' });
   }
 
-  if (usersData.users.find(u => u.username === username && u.id !== userId)) {
+  if (usersData.users.find(u => u.username === normalizedUsername && u.id !== userId)) {
     return res.status(400).json({ error: 'Username already exists' });
   }
 
   usersData.users[userIndex] = {
     ...usersData.users[userIndex],
-    username,
-    name,
+    username: normalizedUsername,
+    name: name.trim(),
     line,
     role
   };

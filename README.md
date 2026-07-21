@@ -77,6 +77,12 @@ Di PowerShell:
 $env:PORT=4000; node server.js
 ```
 
+Untuk deployment, set juga `SESSION_SECRET` ke nilai acak yang panjang agar sesi login tetap aman dan konsisten setelah server restart:
+
+```powershell
+$env:SESSION_SECRET='ganti-dengan-random-secret-yang-panjang'; npm start
+```
+
 ## URL Penting
 
 | URL | Keterangan |

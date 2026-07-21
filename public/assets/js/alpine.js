@@ -627,6 +627,7 @@ function dashboard() {
                     if (!modelId && this.lineDetail.modelId) {
                         this.currentModelId = this.lineDetail.modelId;
                     }
+                    this.selectCurrentProductionHour();
                 } else {
                     console.error('Failed to load line detail');
                     this.showToast('Failed to load line detail', 'error');
@@ -1097,9 +1098,31 @@ function dashboard() {
 
 	        isProductionHourLocked(hour) {
 	            return this.currentUser.role === 'operator' && (
-	                Boolean(hour?.productionLocked) || this.isProductionHourTooEarly(hour)
+	                Boolean(hour?.productionLocked) ||
+                    this.isProductionBreakHour(hour) ||
+                    this.isOperatorProductionBreakTime() ||
+                    this.isProductionHourTooEarly(hour)
 	            );
 	        },
+
+        isProductionBreakHour(hour) {
+            return String(hour?.hour || '').trim() === '11:00 - 13:00';
+        },
+
+        isOperatorProductionBreakTime() {
+            if (this.currentUser.role !== 'operator') return false;
+            const currentMinutes = this.productionClockMinute ?? this.getCurrentProductionMinute();
+            return currentMinutes >= 11 * 60 && currentMinutes < 13 * 60;
+        },
+
+        selectedProductionLockMessage() {
+            const hour = this.lineDetail.hourly_data?.[this.inputForm.hourIndex];
+            if (this.isProductionBreakHour(hour) || this.isOperatorProductionBreakTime()) {
+                return 'Jam istirahat. Input produksi dibuka kembali pukul 13:00';
+            }
+            if (this.isProductionHourTooEarly(hour)) return 'Jam produksi ini belum dimulai';
+            return 'Data jam ini sudah terkunci';
+        },
 
 	        isProductionHourTooEarly(hour) {
 	            if (this.currentUser.role !== 'operator') return false;
@@ -1138,6 +1161,16 @@ function dashboard() {
             if (index >= 0) this.qcHourIndex = index;
         },
 
+        selectCurrentProductionHour() {
+            if (this.currentUser.role !== 'operator') return;
+            const index = this.getCurrentProductionHourIndex();
+            const hour = this.lineDetail.hourly_data?.[index];
+            if (index >= 0 && !this.isProductionBreakHour(hour)) {
+                this.inputForm.hourIndex = index;
+                this.syncInputFormFromSelectedHour();
+            }
+        },
+
 	        refreshProductionClock() {
 	            this.productionClockMinute = this.getCurrentProductionMinute();
 	        },
@@ -1157,9 +1190,11 @@ function dashboard() {
 
 	            if (this.isSelectedProductionHourLocked()) {
 	                const hour = this.lineDetail.hourly_data?.[this.inputForm.hourIndex];
-	                const message = this.isProductionHourTooEarly(hour)
-	                    ? 'Jam produksi ini belum dimulai. Silakan input saat jamnya sudah sesuai'
-	                    : 'Data produksi jam ini sudah disimpan dan tidak bisa diubah';
+	                const message = (this.isProductionBreakHour(hour) || this.isOperatorProductionBreakTime())
+                        ? 'Jam istirahat. Input produksi dibuka kembali pukul 13:00'
+	                    : this.isProductionHourTooEarly(hour)
+	                        ? 'Jam produksi ini belum dimulai. Silakan input saat jamnya sudah sesuai'
+	                        : 'Data produksi jam ini sudah disimpan dan tidak bisa diubah';
 	                this.showToast(message, 'error');
 	                return;
 	            }

@@ -1054,7 +1054,22 @@ function isOperatorProductionHourTooEarly(req, hour) {
   return getJakartaMinutesNow() < startMinutes;
 }
 
+function isProductionBreakHour(hour) {
+  return String(hour?.hour || '').trim() === '11:00 - 13:00';
+}
+
+function isOperatorProductionBreakTime(req) {
+  if (req.session.user?.role !== 'operator') return false;
+  const currentMinutes = getJakartaMinutesNow();
+  return currentMinutes >= 11 * 60 && currentMinutes < 13 * 60;
+}
+
 function rejectUnavailableOperatorProductionHour(req, res, hour) {
+  if (req.session.user?.role === 'operator' && (isProductionBreakHour(hour) || isOperatorProductionBreakTime(req))) {
+    res.status(403).json({ error: 'Jam istirahat. Input produksi dibuka kembali pukul 13:00' });
+    return true;
+  }
+
   if (isOperatorProductionLocked(req, hour)) {
     res.status(403).json({ error: 'Data produksi jam ini sudah disimpan dan tidak bisa diubah' });
     return true;

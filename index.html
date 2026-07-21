@@ -814,7 +814,7 @@
 	                                            <label for="hour-select" class="block text-sm font-medium text-gray-700 mb-2">Pilih Jam Produksi</label>
 	                                            <select id="hour-select" x-model="inputForm.hourIndex" @change="syncInputFormFromSelectedHour()" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md" required>
 	                                                <template x-for="(hour, index) in lineDetail.hourly_data" :key="index">
-	                                                    <option :value="index" x-text="hour.hour"></option>
+	                                                    <option :value="index" :disabled="currentUser.role === 'operator' && isProductionBreakHour(hour)" x-text="isProductionBreakHour(hour) ? `${hour.hour} (Istirahat)` : hour.hour"></option>
 	                                                </template>
 	                                            </select>
 	                                        </div>
@@ -840,7 +840,7 @@
 	                                    </div>
 
 	                                    <div class="min-h-5 text-right text-sm font-semibold text-gray-500 mb-2">
-	                                        <span x-show="isSelectedProductionHourLocked()" x-text="isProductionHourTooEarly(lineDetail.hourly_data[inputForm.hourIndex]) ? 'Jam produksi ini belum dimulai' : 'Data jam ini sudah terkunci'"></span>
+	                                        <span x-show="isSelectedProductionHourLocked()" x-text="selectedProductionLockMessage()"></span>
 	                                    </div>
 	                                    <div class="flex justify-end">
 	                                        <button type="submit" :disabled="isSelectedProductionHourLocked() || isSavingProduction || isWorkScheduleLocked()" class="schedule-action production-save-btn inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">

@@ -2,9 +2,12 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const {
+  buildDateReportRows,
   calculateDefectSeverityBreakdown,
   extractHistoryDate,
+  filterProductionDataByDate,
   generateModelId,
+  hasDateReportAccess,
   isValidDateInput,
   parseNonNegativeInteger,
   summarizeProductionSnapshotByLine
@@ -73,4 +76,66 @@ test('daily line summary separates critical, major, and minor defects', () => {
   assert.equal(summary.majorDefect, 1);
   assert.equal(summary.minorDefect, 1);
   assert.equal(breakdown.all.count, 3);
+});
+
+test('date report exposes the same complete production and QC fields for every viewer', () => {
+  const data = {
+    lines: {
+      'Line 1': {
+        models: {
+          model1: {
+            date: '2026-07-21',
+            labelWeek: 'W30',
+            model: 'Model A',
+            target: 100,
+            outputDay: 90,
+            actualDefect: 2,
+            qcChecking: 50,
+            defectRatePercentage: 4,
+            qcChecks: [
+              { result: 'defect', type: 'Open seam' },
+              { result: 'defect', type: 'Loose thread' }
+            ]
+          }
+        }
+      }
+    }
+  };
+
+  const [row] = buildDateReportRows(data, '2026-07-21');
+
+  assert.deepEqual(
+    Object.keys(row),
+    ['line', 'modelId', 'labelWeek', 'model', 'date', 'target', 'output', 'defect', 'criticalDefect', 'majorDefect', 'minorDefect', 'qcChecked', 'defectRate']
+  );
+  assert.equal(row.target, 100);
+  assert.equal(row.output, 90);
+  assert.equal(row.qcChecked, 50);
+  assert.equal(row.defect, 2);
+});
+
+test('date filtering keeps report exports scoped without mutating live data', () => {
+  const data = {
+    activeLine: 'Line 1',
+    lines: {
+      'Line 1': {
+        models: {
+          current: { date: '2026-07-21', outputDay: 10 },
+          historical: { date: '2026-07-20', outputDay: 20 }
+        }
+      }
+    }
+  };
+
+  const filtered = filterProductionDataByDate(data, '2026-07-21');
+
+  assert.deepEqual(Object.keys(filtered.lines['Line 1'].models), ['current']);
+  assert.deepEqual(Object.keys(data.lines['Line 1'].models), ['current', 'historical']);
+});
+
+test('report access allows admin roles and rejects operators', () => {
+  assert.equal(hasDateReportAccess({ role: 'admin' }), true);
+  assert.equal(hasDateReportAccess({ role: 'admin_operator_sewing' }), true);
+  assert.equal(hasDateReportAccess({ role: 'admin_operator_qc' }), true);
+  assert.equal(hasDateReportAccess({ role: 'operator' }), false);
 });

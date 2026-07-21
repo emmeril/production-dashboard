@@ -301,10 +301,13 @@ function dashboard() {
                 } else if (this.canManageDefectCategories()) {
                     this.navigation.push({ name: 'Kategori Defect', page: 'defect-categories', iconClass: 'fa-triangle-exclamation' });
 	                }
-	                this.navigation.push({ name: 'Report', page: 'report', iconClass: 'fa-chart-column' });
 	            } else {
 	                this.navigation = baseNav;
 	            }
+
+                if (this.canViewReport()) {
+                    this.navigation.push({ name: 'Report', page: 'report', iconClass: 'fa-chart-column' });
+                }
 	        },
 
 	        canViewDashboard() {
@@ -314,6 +317,10 @@ function dashboard() {
 	        isAdminOperator() {
 	            return ['admin_operator_sewing', 'admin_operator_qc'].includes(this.currentUser.role);
 	        },
+
+            canViewReport() {
+                return ['admin', 'admin_operator_sewing', 'admin_operator_qc'].includes(this.currentUser.role);
+            },
 
 	        canManageLines() {
 	            return ['admin', 'admin_operator_sewing'].includes(this.currentUser.role);
@@ -405,7 +412,7 @@ function dashboard() {
 	            }
 
             if (state.currentPage === 'report') {
-                return this.canViewDashboard();
+                return this.canViewReport();
             }
 
 	            if (state.currentPage === 'user-management' || state.currentPage === 'defect-categories' || state.currentPage === 'work-schedule-settings' || state.currentPage === 'public-display-settings' || state.currentPage === 'system-actions') {
@@ -1040,10 +1047,7 @@ function dashboard() {
                     const url = window.URL.createObjectURL(blob);
                     const a = document.createElement('a');
                     a.href = url;
-	                    const reportName = this.isSewingReportViewer()
-	                        ? 'Sewing_Report'
-	                        : (this.isQcReportViewer() ? 'QC_Report' : 'Production_Report');
-	                    a.download = `${reportName}_${this.reportDate}.xlsx`;
+	                    a.download = `Production_Report_${this.reportDate}.xlsx`;
                     document.body.appendChild(a);
                     a.click();
                     window.URL.revokeObjectURL(url);
@@ -1081,10 +1085,7 @@ function dashboard() {
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                const reportName = this.isSewingReportViewer()
-                    ? 'Sewing_Detail'
-                    : (this.isQcReportViewer() ? 'QC_Detail' : 'Production_QC_Detail');
-                a.download = `${reportName}_${line.line}_${line.modelId}_${this.reportDate}.xlsx`;
+                a.download = `Production_QC_Detail_${line.line}_${line.modelId}_${this.reportDate}.xlsx`;
                 document.body.appendChild(a);
                 a.click();
                 window.URL.revokeObjectURL(url);

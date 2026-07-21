@@ -21,8 +21,8 @@ Dashboard produksi berbasis Express untuk memantau output line, target per jam, 
 | Role | Akses |
 | --- | --- |
 | `admin` | Semua fitur, termasuk user, kategori defect, backup, delete line/model, input dan koreksi data. |
-| `admin_operator_sewing` | Dashboard, ringkasan line, management line/model, dan report sewing. |
-| `admin_operator_qc` | Dashboard, ringkasan line, report QC, koreksi hasil QC, dan pengelolaan kategori defect. |
+| `admin_operator_sewing` | Dashboard, ringkasan line, management line/model, serta report produksi dan QC lengkap. |
+| `admin_operator_qc` | Dashboard, ringkasan line, report produksi dan QC lengkap, koreksi hasil QC, dan pengelolaan kategori defect. |
 | `operator` | Ringkasan line dan input line miliknya. Tidak bisa melihat dashboard utama. Data produksi per jam terkunci setelah disimpan. |
 
 Default user saat inisialisasi ada di `server.js`:
@@ -115,7 +115,7 @@ Admin tetap bisa melakukan koreksi data bila diperlukan.
 
 ## Laporan dan Export Excel
 
-Laporan berdasarkan tanggal tersedia untuk `admin` dan `admin_operator`.
+Laporan berdasarkan tanggal tersedia untuk `admin`, `admin_operator_sewing`, dan `admin_operator_qc`. Ketiga role menggunakan tampilan report, data, dan template Excel lengkap yang sama. Role `operator` tidak memiliki akses report maupun export.
 
 Export Excel mencakup:
 

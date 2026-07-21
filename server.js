@@ -1072,6 +1072,11 @@ function hasAnyRole(user, allowedRoles) {
 }
 
 const ADMIN_OPERATOR_ROLES = ['admin_operator_sewing', 'admin_operator_qc'];
+const REPORT_VIEWER_ROLES = ['admin', ...ADMIN_OPERATOR_ROLES];
+
+function hasDateReportAccess(user) {
+  return hasAnyRole(user, REPORT_VIEWER_ROLES);
+}
 
 function requireAdmin(req, res, next) {
   if (hasAnyRole(req.session.user, ['admin'])) {
@@ -1098,7 +1103,7 @@ function requireLineManagementAccess(req, res, next) {
 }
 
 function requireDateReportAccess(req, res, next) {
-  if (hasAnyRole(req.session.user, ['admin', ...ADMIN_OPERATOR_ROLES])) {
+  if (hasDateReportAccess(req.session.user)) {
     next();
   } else {
     res.status(403).json({ error: 'Forbidden - Date report access required' });
@@ -1753,6 +1758,48 @@ function summarizeModelDefectCategories(model = {}) {
     types: formatCounter(typeCounts),
     areas: formatCounter(areaCounts)
   };
+}
+
+// Keep the browser report and every Excel export on the same dated dataset.
+function filterProductionDataByDate(data, date) {
+  const lines = {};
+
+  Object.entries(data?.lines || {}).forEach(([lineName, line]) => {
+    const models = Object.fromEntries(
+      Object.entries(line.models || {}).filter(([, model]) => model?.date === date)
+    );
+
+    if (Object.keys(models).length > 0) {
+      lines[lineName] = { ...line, models };
+    }
+  });
+
+  return { ...data, lines };
+}
+
+function buildDateReportRows(data, date) {
+  const filteredData = filterProductionDataByDate(data, date);
+
+  return Object.entries(filteredData.lines || {}).flatMap(([lineName, line]) =>
+    Object.entries(line.models || {}).map(([modelId, model]) => {
+      const defectBreakdown = calculateDefectSeverityBreakdown(model);
+      return {
+        line: lineName,
+        modelId,
+        labelWeek: model.labelWeek,
+        model: model.model,
+        date: model.date,
+        target: model.target || 0,
+        output: model.outputDay || 0,
+        defect: model.actualDefect || 0,
+        criticalDefect: defectBreakdown.critical.count,
+        majorDefect: defectBreakdown.major.count,
+        minorDefect: defectBreakdown.minor.count,
+        qcChecked: model.qcChecking || 0,
+        defectRate: model.defectRatePercentage || 0
+      };
+    })
+  );
 }
 
 function getQcCheckHourLabel(model = {}, check = {}) {
@@ -3027,57 +3074,10 @@ app.get('/api/date-report/:date', requireLogin, requireDateReportAccess, autoChe
       }
     }
     
-    const reportData = [];
-    Object.keys(data.lines).forEach(lineName => {
-      const line = data.lines[lineName];
-      Object.keys(line.models).forEach(modelId => {
-        const model = line.models[modelId];
-        
-        // Filter berdasarkan tanggal yang diminta
-        if (model.date === date) {
-          const defectBreakdown = calculateDefectSeverityBreakdown(model);
-          reportData.push({
-            line: lineName,
-            modelId: modelId,
-            labelWeek: model.labelWeek,
-            model: model.model,
-            date: model.date,
-            target: model.target || 0,
-            output: model.outputDay || 0,
-            defect: model.actualDefect || 0,
-            criticalDefect: defectBreakdown.critical.count,
-            majorDefect: defectBreakdown.major.count,
-            minorDefect: defectBreakdown.minor.count,
-            qcChecked: model.qcChecking || 0,
-            defectRate: model.defectRatePercentage || 0
-          });
-        }
-      });
-    });
+    const reportData = buildDateReportRows(data, date);
     
     console.log(`✅ Laporan tanggal ${date} berhasil dibuat. Jumlah data: ${reportData.length}`);
-    const role = req.session.user.role;
-    const scopedReportData = reportData.map(item => {
-      const common = {
-        line: item.line,
-        modelId: item.modelId,
-        labelWeek: item.labelWeek,
-        model: item.model,
-        date: item.date
-      };
-
-      if (role === 'admin_operator_sewing') {
-        return { ...common, target: item.target, output: item.output };
-      }
-
-      if (role === 'admin_operator_qc') {
-        return { ...common, defect: item.defect, criticalDefect: item.criticalDefect, majorDefect: item.majorDefect, minorDefect: item.minorDefect, qcChecked: item.qcChecked, defectRate: item.defectRate };
-      }
-
-      return item;
-    });
-
-    res.json(scopedReportData);
+    res.json(reportData);
   } catch (error) {
     console.error('❌ Error generating date report:', error);
     res.status(500).json({ error: 'Failed to generate date report: ' + error.message });
@@ -3693,39 +3693,11 @@ app.get('/api/export-date-report/:date', requireLogin, requireDateReportAccess, 
     } else {
       console.log(`ℹ️ Backup tidak ditemukan, menggunakan data.json untuk export tanggal: ${date}`);
       data = readProductionData();
-      
-      const filteredLines = {};
-      Object.keys(data.lines).forEach(lineName => {
-        const line = data.lines[lineName];
-        const filteredModels = {};
-        
-        Object.keys(line.models).forEach(modelId => {
-          const model = line.models[modelId];
-          if (model.date === date) {
-            filteredModels[modelId] = model;
-          }
-        });
-        
-        if (Object.keys(filteredModels).length > 0) {
-          filteredLines[lineName] = {
-            ...line,
-            models: filteredModels
-          };
-        }
-      });
-      
-      data.lines = filteredLines;
     }
     
-    const role = req.session.user.role;
-    const workbook = ADMIN_OPERATOR_ROLES.includes(role)
-      ? await generateScopedDateReportExcel(data, date, role)
-      : await generateStyledDateReportExcel(data, date);
-
-    const reportName = role === 'admin_operator_sewing'
-      ? 'Sewing_Report'
-      : role === 'admin_operator_qc' ? 'QC_Report' : 'Production_Report';
-    const downloadFilename = `${reportName}_${date}.xlsx`;
+    data = filterProductionDataByDate(data, date);
+    const workbook = await generateStyledDateReportExcel(data, date);
+    const downloadFilename = `Production_Report_${date}.xlsx`;
     res.setHeader('Content-Disposition', `attachment; filename="${downloadFilename}"`);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     
@@ -3755,16 +3727,10 @@ app.get('/api/export-date-report/:date/:lineName/:modelId', requireLogin, requir
       return res.status(404).json({ error: 'Detail line/model untuk tanggal tersebut tidak ditemukan' });
     }
 
-    const role = req.session.user.role;
-    const workbook = ADMIN_OPERATOR_ROLES.includes(role) || role === 'admin_operator'
-      ? await generateScopedLineReportExcel(modelData, lineName, modelId, role)
-      : await generateStyledExcelData(modelData, lineName, modelId);
+    const workbook = await generateStyledExcelData(modelData, lineName, modelId);
     const safeLineName = lineName.replace(/[^a-zA-Z0-9_-]/g, '_');
     const safeModelId = modelId.replace(/[^a-zA-Z0-9_-]/g, '_');
-    const reportName = role === 'admin_operator_sewing' || role === 'admin_operator'
-      ? 'Sewing_Detail'
-      : role === 'admin_operator_qc' ? 'QC_Detail' : 'Production_QC_Detail';
-    const fileName = `${reportName}_${safeLineName}_${safeModelId}_${date}.xlsx`;
+    const fileName = `Production_QC_Detail_${safeLineName}_${safeModelId}_${date}.xlsx`;
     res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     await workbook.xlsx.write(res);
@@ -4677,9 +4643,12 @@ if (require.main === module) {
 module.exports = {
   app,
   calculateDefectSeverityBreakdown,
+  buildDateReportRows,
   extractHistoryDate,
+  filterProductionDataByDate,
   generateModelId,
   getToday,
+  hasDateReportAccess,
   isValidDateInput,
   parseNonNegativeInteger,
   summarizeProductionSnapshotByLine

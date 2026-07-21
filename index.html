@@ -1505,18 +1505,29 @@
 		                            </form>
 		                        </div>
 
-			                        <div class="bg-white rounded-lg shadow overflow-hidden card-shadow">
+		                        <div class="bg-white rounded-lg shadow overflow-hidden card-shadow">
 		                            <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
-		                                <h3 class="text-lg leading-6 font-medium text-gray-900 flex items-center"><i class="fa-solid fa-link text-blue-600 mr-2"></i>Preview Link</h3>
-		                                <p class="mt-1 max-w-2xl text-sm text-gray-500">Gunakan link ini untuk test di browser display</p>
+		                                <h3 class="text-lg leading-6 font-medium text-gray-900 flex items-center"><i class="fa-solid fa-link text-blue-600 mr-2"></i>Daftar URL Public Display</h3>
+		                                <p class="mt-1 max-w-2xl text-sm text-gray-500">Pilih URL sesuai informasi defect yang ingin ditampilkan di browser display.</p>
 		                            </div>
-		                            <div class="p-4 space-y-3 text-sm">
-		                                <div class="rounded-md bg-gray-50 border border-gray-200 p-3 break-all" x-text="publicDisplayPreviewUrl('all')"></div>
-		                                <div class="flex flex-wrap gap-2">
-		                                    <a :href="publicDisplayPreviewUrl('all')" target="_blank" class="btn-action btn-action-primary"><i class="fa-solid fa-up-right-from-square"></i>Semua</a>
-		                                    <a :href="publicDisplayPreviewUrl('major')" target="_blank" class="btn-action btn-action-danger"><i class="fa-solid fa-up-right-from-square"></i>Major</a>
-		                                    <a :href="publicDisplayPreviewUrl('minor')" target="_blank" class="btn-action btn-action-neutral"><i class="fa-solid fa-up-right-from-square"></i>Minor</a>
-		                                </div>
+		                            <div class="divide-y divide-gray-200">
+		                                <template x-for="previewLink in publicDisplayPreviewLinks()" :key="previewLink.mode">
+		                                    <div class="p-4 sm:p-5">
+		                                        <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+		                                            <div class="min-w-0 flex-1">
+		                                                <div class="flex items-center gap-2">
+		                                                    <span class="font-semibold text-gray-900" x-text="previewLink.label"></span>
+		                                                    <span class="rounded-full px-2 py-0.5 text-xs font-medium" :class="previewLink.badgeClass" x-text="previewLink.badge"></span>
+		                                                </div>
+		                                                <p class="mt-1 text-sm text-gray-600" x-text="previewLink.description"></p>
+		                                                <a :href="previewLink.url" target="_blank" rel="noopener noreferrer" class="mt-2 block break-all text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline" x-text="previewLink.url"></a>
+		                                            </div>
+		                                            <a :href="previewLink.url" target="_blank" rel="noopener noreferrer" class="btn-action shrink-0" :class="previewLink.buttonClass">
+		                                                <i class="fa-solid fa-up-right-from-square"></i>Buka
+		                                            </a>
+		                                        </div>
+		                                    </div>
+		                                </template>
 		                            </div>
 		                        </div>
 		                    </div>

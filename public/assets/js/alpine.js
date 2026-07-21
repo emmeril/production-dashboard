@@ -1017,6 +1017,38 @@ function dashboard() {
 	            return `/public-display?line=${encodeURIComponent(lineName)}&defect=${defectMode}`;
 	        },
 
+	        publicDisplayPreviewLinks() {
+	            return [
+	                {
+	                    mode: 'all',
+	                    label: 'Semua Defect',
+	                    badge: 'Lengkap',
+	                    description: 'Menampilkan data produksi dengan seluruh kategori defect.',
+	                    url: this.publicDisplayPreviewUrl('all'),
+	                    badgeClass: 'bg-blue-100 text-blue-700',
+	                    buttonClass: 'btn-action-primary'
+	                },
+	                {
+	                    mode: 'major',
+	                    label: 'Defect Major',
+	                    badge: 'Major',
+	                    description: 'Menampilkan data produksi dengan defect kategori major saja.',
+	                    url: this.publicDisplayPreviewUrl('major'),
+	                    badgeClass: 'bg-red-100 text-red-700',
+	                    buttonClass: 'btn-action-danger'
+	                },
+	                {
+	                    mode: 'minor',
+	                    label: 'Defect Minor',
+	                    badge: 'Minor',
+	                    description: 'Menampilkan data produksi dengan defect kategori minor saja.',
+	                    url: this.publicDisplayPreviewUrl('minor'),
+	                    badgeClass: 'bg-gray-100 text-gray-700',
+	                    buttonClass: 'btn-action-neutral'
+	                }
+	            ];
+	        },
+
 	        // Date-based report methods
 	        async loadDateReport() {
             if (!this.reportDate) {

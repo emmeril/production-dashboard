@@ -1029,12 +1029,21 @@ function dashboard() {
 	                    buttonClass: 'btn-action-primary'
 	                },
 	                {
+	                    mode: 'critical',
+	                    label: 'Defect Critical',
+	                    badge: 'Critical',
+	                    description: 'Menampilkan data produksi dengan defect kategori critical saja.',
+	                    url: this.publicDisplayPreviewUrl('critical'),
+	                    badgeClass: 'bg-red-100 text-red-800',
+	                    buttonClass: 'btn-action-danger'
+	                },
+	                {
 	                    mode: 'major',
 	                    label: 'Defect Major',
 	                    badge: 'Major',
 	                    description: 'Menampilkan data produksi dengan defect kategori major saja.',
 	                    url: this.publicDisplayPreviewUrl('major'),
-	                    badgeClass: 'bg-red-100 text-red-700',
+	                    badgeClass: 'bg-orange-100 text-orange-700',
 	                    buttonClass: 'btn-action-danger'
 	                },
 	                {

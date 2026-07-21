@@ -32,8 +32,10 @@ function dashboard() {
         dashboardChart: null,
         dashboardChartDateRange: '7',
         dashboardChartLine: '',
-        dashboardChartLinesPerPage: 5,
         dashboardChartCurrentPage: 1,
+        dashboardChartAutoPlay: true,
+        dashboardChartAutoPlayInterval: 6000,
+        dashboardChartAutoPlayTimer: null,
         users: [],
         dateReport: [],
         reportDate: new Date().toISOString().split('T')[0],
@@ -253,6 +255,7 @@ function dashboard() {
             } catch (error) {
                 console.error('Logout error:', error);
             } finally {
+                this.stopDashboardChartAutoplay();
                 this.isAuthenticated = false;
                 this.currentUser = {};
                 this.currentPage = 'dashboard';
@@ -455,6 +458,9 @@ function dashboard() {
 
 	            this.currentPage = page;
             this.savePageState();
+            if (page !== 'dashboard') {
+                this.stopDashboardChartAutoplay();
+            }
             if (page === 'dashboard' || page === 'line-summary') {
                 this.loadDashboardData();
             }
@@ -693,7 +699,13 @@ function dashboard() {
                 topDefectAreas: dashboardSummary.topDefectAreas || [],
                 topDefectTypes: dashboardSummary.topDefectTypes || []
             };
-            this.$nextTick(() => this.renderDashboardChart());
+            this.$nextTick(() => {
+                if (this.dashboardChartCurrentPage > this.dashboardChartTotalPages) {
+                    this.dashboardChartCurrentPage = 1;
+                }
+                this.renderDashboardChart();
+                this.startDashboardChartAutoplay();
+            });
         },
 
         async loadAdminData() {
@@ -1778,12 +1790,49 @@ function dashboard() {
 
         resetDashboardChartPage() {
             this.dashboardChartCurrentPage = 1;
-            this.$nextTick(() => this.renderDashboardChart());
+            this.$nextTick(() => {
+                this.renderDashboardChart();
+                this.startDashboardChartAutoplay();
+            });
         },
 
-        changeDashboardChartPage(page) {
+        changeDashboardChartPage(page, restartAutoplay = false) {
             this.dashboardChartCurrentPage = Math.max(1, Math.min(page, this.dashboardChartTotalPages));
             this.$nextTick(() => this.renderDashboardChart());
+            if (restartAutoplay) this.startDashboardChartAutoplay();
+        },
+
+        startDashboardChartAutoplay() {
+            this.stopDashboardChartAutoplay();
+            if (!this.dashboardChartAutoPlay || this.currentPage !== 'dashboard' || this.dashboardChartTotalPages <= 1) return;
+
+            this.dashboardChartAutoPlayTimer = setInterval(() => {
+                if (this.currentPage !== 'dashboard' || !this.dashboardChartAutoPlay || this.dashboardChartTotalPages <= 1) {
+                    this.stopDashboardChartAutoplay();
+                    return;
+                }
+
+                const nextPage = this.dashboardChartCurrentPage >= this.dashboardChartTotalPages
+                    ? 1
+                    : this.dashboardChartCurrentPage + 1;
+                this.changeDashboardChartPage(nextPage);
+            }, this.dashboardChartAutoPlayInterval);
+        },
+
+        stopDashboardChartAutoplay() {
+            if (this.dashboardChartAutoPlayTimer) {
+                clearInterval(this.dashboardChartAutoPlayTimer);
+                this.dashboardChartAutoPlayTimer = null;
+            }
+        },
+
+        toggleDashboardChartAutoplay() {
+            this.dashboardChartAutoPlay = !this.dashboardChartAutoPlay;
+            if (this.dashboardChartAutoPlay) {
+                this.startDashboardChartAutoplay();
+            } else {
+                this.stopDashboardChartAutoplay();
+            }
         },
 
         renderDashboardChart() {
@@ -2133,13 +2182,14 @@ function dashboard() {
         },
 
         get dashboardChartTotalPages() {
-            return Math.max(1, Math.ceil(this.dashboardChartFilteredLines.length / Number(this.dashboardChartLinesPerPage)));
+            return Math.max(1, this.dashboardChartFilteredLines.length);
         },
 
         get dashboardChartData() {
-            const start = (this.dashboardChartCurrentPage - 1) * Number(this.dashboardChartLinesPerPage);
-            const visible = new Set(this.dashboardChartFilteredLines.slice(start, start + Number(this.dashboardChartLinesPerPage)));
-            return this.filteredDashboardChartData.filter(item => visible.has(item.lineName));
+            const visibleLine = this.dashboardChartFilteredLines[this.dashboardChartCurrentPage - 1];
+            return visibleLine
+                ? this.filteredDashboardChartData.filter(item => item.lineName === visibleLine)
+                : [];
         },
 
 	        async deleteProductionHour(lineName, modelId, hourIndex) {

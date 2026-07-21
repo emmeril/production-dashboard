@@ -264,7 +264,7 @@
 	                                <div class="flex flex-wrap items-center justify-between gap-3">
 	                                    <div>
 	                                        <h3 class="text-lg leading-6 font-medium text-gray-900 flex items-center"><i class="fa-solid fa-chart-simple text-blue-600 mr-2"></i>Chart Akumulasi Data Tiap Hari</h3>
-                                        <p class="mt-1 max-w-2xl text-sm text-gray-500">Data harian untuk line dan model yang aktif di Management Line</p>
+	                                        <p class="mt-1 max-w-2xl text-sm text-gray-500">Data harian ditampilkan per line dan berpindah otomatis seperti slideshow</p>
 	                                    </div>
 	                                    <div class="chart-legend">
 	                                        <span><span class="legend-dot chart-bar-target"></span>Target</span>
@@ -277,15 +277,18 @@
 		                                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
 		                                    <select x-model="dashboardChartDateRange" @change="resetDashboardChartPage()" class="rounded-md border-gray-300 text-sm"><option value="7">7 hari terakhir</option><option value="14">14 hari terakhir</option><option value="30">30 hari terakhir</option><option value="all">Semua tanggal</option></select>
 		                                    <select x-model="dashboardChartLine" @change="resetDashboardChartPage()" class="rounded-md border-gray-300 text-sm"><option value="">Semua line</option><template x-for="lineName in dashboardChartAvailableLines" :key="lineName"><option :value="lineName" x-text="lineName"></option></template></select>
-		                                    <select x-model.number="dashboardChartLinesPerPage" @change="resetDashboardChartPage()" class="rounded-md border-gray-300 text-sm"><option :value="2">2 line / halaman</option><option :value="5">5 line / halaman</option><option :value="10">10 line / halaman</option></select>
+		                                    <button type="button" @click="toggleDashboardChartAutoplay()" :disabled="dashboardChartTotalPages <= 1" class="dashboard-chart-autoplay-btn" :class="dashboardChartAutoPlay ? 'is-playing' : 'is-paused'">
+		                                        <i class="fa-solid" :class="dashboardChartAutoPlay ? 'fa-pause' : 'fa-play'"></i>
+		                                        <span x-text="dashboardChartTotalPages <= 1 ? 'Hanya satu line' : (dashboardChartAutoPlay ? 'Jeda slideshow' : 'Lanjutkan slideshow')"></span>
+		                                    </button>
 		                                </div>
-		                                <div x-show="dashboardChartData.length > 0" class="dashboard-chart-frame">
+		                                <div x-show="dashboardChartData.length > 0" class="dashboard-chart-frame" @mouseenter="stopDashboardChartAutoplay()" @mouseleave="startDashboardChartAutoplay()">
 		                                    <canvas x-ref="dashboardChartCanvas"></canvas>
 		                                </div>
 		                                <div x-show="dashboardChartData.length === 0" class="px-4 py-10 text-center text-sm text-gray-500">Belum ada data harian untuk chart.</div>
 		                                <div x-show="dashboardChartFilteredLines.length > 0" class="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-gray-600">
-		                                    <span x-text="`Menampilkan ${dashboardChartFilteredLines.length} line`"></span>
-		                                    <div class="flex items-center gap-2"><button @click="changeDashboardChartPage(dashboardChartCurrentPage - 1)" :disabled="dashboardChartCurrentPage === 1" class="pagination-btn">Sebelumnya</button><span x-text="`Halaman ${dashboardChartCurrentPage} dari ${dashboardChartTotalPages}`"></span><button @click="changeDashboardChartPage(dashboardChartCurrentPage + 1)" :disabled="dashboardChartCurrentPage === dashboardChartTotalPages" class="pagination-btn">Berikutnya</button></div>
+		                                    <span class="dashboard-chart-current-line"><i class="fa-solid fa-industry"></i><span x-text="dashboardChartFilteredLines[dashboardChartCurrentPage - 1] || '-' "></span></span>
+		                                    <div class="flex items-center gap-2"><button @click="changeDashboardChartPage(dashboardChartCurrentPage - 1, true)" :disabled="dashboardChartCurrentPage === 1" class="pagination-btn">Sebelumnya</button><span x-text="`Line ${dashboardChartCurrentPage} dari ${dashboardChartTotalPages}`"></span><button @click="changeDashboardChartPage(dashboardChartCurrentPage + 1, true)" :disabled="dashboardChartCurrentPage === dashboardChartTotalPages" class="pagination-btn">Berikutnya</button></div>
 		                                </div>
 		                            </div>
 	                        </div>

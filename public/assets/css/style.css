@@ -464,6 +464,53 @@
 	            gap: 0.35rem;
 	        }
 
+	        .dashboard-chart-autoplay-btn {
+	            display: inline-flex;
+	            align-items: center;
+	            justify-content: center;
+	            gap: 0.45rem;
+	            min-height: 2.375rem;
+	            padding: 0.5rem 0.75rem;
+	            border: 1px solid #cbd5e1;
+	            border-radius: 0.375rem;
+	            color: #334155;
+	            background: #f8fafc;
+	            font-size: 0.875rem;
+	            font-weight: 600;
+	            transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+	        }
+
+	        .dashboard-chart-autoplay-btn:hover {
+	            border-color: #3b82f6;
+	            color: #1d4ed8;
+	            background: #eff6ff;
+	        }
+
+	        .dashboard-chart-autoplay-btn.is-playing {
+	            border-color: #bfdbfe;
+	            color: #1d4ed8;
+	            background: #eff6ff;
+	        }
+
+	        .dashboard-chart-autoplay-btn:disabled {
+	            cursor: not-allowed;
+	            border-color: #e2e8f0;
+	            color: #94a3b8;
+	            background: #f8fafc;
+	        }
+
+	        .dashboard-chart-current-line {
+	            display: inline-flex;
+	            align-items: center;
+	            gap: 0.45rem;
+	            font-weight: 600;
+	            color: #334155;
+	        }
+
+	        .dashboard-chart-current-line i {
+	            color: #2563eb;
+	        }
+
 	        .legend-dot {
 	            width: 0.7rem;
 	            height: 0.7rem;

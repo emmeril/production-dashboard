@@ -1,4 +1,13 @@
 
+function getJakartaDateInput() {
+    return new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Jakarta',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    }).format(new Date());
+}
+
 function dashboard() {
     return {
         // Authentication state
@@ -38,7 +47,7 @@ function dashboard() {
         dashboardChartAutoPlayTimer: null,
         users: [],
         dateReport: [],
-        reportDate: new Date().toISOString().split('T')[0],
+        reportDate: getJakartaDateInput(),
         productionClockMinute: null,
         qcHourIndex: 0,
 
@@ -77,7 +86,7 @@ function dashboard() {
                 labelWeek: '',
                 model: '',
                 target: 180,
-                date: new Date().toISOString().split('T')[0]
+                date: getJakartaDateInput()
             }
         },
 
@@ -88,7 +97,7 @@ function dashboard() {
                 labelWeek: '',
                 model: '',
                 target: 180,
-                date: new Date().toISOString().split('T')[0]
+                date: getJakartaDateInput()
             }
         },
 
@@ -96,6 +105,7 @@ function dashboard() {
             open: false,
             isEdit: false,
             data: {
+                id: null,
                 username: '',
                 password: '',
                 name: '',
@@ -667,23 +677,23 @@ function dashboard() {
             // Calculate dashboard totals from all models
             let totalOutput = 0;
             let totalTarget = 0;
-            let totalDefectRate = 0;
-            let modelCount = 0;
+            let totalDefect = 0;
+            let totalQcChecked = 0;
 
             this.linesWithModels.forEach(line => {
                 totalOutput += line.data.outputDay || 0;
                 totalTarget += line.data.target || 0;
-                totalDefectRate += line.data.defectRatePercentage || 0;
-                modelCount++;
+                totalDefect += Number(line.data.actualDefect) || 0;
+                totalQcChecked += Number(line.data.qcChecking) || 0;
             });
 
 	        // Kedua endpoint ini tidak saling bergantung, jadi muat bersamaan.
             const [usersResult, summaryResult] = await Promise.allSettled([
-                fetch('/api/users').then(response => response.ok ? response.json() : []),
+                fetch('/api/operator-count').then(response => response.ok ? response.json() : { operatorCount: 0 }),
                 fetch('/api/dashboard-summary').then(response => response.ok ? response.json() : null)
             ]);
-            const users = usersResult.status === 'fulfilled' ? usersResult.value : [];
-            const activeOperators = users.filter(user => user.role === 'operator').length;
+            const operatorCountData = usersResult.status === 'fulfilled' ? usersResult.value : { operatorCount: 0 };
+            const activeOperators = Number(operatorCountData.operatorCount) || 0;
             const dashboardSummary = summaryResult.status === 'fulfilled' && summaryResult.value
                 ? summaryResult.value
                 : { daily: [], lineDaily: [], lines: [], topDefectAreas: [], topDefectTypes: [] };
@@ -691,7 +701,7 @@ function dashboard() {
             this.dashboardData = {
                 totalOutput: totalOutput,
                 totalTarget: totalTarget,
-                defectRate: modelCount > 0 ? (totalDefectRate / modelCount).toFixed(2) : 0,
+                defectRate: totalQcChecked > 0 ? ((totalDefect / totalQcChecked) * 100).toFixed(2) : 0,
                 activeOperators: activeOperators,
                 daily: dashboardSummary.daily || [],
                 lineDaily: dashboardSummary.lineDaily || [],
@@ -1441,7 +1451,7 @@ function dashboard() {
                     labelWeek: '',
                     model: '',
                     target: 180,
-                    date: new Date().toISOString().split('T')[0]
+                    date: getJakartaDateInput()
                 };
             }
             this.lineModal.open = true;
@@ -1453,7 +1463,7 @@ function dashboard() {
                 labelWeek: '',
                 model: '',
                 target: 180,
-                date: new Date().toISOString().split('T')[0]
+                date: getJakartaDateInput()
             };
             this.modelModal.open = true;
         },
@@ -1602,6 +1612,7 @@ function dashboard() {
             if (user) {
                 this.userModal.isEdit = true;
                 this.userModal.data = {
+                    id: user.id,
                     username: user.username,
                     password: '',
                     name: user.name,
@@ -1611,6 +1622,7 @@ function dashboard() {
             } else {
                 this.userModal.isEdit = false;
                 this.userModal.data = {
+                    id: null,
                     username: '',
                     password: '',
                     name: '',
@@ -1623,14 +1635,14 @@ function dashboard() {
 
         async saveUser() {
             try {
-                const url = this.userModal.isEdit ?
-                    `/api/users/${this.users.find(u => u.username === this.userModal.data.username)?.id}` :
-                    '/api/users';
+                const url = this.userModal.isEdit
+                    ? `/api/users/${this.userModal.data.id}`
+                    : '/api/users';
 
                 const method = this.userModal.isEdit ? 'PUT' : 'POST';
 
                 // Remove password if empty in edit mode
-                const data = { ...this.userModal.data };
+                const { id, ...data } = this.userModal.data;
                 if (this.userModal.isEdit && !data.password) {
                     delete data.password;
                 }

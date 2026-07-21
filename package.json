@@ -4,8 +4,8 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "check": "node --check server.js && node --check public/assets/js/alpine.js",
-    "test": "npm run check"
+    "check": "node --check server.js && node --check public/assets/js/alpine.js && node --check test/server-logic.test.js",
+    "test": "npm run check && node test/server-logic.test.js"
   },
   "keywords": [],
   "author": "",

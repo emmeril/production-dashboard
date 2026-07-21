@@ -80,6 +80,16 @@ function getToday() {
   }).format(new Date());
 }
 
+function parseNonNegativeInteger(value, fallback = null) {
+  if (value === undefined || value === null || value === '') return fallback;
+  const number = Number(value);
+  return Number.isInteger(number) && number >= 0 ? number : null;
+}
+
+function isValidDateInput(value) {
+  return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value);
+}
+
 const PRODUCTION_HOURS = [
   "07:00 - 08:00",
   "08:00 - 09:00",
@@ -614,6 +624,7 @@ function checkAndResetDataForNewDay() {
         console.log(`🔄 Reset data untuk line ${lineName}, model ${modelId} dari ${model.date} ke ${today}`);
         
         const masterData = {
+          id: model.id || modelId,
           labelWeek: model.labelWeek,
           model: model.model,
           target: model.target,
@@ -791,6 +802,14 @@ function generateNumericId(items) {
   return Math.max(...items.map(item => parseInt(item.id) || 0)) + 1;
 }
 
+function generateModelId(models) {
+  let next = 1;
+  while (models && Object.prototype.hasOwnProperty.call(models, `model${next}`)) {
+    next += 1;
+  }
+  return `model${next}`;
+}
+
 function getActiveModel(data, lineName) {
   const line = data.lines[lineName];
   if (!line) return null;
@@ -934,21 +953,75 @@ function createArchiveBackup() {
   }
 }
 
+function extractHistoryDate(filename) {
+  const match = String(filename || '').match(/^data_(\d{4}-\d{2}-\d{2})(?:_.*)?\.json$/);
+  return match ? match[1] : '';
+}
+
+function findHistoryDataPath(date) {
+  if (!isValidDateInput(date)) return null;
+
+  const historyDir = path.join(__dirname, 'history');
+  const backupDir = path.join(historyDir, 'backups');
+  const canonicalName = `data_${date}.json`;
+  const canonicalPaths = [
+    path.join(historyDir, canonicalName),
+    path.join(backupDir, canonicalName)
+  ];
+  const canonicalPath = canonicalPaths.find(filePath => fs.existsSync(filePath));
+  if (canonicalPath) return canonicalPath;
+
+  if (!fs.existsSync(backupDir)) return null;
+  const archivedFiles = fs.readdirSync(backupDir)
+    .filter(filename => extractHistoryDate(filename) === date)
+    .map(filename => ({
+      path: path.join(backupDir, filename),
+      modified: fs.statSync(path.join(backupDir, filename)).mtimeMs
+    }))
+    .sort((a, b) => b.modified - a.modified);
+
+  return archivedFiles[0]?.path || null;
+}
+
+function getAvailableHistoryDates() {
+  const directories = [
+    path.join(__dirname, 'history'),
+    path.join(__dirname, 'history', 'backups')
+  ];
+  const dates = new Set();
+
+  directories.forEach(directory => {
+    if (!fs.existsSync(directory)) return;
+    fs.readdirSync(directory).forEach(filename => {
+      const date = extractHistoryDate(filename);
+      if (date) dates.add(date);
+    });
+  });
+
+  return Array.from(dates).sort((a, b) => b.localeCompare(a));
+}
+
 function getHistoryFiles() {
   try {
-    const historyDir = path.join(__dirname, 'history');
-    const files = fs.readdirSync(historyDir)
-      .filter(file => file.startsWith('data_') && file.endsWith('.json'))
-      .map(file => {
-        const filePath = path.join(historyDir, file);
-        const stats = fs.statSync(filePath);
-        return {
-          filename: file,
-          date: file.replace('data_', '').replace('.json', ''),
-          size: stats.size,
-          created: stats.birthtime
-        };
-      })
+    const directories = [
+      path.join(__dirname, 'history'),
+      path.join(__dirname, 'history', 'backups')
+    ];
+    const files = directories.flatMap(directory => {
+      if (!fs.existsSync(directory)) return [];
+      return fs.readdirSync(directory)
+        .filter(file => file.startsWith('data_') && file.endsWith('.json'))
+        .map(file => {
+          const filePath = path.join(directory, file);
+          const stats = fs.statSync(filePath);
+          return {
+            filename: file,
+            date: extractHistoryDate(file),
+            size: stats.size,
+            created: stats.birthtime
+          };
+        });
+    })
       .sort((a, b) => new Date(b.date) - new Date(a.date));
     
     return files;
@@ -960,7 +1033,11 @@ function getHistoryFiles() {
 
 function readHistoryData(filename) {
   try {
-    const filePath = path.join(__dirname, 'history', filename);
+    const filePath = [
+      path.join(__dirname, 'history', filename),
+      path.join(__dirname, 'history', 'backups', filename)
+    ].find(candidate => fs.existsSync(candidate));
+    if (!filePath) return null;
     const data = fs.readFileSync(filePath, 'utf8');
     return JSON.parse(data);
   } catch (error) {
@@ -1172,10 +1249,10 @@ app.get('/api/backup-history', requireLogin, requireAdmin, (req, res) => {
           let type = 'daily';
           
           if (file.startsWith('backup_pre_reset_')) {
-            date = file.replace('backup_pre_reset_', '').replace(/_\d+\.json$/, '');
+            date = file.match(/^backup_pre_reset_(\d{4}-\d{2}-\d{2})_/)?.[1] || '';
             type = 'pre_reset';
           } else if (file.startsWith('data_')) {
-            date = file.replace('data_', '').replace(/_\d+\.json$/, '');
+            date = extractHistoryDate(file);
             type = 'daily';
           }
           
@@ -1185,7 +1262,7 @@ app.get('/api/backup-history', requireLogin, requireAdmin, (req, res) => {
             type: type,
             size: stats.size,
             created: stats.birthtime,
-            displayDate: new Date(date + 'T00:00:00+07:00').toLocaleDateString('id-ID'),
+            displayDate: date ? new Date(date + 'T00:00:00+07:00').toLocaleDateString('id-ID') : '-',
             fullPath: filePath
           };
         })
@@ -1224,27 +1301,40 @@ app.post('/api/restore-backup/:filename', requireLogin, requireAdmin, (req, res)
     
     console.log(`🔄 Memulihkan backup dari: ${filename}`);
     
-    // Gabungkan data backup dengan data saat ini
+    // Pulihkan line/model dari snapshot, termasuk mengganti model yang sudah ada.
+    currentData.lines = currentData.lines || {};
     let restoredLines = 0;
     let restoredModels = 0;
+    let replacedModels = 0;
     
-    Object.keys(backupData.lines).forEach(lineName => {
+    Object.keys(backupData.lines || {}).forEach(lineName => {
       if (!currentData.lines[lineName]) {
-        currentData.lines[lineName] = backupData.lines[lineName];
+        currentData.lines[lineName] = JSON.parse(JSON.stringify(backupData.lines[lineName]));
         restoredLines++;
       } else {
-        Object.keys(backupData.lines[lineName].models).forEach(modelId => {
+        Object.keys(backupData.lines[lineName].models || {}).forEach(modelId => {
+          currentData.lines[lineName].models = currentData.lines[lineName].models || {};
           if (!currentData.lines[lineName].models[modelId]) {
-            currentData.lines[lineName].models[modelId] = backupData.lines[lineName].models[modelId];
             restoredModels++;
           } else {
-            // Jika model sudah ada, kita bisa skip atau overwrite
-            // Untuk sekarang kita skip
-            console.log(`   Model ${modelId} di line ${lineName} sudah ada, skip...`);
+            replacedModels++;
           }
+          currentData.lines[lineName].models[modelId] = JSON.parse(JSON.stringify(backupData.lines[lineName].models[modelId]));
         });
+        const backupLine = backupData.lines[lineName];
+        if (Array.isArray(backupLine.activeModels)) {
+          currentData.lines[lineName].activeModels = backupLine.activeModels.filter(id => currentData.lines[lineName].models[id]);
+        }
+        currentData.lines[lineName].activeModel = backupLine.activeModel && currentData.lines[lineName].models[backupLine.activeModel]
+          ? backupLine.activeModel
+          : currentData.lines[lineName].activeModels?.[0];
+        ensureLineActiveModels(currentData.lines[lineName]);
       }
     });
+
+    if (backupData.activeLine && currentData.lines[backupData.activeLine]) {
+      currentData.activeLine = backupData.activeLine;
+    }
     
     writeProductionData(currentData);
     
@@ -1255,6 +1345,7 @@ app.post('/api/restore-backup/:filename', requireLogin, requireAdmin, (req, res)
       message: '✅ Backup restored successfully',
       restoredLines: restoredLines,
       restoredModels: restoredModels,
+      replacedModels: replacedModels,
       totalLines: Object.keys(currentData.lines).length,
       totalModels: Object.keys(currentData.lines).reduce((total, lineName) => {
         return total + Object.keys(currentData.lines[lineName].models).length;
@@ -1499,7 +1590,7 @@ app.post('/api/organize-backups', requireLogin, requireAdmin, (req, res) => {
       fs.mkdirSync(backupDir);
     }
     
-    // Pindahkan semua file backup ke folder backups
+    // Salin arsip tanpa menghapus snapshot harian yang dipakai report.
     const files = fs.readdirSync(historyDir)
       .filter(file => (file.startsWith('backup_pre_reset_') || file.startsWith('data_')) && 
                       file.endsWith('.json') && 
@@ -1515,18 +1606,18 @@ app.post('/api/organize-backups', requireLogin, requireAdmin, (req, res) => {
         const timestamp = new Date().getTime();
         const newName = file.replace('.json', `_${timestamp}.json`);
         const newPathWithTimestamp = path.join(backupDir, newName);
-        fs.renameSync(oldPath, newPathWithTimestamp);
-        console.log(`Moved backup file with timestamp: ${newName}`);
+        fs.copyFileSync(oldPath, newPathWithTimestamp);
+        console.log(`Copied backup file with timestamp: ${newName}`);
       } else {
-        fs.renameSync(oldPath, newPath);
-        console.log(`Moved backup file: ${file}`);
+        fs.copyFileSync(oldPath, newPath);
+        console.log(`Copied backup file: ${file}`);
       }
       
       movedCount++;
     });
     
     res.json({
-      message: `✅ Backup files organized successfully`,
+      message: `✅ Backup files archived successfully`,
       movedCount: movedCount,
       backupDir: backupDir
     });
@@ -1589,15 +1680,7 @@ app.get('/api/system-status', requireLogin, requireAdmin, (req, res) => {
 // ENDPOINT UNTUK MENDAPATKAN DAFTAR TANGGAL YANG TERSEDIA
 app.get('/api/available-dates', requireLogin, requireDateReportAccess, (req, res) => {
   try {
-    const historyDir = path.join(__dirname, 'history');
-    let dates = [];
-    
-    if (fs.existsSync(historyDir)) {
-      dates = fs.readdirSync(historyDir)
-        .filter(file => file.startsWith('data_') && file.endsWith('.json'))
-        .map(file => file.replace('data_', '').replace('.json', ''))
-        .sort((a, b) => new Date(b) - new Date(a));
-    }
+    const dates = getAvailableHistoryDates();
     
     // Tambahkan tanggal hari ini jika belum ada
     const today = getToday();
@@ -1945,17 +2028,25 @@ app.post('/api/update-hourly/:lineName', requireLogin, requireLineAccess, requir
 
 	  const currentHour = active.model.hourly_data[index];
 	  if (rejectUnavailableOperatorProductionHour(req, res, currentHour)) return;
+	  if (hasAnyRole(req.session.user, ['admin_operator_sewing']) && (defect !== undefined || qcChecked !== undefined || defectDetails !== undefined)) {
+	    return res.status(403).json({ error: 'Admin Operator Sewing tidak dapat mengubah data QC' });
+	  }
 
 	  const nextTargetManual = targetManual !== undefined
-	    ? parseInt(targetManual) || 0
-	    : parseInt(currentHour.targetManual) || 0;
-  const nextOutput = parseInt(output) || 0;
+	    ? parseNonNegativeInteger(targetManual)
+	    : parseNonNegativeInteger(currentHour.targetManual, 0);
+	  const nextOutput = parseNonNegativeInteger(output, 0);
+	  const nextDefect = parseNonNegativeInteger(defect, parseNonNegativeInteger(currentHour.defect, 0));
+	  const nextQcChecked = parseNonNegativeInteger(qcChecked, parseNonNegativeInteger(currentHour.qcChecked, 0));
+  if ([nextTargetManual, nextOutput, nextDefect, nextQcChecked].includes(null)) {
+	    return res.status(400).json({ error: 'Data produksi dan QC harus berupa bilangan bulat tidak negatif' });
+	  }
 
   active.model.hourly_data[index] = {
     ...currentHour,
 	    output: nextOutput,
-	    defect: parseInt(defect) || 0,
-	    qcChecked: parseInt(qcChecked) || 0,
+	    defect: nextDefect,
+	    qcChecked: nextQcChecked,
 	    targetManual: nextTargetManual,
 	    defectDetails: Array.isArray(defectDetails) ? defectDetails : (currentHour.defectDetails || []),
 	    productionLocked: req.session.user?.role === 'operator' ? true : Boolean(currentHour.productionLocked),
@@ -1997,7 +2088,10 @@ app.post('/api/update-target-manual/:lineName', requireLogin, requireLineAccess,
 
 	  if (rejectUnavailableOperatorProductionHour(req, res, active.model.hourly_data[index])) return;
 
-	  const nextTargetManual = parseInt(targetManual) || 0;
+	  const nextTargetManual = parseNonNegativeInteger(targetManual);
+	  if (nextTargetManual === null) {
+	    return res.status(400).json({ error: 'Target harus berupa bilangan bulat tidak negatif' });
+	  }
   active.model.hourly_data[index].targetManual = nextTargetManual;
   active.model.hourly_data[index].selisih = (parseInt(active.model.hourly_data[index].output) || 0) - nextTargetManual;
   const summary = recalculateModelTotals(active.model);
@@ -2028,15 +2122,23 @@ app.post('/api/update-hourly-direct/:lineName', requireLogin, requireLineAccess,
     return res.status(400).json({ error: 'Invalid hour index' });
   }
 
-	  const nextOutput = parseInt(output) || 0;
-	  const nextTargetManual = parseInt(targetManual) || 0;
+	  const nextOutput = parseNonNegativeInteger(output, 0);
+	  const nextTargetManual = parseNonNegativeInteger(targetManual, 0);
+	  const nextDefect = parseNonNegativeInteger(defect, parseNonNegativeInteger(active.model.hourly_data[index].defect, 0));
+	  const nextQcChecked = parseNonNegativeInteger(qcChecked, parseNonNegativeInteger(active.model.hourly_data[index].qcChecked, 0));
+	  if (hasAnyRole(req.session.user, ['admin_operator_sewing']) && (defect !== undefined || qcChecked !== undefined)) {
+	    return res.status(403).json({ error: 'Admin Operator Sewing tidak dapat mengubah data QC' });
+	  }
+	  if ([nextOutput, nextTargetManual, nextDefect, nextQcChecked].includes(null)) {
+	    return res.status(400).json({ error: 'Data produksi dan QC harus berupa bilangan bulat tidak negatif' });
+	  }
 	  if (rejectUnavailableOperatorProductionHour(req, res, active.model.hourly_data[index])) return;
 
 	  active.model.hourly_data[index] = {
 	    ...active.model.hourly_data[index],
 	    output: nextOutput,
-	    defect: parseInt(defect) || 0,
-	    qcChecked: parseInt(qcChecked) || 0,
+	    defect: nextDefect,
+	    qcChecked: nextQcChecked,
 	    targetManual: nextTargetManual,
 	    productionLocked: req.session.user?.role === 'operator' ? true : Boolean(active.model.hourly_data[index].productionLocked),
 	    productionLockedAt: req.session.user?.role === 'operator' ? new Date().toISOString() : active.model.hourly_data[index].productionLockedAt,
@@ -2077,16 +2179,23 @@ app.post('/api/update-hourly/:lineName/:modelId', requireLogin, requireLineAcces
 
   const currentHour = data.lines[lineName].models[modelId].hourly_data[index];
   if (rejectUnavailableOperatorProductionHour(req, res, currentHour)) return;
-  const nextTargetManual = parseInt(targetManual) || currentHour.targetManual || 0;
-  const nextOutput = parseInt(output) || 0;
-  const nextDefect = parseInt(defect) || 0;
+  if (hasAnyRole(req.session.user, ['admin_operator_sewing']) && (defect !== undefined || qcChecked !== undefined || defectDetails !== undefined)) {
+    return res.status(403).json({ error: 'Admin Operator Sewing tidak dapat mengubah data QC' });
+  }
+  const nextTargetManual = parseNonNegativeInteger(targetManual, parseNonNegativeInteger(currentHour.targetManual, 0));
+  const nextOutput = parseNonNegativeInteger(output, 0);
+  const nextDefect = parseNonNegativeInteger(defect, parseNonNegativeInteger(currentHour.defect, 0));
+  const nextQcChecked = parseNonNegativeInteger(qcChecked, parseNonNegativeInteger(currentHour.qcChecked, 0));
+  if ([nextTargetManual, nextOutput, nextDefect, nextQcChecked].includes(null)) {
+    return res.status(400).json({ error: 'Data produksi dan QC harus berupa bilangan bulat tidak negatif' });
+  }
   const selisih = nextOutput - nextTargetManual;
 
   data.lines[lineName].models[modelId].hourly_data[index] = {
     ...currentHour,
     output: nextOutput,
     defect: nextDefect,
-    qcChecked: parseInt(qcChecked) || 0,
+    qcChecked: nextQcChecked,
     targetManual: nextTargetManual,
     defectDetails: Array.isArray(defectDetails) ? defectDetails : (currentHour.defectDetails || []),
     productionLocked: req.session.user?.role === 'operator' ? true : Boolean(currentHour.productionLocked),
@@ -2130,8 +2239,11 @@ app.post('/api/update-production/:lineName/:modelId', requireLogin, requireLineA
 	  const currentHour = model.hourly_data[index];
 	  if (rejectUnavailableOperatorProductionHour(req, res, currentHour)) return;
 
-	  const nextOutput = parseInt(output) || 0;
-	  const nextTargetManual = parseInt(targetManual) || currentHour.targetManual || 0;
+  const nextOutput = parseNonNegativeInteger(output, 0);
+  const nextTargetManual = parseNonNegativeInteger(targetManual, parseNonNegativeInteger(currentHour.targetManual, 0));
+  if (nextOutput === null || nextTargetManual === null) {
+    return res.status(400).json({ error: 'Output dan target harus berupa bilangan bulat tidak negatif' });
+  }
 
 	  model.hourly_data[index] = {
 	    ...currentHour,
@@ -2239,9 +2351,13 @@ app.post('/api/update-target-manual/:lineName/:modelId', requireLogin, requireLi
 	  const currentHour = model.hourly_data[index];
 	  if (rejectUnavailableOperatorProductionHour(req, res, currentHour)) return;
 
-	  model.hourly_data[index].targetManual = parseInt(targetManual);
-	  
-	  model.hourly_data[index].selisih = model.hourly_data[index].output - parseInt(targetManual);
+	  const nextTargetManual = parseNonNegativeInteger(targetManual);
+	  if (nextTargetManual === null) {
+	    return res.status(400).json({ error: 'Target harus berupa bilangan bulat tidak negatif' });
+	  }
+
+	  model.hourly_data[index].targetManual = nextTargetManual;
+	  model.hourly_data[index].selisih = (parseNonNegativeInteger(model.hourly_data[index].output, 0) || 0) - nextTargetManual;
 
 	  let totalTarget = 0;
 	  model.hourly_data.forEach(hour => {
@@ -2277,14 +2393,20 @@ app.post('/api/update-hourly-direct/:lineName/:modelId', requireLogin, requireLi
     return res.status(400).json({ error: 'Invalid hour index' });
   }
 
-  const nextOutput = parseInt(output) || 0;
-  const nextDefect = parseInt(defect) || 0;
-  const nextQcChecked = parseInt(qcChecked) || 0;
-  const nextTargetManual = parseInt(targetManual) || 0;
-  const selisih = nextOutput - nextTargetManual;
-
   const currentHour = model.hourly_data[index];
   if (rejectUnavailableOperatorProductionHour(req, res, currentHour)) return;
+
+  if (hasAnyRole(req.session.user, ['admin_operator_sewing']) && (defect !== undefined || qcChecked !== undefined || defectDetails !== undefined)) {
+    return res.status(403).json({ error: 'Admin Operator Sewing tidak dapat mengubah data QC' });
+  }
+  const nextOutput = parseNonNegativeInteger(output, 0);
+  const nextDefect = parseNonNegativeInteger(defect, parseNonNegativeInteger(currentHour.defect, 0));
+  const nextQcChecked = parseNonNegativeInteger(qcChecked, parseNonNegativeInteger(currentHour.qcChecked, 0));
+  const nextTargetManual = parseNonNegativeInteger(targetManual, 0);
+  if ([nextOutput, nextDefect, nextQcChecked, nextTargetManual].includes(null)) {
+    return res.status(400).json({ error: 'Data produksi dan QC harus berupa bilangan bulat tidak negatif' });
+  }
+  const selisih = nextOutput - nextTargetManual;
 
   model.hourly_data[index] = {
     ...currentHour,
@@ -2537,7 +2659,14 @@ app.post('/api/lines', requireLogin, requireLineManagementAccess, (req, res) => 
   }
 
   const lineDate = date || getToday();
-  const targetPerHour = Math.round(target / PRODUCTION_HOURS.length);
+  const parsedTarget = parseNonNegativeInteger(target);
+  if (parsedTarget === null) {
+    return res.status(400).json({ error: 'Target harus berupa bilangan bulat tidak negatif' });
+  }
+  if (!isValidDateInput(lineDate) || lineDate !== getToday()) {
+    return res.status(400).json({ error: 'Tanggal line/model harus menggunakan tanggal operasional hari ini' });
+  }
+  const targetPerHour = Math.round(parsedTarget / PRODUCTION_HOURS.length);
   const modelId = 'model1';
 
   data.lines[lineName] = {
@@ -2547,13 +2676,13 @@ app.post('/api/lines', requireLogin, requireLineManagementAccess, (req, res) => 
         labelWeek,
         model,
         date: lineDate,
-        target: parseInt(target),
+        target: parsedTarget,
         targetPerHour: targetPerHour,
         outputDay: 0,
         qcChecking: 0,
         actualDefect: 0,
         defectRatePercentage: 0,
-        hourly_data: createHourlyData(target),
+        hourly_data: createHourlyData(parsedTarget),
         operators: []
       }
     },
@@ -2586,23 +2715,28 @@ app.post('/api/lines/:lineName/models', requireLogin, requireLineManagementAcces
   }
 
   const lineDate = date || getToday();
-  const targetPerHour = Math.round(target / PRODUCTION_HOURS.length);
-  
-  const modelCount = Object.keys(data.lines[lineName].models).length;
-  const modelId = `model${modelCount + 1}`;
+  const parsedTarget = parseNonNegativeInteger(target);
+  if (parsedTarget === null) {
+    return res.status(400).json({ error: 'Target harus berupa bilangan bulat tidak negatif' });
+  }
+  if (!isValidDateInput(lineDate) || lineDate !== getToday()) {
+    return res.status(400).json({ error: 'Tanggal line/model harus menggunakan tanggal operasional hari ini' });
+  }
+  const targetPerHour = Math.round(parsedTarget / PRODUCTION_HOURS.length);
+  const modelId = generateModelId(data.lines[lineName].models);
 
   data.lines[lineName].models[modelId] = {
     id: modelId,
     labelWeek,
     model,
     date: lineDate,
-    target: parseInt(target),
+    target: parsedTarget,
     targetPerHour: targetPerHour,
     outputDay: 0,
     qcChecking: 0,
     actualDefect: 0,
     defectRatePercentage: 0,
-    hourly_data: createHourlyData(target),
+    hourly_data: createHourlyData(parsedTarget),
     operators: []
   };
 
@@ -2632,7 +2766,13 @@ app.put('/api/lines/:lineName', requireLogin, requireLineManagementAccess, autoC
     return res.status(404).json({ error: 'Model not found' });
   }
 
-  const newTarget = parseInt(target);
+  const newTarget = parseNonNegativeInteger(target);
+  if (newTarget === null) {
+    return res.status(400).json({ error: 'Target harus berupa bilangan bulat tidak negatif' });
+  }
+  if (date !== undefined && (!isValidDateInput(date) || date !== getToday())) {
+    return res.status(400).json({ error: 'Tanggal line/model harus menggunakan tanggal operasional hari ini' });
+  }
 
   data.lines[lineName].models[targetModelId].labelWeek = labelWeek;
   data.lines[lineName].models[targetModelId].model = model;
@@ -2805,20 +2945,29 @@ app.post('/api/update-line/:lineName/:modelId', requireLogin, requireLineAccess,
   }
 
   const model = data.lines[lineName].models[modelId];
+  const hasDate = Object.prototype.hasOwnProperty.call(newData, 'date');
+  const nextDate = hasDate ? String(newData.date || '').trim() : model.date;
+  const hasTarget = Object.prototype.hasOwnProperty.call(newData, 'target');
+  const nextTarget = hasTarget ? parseNonNegativeInteger(newData.target) : null;
+
+  if (hasDate && (!isValidDateInput(nextDate) || nextDate !== getToday())) {
+    return res.status(400).json({ error: 'Tanggal line/model harus menggunakan tanggal operasional hari ini' });
+  }
+  if (hasTarget && nextTarget === null) {
+    return res.status(400).json({ error: 'Target harus berupa bilangan bulat tidak negatif' });
+  }
+
   if (Object.prototype.hasOwnProperty.call(newData, 'labelWeek')) {
     model.labelWeek = String(newData.labelWeek || '').trim();
   }
   if (Object.prototype.hasOwnProperty.call(newData, 'model')) {
     model.model = String(newData.model || '').trim();
   }
-  if (Object.prototype.hasOwnProperty.call(newData, 'date')) {
-    model.date = String(newData.date || '').trim();
+  if (hasDate) {
+    model.date = nextDate;
   }
-  if (Object.prototype.hasOwnProperty.call(newData, 'target')) {
-    const nextTarget = parseInt(newData.target);
-    if (!Number.isNaN(nextTarget)) {
-      applyDailyTarget(model, nextTarget);
-    }
+  if (hasTarget) {
+    applyDailyTarget(model, nextTarget);
   }
 
   recalculateModelTotals(model);
@@ -2839,10 +2988,10 @@ app.get('/api/date-report/:date', requireLogin, requireDateReportAccess, autoChe
   }
   
   try {
-    const backupFile = path.join(__dirname, 'history', `data_${date}.json`);
+    const backupFile = findHistoryDataPath(date);
     let data;
     
-    if (fs.existsSync(backupFile)) {
+    if (backupFile) {
       console.log(`📂 Mengambil data dari backup: ${backupFile}`);
       data = JSON.parse(fs.readFileSync(backupFile, 'utf8'));
     } else {
@@ -3518,10 +3667,10 @@ app.get('/api/export-date-report/:date', requireLogin, requireDateReportAccess, 
   }
   
   try {
-    const backupFile = path.join(__dirname, 'history', `data_${date}.json`);
+    const backupFile = findHistoryDataPath(date);
     let data;
     
-    if (fs.existsSync(backupFile)) {
+    if (backupFile) {
       console.log(`📂 Mengambil data dari backup untuk export: ${backupFile}`);
       data = JSON.parse(fs.readFileSync(backupFile, 'utf8'));
     } else {
@@ -3579,8 +3728,8 @@ app.get('/api/export-date-report/:date/:lineName/:modelId', requireLogin, requir
   }
 
   try {
-    const backupFile = path.join(__dirname, 'history', `data_${date}.json`);
-    const data = fs.existsSync(backupFile)
+    const backupFile = findHistoryDataPath(date);
+    const data = backupFile
       ? JSON.parse(fs.readFileSync(backupFile, 'utf8'))
       : readProductionData();
     const modelData = data.lines?.[lineName]?.models?.[modelId];
@@ -3606,6 +3755,11 @@ app.get('/api/export-date-report/:date/:lineName/:modelId', requireLogin, requir
     console.error('Export detail date report error:', error);
     res.status(500).json({ error: 'Failed to export line detail: ' + error.message });
   }
+});
+
+app.get('/api/operator-count', requireLogin, requireAdminOrAdminOperator, (req, res) => {
+  const operatorCount = readUsersData().users.filter(user => user.role === 'operator').length;
+  res.json({ operatorCount });
 });
 
 app.get('/api/users', requireLogin, requireAdmin, (req, res) => {
@@ -4484,7 +4638,7 @@ async function startServer() {
   console.log(`✅ Export Excel dengan styling`);
   console.log(`✅ Password encryption dengan SHA-256`);
   console.log(`✅ Unique user ID management`);
-  console.log(`✅ Fitur pilih tanggal aktif`);
+  console.log(`✅ Tanggal operasional konsisten dengan timezone WIB`);
   console.log(`✅ Reset data operator setiap ganti hari`);
   console.log(`✅ Daily backup dan auto-sync tanggal`);
   console.log(`=================================`);
@@ -4499,4 +4653,15 @@ async function startServer() {
   });
 }
 
-startServer();
+if (require.main === module) {
+  startServer();
+}
+
+module.exports = {
+  app,
+  extractHistoryDate,
+  generateModelId,
+  getToday,
+  isValidDateInput,
+  parseNonNegativeInteger
+};

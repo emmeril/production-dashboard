@@ -685,12 +685,12 @@
                                         <tr>
                                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900" x-text="hour.hour"></td>
 	                                            <td class="px-6 py-4 whitespace-nowrap">
-	                                                <input type="number" x-model="hour.targetManual" 
+	                                                <input type="number" min="0" step="1" x-model="hour.targetManual"
 	                                                       @change="updateTargetManual(currentLine, currentModelId, index, hour.targetManual)"
 		                                                       class="input-cell" :disabled="!canCorrectProduction()">
 	                                            </td>
 	                                            <td class="px-6 py-4 whitespace-nowrap">
-	                                                <input type="number" x-model="hour.output" 
+	                                                <input type="number" min="0" step="1" x-model="hour.output"
 		                                                       class="input-cell" :disabled="!canCorrectProduction()">
 	                                            </td>
 	                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium" 
@@ -1702,11 +1702,11 @@
                                 <label for="target" class="block text-sm font-medium text-gray-700">Target Harian</label>
                                 <input type="number" id="target" x-model="lineModal.data.target" min="1" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" required>
                             </div>
-                            <!-- PERBAIKAN: Input tanggal bisa diubah -->
+                            <!-- Tanggal operasional dikunci agar tidak memicu reset data harian. -->
                             <div>
                                 <label for="date" class="block text-sm font-medium text-gray-700">Tanggal</label>
-                                <input type="date" id="date" x-model="lineModal.data.date" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" required>
-                                <p class="text-xs text-gray-500 mt-1">Pilih tanggal untuk line/model ini</p>
+                                <input type="date" id="date" x-model="lineModal.data.date" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md bg-gray-100" readonly required>
+	                                <p class="text-xs text-gray-500 mt-1">Tanggal mengikuti tanggal operasional Asia/Jakarta.</p>
                             </div>
                         </div>
                     </div>
@@ -1723,7 +1723,7 @@
         </div>
     </div>
 
-    <!-- Model Modal - PERBAIKAN: Input tanggal bisa diubah -->
+    <!-- Model Modal -->
     <div x-show="modelModal.open" class="fixed inset-0 overflow-y-auto z-50" x-cloak>
         <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
             <div class="fixed inset-0 transition-opacity" aria-hidden="true">
@@ -1756,11 +1756,11 @@
                                 <label for="model-target" class="block text-sm font-medium text-gray-700">Target Harian</label>
                                 <input type="number" id="model-target" x-model="modelModal.data.target" min="1" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" required>
                             </div>
-                            <!-- PERBAIKAN: Input tanggal bisa diubah -->
+                            <!-- Tanggal operasional dikunci agar tidak memicu reset data harian. -->
                             <div>
                                 <label for="model-date" class="block text-sm font-medium text-gray-700">Tanggal</label>
-                                <input type="date" id="model-date" x-model="modelModal.data.date" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" required>
-                                <p class="text-xs text-gray-500 mt-1">Pilih tanggal untuk model ini</p>
+                                <input type="date" id="model-date" x-model="modelModal.data.date" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md bg-gray-100" readonly required>
+	                                <p class="text-xs text-gray-500 mt-1">Tanggal mengikuti tanggal operasional Asia/Jakarta.</p>
                             </div>
                         </div>
                     </div>

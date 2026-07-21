@@ -990,11 +990,20 @@
 	                                <div class="filter-group">
 	                                    <div class="filter-control filter-control-search has-icon">
 	                                        <i class="fa-solid fa-magnifying-glass filter-control-icon"></i>
-	                                        <input type="text" x-model="lineSearchTerm" placeholder="Cari line atau model..." class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+	                                        <input type="text" x-model="lineSearchTerm" @input="currentLinePage = 1" placeholder="Cari line atau model..." class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+	                                    </div>
+	                                    <div class="filter-control filter-control-select has-icon">
+	                                        <i class="fa-solid fa-industry filter-control-icon"></i>
+	                                        <select x-model="lineNameFilter" @change="currentLinePage = 1" aria-label="Filter berdasarkan line" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+	                                            <option value="">Semua Line</option>
+	                                            <template x-for="lineName in availableManagementLines" :key="lineName">
+	                                                <option :value="lineName" x-text="lineName"></option>
+	                                            </template>
+	                                        </select>
 	                                    </div>
 	                                    <div class="filter-control filter-control-select has-icon">
 	                                        <i class="fa-solid fa-filter filter-control-icon"></i>
-	                                        <select x-model="lineStatusFilter" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+	                                        <select x-model="lineStatusFilter" @change="currentLinePage = 1" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
 	                                        <option value="">Semua Status</option>
 	                                        <option value="on-target">On Target</option>
 	                                        <option value="behind">Behind</option>
@@ -1005,7 +1014,7 @@
 	                                <div class="filter-group">
 	                                    <span class="filter-caption"><i class="fa-solid fa-table-list"></i>Tampilkan</span>
 	                                    <div class="filter-control filter-control-page-size">
-	                                        <select x-model="linesPerPage" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+	                                        <select x-model="linesPerPage" @change="currentLinePage = 1" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
 	                                        <option value="5">5</option>
 	                                        <option value="10">10</option>
 	                                        <option value="20">20</option>
@@ -1051,9 +1060,12 @@
 		                                                    <button @click="deleteModel(line.lineName, line.modelId)" class="btn-action btn-action-danger" x-show="currentUser.role === 'admin' && !(line.data.lineActiveModels || []).includes(line.modelId)"><i class="fa-solid fa-trash"></i>Hapus Model</button>
 		                                                    <button @click="deleteLine(line.lineName, line.modelCount)" class="btn-action btn-action-danger" x-show="currentUser.role === 'admin' && line.isFirstModel"><i class="fa-solid fa-trash-can"></i><span x-text="line.modelCount > 1 ? 'Hapus Line dan Model' : 'Hapus Line'"></span></button>
 		                                                    </div>
-		                                                </td>
+	                                                </td>
                                             </tr>
                                         </template>
+	                                    <tr x-show="filteredLines.length === 0">
+	                                        <td colspan="7" class="px-4 py-8 text-center text-sm text-gray-500">Tidak ada line yang sesuai dengan filter.</td>
+	                                    </tr>
                                     </tbody>
                                 </table>
                             </div>
@@ -1061,7 +1073,7 @@
                             <!-- Pagination Controls for Lines -->
                             <div class="flex items-center justify-between mt-4">
                                 <div class="text-sm font-medium text-gray-700">
-                                    <span x-text="(currentLinePage - 1) * linesPerPage + 1"></span>
+	                                    <span x-text="filteredLines.length === 0 ? 0 : (currentLinePage - 1) * linesPerPage + 1"></span>
                                     <span class="mx-1">-</span>
                                     <span x-text="Math.min(currentLinePage * linesPerPage, filteredLines.length)"></span>
                                 </div>

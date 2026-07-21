@@ -156,6 +156,7 @@ function dashboard() {
         currentLinePage: 1,
         linesPerPage: 10,
         lineSearchTerm: '',
+        lineNameFilter: '',
         lineStatusFilter: '',
         lineDetailController: null,
         lineDetailRequestId: 0,
@@ -616,6 +617,11 @@ function dashboard() {
                             });
                         }
                     });
+
+                    if (this.lineNameFilter && !this.availableManagementLines.includes(this.lineNameFilter)) {
+                        this.lineNameFilter = '';
+                        this.currentLinePage = 1;
+                    }
                 } else {
                     console.error('Failed to load lines');
                 }
@@ -2303,6 +2309,13 @@ function dashboard() {
         },
 
         // Lines pagination
+        get availableManagementLines() {
+            return [...new Set((this.linesWithModels || [])
+                .map(line => line.lineName)
+                .filter(Boolean))]
+                .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+        },
+
         get filteredLines() {
             if (!this.linesWithModels) return [];
 
@@ -2314,6 +2327,8 @@ function dashboard() {
                     line.modelId.toLowerCase().includes(searchTerm) ||
                     line.data.labelWeek.toLowerCase().includes(searchTerm) ||
                     line.data.model.toLowerCase().includes(searchTerm);
+
+                const matchesLine = !this.lineNameFilter || line.lineName === this.lineNameFilter;
 
                 // Status filter
                 let matchesStatus = true;
@@ -2327,7 +2342,7 @@ function dashboard() {
                     }
                 }
 
-                return matchesSearch && matchesStatus;
+                return matchesSearch && matchesLine && matchesStatus;
             });
         },
 

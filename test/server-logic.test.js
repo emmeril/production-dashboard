@@ -7,6 +7,7 @@ const vm = require('node:vm');
 const {
   buildDateReportRows,
   calculateDefectSeverityBreakdown,
+  classifyLegacySnapshot,
   extractHistoryDate,
   filterProductionDataByDate,
   generateModelId,
@@ -38,6 +39,14 @@ test('history dates are recognized for canonical and archived backup names', () 
   assert.equal(extractHistoryDate('data_2026-07-21.json'), '2026-07-21');
   assert.equal(extractHistoryDate('data_2026-07-21_1234_abcd.json'), '2026-07-21');
   assert.equal(extractHistoryDate('backup_pre_reset_2026-07-21_1234.json'), '');
+});
+
+test('legacy JSON backups are classified before database migration', () => {
+  assert.deepEqual(classifyLegacySnapshot('data_2026-07-21.json'), { date: '2026-07-21', type: 'daily' });
+  assert.deepEqual(classifyLegacySnapshot('data_2026-07-21_1234_abcd.json'), { date: '2026-07-21', type: 'archive' });
+  assert.deepEqual(classifyLegacySnapshot('data_2026-07-21_1234_pre_restore_abcd.json'), { date: '2026-07-21', type: 'pre_restore' });
+  assert.deepEqual(classifyLegacySnapshot('backup_pre_reset_2026-07-21_1234.json'), { date: '2026-07-21', type: 'pre_reset' });
+  assert.equal(classifyLegacySnapshot('unrelated.json'), null);
 });
 
 test('date input only accepts the API date shape', () => {
@@ -154,7 +163,8 @@ test('maintenance backup history supports type filtering and pagination', () => 
   dashboard.backupsPerPage = 1;
   dashboard.backupHistory = [
     { filename: 'data_2026-07-22_1.json', date: '2026-07-22', type: 'daily' },
-    { filename: 'data_2026-07-22_2_pre_restore_a.json', date: '2026-07-22', type: 'pre_restore' }
+    { filename: 'data_2026-07-22_2_pre_restore_a.json', date: '2026-07-22', type: 'pre_restore' },
+    { filename: 'production-dashboard_2026-07-22_manual_1_abcd1234.sqlite', date: '2026-07-22', type: 'database' }
   ];
   dashboard.backupTypeFilter = 'pre_restore';
 
@@ -162,6 +172,7 @@ test('maintenance backup history supports type filtering and pagination', () => 
   assert.equal(dashboard.totalBackupPages, 1);
   assert.equal(dashboard.paginatedBackupHistory[0].filename, 'data_2026-07-22_2_pre_restore_a.json');
   assert.equal(dashboard.formatFileSize(2048), '2.0 KB');
+  assert.equal(dashboard.backupTypeLabel('database'), 'Backup SQLite');
 });
 
 test('date report exposes the same complete production and QC fields for every viewer', () => {

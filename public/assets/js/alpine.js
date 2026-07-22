@@ -1936,9 +1936,12 @@ function dashboard() {
 
         backupTypeLabel(type) {
             return {
-                daily: 'Arsip',
+                daily: 'Snapshot harian',
+                manual: 'Snapshot manual',
+                archive: 'Snapshot arsip',
                 pre_reset: 'Sebelum reset',
-                pre_restore: 'Pengaman restore'
+                pre_restore: 'Pengaman restore',
+                database: 'Backup SQLite'
             }[type] || type || '-';
         },
 

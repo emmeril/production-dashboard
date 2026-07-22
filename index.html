@@ -1599,7 +1599,7 @@
                     <div class="bg-white rounded-lg shadow overflow-hidden card-shadow mb-6">
                         <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
                             <h3 class="text-lg leading-6 font-medium text-gray-900 flex items-center"><i class="fa-solid fa-bolt text-blue-600 mr-2"></i>Aksi Administrasi</h3>
-                            <p class="mt-1 max-w-2xl text-sm text-gray-500">Gunakan hanya saat perlu. Restore akan membuat backup pengaman otomatis sebelum data ditimpa.</p>
+                            <p class="mt-1 max-w-2xl text-sm text-gray-500">Backup manual menghasilkan salinan SQLite. Restore snapshot membuat backup database pengaman sebelum data ditimpa.</p>
                         </div>
                         <div class="p-4">
                             <div class="flex flex-wrap gap-2">
@@ -1620,15 +1620,18 @@
                         <div class="px-4 py-5 sm:px-6 border-b border-gray-200 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                             <div>
                                 <h3 class="text-lg leading-6 font-medium text-gray-900 flex items-center"><i class="fa-solid fa-clock-rotate-left text-blue-600 mr-2"></i>Riwayat Backup</h3>
-                                <p class="mt-1 text-sm text-gray-500">Snapshot tersimpan untuk export, audit, dan pemulihan data.</p>
+                                <p class="mt-1 text-sm text-gray-500">Snapshot histori tersimpan di SQLite; file SQLite dibuat hanya untuk backup database terjadwal atau manual.</p>
                             </div>
                             <div class="flex flex-col gap-2 sm:flex-row">
                                 <input type="search" x-model="backupSearchTerm" @input="backupCurrentPage = 1" placeholder="Cari nama backup..." aria-label="Cari backup" class="sm:w-56">
                                 <select x-model="backupTypeFilter" @change="backupCurrentPage = 1" aria-label="Filter tipe backup" class="sm:w-44">
                                     <option value="">Semua tipe</option>
-                                    <option value="daily">Arsip</option>
+                                    <option value="daily">Snapshot harian</option>
+                                    <option value="manual">Snapshot manual</option>
+                                    <option value="archive">Snapshot arsip</option>
                                     <option value="pre_reset">Sebelum reset</option>
                                     <option value="pre_restore">Pengaman restore</option>
+                                    <option value="database">Backup SQLite</option>
                                 </select>
                             </div>
                         </div>
@@ -1650,7 +1653,7 @@
                                             <td class="px-4 py-3 text-sm text-gray-600 whitespace-nowrap" x-text="backup.displayDate"></td>
                                             <td class="px-4 py-3 text-sm whitespace-nowrap"><span class="inline-flex px-2 py-1 text-xs rounded-full" :class="backup.type === 'pre_restore' ? 'bg-orange-100 text-orange-800' : (backup.type === 'pre_reset' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800')" x-text="backupTypeLabel(backup.type)"></span></td>
                                             <td class="px-4 py-3 text-sm text-gray-600 whitespace-nowrap"><span x-text="formatFileSize(backup.size)"></span><span class="text-gray-400 mx-1">·</span><span x-text="formatDateTime(backup.created)"></span></td>
-                                            <td class="px-4 py-3 text-sm text-right whitespace-nowrap"><div class="table-actions justify-end"><a :href="`/api/download-backup/${encodeURIComponent(backup.filename)}`" class="btn-action btn-action-neutral"><i class="fa-solid fa-download"></i>JSON</a><a :href="`/api/export-backup/${encodeURIComponent(backup.filename)}`" class="btn-action btn-action-primary"><i class="fa-solid fa-file-excel"></i>Excel</a><button @click="openRestoreModal(backup)" :disabled="maintenanceAction" class="btn-action btn-action-danger"><i class="fa-solid fa-arrow-rotate-left"></i>Restore</button></div></td>
+                                            <td class="px-4 py-3 text-sm text-right whitespace-nowrap"><div class="table-actions justify-end"><a :href="backup.storage === 'database' ? `/api/download-database-backup/${encodeURIComponent(backup.filename)}` : `/api/download-backup/${encodeURIComponent(backup.filename)}`" class="btn-action btn-action-neutral"><i class="fa-solid fa-download"></i><span x-text="backup.storage === 'database' ? 'SQLite' : 'JSON'"></span></a><a x-show="backup.exportable" :href="`/api/export-backup/${encodeURIComponent(backup.filename)}`" class="btn-action btn-action-primary"><i class="fa-solid fa-file-excel"></i>Excel</a><button x-show="backup.restorable" @click="openRestoreModal(backup)" :disabled="maintenanceAction" class="btn-action btn-action-danger"><i class="fa-solid fa-arrow-rotate-left"></i>Restore</button></div></td>
                                         </tr>
                                     </template>
                                     <tr x-show="!paginatedBackupHistory.length"><td colspan="5" class="px-4 py-10 text-center text-sm text-gray-500"><i class="fa-solid fa-box-open text-2xl mb-2 block text-gray-300"></i>Belum ada backup yang sesuai filter.</td></tr>

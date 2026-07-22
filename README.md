@@ -12,10 +12,10 @@ Dashboard produksi berbasis Express untuk memantau output line, target per jam, 
 - Lock data produksi per jam untuk operator setelah data disimpan.
 - Management line dan model produksi.
 - Management user, kategori defect, dan Maintenance Center untuk admin.
-- Maintenance Center menampilkan kesehatan sistem, riwayat backup, download JSON, export Excel, dan restore dengan backup pengaman otomatis.
+- Maintenance Center menampilkan kesehatan sistem, snapshot database, backup SQLite, export Excel, dan restore dengan backup pengaman otomatis.
 - Laporan berdasarkan tanggal dan export Excel.
 - Public display monitor di `/public-display` dengan layout statik seperti display line.
-- Backup harian ke folder `history` dan arsip backup ke `history/backups`.
+- Histori produksi tersimpan di tabel `production_snapshots`; backup fisik SQLite dibuat harian atau secara manual.
 
 ## Role dan Akses
 
@@ -140,11 +140,12 @@ File dan folder penting:
 | Path | Keterangan |
 | --- | --- |
 | `production-dashboard.sqlite` | Database SQLite lokal. |
-| `history/data_YYYY-MM-DD.json` | Backup data per tanggal. |
-| `history/backups/` | Arsip backup dengan timestamp. |
+| `database-backups/` | Backup SQLite konsisten dari `VACUUM INTO`, dengan retensi default 30 file. |
 | `public-display.html` | Tampilan public display monitor. |
 
-Sistem menjalankan auto-check tanggal dan membuat backup harian saat server berjalan.
+Histori harian dan snapshot restore tersimpan di database. Instalasi lama akan mengimpor file JSON dari `history/` satu kali, membuat backup database pengaman, kemudian membersihkan file JSON tersebut. Sistem tidak lagi membuat arsip pada setiap startup.
+
+Retensi dapat diatur melalui `DATABASE_BACKUP_RETENTION` dan `ARCHIVE_SNAPSHOT_RETENTION`.
 
 ## Development Notes
 

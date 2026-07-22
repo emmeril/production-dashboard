@@ -7,3 +7,4 @@ users.json
 defect-config.json
 history/
 production-dashboard.sqlite
+database-backups/

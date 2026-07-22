@@ -9,7 +9,9 @@ const { Sequelize, DataTypes } = require('sequelize');
 
 const app = express();
 const port = process.env.PORT || 3000;
-const databasePath = path.join(__dirname, 'production-dashboard.sqlite');
+const databasePath = path.resolve(process.env.DATABASE_PATH || path.join(__dirname, 'production-dashboard.sqlite'));
+const databaseBackupDir = path.resolve(process.env.DATABASE_BACKUP_DIR || path.join(__dirname, 'database-backups'));
+const legacyHistoryDir = path.resolve(process.env.LEGACY_HISTORY_DIR || path.join(__dirname, 'history'));
 const sequelize = new Sequelize({
   dialect: 'sqlite',
   storage: databasePath,
@@ -28,6 +30,35 @@ const AppData = sequelize.define('AppData', {
   tableName: 'app_data',
   timestamps: true
 });
+const ProductionSnapshot = sequelize.define('ProductionSnapshot', {
+  filename: {
+    type: DataTypes.STRING,
+    primaryKey: true
+  },
+  snapshotDate: {
+    type: DataTypes.DATEONLY,
+    allowNull: false
+  },
+  type: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  payload: {
+    type: DataTypes.TEXT('long'),
+    allowNull: false
+  },
+  size: {
+    type: DataTypes.INTEGER,
+    allowNull: false
+  },
+  contentHash: {
+    type: DataTypes.STRING,
+    allowNull: false
+  }
+}, {
+  tableName: 'production_snapshots',
+  timestamps: true
+});
 const PRODUCTION_DATA_KEY = 'production_data';
 const USERS_DATA_KEY = 'users_data';
 const DEFECT_CONFIG_KEY = 'defect_config';
@@ -38,11 +69,24 @@ let usersDataCache = { users: [] };
 let defectConfigCache = { defectTypes: [], defectAreas: [] };
 let publicDisplaySettingsCache = {};
 let workScheduleSettingsCache = {};
+const productionSnapshotCache = new Map();
 let databaseInitialized = false;
 const appDataWriteQueues = new Map();
+let snapshotWriteQueue = Promise.resolve();
+const DATABASE_BACKUP_RETENTION = Math.max(1, Number(process.env.DATABASE_BACKUP_RETENTION) || 30);
+const ARCHIVE_SNAPSHOT_RETENTION = Math.max(1, Number(process.env.ARCHIVE_SNAPSHOT_RETENTION) || 30);
+let lastScheduledDatabaseBackupDate = '';
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use((req, res, next) => {
+  const requestPath = decodeURIComponent(req.path).replace(/\\/g, '/');
+  if (!requestPath.startsWith('/api/')
+    && (requestPath.endsWith('.sqlite') || requestPath.startsWith('/database-backups/') || requestPath.startsWith('/history/'))) {
+    return res.status(404).end();
+  }
+  return next();
+});
 app.use(express.static('.'));
 
 const sessionSecret = process.env.SESSION_SECRET;
@@ -443,10 +487,214 @@ async function upsertAppData(key, data) {
   return nextWrite;
 }
 
+function buildSnapshotRecord(filename, snapshotDate, type, data, timestamps = {}) {
+  const payload = JSON.stringify(data);
+  const now = new Date();
+
+  return {
+    filename,
+    snapshotDate,
+    type,
+    payload,
+    size: Buffer.byteLength(payload, 'utf8'),
+    contentHash: crypto.createHash('sha256').update(payload).digest('hex'),
+    createdAt: timestamps.createdAt || now,
+    updatedAt: timestamps.updatedAt || now
+  };
+}
+
+function cacheSnapshot(record) {
+  productionSnapshotCache.set(record.filename, {
+    ...record,
+    createdAt: new Date(record.createdAt),
+    updatedAt: new Date(record.updatedAt)
+  });
+}
+
+async function loadProductionSnapshotCache() {
+  const rows = await ProductionSnapshot.findAll({ raw: true });
+  productionSnapshotCache.clear();
+  rows.forEach(cacheSnapshot);
+}
+
+function readSnapshotData(snapshot) {
+  if (!snapshot) return null;
+  return parsePayload(snapshot.payload, null);
+}
+
+function getSnapshotByFilename(filename) {
+  return productionSnapshotCache.get(filename) || null;
+}
+
+function getLatestSnapshotForDate(date) {
+  const dailySnapshot = getSnapshotByFilename(`data_${date}.json`);
+  if (dailySnapshot) return dailySnapshot;
+
+  return Array.from(productionSnapshotCache.values())
+    .filter(snapshot => snapshot.snapshotDate === date)
+    .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))[0] || null;
+}
+
+async function pruneArchiveSnapshots() {
+  const archives = Array.from(productionSnapshotCache.values())
+    .filter(snapshot => snapshot.type !== 'daily')
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  const expired = archives.slice(ARCHIVE_SNAPSHOT_RETENTION);
+
+  for (const snapshot of expired) {
+    productionSnapshotCache.delete(snapshot.filename);
+    await ProductionSnapshot.destroy({ where: { filename: snapshot.filename } });
+  }
+}
+
+function storeProductionSnapshot(filename, snapshotDate, type, data, timestamps = {}) {
+  const existing = getSnapshotByFilename(filename);
+  const record = buildSnapshotRecord(filename, snapshotDate, type, data, {
+    createdAt: existing?.createdAt || timestamps.createdAt,
+    updatedAt: timestamps.updatedAt
+  });
+  cacheSnapshot(record);
+
+  snapshotWriteQueue = snapshotWriteQueue
+    .catch(() => {})
+    .then(async () => {
+      await ProductionSnapshot.upsert(record);
+      if (type !== 'daily') await pruneArchiveSnapshots();
+    })
+    .catch(error => {
+      console.error(`ERROR: Gagal menyimpan snapshot ${filename} ke database:`, error.message);
+    });
+
+  return record;
+}
+
+async function flushPendingDatabaseWrites() {
+  await Promise.all(Array.from(appDataWriteQueues.values()));
+  await snapshotWriteQueue;
+}
+
+function listDatabaseBackupFiles() {
+  if (!fs.existsSync(databaseBackupDir)) return [];
+
+  return fs.readdirSync(databaseBackupDir)
+    .filter(filename => /^production-dashboard_\d{4}-\d{2}-\d{2}_[A-Za-z0-9_-]+_\d+_[a-f0-9]{8}\.sqlite$/.test(filename))
+    .map(filename => {
+      const filePath = path.join(databaseBackupDir, filename);
+      const stats = fs.statSync(filePath);
+      const match = filename.match(/^production-dashboard_(\d{4}-\d{2}-\d{2})_([A-Za-z0-9_-]+)_\d+_[a-f0-9]{8}\.sqlite$/);
+      return {
+        filename,
+        path: filePath,
+        date: match?.[1] || '',
+        label: match?.[2] || 'database',
+        size: stats.size,
+        created: stats.mtime
+      };
+    })
+    .sort((a, b) => new Date(b.created) - new Date(a.created));
+}
+
+function pruneDatabaseBackups() {
+  listDatabaseBackupFiles().slice(DATABASE_BACKUP_RETENTION).forEach(backup => {
+    fs.unlinkSync(backup.path);
+    console.log(`🧹 Backup database lama dihapus: ${backup.filename}`);
+  });
+}
+
+async function createDatabaseBackup(label = 'manual') {
+  await flushPendingDatabaseWrites();
+  fs.mkdirSync(databaseBackupDir, { recursive: true });
+
+  const safeLabel = String(label || 'manual').replace(/[^A-Za-z0-9_-]/g, '') || 'manual';
+  const timestamp = Date.now();
+  const filename = `production-dashboard_${getToday()}_${safeLabel}_${timestamp}_${crypto.randomBytes(4).toString('hex')}.sqlite`;
+  const backupPath = path.join(databaseBackupDir, filename);
+  const escapedPath = backupPath.replace(/'/g, "''");
+
+  await sequelize.query(`VACUUM INTO '${escapedPath}'`);
+  pruneDatabaseBackups();
+  console.log(`💾 Backup database dibuat: ${filename}`);
+  return backupPath;
+}
+
+function getLegacyHistoryJsonFiles() {
+  const directories = [
+    legacyHistoryDir,
+    path.join(legacyHistoryDir, 'backups')
+  ];
+
+  return directories.flatMap(directory => {
+    if (!fs.existsSync(directory)) return [];
+    return fs.readdirSync(directory)
+      .filter(filename => filename.endsWith('.json'))
+      .map(filename => {
+        const filePath = path.join(directory, filename);
+        const stats = fs.statSync(filePath);
+        return { filename, path: filePath, modified: stats.mtime };
+      });
+  });
+}
+
+function classifyLegacySnapshot(filename) {
+  const preResetDate = filename.match(/^backup_pre_reset_(\d{4}-\d{2}-\d{2})_/i)?.[1];
+  if (preResetDate) return { date: preResetDate, type: 'pre_reset' };
+
+  const date = extractHistoryDate(filename);
+  if (!date) return null;
+  if (filename.includes('_pre_restore_')) return { date, type: 'pre_restore' };
+  return { date, type: filename === `data_${date}.json` ? 'daily' : 'archive' };
+}
+
+async function migrateLegacyHistoryToDatabase() {
+  const legacyFiles = getLegacyHistoryJsonFiles();
+  if (!legacyFiles.length) return;
+
+  const newestByFilename = new Map();
+  legacyFiles.forEach(file => {
+    const current = newestByFilename.get(file.filename);
+    if (!current || file.modified > current.modified) newestByFilename.set(file.filename, file);
+  });
+
+  const uniqueFiles = Array.from(newestByFilename.values());
+  const canonicalFiles = uniqueFiles.filter(file => /^data_\d{4}-\d{2}-\d{2}\.json$/.test(file.filename));
+  const archiveFiles = uniqueFiles
+    .filter(file => !canonicalFiles.includes(file))
+    .sort((a, b) => b.modified - a.modified)
+    .slice(0, ARCHIVE_SNAPSHOT_RETENTION);
+  const selectedFiles = [...canonicalFiles, ...archiveFiles];
+
+  for (const file of selectedFiles) {
+    const classification = classifyLegacySnapshot(file.filename);
+    if (!classification) continue;
+
+    const data = JSON.parse(fs.readFileSync(file.path, 'utf8'));
+    if (!isValidProductionSnapshot(data)) {
+      throw new Error(`Snapshot lama tidak valid: ${file.filename}`);
+    }
+
+    const record = buildSnapshotRecord(
+      file.filename,
+      classification.date,
+      classification.type,
+      data,
+      { createdAt: file.modified, updatedAt: file.modified }
+    );
+    await ProductionSnapshot.upsert(record);
+  }
+
+  await loadProductionSnapshotCache();
+  await pruneArchiveSnapshots();
+  const migrationBackup = await createDatabaseBackup('json_migration');
+
+  legacyFiles.forEach(file => fs.unlinkSync(file.path));
+  console.log(`✅ ${legacyFiles.length} file JSON lama dimigrasikan/dibersihkan setelah backup ${path.basename(migrationBackup)}`);
+}
+
 async function initSequelizeStorage() {
   try {
     await sequelize.authenticate();
     await AppData.sync();
+    await ProductionSnapshot.sync();
 
     const legacyDataPath = path.join(__dirname, 'data.json');
     const legacyUsersPath = path.join(__dirname, 'users.json');
@@ -523,6 +771,13 @@ async function initSequelizeStorage() {
       buildInitialWorkScheduleSettings()
     ));
 
+    await loadProductionSnapshotCache();
+    try {
+      await migrateLegacyHistoryToDatabase();
+    } catch (error) {
+      console.error('❌ Migrasi histori JSON dibatalkan; file lama dipertahankan:', error.message);
+    }
+
     databaseInitialized = true;
     console.log(`✅ Sequelize database siap: ${databasePath}`);
   } catch (error) {
@@ -564,14 +819,22 @@ function backupDataBeforeReset(data, today) {
       }
     });
     
-    // Jika ada data yang dibackup, simpan ke file
+    // Simpan snapshot sebelum reset ke database, bukan ke file JSON.
     if (Object.keys(backupData.lines).length > 0) {
       const timestamp = new Date().getTime();
       const backupFileName = `backup_pre_reset_${today}_${timestamp}.json`;
-      const backupFile = path.join(__dirname, 'history', backupFileName);
-      
-      // Simpan backup tanpa overwrite
-      fs.writeFileSync(backupFile, JSON.stringify(backupData, null, 2));
+      storeProductionSnapshot(backupFileName, today, 'pre_reset', backupData);
+
+      const historicalDates = new Set();
+      Object.values(backupData.lines).forEach(line => {
+        Object.values(line.models).forEach(model => {
+          if (isValidDateInput(model.date)) historicalDates.add(model.date);
+        });
+      });
+      historicalDates.forEach(date => {
+        storeProductionSnapshot(`data_${date}.json`, date, 'daily', filterProductionDataByDate(data, date));
+      });
+
       console.log(`✅ Backup data sebelum reset disimpan: ${backupFileName}`);
       
       // Hitung jumlah model yang dibackup
@@ -661,11 +924,8 @@ function checkAndResetDataForNewDay() {
     writeProductionData(data);
     console.log(`✅ Auto-reset selesai: ${resetCount} model direset ke tanggal ${today}`);
     
-    // Update backup untuk hari ini setelah reset
+    // Simpan snapshot hari ini setelah reset.
     updateTodayBackup();
-    
-    // Buat arsip backup dengan timestamp
-    createArchiveBackup();
   } else {
     console.log(`ℹ️  Tidak ada data yang perlu direset (semua model sudah menggunakan tanggal ${today})`);
   }
@@ -682,18 +942,7 @@ function initializeDataFiles() {
     workScheduleSettingsCache = buildInitialWorkScheduleSettings();
   }
 
-  const historyDir = path.join(__dirname, 'history');
-  if (!fs.existsSync(historyDir)) {
-    fs.mkdirSync(historyDir);
-    console.log('History directory created successfully');
-  }
-  
-  // Buat subfolder untuk backup arsip
-  const backupDir = path.join(__dirname, 'history', 'backups');
-  if (!fs.existsSync(backupDir)) {
-    fs.mkdirSync(backupDir, { recursive: true });
-    console.log('Backup directory created successfully');
-  }
+  fs.mkdirSync(databaseBackupDir, { recursive: true });
 }
 
 function readProductionData() {
@@ -916,13 +1165,10 @@ function updateTodayBackup() {
   try {
     const data = readProductionData();
     const today = getToday();
-    const backupFile = path.join(__dirname, 'history', `data_${today}.json`);
-    
-    // Update file backup untuk tanggal hari ini
-    fs.writeFileSync(backupFile, JSON.stringify(data, null, 2));
-    console.log(`💾 Backup hari ini di-update: data_${today}.json`);
-    
-    return backupFile;
+    const filename = `data_${today}.json`;
+    storeProductionSnapshot(filename, today, 'daily', data);
+    console.log(`💾 Snapshot hari ini di-update di database: ${filename}`);
+    return filename;
   } catch (error) {
     console.error('❌ Error updating today backup:', error);
     return null;
@@ -937,18 +1183,13 @@ function createArchiveBackup(label = '') {
     const timestamp = new Date().getTime();
     const safeLabel = String(label || '').replace(/[^A-Za-z0-9_-]/g, '');
     const labelPart = safeLabel ? `_${safeLabel}` : '';
-    const archiveFile = path.join(
-      __dirname,
-      'history',
-      'backups',
-      `data_${today}_${timestamp}${labelPart}_${crypto.randomBytes(4).toString('hex')}.json`
-    );
-    
-    // Buat arsip dengan timestamp
-    fs.writeFileSync(archiveFile, JSON.stringify(data, null, 2));
-    console.log(`💾 Arsip backup dibuat: ${path.basename(archiveFile)}`);
-    
-    return archiveFile;
+    const filename = `data_${today}_${timestamp}${labelPart}_${crypto.randomBytes(4).toString('hex')}.json`;
+    const type = safeLabel === 'pre_restore'
+      ? 'pre_restore'
+      : (safeLabel === 'pre_reset' ? 'pre_reset' : (safeLabel === 'manual' ? 'manual' : 'archive'));
+    storeProductionSnapshot(filename, today, type, data);
+    console.log(`💾 Snapshot arsip dibuat di database: ${filename}`);
+    return filename;
   } catch (error) {
     console.error('❌ Error creating archive backup:', error);
     return null;
@@ -960,107 +1201,34 @@ function extractHistoryDate(filename) {
   return match ? match[1] : '';
 }
 
-function findHistoryDataPath(date) {
-  if (!isValidDateInput(date)) return null;
-
-  const historyDir = path.join(__dirname, 'history');
-  const backupDir = path.join(historyDir, 'backups');
-  const canonicalName = `data_${date}.json`;
-  const canonicalPaths = [
-    path.join(historyDir, canonicalName),
-    path.join(backupDir, canonicalName)
-  ];
-  const canonicalPath = canonicalPaths.find(filePath => fs.existsSync(filePath));
-  if (canonicalPath) return canonicalPath;
-
-  if (!fs.existsSync(backupDir)) return null;
-  const archivedFiles = fs.readdirSync(backupDir)
-    .filter(filename => extractHistoryDate(filename) === date)
-    .map(filename => ({
-      path: path.join(backupDir, filename),
-      modified: fs.statSync(path.join(backupDir, filename)).mtimeMs
-    }))
-    .sort((a, b) => b.modified - a.modified);
-
-  return archivedFiles[0]?.path || null;
-}
-
 function getAvailableHistoryDates() {
-  const directories = [
-    path.join(__dirname, 'history'),
-    path.join(__dirname, 'history', 'backups')
-  ];
-  const dates = new Set();
-
-  directories.forEach(directory => {
-    if (!fs.existsSync(directory)) return;
-    fs.readdirSync(directory).forEach(filename => {
-      const date = extractHistoryDate(filename);
-      if (date) dates.add(date);
-    });
-  });
-
-  return Array.from(dates).sort((a, b) => b.localeCompare(a));
+  return Array.from(new Set(
+    Array.from(productionSnapshotCache.values())
+      .map(snapshot => snapshot.snapshotDate)
+      .filter(isValidDateInput)
+  )).sort((a, b) => b.localeCompare(a));
 }
 
 function getHistoryFiles() {
-  try {
-    const directories = [
-      path.join(__dirname, 'history'),
-      path.join(__dirname, 'history', 'backups')
-    ];
-    const files = directories.flatMap(directory => {
-      if (!fs.existsSync(directory)) return [];
-      return fs.readdirSync(directory)
-        .filter(file => file.startsWith('data_') && file.endsWith('.json'))
-        .map(file => {
-          const filePath = path.join(directory, file);
-          const stats = fs.statSync(filePath);
-          return {
-            filename: file,
-            date: extractHistoryDate(file),
-            size: stats.size,
-            created: stats.birthtime
-          };
-        });
-    })
-      .sort((a, b) => new Date(b.date) - new Date(a.date));
-    
-    return files;
-  } catch (error) {
-    console.error('❌ Error reading history files:', error);
-    return [];
-  }
+  return Array.from(productionSnapshotCache.values())
+    .filter(snapshot => snapshot.filename.startsWith('data_'))
+    .map(snapshot => ({
+      filename: snapshot.filename,
+      date: snapshot.snapshotDate,
+      size: snapshot.size,
+      created: snapshot.createdAt
+    }))
+    .sort((a, b) => new Date(b.created) - new Date(a.created));
 }
 
 function readHistoryData(filename) {
-  try {
-    const filePath = [
-      path.join(__dirname, 'history', filename),
-      path.join(__dirname, 'history', 'backups', filename)
-    ].find(candidate => fs.existsSync(candidate));
-    if (!filePath) return null;
-    const data = fs.readFileSync(filePath, 'utf8');
-    return JSON.parse(data);
-  } catch (error) {
-    console.error('❌ Error reading history file:', error);
-    return null;
-  }
+  return readSnapshotData(getSnapshotByFilename(filename));
 }
 
 function isSafeBackupFilename(filename) {
   return typeof filename === 'string'
     && path.basename(filename) === filename
     && /^(?:data_|backup_pre_reset_)[A-Za-z0-9_.-]+\.json$/.test(filename);
-}
-
-function findBackupFilePath(filename) {
-  if (!isSafeBackupFilename(filename)) return null;
-
-  return [
-    path.join(__dirname, 'history', 'backups', filename),
-    path.join(__dirname, 'history', filename)
-  ].find(candidate => fs.existsSync(candidate)) || null;
 }
 
 function isValidProductionSnapshot(snapshot) {
@@ -1266,43 +1434,30 @@ app.use('/api', (req, res, next) => {
 // ENDPOINT UNTUK MENDAPATKAN DAFTAR BACKUP DATA
 app.get('/api/backup-history', requireLogin, requireAdmin, (req, res) => {
   try {
-    const historyDirs = [
-      path.join(__dirname, 'history', 'backups'),
-      path.join(__dirname, 'history')
-    ];
-    const seen = new Set();
-    const backupFiles = historyDirs.flatMap(directory => {
-      if (!fs.existsSync(directory)) return [];
-
-      return fs.readdirSync(directory)
-        .filter(file => (file.startsWith('backup_pre_reset_') || file.startsWith('data_')) && file.endsWith('.json'))
-        .map(file => {
-          const filePath = path.join(directory, file);
-          if (seen.has(file)) return null;
-          seen.add(file);
-          const stats = fs.statSync(filePath);
-          let date = '';
-          let type = 'daily';
-          
-          if (file.startsWith('backup_pre_reset_')) {
-            date = file.match(/^backup_pre_reset_(\d{4}-\d{2}-\d{2})_/)?.[1] || '';
-            type = 'pre_reset';
-          } else if (file.startsWith('data_')) {
-            date = extractHistoryDate(file);
-            type = file.includes('_pre_restore_') ? 'pre_restore' : 'daily';
-          }
-          
-          return {
-            filename: file,
-            date: date,
-            type: type,
-            size: stats.size,
-            created: stats.mtime,
-            displayDate: date ? new Date(date + 'T00:00:00+07:00').toLocaleDateString('id-ID') : '-'
-          };
-        })
-        .filter(Boolean);
-    }).sort((a, b) => new Date(b.created) - new Date(a.created));
+    const snapshotBackups = Array.from(productionSnapshotCache.values()).map(snapshot => ({
+      filename: snapshot.filename,
+      date: snapshot.snapshotDate,
+      type: snapshot.type,
+      size: snapshot.size,
+      created: snapshot.updatedAt,
+      storage: 'snapshot',
+      restorable: true,
+      exportable: true,
+      displayDate: new Date(snapshot.snapshotDate + 'T00:00:00+07:00').toLocaleDateString('id-ID')
+    }));
+    const databaseBackups = listDatabaseBackupFiles().map(backup => ({
+      filename: backup.filename,
+      date: backup.date,
+      type: 'database',
+      size: backup.size,
+      created: backup.created,
+      storage: 'database',
+      restorable: false,
+      exportable: false,
+      displayDate: backup.date ? new Date(backup.date + 'T00:00:00+07:00').toLocaleDateString('id-ID') : '-'
+    }));
+    const backupFiles = [...snapshotBackups, ...databaseBackups]
+      .sort((a, b) => new Date(b.created) - new Date(a.created));
     
     res.json(backupFiles);
   } catch (error) {
@@ -1312,7 +1467,7 @@ app.get('/api/backup-history', requireLogin, requireAdmin, (req, res) => {
 });
 
 // ENDPOINT UNTUK MEMULIHKAN DATA DARI BACKUP
-app.post('/api/restore-backup/:filename', requireLogin, requireAdmin, (req, res) => {
+app.post('/api/restore-backup/:filename', requireLogin, requireAdmin, async (req, res) => {
   const { filename } = req.params;
   
   if (!isSafeBackupFilename(filename)) {
@@ -1320,12 +1475,11 @@ app.post('/api/restore-backup/:filename', requireLogin, requireAdmin, (req, res)
   }
 
   try {
-    const backupFile = findBackupFilePath(filename);
-    if (!backupFile) {
+    const snapshot = getSnapshotByFilename(filename);
+    if (!snapshot) {
       return res.status(404).json({ error: 'Backup file not found' });
     }
-    
-    const backupData = JSON.parse(fs.readFileSync(backupFile, 'utf8'));
+    const backupData = readSnapshotData(snapshot);
     if (!isValidProductionSnapshot(backupData)) {
       return res.status(400).json({ error: 'Backup tidak memiliki struktur data produksi yang valid' });
     }
@@ -1335,6 +1489,7 @@ app.post('/api/restore-backup/:filename', requireLogin, requireAdmin, (req, res)
     if (!safetyBackupFile) {
       return res.status(500).json({ error: 'Gagal membuat backup pengaman sebelum restore' });
     }
+    const safetyDatabaseFile = await createDatabaseBackup('pre_restore');
     
     console.log(`🔄 Memulihkan backup dari: ${filename}`);
     
@@ -1384,6 +1539,7 @@ app.post('/api/restore-backup/:filename', requireLogin, requireAdmin, (req, res)
       restoredModels: restoredModels,
       replacedModels: replacedModels,
       safetyBackup: path.basename(safetyBackupFile),
+      safetyDatabaseBackup: path.basename(safetyDatabaseFile),
       totalLines: Object.keys(currentData.lines).length,
       totalModels: Object.keys(currentData.lines).reduce((total, lineName) => {
         return total + Object.keys(currentData.lines[lineName].models).length;
@@ -1397,20 +1553,23 @@ app.post('/api/restore-backup/:filename', requireLogin, requireAdmin, (req, res)
 
 app.get('/api/download-backup/:filename', requireLogin, requireAdmin, (req, res) => {
   const { filename } = req.params;
-  const backupFile = findBackupFilePath(filename);
+  const snapshot = isSafeBackupFilename(filename) ? getSnapshotByFilename(filename) : null;
 
-  if (!backupFile) {
+  if (!snapshot) {
     return res.status(isSafeBackupFilename(filename) ? 404 : 400).json({
       error: isSafeBackupFilename(filename) ? 'Backup file not found' : 'Invalid backup filename'
     });
   }
 
-  res.download(backupFile, filename, error => {
-    if (error && !res.headersSent) {
-      console.error('❌ Error downloading backup:', error);
-      res.status(500).json({ error: 'Failed to download backup' });
-    }
-  });
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+  res.type('application/json').send(snapshot.payload);
+});
+
+app.get('/api/download-database-backup/:filename', requireLogin, requireAdmin, (req, res) => {
+  const { filename } = req.params;
+  const backup = listDatabaseBackupFiles().find(item => item.filename === filename);
+  if (!backup) return res.status(404).json({ error: 'Database backup not found' });
+  res.download(backup.path, backup.filename);
 });
 
 // ENDPOINT UNTUK EXPORT BACKUP KE EXCEL
@@ -1422,27 +1581,10 @@ app.get('/api/export-backup/:filename', requireLogin, requireAdmin, async (req, 
   }
 
   try {
-    let backupFile;
-    
-    // Cari file backup di berbagai lokasi
-    if (fs.existsSync(path.join(__dirname, 'history', 'backups', filename))) {
-      backupFile = path.join(__dirname, 'history', 'backups', filename);
-    } else if (fs.existsSync(path.join(__dirname, 'history', filename))) {
-      backupFile = path.join(__dirname, 'history', filename);
-    } else {
-      return res.status(404).json({ error: 'Backup file not found' });
-    }
-    
-    const backupData = JSON.parse(fs.readFileSync(backupFile, 'utf8'));
-    let date = '';
-    
-    if (filename.startsWith('backup_pre_reset_')) {
-      date = filename.replace('backup_pre_reset_', '').replace(/_\d+\.json$/, '');
-    } else if (filename.startsWith('data_')) {
-      date = filename.replace('data_', '').replace(/_\d+\.json$/, '');
-    } else {
-      date = new Date().toISOString().split('T')[0];
-    }
+    const snapshot = getSnapshotByFilename(filename);
+    if (!snapshot) return res.status(404).json({ error: 'Backup file not found' });
+    const backupData = readSnapshotData(snapshot);
+    const date = snapshot.snapshotDate;
     
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'Production Dashboard System';
@@ -1637,45 +1779,14 @@ app.get('/api/export-backup/:filename', requireLogin, requireAdmin, async (req, 
 });
 
 // ENDPOINT UNTUK MENGORGANISIR FILE BACKUP
-app.post('/api/organize-backups', requireLogin, requireAdmin, (req, res) => {
+app.post('/api/organize-backups', requireLogin, requireAdmin, async (req, res) => {
   try {
-    const historyDir = path.join(__dirname, 'history');
-    const backupDir = path.join(__dirname, 'history', 'backups');
-    
-    if (!fs.existsSync(backupDir)) {
-      fs.mkdirSync(backupDir);
-    }
-    
-    // Salin arsip tanpa menghapus snapshot harian yang dipakai report.
-    const files = fs.readdirSync(historyDir)
-      .filter(file => (file.startsWith('backup_pre_reset_') || file.startsWith('data_')) && 
-                      file.endsWith('.json') && 
-                      !file.includes('backups'));
-    
-    let movedCount = 0;
-    files.forEach(file => {
-      const oldPath = path.join(historyDir, file);
-      const newPath = path.join(backupDir, file);
-      
-      // Jika file sudah ada di backupDir, tambahkan timestamp
-      if (fs.existsSync(newPath)) {
-        const timestamp = new Date().getTime();
-        const newName = file.replace('.json', `_${timestamp}.json`);
-        const newPathWithTimestamp = path.join(backupDir, newName);
-        fs.copyFileSync(oldPath, newPathWithTimestamp);
-        console.log(`Copied backup file with timestamp: ${newName}`);
-      } else {
-        fs.copyFileSync(oldPath, newPath);
-        console.log(`Copied backup file: ${file}`);
-      }
-      
-      movedCount++;
-    });
-    
+    const legacyCount = getLegacyHistoryJsonFiles().length;
+    await migrateLegacyHistoryToDatabase();
     res.json({
-      message: `✅ Backup files archived successfully`,
-      movedCount: movedCount,
-      backupDir: backupDir
+      message: '✅ Snapshot lama sudah dimigrasikan ke database',
+      movedCount: legacyCount,
+      backupDir: databaseBackupDir
     });
   } catch (error) {
     console.error('❌ Error organizing backups:', error);
@@ -1712,31 +1823,15 @@ app.get('/api/system-status', requireLogin, requireAdmin, (req, res) => {
     });
   });
   
-  // Cek jumlah backup files
-  const backupDir = path.join(__dirname, 'history', 'backups');
-  let backupCount = 0;
-  let lastBackup = null;
-  const backupDirs = [
-    path.join(__dirname, 'history', 'backups'),
-    path.join(__dirname, 'history')
-  ];
-  const seenBackups = new Set();
-  const backups = backupDirs.flatMap(directory => {
-    if (!fs.existsSync(directory)) return [];
-    return fs.readdirSync(directory)
-      .filter(file => file.endsWith('.json'))
-      .map(filename => {
-        if (seenBackups.has(filename)) return null;
-        seenBackups.add(filename);
-        const stats = fs.statSync(path.join(directory, filename));
-        return { filename, size: stats.size, created: stats.mtime };
-      })
-      .filter(Boolean);
-  }).sort((a, b) => new Date(b.created) - new Date(a.created));
-  if (backups.length) {
-    backupCount = backups.length;
-    lastBackup = backups[0] || null;
-  }
+  const databaseBackups = listDatabaseBackupFiles();
+  const backupCount = productionSnapshotCache.size + databaseBackups.length;
+  const latestSnapshot = Array.from(productionSnapshotCache.values())
+    .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))[0];
+  const lastBackupCandidates = [
+    latestSnapshot ? { filename: latestSnapshot.filename, size: latestSnapshot.size, created: latestSnapshot.updatedAt } : null,
+    databaseBackups[0] || null
+  ].filter(Boolean).sort((a, b) => new Date(b.created) - new Date(a.created));
+  const lastBackup = lastBackupCandidates[0] || null;
   
   res.json({
     systemTime: now.toLocaleString('id-ID'),
@@ -1748,7 +1843,7 @@ app.get('/api/system-status', requireLogin, requireAdmin, (req, res) => {
     modelDates: modelDates,
     backupCount: backupCount,
     lastBackup: lastBackup,
-    dataSize: Buffer.byteLength(JSON.stringify(data), 'utf8'),
+    dataSize: fs.existsSync(databasePath) ? fs.statSync(databasePath).size : Buffer.byteLength(JSON.stringify(data), 'utf8'),
     needsSync: otherDateModelCount > 0
   });
 });
@@ -1864,12 +1959,8 @@ function getReportDatesInRange(startDate, endDate) {
 }
 
 function readProductionSnapshotForDate(date) {
-  const historyPath = findHistoryDataPath(date);
-  if (historyPath) {
-    return JSON.parse(fs.readFileSync(historyPath, 'utf8'));
-  }
-
-  return date === getToday() ? readProductionData() : null;
+  const snapshot = getLatestSnapshotForDate(date);
+  return readSnapshotData(snapshot) || (date === getToday() ? readProductionData() : null);
 }
 
 function mergeProductionSnapshotsByDate(snapshots = []) {
@@ -2114,24 +2205,15 @@ function topCounterItems(counter, limit = 5) {
 app.get('/api/dashboard-summary', requireLogin, requireAdminOrAdminOperator, autoCheckDateReset, (req, res) => {
   try {
     const snapshotsByDate = new Map();
-    const historyDir = path.join(__dirname, 'history');
     const currentData = readProductionData();
     const defectConfig = readDefectConfig();
     const managedLineNames = new Set(Object.keys(currentData.lines || {}));
 
-    if (fs.existsSync(historyDir)) {
-      fs.readdirSync(historyDir)
-        .filter(file => /^data_\d{4}-\d{2}-\d{2}\.json$/.test(file))
-        .forEach(file => {
-          const date = file.replace('data_', '').replace('.json', '');
-          const filePath = path.join(historyDir, file);
-          try {
-            snapshotsByDate.set(date, JSON.parse(fs.readFileSync(filePath, 'utf8')));
-          } catch (error) {
-            console.error(`Failed to read dashboard history ${file}:`, error.message);
-          }
-        });
-    }
+    productionSnapshotCache.forEach(snapshot => {
+      if (snapshot.type !== 'daily' || snapshotsByDate.has(snapshot.snapshotDate)) return;
+      const snapshotData = readSnapshotData(snapshot);
+      if (snapshotData) snapshotsByDate.set(snapshot.snapshotDate, snapshotData);
+    });
 
     snapshotsByDate.set(getToday(), currentData);
 
@@ -2684,7 +2766,7 @@ app.get('/api/history/:filename/export', requireLogin, requireAdmin, (req, res) 
       return res.status(404).json({ error: 'History file not found' });
     }
 
-    const date = filename.replace('data_', '').replace('.json', '');
+    const date = getSnapshotByFilename(filename)?.snapshotDate || extractHistoryDate(filename);
     
     const workbook = XLSX.utils.book_new();
     
@@ -2790,15 +2872,14 @@ app.get('/api/history/:filename/export', requireLogin, requireAdmin, (req, res) 
   }
 });
 
-app.post('/api/backup/now', requireLogin, requireAdmin, (req, res) => {
+app.post('/api/backup/now', requireLogin, requireAdmin, async (req, res) => {
   try {
-    const backupFile = createArchiveBackup();
-    if (!backupFile) {
-      return res.status(500).json({ error: 'Failed to create backup' });
-    }
+    const snapshotFilename = createArchiveBackup('manual');
+    const databaseFile = await createDatabaseBackup('manual');
     res.json({
-      message: '✅ Archive backup created successfully',
-      filename: path.basename(backupFile)
+      message: '✅ Backup database berhasil dibuat',
+      filename: path.basename(databaseFile),
+      snapshot: snapshotFilename
     });
   } catch (error) {
     console.error('❌ Error creating backup:', error);
@@ -3215,27 +3296,8 @@ app.get('/api/date-report/:date', requireLogin, requireDateReportAccess, autoChe
   }
   
   try {
-    const backupFile = findHistoryDataPath(date);
-    let data;
-    
-    if (backupFile) {
-      console.log(`📂 Mengambil data dari backup: ${backupFile}`);
-      data = JSON.parse(fs.readFileSync(backupFile, 'utf8'));
-    } else {
-      console.log(`⚠️  Backup untuk tanggal ${date} tidak ditemukan`);
-      
-      // Jika tidak ada backup, coba ambil dari data.json dan filter berdasarkan tanggal
-      const allData = readProductionData();
-      const today = getToday();
-      
-      if (date === today) {
-        console.log(`ℹ️  Tanggal ${date} sama dengan hari ini, menggunakan data.json langsung`);
-        data = allData;
-      } else {
-        console.log(`⚠️  Tidak ada data untuk tanggal ${date}`);
-        return res.json([]); // Kembalikan array kosong jika tidak ada data
-      }
-    }
+    const data = readProductionSnapshotForDate(date);
+    if (!data) return res.json([]);
     
     const reportData = buildDateReportRows(data, date);
     
@@ -3896,16 +3958,8 @@ app.get('/api/export-date-report/:date', requireLogin, requireDateReportAccess, 
   }
   
   try {
-    const backupFile = findHistoryDataPath(date);
-    let data;
-    
-    if (backupFile) {
-      console.log(`📂 Mengambil data dari backup untuk export: ${backupFile}`);
-      data = JSON.parse(fs.readFileSync(backupFile, 'utf8'));
-    } else {
-      console.log(`ℹ️ Backup tidak ditemukan, menggunakan data.json untuk export tanggal: ${date}`);
-      data = readProductionData();
-    }
+    const data = readProductionSnapshotForDate(date);
+    if (!data) return res.status(404).json({ error: 'Data untuk tanggal tersebut tidak ditemukan' });
     
     data = filterProductionDataByDate(data, date);
     const workbook = await generateStyledDateReportExcel(data, date);
@@ -3929,10 +3983,8 @@ app.get('/api/export-date-report/:date/:lineName/:modelId', requireLogin, requir
   }
 
   try {
-    const backupFile = findHistoryDataPath(date);
-    const data = backupFile
-      ? JSON.parse(fs.readFileSync(backupFile, 'utf8'))
-      : readProductionData();
+    const data = readProductionSnapshotForDate(date);
+    if (!data) return res.status(404).json({ error: 'Data untuk tanggal tersebut tidak ditemukan' });
     const modelData = data.lines?.[lineName]?.models?.[modelId];
 
     if (!modelData || modelData.date !== date) {
@@ -4778,9 +4830,10 @@ app.get('/', (req, res) => {
 async function startServer() {
   await initSequelizeStorage();
   initializeDataFiles();
+  lastScheduledDatabaseBackupDate = listDatabaseBackupFiles()
+    .find(backup => backup.label === 'daily')?.date || '';
 
-  // PERBAIKAN INTERVAL DAN STARTUP LOGIC
-  setInterval(() => {
+  setInterval(async () => {
     const now = new Date();
     const today = getToday();
     console.log(`\nSystem check at: ${now.toLocaleString('id-ID')}, Date: ${today}`);
@@ -4791,12 +4844,17 @@ async function startServer() {
       console.log(`Auto reset data selesai: ${resetCount} model direset`);
     }
     
-    // Buat arsip backup setiap hari pada jam 00:01 WIB (17:01 UTC)
+    // Satu backup database konsisten per hari pada 00:01 WIB.
     const utcHours = now.getUTCHours();
     const utcMinutes = now.getUTCMinutes();
-    if (utcHours === 17 && utcMinutes === 1) { // 00:01 WIB = 17:01 UTC
-      createArchiveBackup();
-      console.log('Midnight archive backup executed');
+    if (utcHours === 17 && utcMinutes === 1 && lastScheduledDatabaseBackupDate !== today) {
+      try {
+        await createDatabaseBackup('daily');
+        lastScheduledDatabaseBackupDate = today;
+        console.log('Daily database backup executed');
+      } catch (error) {
+        console.error('Daily database backup failed:', error.message);
+      }
     }
   }, 60000); // Check every minute
 
@@ -4808,15 +4866,10 @@ async function startServer() {
     }
   }, 10000); // Increase delay to 10 seconds
 
-  // Initial backup dengan delay
+  // Sinkronkan snapshot harian saat startup tanpa membuat arsip baru.
   setTimeout(() => {
-    // Update backup untuk hari ini
     updateTodayBackup();
-    console.log('Today backup initialized');
-    
-    // Buat arsip backup awal
-    createArchiveBackup();
-    console.log('Initial archive backup completed');
+    console.log('Today database snapshot initialized');
   }, 15000);
 
   app.listen(port, () => {
@@ -4831,9 +4884,8 @@ async function startServer() {
   console.log(`✅ Input langsung di tabel Data Per Jam`);
   console.log(`✅ Target berdasarkan manual input`);
   console.log(`✅ AUTO RESET DATA SETIAP HARI BARU`);
-  console.log(`✅ BACKUP REAL-TIME PER TANGGAL`);
-  console.log(`✅ Satu file JSON per tanggal (data_YYYY-MM-DD.json)`);
-  console.log(`✅ Arsip backup dengan timestamp di folder backups`);
+  console.log(`✅ SNAPSHOT HISTORI DI DATABASE`);
+  console.log(`✅ Backup SQLite harian dengan retensi ${DATABASE_BACKUP_RETENTION} file`);
   console.log(`✅ Laporan berdasarkan tanggal`);
   console.log(`✅ Backup dan History System`);
   console.log(`✅ Export Excel dengan styling`);
@@ -4863,16 +4915,20 @@ module.exports = {
   calculateDefectSeverityBreakdown,
   buildDateReportRows,
   buildProductionReportRows,
+  classifyLegacySnapshot,
   extractHistoryDate,
   filterProductionDataByDate,
   generateModelId,
   generateStyledDateReportExcel,
   getToday,
   hasDateReportAccess,
+  initSequelizeStorage,
   isValidDateInput,
   isValidDateRange,
   mergeProductionSnapshotsByDate,
   isValidProductionSnapshot,
   parseNonNegativeInteger,
+  readProductionSnapshotForDate,
+  sequelize,
   summarizeProductionSnapshotByLine
 };

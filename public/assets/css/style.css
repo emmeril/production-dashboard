@@ -424,6 +424,22 @@
 	            overflow-y: auto;
 	        }
 
+	        @media (min-width: 1280px) {
+	            .dashboard-overview-grid .dashboard-daily-card {
+	                display: flex;
+	                /* The chart card defines the grid row height; table rows scroll inside it. */
+	                contain: size;
+	                min-height: 0;
+	                flex-direction: column;
+	            }
+
+	            .dashboard-overview-grid .dashboard-daily-scroll {
+	                flex: 1 1 auto;
+	                min-height: 0;
+	                max-height: none;
+	            }
+	        }
+
 	        .dashboard-daily-scroll thead th {
 	            position: sticky;
 	            top: 0;

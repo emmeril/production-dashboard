@@ -13,6 +13,8 @@ const {
   generateStyledDateReportExcel,
   hasDateReportAccess,
   isValidDateInput,
+  isValidDateRange,
+  mergeProductionSnapshotsByDate,
   parseNonNegativeInteger,
   summarizeProductionSnapshotByLine
 } = require('../server');
@@ -41,6 +43,13 @@ test('date input only accepts the API date shape', () => {
   assert.equal(isValidDateInput('2026-07-21'), true);
   assert.equal(isValidDateInput('21-07-2026'), false);
   assert.equal(isValidDateInput(''), false);
+});
+
+test('date range requires two valid dates in chronological order', () => {
+  assert.equal(isValidDateRange('2026-07-20', '2026-07-22'), true);
+  assert.equal(isValidDateRange('2026-07-22', '2026-07-22'), true);
+  assert.equal(isValidDateRange('2026-07-23', '2026-07-22'), false);
+  assert.equal(isValidDateRange('20-07-2026', '2026-07-22'), false);
 });
 
 test('daily line summary separates critical, major, and minor defects', () => {
@@ -222,6 +231,59 @@ test('date filtering keeps report exports scoped without mutating live data', ()
 
   assert.deepEqual(Object.keys(filtered.lines['Line 1'].models), ['current']);
   assert.deepEqual(Object.keys(data.lines['Line 1'].models), ['current', 'historical']);
+});
+
+test('date range merge keeps models with the same ID on different dates', () => {
+  const snapshots = [
+    {
+      date: '2026-07-20',
+      data: {
+        lines: {
+          'Line 1': {
+            models: { model1: { date: '2026-07-20', outputDay: 10 } }
+          }
+        }
+      }
+    },
+    {
+      date: '2026-07-21',
+      data: {
+        lines: {
+          'Line 1': {
+            models: { model1: { date: '2026-07-21', outputDay: 20 } }
+          }
+        }
+      }
+    }
+  ];
+
+  const merged = mergeProductionSnapshotsByDate(snapshots);
+  const models = Object.values(merged.lines['Line 1'].models);
+
+  assert.equal(models.length, 2);
+  assert.deepEqual(models.map(model => model.date), ['2026-07-20', '2026-07-21']);
+  assert.deepEqual(models.map(model => model.reportModelId), ['model1', 'model1']);
+});
+
+test('Excel range export keeps duplicate daily model IDs as separate rows', async () => {
+  const merged = mergeProductionSnapshotsByDate([
+    {
+      date: '2026-07-20',
+      data: { lines: { 'Line 1': { models: { model1: { date: '2026-07-20', model: 'Model A', outputDay: 10 } } } } }
+    },
+    {
+      date: '2026-07-21',
+      data: { lines: { 'Line 1': { models: { model1: { date: '2026-07-21', model: 'Model A', outputDay: 20 } } } } }
+    }
+  ]);
+
+  const workbook = await generateStyledDateReportExcel(merged, '2026-07-20 s.d. 2026-07-21');
+  const summary = workbook.getWorksheet('SUMMARY');
+
+  assert.equal(summary.getRow(8).getCell(1).value, '2026-07-20');
+  assert.equal(summary.getRow(9).getCell(1).value, '2026-07-21');
+  assert.equal(summary.getRow(8).getCell(3).value, 'model1');
+  assert.equal(summary.getRow(9).getCell(3).value, 'model1');
 });
 
 test('report access allows admin roles and rejects operators', () => {

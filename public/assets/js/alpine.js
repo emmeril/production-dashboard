@@ -47,7 +47,8 @@ function dashboard() {
         dashboardChartAutoPlayTimer: null,
         users: [],
         dateReport: [],
-        reportDate: getJakartaDateInput(),
+        reportStartDate: getJakartaDateInput(),
+        reportEndDate: getJakartaDateInput(),
         productionClockMinute: null,
         qcHourIndex: 0,
 
@@ -1060,17 +1061,22 @@ function dashboard() {
 
 	        // Date-based report methods
 	        async loadDateReport() {
-            if (!this.reportDate) {
-                this.showToast('Pilih tanggal terlebih dahulu', 'error');
+            if (!this.reportStartDate || !this.reportEndDate) {
+                this.showToast('Pilih tanggal mulai dan tanggal selesai terlebih dahulu', 'error');
+                return;
+            }
+            if (this.reportStartDate > this.reportEndDate) {
+                this.showToast('Tanggal mulai tidak boleh lebih besar dari tanggal selesai', 'error');
                 return;
             }
 
             try {
-                const response = await fetch(`/api/date-report/${this.reportDate}`);
+                const params = new URLSearchParams({ startDate: this.reportStartDate, endDate: this.reportEndDate });
+                const response = await fetch(`/api/date-report?${params.toString()}`);
                 if (response.ok) {
                     this.dateReport = await response.json();
                     this.currentReportPage = 1; // Reset to first page
-                    this.showToast('Laporan berhasil dimuat', 'success');
+                    this.showToast(this.dateReport.length ? 'Laporan berhasil dimuat' : 'Tidak ada data pada rentang tanggal tersebut', this.dateReport.length ? 'success' : 'info');
                 } else {
                     console.error('Failed to load date report');
                     this.showToast('Gagal memuat laporan', 'error');
@@ -1081,20 +1087,27 @@ function dashboard() {
             }
         },
 
-        async exportDateReport() {
-            if (!this.reportDate) {
-                this.showToast('Pilih tanggal terlebih dahulu', 'error');
+	        async exportDateReport() {
+            if (!this.reportStartDate || !this.reportEndDate) {
+                this.showToast('Pilih tanggal mulai dan tanggal selesai terlebih dahulu', 'error');
+                return;
+            }
+            if (this.reportStartDate > this.reportEndDate) {
+                this.showToast('Tanggal mulai tidak boleh lebih besar dari tanggal selesai', 'error');
                 return;
             }
 
             try {
-                const response = await fetch(`/api/export-date-report/${this.reportDate}`);
+                const params = new URLSearchParams({ startDate: this.reportStartDate, endDate: this.reportEndDate });
+                const response = await fetch(`/api/export-date-report?${params.toString()}`);
                 if (response.ok) {
                     const blob = await response.blob();
                     const url = window.URL.createObjectURL(blob);
                     const a = document.createElement('a');
                     a.href = url;
-	                    a.download = `Production_Report_${this.reportDate}.xlsx`;
+                    a.download = this.reportStartDate === this.reportEndDate
+                        ? `Production_Report_${this.reportStartDate}.xlsx`
+                        : `Production_Report_${this.reportStartDate}_to_${this.reportEndDate}.xlsx`;
                     document.body.appendChild(a);
                     a.click();
                     window.URL.revokeObjectURL(url);
@@ -1111,13 +1124,13 @@ function dashboard() {
         },
 
         async exportDateReportLine(line) {
-            if (!this.reportDate || !line?.line || !line?.modelId) {
+            if (!line?.date || !line?.line || !line?.modelId) {
                 this.showToast('Data line untuk export tidak lengkap', 'error');
                 return;
             }
 
             try {
-                const date = encodeURIComponent(this.reportDate);
+                const date = encodeURIComponent(line.date);
                 const lineName = encodeURIComponent(line.line);
                 const modelId = encodeURIComponent(line.modelId);
                 const response = await fetch(`/api/export-date-report/${date}/${lineName}/${modelId}`);
@@ -1132,7 +1145,7 @@ function dashboard() {
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = `Production_QC_Detail_${line.line}_${line.modelId}_${this.reportDate}.xlsx`;
+                a.download = `Production_QC_Detail_${line.line}_${line.modelId}_${line.date}.xlsx`;
                 document.body.appendChild(a);
                 a.click();
                 window.URL.revokeObjectURL(url);

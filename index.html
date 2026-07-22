@@ -1235,14 +1235,20 @@
                 <div x-show="currentPage === 'report' && canViewReport()" class="bg-white rounded-lg shadow overflow-hidden card-shadow mb-6 fade-in">
                         <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
 	                            <h3 class="text-lg leading-6 font-medium text-gray-900 flex items-center"><i class="fa-solid fa-chart-column text-blue-600 mr-2"></i>Laporan Produksi dan QC</h3>
-                            <p class="mt-1 max-w-2xl text-sm text-gray-500">Lihat rekap lengkap produksi dan QC berdasarkan tanggal tertentu</p>
+                            <p class="mt-1 max-w-2xl text-sm text-gray-500">Lihat rekap lengkap produksi dan QC berdasarkan rentang tanggal</p>
                         </div>
                         <div class="p-4">
 	                            <div class="filter-toolbar line-management-toolbar">
 	                                <div class="filter-group">
-	                                    <span class="filter-caption"><i class="fa-solid fa-calendar-days"></i>Tanggal</span>
+	                                    <span class="filter-caption"><i class="fa-solid fa-calendar-days"></i>Dari tanggal</span>
 	                                    <div class="filter-control filter-control-select">
-	                                        <input type="date" id="report-date" x-model="reportDate" class="focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
+	                                        <input type="date" id="report-start-date" x-model="reportStartDate" class="focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
+	                                    </div>
+	                                </div>
+	                                <div class="filter-group">
+	                                    <span class="filter-caption"><i class="fa-solid fa-calendar-days"></i>Sampai tanggal</span>
+	                                    <div class="filter-control filter-control-select">
+	                                        <input type="date" id="report-end-date" x-model="reportEndDate" class="focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
 	                                    </div>
 	                                </div>
 	                                <div class="filter-group">
@@ -1258,7 +1264,7 @@
                             <!-- Date Report Results with Pagination -->
 	                            <div x-show="dateReport && dateReport.length > 0" class="report-results mt-4">
 	                                <div class="report-results-header flex justify-between items-center mb-4">
-	                                    <h4 class="text-lg font-medium text-gray-900 flex items-center"><i class="fa-solid fa-table-list text-blue-600 mr-2"></i>Hasil Laporan Tanggal: <span class="ml-1" x-text="reportDate"></span></h4>
+	                                    <h4 class="text-lg font-medium text-gray-900 flex items-center"><i class="fa-solid fa-table-list text-blue-600 mr-2"></i>Hasil Laporan: <span class="ml-1" x-text="reportStartDate === reportEndDate ? reportStartDate : reportStartDate + ' s.d. ' + reportEndDate"></span></h4>
                                     
 	                                    <div class="filter-group">
 	                                        <span class="filter-caption"><i class="fa-solid fa-table-list"></i>Tampilkan</span>
@@ -1298,7 +1304,7 @@
                                             </tr>
                                         </thead>
                                         <tbody class="bg-white divide-y divide-gray-200">
-                                            <template x-for="line in paginatedDateReport" :key="line.line + '-' + line.modelId">
+                                            <template x-for="line in paginatedDateReport" :key="line.date + '-' + line.line + '-' + line.modelId">
                                                 <tr>
                                                     <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900" x-text="formatShortDate(line.date)"></td>
                                                     <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900" x-text="line.line"></td>

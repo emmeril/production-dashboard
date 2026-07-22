@@ -1777,10 +1777,65 @@ function filterProductionDataByDate(data, date) {
   return { ...data, lines };
 }
 
-function buildDateReportRows(data, date) {
-  const filteredData = filterProductionDataByDate(data, date);
+function isValidDateRange(startDate, endDate) {
+  return isValidDateInput(startDate)
+    && isValidDateInput(endDate)
+    && startDate <= endDate;
+}
 
-  return Object.entries(filteredData.lines || {}).flatMap(([lineName, line]) =>
+function getReportDatesInRange(startDate, endDate) {
+  const dates = new Set(getAvailableHistoryDates());
+  dates.add(getToday());
+
+  return Array.from(dates)
+    .filter(date => date >= startDate && date <= endDate)
+    .sort((a, b) => a.localeCompare(b));
+}
+
+function readProductionSnapshotForDate(date) {
+  const historyPath = findHistoryDataPath(date);
+  if (historyPath) {
+    return JSON.parse(fs.readFileSync(historyPath, 'utf8'));
+  }
+
+  return date === getToday() ? readProductionData() : null;
+}
+
+function mergeProductionSnapshotsByDate(snapshots = []) {
+  const mergedData = { lines: {}, activeLine: '' };
+
+  snapshots.forEach(({ date, data }) => {
+    const filteredData = filterProductionDataByDate(data, date);
+
+    Object.entries(filteredData.lines || {}).forEach(([lineName, line]) => {
+      if (!mergedData.lines[lineName]) {
+        mergedData.lines[lineName] = { models: {}, activeModels: [] };
+      }
+
+      Object.entries(line.models || {}).forEach(([modelId, model]) => {
+        const reportModelKey = `${date}::${modelId}`;
+        mergedData.lines[lineName].models[reportModelKey] = {
+          ...model,
+          reportModelId: modelId
+        };
+        mergedData.lines[lineName].activeModels.push(reportModelKey);
+      });
+    });
+  });
+
+  return mergedData;
+}
+
+function buildDateRangeProductionData(startDate, endDate) {
+  const snapshots = getReportDatesInRange(startDate, endDate)
+    .map(date => ({ date, data: readProductionSnapshotForDate(date) }))
+    .filter(snapshot => snapshot.data);
+
+  return mergeProductionSnapshotsByDate(snapshots);
+}
+
+function buildProductionReportRows(data) {
+  return Object.entries(data?.lines || {}).flatMap(([lineName, line]) =>
     Object.entries(line.models || {}).map(([modelId, model]) => {
       const defectBreakdown = calculateDefectSeverityBreakdown(model);
       const defectCategories = summarizeModelDefectCategories(model);
@@ -1790,7 +1845,7 @@ function buildDateReportRows(data, date) {
       const qcChecked = model.qcChecking || 0;
       return {
         line: lineName,
-        modelId,
+        modelId: model.reportModelId || modelId,
         labelWeek: model.labelWeek,
         model: model.model,
         date: model.date,
@@ -1809,6 +1864,11 @@ function buildDateReportRows(data, date) {
       };
     })
   );
+}
+
+function buildDateReportRows(data, date) {
+  const filteredData = filterProductionDataByDate(data, date);
+  return buildProductionReportRows(filteredData);
 }
 
 function getQcCheckHourLabel(model = {}, check = {}) {
@@ -3053,6 +3113,24 @@ app.post('/api/update-line/:lineName/:modelId', requireLogin, requireLineAccess,
   res.json({ message: `Model ${modelId} in line ${lineName} updated successfully.`, data: model });
 });
 
+app.get('/api/date-report', requireLogin, requireDateReportAccess, autoCheckDateReset, (req, res) => {
+  const { startDate, endDate } = req.query;
+
+  if (!isValidDateRange(startDate, endDate)) {
+    return res.status(400).json({ error: 'Rentang tanggal tidak valid. Gunakan tanggal mulai dan tanggal selesai dengan format YYYY-MM-DD.' });
+  }
+
+  try {
+    const data = buildDateRangeProductionData(startDate, endDate);
+    const reportData = buildProductionReportRows(data);
+    console.log(`✅ Laporan rentang ${startDate} sampai ${endDate} berhasil dibuat. Jumlah data: ${reportData.length}`);
+    res.json(reportData);
+  } catch (error) {
+    console.error('❌ Error generating date range report:', error);
+    res.status(500).json({ error: 'Failed to generate date range report: ' + error.message });
+  }
+});
+
 app.get('/api/date-report/:date', requireLogin, requireDateReportAccess, autoCheckDateReset, (req, res) => {
   const date = req.params.date;
   
@@ -3181,6 +3259,7 @@ async function generateStyledDateReportExcel(data, date) {
     const line = data.lines[lineName];
 	    Object.keys(line.models).forEach(modelId => {
 	      const model = line.models[modelId];
+	      const displayModelId = model.reportModelId || modelId;
 	      const achievement = model.target > 0 ? ((model.outputDay || 0) / model.target * 100).toFixed(2) + '%' : '0%';
 	      const defectCategories = summarizeModelDefectCategories(model);
 	      const defectBreakdown = calculateDefectSeverityBreakdown(model);
@@ -3189,7 +3268,7 @@ async function generateStyledDateReportExcel(data, date) {
 	      row.values = [
         model.date || date,
         lineName,
-        modelId,
+	        displayModelId,
         model.labelWeek || '',
         model.model || '',
         model.target || 0,
@@ -3301,9 +3380,10 @@ async function generateStyledDateReportExcel(data, date) {
 
     Object.keys(line.models).forEach(modelId => {
       const model = line.models[modelId];
+      const displayModelId = model.reportModelId || modelId;
       
       lineSheet.getCell(`A${currentRow}`).value = 'Model ID';
-      lineSheet.getCell(`B${currentRow}`).value = modelId;
+      lineSheet.getCell(`B${currentRow}`).value = displayModelId;
       currentRow++;
       
       lineSheet.getCell(`A${currentRow}`).value = 'Label/Week';
@@ -3706,6 +3786,31 @@ async function generateScopedLineReportExcel(modelData, lineName, modelId, role)
   detail.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: headers.length } };
   return workbook;
 }
+
+app.get('/api/export-date-report', requireLogin, requireDateReportAccess, autoCheckDateReset, async (req, res) => {
+  const { startDate, endDate } = req.query;
+
+  if (!isValidDateRange(startDate, endDate)) {
+    return res.status(400).json({ error: 'Rentang tanggal tidak valid. Gunakan tanggal mulai dan tanggal selesai dengan format YYYY-MM-DD.' });
+  }
+
+  try {
+    const data = buildDateRangeProductionData(startDate, endDate);
+    const reportLabel = startDate === endDate ? startDate : `${startDate} s.d. ${endDate}`;
+    const workbook = await generateStyledDateReportExcel(data, reportLabel);
+    const downloadFilename = startDate === endDate
+      ? `Production_Report_${startDate}.xlsx`
+      : `Production_Report_${startDate}_to_${endDate}.xlsx`;
+
+    res.setHeader('Content-Disposition', `attachment; filename="${downloadFilename}"`);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    await workbook.xlsx.write(res);
+    console.log(`✅ Export Excel untuk rentang ${startDate} sampai ${endDate} berhasil`);
+  } catch (error) {
+    console.error('❌ Export date range report error:', error);
+    res.status(500).json({ error: 'Failed to export date range report: ' + error.message });
+  }
+});
 
 app.get('/api/export-date-report/:date', requireLogin, requireDateReportAccess, autoCheckDateReset, async (req, res) => {
   const date = req.params.date;
@@ -4681,6 +4786,7 @@ module.exports = {
   app,
   calculateDefectSeverityBreakdown,
   buildDateReportRows,
+  buildProductionReportRows,
   extractHistoryDate,
   filterProductionDataByDate,
   generateModelId,
@@ -4688,6 +4794,8 @@ module.exports = {
   getToday,
   hasDateReportAccess,
   isValidDateInput,
+  isValidDateRange,
+  mergeProductionSnapshotsByDate,
   parseNonNegativeInteger,
   summarizeProductionSnapshotByLine
 };

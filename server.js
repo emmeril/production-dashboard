@@ -930,16 +930,18 @@ function updateTodayBackup() {
 }
 
 // FUNGSI BACKUP BARU: Buat arsip backup dengan timestamp
-function createArchiveBackup() {
+function createArchiveBackup(label = '') {
   try {
     const data = readProductionData();
     const today = getToday();
     const timestamp = new Date().getTime();
+    const safeLabel = String(label || '').replace(/[^A-Za-z0-9_-]/g, '');
+    const labelPart = safeLabel ? `_${safeLabel}` : '';
     const archiveFile = path.join(
       __dirname,
       'history',
       'backups',
-      `data_${today}_${timestamp}_${crypto.randomBytes(4).toString('hex')}.json`
+      `data_${today}_${timestamp}${labelPart}_${crypto.randomBytes(4).toString('hex')}.json`
     );
     
     // Buat arsip dengan timestamp
@@ -1050,6 +1052,29 @@ function isSafeBackupFilename(filename) {
   return typeof filename === 'string'
     && path.basename(filename) === filename
     && /^(?:data_|backup_pre_reset_)[A-Za-z0-9_.-]+\.json$/.test(filename);
+}
+
+function findBackupFilePath(filename) {
+  if (!isSafeBackupFilename(filename)) return null;
+
+  return [
+    path.join(__dirname, 'history', 'backups', filename),
+    path.join(__dirname, 'history', filename)
+  ].find(candidate => fs.existsSync(candidate)) || null;
+}
+
+function isValidProductionSnapshot(snapshot) {
+  if (!snapshot || typeof snapshot !== 'object' || Array.isArray(snapshot)) return false;
+  if (!snapshot.lines || typeof snapshot.lines !== 'object' || Array.isArray(snapshot.lines)) return false;
+
+  return Object.values(snapshot.lines).every(line => {
+    return line
+      && typeof line === 'object'
+      && !Array.isArray(line)
+      && line.models
+      && typeof line.models === 'object'
+      && !Array.isArray(line.models);
+  });
 }
 
 function isSafeHistoryFilename(filename) {
@@ -1241,14 +1266,20 @@ app.use('/api', (req, res, next) => {
 // ENDPOINT UNTUK MENDAPATKAN DAFTAR BACKUP DATA
 app.get('/api/backup-history', requireLogin, requireAdmin, (req, res) => {
   try {
-    const backupDir = path.join(__dirname, 'history', 'backups');
-    let backupFiles = [];
-    
-    if (fs.existsSync(backupDir)) {
-      backupFiles = fs.readdirSync(backupDir)
+    const historyDirs = [
+      path.join(__dirname, 'history', 'backups'),
+      path.join(__dirname, 'history')
+    ];
+    const seen = new Set();
+    const backupFiles = historyDirs.flatMap(directory => {
+      if (!fs.existsSync(directory)) return [];
+
+      return fs.readdirSync(directory)
         .filter(file => (file.startsWith('backup_pre_reset_') || file.startsWith('data_')) && file.endsWith('.json'))
         .map(file => {
-          const filePath = path.join(backupDir, file);
+          const filePath = path.join(directory, file);
+          if (seen.has(file)) return null;
+          seen.add(file);
           const stats = fs.statSync(filePath);
           let date = '';
           let type = 'daily';
@@ -1258,7 +1289,7 @@ app.get('/api/backup-history', requireLogin, requireAdmin, (req, res) => {
             type = 'pre_reset';
           } else if (file.startsWith('data_')) {
             date = extractHistoryDate(file);
-            type = 'daily';
+            type = file.includes('_pre_restore_') ? 'pre_restore' : 'daily';
           }
           
           return {
@@ -1266,13 +1297,12 @@ app.get('/api/backup-history', requireLogin, requireAdmin, (req, res) => {
             date: date,
             type: type,
             size: stats.size,
-            created: stats.birthtime,
-            displayDate: date ? new Date(date + 'T00:00:00+07:00').toLocaleDateString('id-ID') : '-',
-            fullPath: filePath
+            created: stats.mtime,
+            displayDate: date ? new Date(date + 'T00:00:00+07:00').toLocaleDateString('id-ID') : '-'
           };
         })
-        .sort((a, b) => new Date(b.created) - new Date(a.created));
-    }
+        .filter(Boolean);
+    }).sort((a, b) => new Date(b.created) - new Date(a.created));
     
     res.json(backupFiles);
   } catch (error) {
@@ -1290,19 +1320,21 @@ app.post('/api/restore-backup/:filename', requireLogin, requireAdmin, (req, res)
   }
 
   try {
-    let backupFile;
-    
-    // Cari file backup di berbagai lokasi
-    if (fs.existsSync(path.join(__dirname, 'history', 'backups', filename))) {
-      backupFile = path.join(__dirname, 'history', 'backups', filename);
-    } else if (fs.existsSync(path.join(__dirname, 'history', filename))) {
-      backupFile = path.join(__dirname, 'history', filename);
-    } else {
+    const backupFile = findBackupFilePath(filename);
+    if (!backupFile) {
       return res.status(404).json({ error: 'Backup file not found' });
     }
     
     const backupData = JSON.parse(fs.readFileSync(backupFile, 'utf8'));
+    if (!isValidProductionSnapshot(backupData)) {
+      return res.status(400).json({ error: 'Backup tidak memiliki struktur data produksi yang valid' });
+    }
+
     const currentData = readProductionData();
+    const safetyBackupFile = createArchiveBackup('pre_restore');
+    if (!safetyBackupFile) {
+      return res.status(500).json({ error: 'Gagal membuat backup pengaman sebelum restore' });
+    }
     
     console.log(`🔄 Memulihkan backup dari: ${filename}`);
     
@@ -1351,6 +1383,7 @@ app.post('/api/restore-backup/:filename', requireLogin, requireAdmin, (req, res)
       restoredLines: restoredLines,
       restoredModels: restoredModels,
       replacedModels: replacedModels,
+      safetyBackup: path.basename(safetyBackupFile),
       totalLines: Object.keys(currentData.lines).length,
       totalModels: Object.keys(currentData.lines).reduce((total, lineName) => {
         return total + Object.keys(currentData.lines[lineName].models).length;
@@ -1360,6 +1393,24 @@ app.post('/api/restore-backup/:filename', requireLogin, requireAdmin, (req, res)
     console.error('❌ Error restoring backup:', error);
     res.status(500).json({ error: 'Failed to restore backup: ' + error.message });
   }
+});
+
+app.get('/api/download-backup/:filename', requireLogin, requireAdmin, (req, res) => {
+  const { filename } = req.params;
+  const backupFile = findBackupFilePath(filename);
+
+  if (!backupFile) {
+    return res.status(isSafeBackupFilename(filename) ? 404 : 400).json({
+      error: isSafeBackupFilename(filename) ? 'Backup file not found' : 'Invalid backup filename'
+    });
+  }
+
+  res.download(backupFile, filename, error => {
+    if (error && !res.headersSent) {
+      console.error('❌ Error downloading backup:', error);
+      res.status(500).json({ error: 'Failed to download backup' });
+    }
+  });
 });
 
 // ENDPOINT UNTUK EXPORT BACKUP KE EXCEL
@@ -1664,9 +1715,27 @@ app.get('/api/system-status', requireLogin, requireAdmin, (req, res) => {
   // Cek jumlah backup files
   const backupDir = path.join(__dirname, 'history', 'backups');
   let backupCount = 0;
-  if (fs.existsSync(backupDir)) {
-    backupCount = fs.readdirSync(backupDir)
-      .filter(file => file.endsWith('.json')).length;
+  let lastBackup = null;
+  const backupDirs = [
+    path.join(__dirname, 'history', 'backups'),
+    path.join(__dirname, 'history')
+  ];
+  const seenBackups = new Set();
+  const backups = backupDirs.flatMap(directory => {
+    if (!fs.existsSync(directory)) return [];
+    return fs.readdirSync(directory)
+      .filter(file => file.endsWith('.json'))
+      .map(filename => {
+        if (seenBackups.has(filename)) return null;
+        seenBackups.add(filename);
+        const stats = fs.statSync(path.join(directory, filename));
+        return { filename, size: stats.size, created: stats.mtime };
+      })
+      .filter(Boolean);
+  }).sort((a, b) => new Date(b.created) - new Date(a.created));
+  if (backups.length) {
+    backupCount = backups.length;
+    lastBackup = backups[0] || null;
   }
   
   res.json({
@@ -1678,6 +1747,8 @@ app.get('/api/system-status', requireLogin, requireAdmin, (req, res) => {
     otherDateModelCount: otherDateModelCount,
     modelDates: modelDates,
     backupCount: backupCount,
+    lastBackup: lastBackup,
+    dataSize: Buffer.byteLength(JSON.stringify(data), 'utf8'),
     needsSync: otherDateModelCount > 0
   });
 });
@@ -2721,9 +2792,14 @@ app.get('/api/history/:filename/export', requireLogin, requireAdmin, (req, res) 
 
 app.post('/api/backup/now', requireLogin, requireAdmin, (req, res) => {
   try {
-    // Buat arsip backup
-    createArchiveBackup();
-    res.json({ message: '✅ Archive backup created successfully' });
+    const backupFile = createArchiveBackup();
+    if (!backupFile) {
+      return res.status(500).json({ error: 'Failed to create backup' });
+    }
+    res.json({
+      message: '✅ Archive backup created successfully',
+      filename: path.basename(backupFile)
+    });
   } catch (error) {
     console.error('❌ Error creating backup:', error);
     res.status(500).json({ error: 'Failed to create backup' });
@@ -4796,6 +4872,7 @@ module.exports = {
   isValidDateInput,
   isValidDateRange,
   mergeProductionSnapshotsByDate,
+  isValidProductionSnapshot,
   parseNonNegativeInteger,
   summarizeProductionSnapshotByLine
 };

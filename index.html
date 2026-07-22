@@ -1539,36 +1539,134 @@
 		                    </div>
 		                </div>
 
-		                <!-- System Actions - Hanya untuk Admin -->
-		                <div x-show="currentPage === 'system-actions' && currentUser.role === 'admin'" class="fade-in">
-	                    <div class="mb-6">
-	                        <h1 class="text-2xl font-bold text-gray-800 flex items-center"><i class="fa-solid fa-screwdriver-wrench text-blue-600 mr-3"></i>Aksi Sistem</h1>
-	                        <p class="text-gray-600">Backup, sinkronisasi tanggal, dan status sistem</p>
-	                    </div>
-	                    <div class="bg-white rounded-lg shadow overflow-hidden card-shadow">
-	                        <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
-	                            <h3 class="text-lg leading-6 font-medium text-gray-900 flex items-center"><i class="fa-solid fa-sliders text-blue-600 mr-2"></i>Maintenance</h3>
-	                            <p class="mt-1 max-w-2xl text-sm text-gray-500">Gunakan aksi ini hanya saat perlu administrasi data sistem</p>
+	                <!-- Maintenance Center - Hanya untuk Admin -->
+	                <div x-show="currentPage === 'system-actions' && currentUser.role === 'admin'" class="fade-in">
+	                    <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+	                        <div>
+	                            <h1 class="text-2xl font-bold text-gray-800 flex items-center"><i class="fa-solid fa-screwdriver-wrench text-blue-600 mr-3"></i>Maintenance Center</h1>
+	                            <p class="text-gray-600">Pantau kesehatan sistem, kelola backup, dan lakukan sinkronisasi data dengan aman.</p>
 	                        </div>
-		                        <div class="p-4">
-	                            <div class="filter-toolbar line-management-toolbar system-actions-toolbar mb-0">
-		                                <div class="filter-group">
-		                                <button @click="createBackup()" class="btn-compact inline-flex justify-center items-center border border-transparent font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
-		                                    <i class="fa-solid fa-database mr-2"></i>Buat Backup
-		                                </button>
-
-		                                <button @click="syncDates()" class="btn-compact inline-flex justify-center items-center border border-transparent font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-		                                    <i class="fa-solid fa-rotate mr-2"></i>Sinkronisasi Tanggal
-		                                </button>
-
-		                                <button @click="checkSystemStatus()" class="btn-compact inline-flex justify-center items-center border border-transparent font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500">
-		                                    <i class="fa-solid fa-shield-halved mr-2"></i>Cek Status Sistem
-		                                </button>
-		                                </div>
-		                            </div>
-		                        </div>
+	                        <button @click="loadMaintenanceData()" :disabled="maintenanceLoading || maintenanceAction" class="btn-action btn-action-primary shrink-0">
+	                            <i class="fa-solid fa-arrows-rotate" :class="maintenanceLoading ? 'fa-spin' : ''"></i>Refresh Status
+	                        </button>
 	                    </div>
-	                </div>
+
+	                    <div x-show="maintenanceStatus?.needsSync" class="maintenance-status-banner maintenance-status-warning mb-5" role="alert">
+	                        <i class="fa-solid fa-triangle-exclamation"></i>
+	                        <div>
+	                            <strong>Perlu sinkronisasi tanggal</strong>
+	                            <p x-text="`${maintenanceStatus?.otherDateModelCount || 0} model masih menggunakan tanggal operasional lama.`"></p>
+	                        </div>
+	                        <button @click="syncDates()" :disabled="maintenanceAction" class="btn-action btn-action-danger ml-auto">Sinkronkan</button>
+	                    </div>
+
+	                    <div class="maintenance-health-grid mb-6">
+	                        <div class="maintenance-health-card">
+	                            <div class="maintenance-health-icon bg-green-100 text-green-700"><i class="fa-solid fa-heart-pulse"></i></div>
+	                            <div>
+	                                <p class="maintenance-label">Status Sistem</p>
+	                                <p class="maintenance-value" x-show="maintenanceStatus" x-text="maintenanceStatus?.needsSync ? 'Perlu perhatian' : 'Sehat'"></p>
+                                <p class="maintenance-value text-gray-400" x-show="!maintenanceStatus">Memuat...</p>
+                                <p class="maintenance-meta" x-text="maintenanceStatus?.systemTime || '-'"></p>
+                            </div>
+                        </div>
+                        <div class="maintenance-health-card">
+                            <div class="maintenance-health-icon bg-blue-100 text-blue-700"><i class="fa-solid fa-cubes"></i></div>
+                            <div>
+                                <p class="maintenance-label">Model Produksi</p>
+                                <p class="maintenance-value" x-text="maintenanceStatus ? `${maintenanceStatus.todayModelCount}/${maintenanceStatus.modelCount}` : '-' "></p>
+                                <p class="maintenance-meta">menggunakan tanggal hari ini</p>
+                            </div>
+                        </div>
+                        <div class="maintenance-health-card">
+                            <div class="maintenance-health-icon bg-amber-100 text-amber-700"><i class="fa-solid fa-database"></i></div>
+                            <div>
+                                <p class="maintenance-label">Backup Tersedia</p>
+                                <p class="maintenance-value" x-text="maintenanceStatus?.backupCount ?? '-' "></p>
+                                <p class="maintenance-meta" x-text="maintenanceStatus?.lastBackup ? `Terakhir ${formatDateTime(maintenanceStatus.lastBackup.created)}` : 'Belum ada arsip'"></p>
+                            </div>
+                        </div>
+                        <div class="maintenance-health-card">
+                            <div class="maintenance-health-icon bg-slate-100 text-slate-700"><i class="fa-solid fa-hard-drive"></i></div>
+                            <div>
+                                <p class="maintenance-label">Ukuran Data Aktif</p>
+                                <p class="maintenance-value" x-text="maintenanceStatus ? formatFileSize(maintenanceStatus.dataSize) : '-' "></p>
+                                <p class="maintenance-meta" x-text="maintenanceStatus?.today || 'Tanggal operasional -'"></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-lg shadow overflow-hidden card-shadow mb-6">
+                        <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+                            <h3 class="text-lg leading-6 font-medium text-gray-900 flex items-center"><i class="fa-solid fa-bolt text-blue-600 mr-2"></i>Aksi Administrasi</h3>
+                            <p class="mt-1 max-w-2xl text-sm text-gray-500">Gunakan hanya saat perlu. Restore akan membuat backup pengaman otomatis sebelum data ditimpa.</p>
+                        </div>
+                        <div class="p-4">
+                            <div class="flex flex-wrap gap-2">
+                                <button @click="createBackup()" :disabled="maintenanceAction" class="btn-compact inline-flex justify-center items-center border border-transparent font-medium rounded-md text-white bg-green-600 hover:bg-green-700">
+                                    <i class="fa-solid" :class="maintenanceAction === 'backup' ? 'fa-spinner fa-spin' : 'fa-database'"></i><span x-text="maintenanceAction === 'backup' ? 'Membuat Backup...' : 'Buat Backup Sekarang'"></span>
+                                </button>
+                                <button @click="syncDates()" :disabled="maintenanceAction" class="btn-compact inline-flex justify-center items-center border border-transparent font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
+                                    <i class="fa-solid" :class="maintenanceAction === 'sync' ? 'fa-spinner fa-spin' : 'fa-rotate'"></i><span x-text="maintenanceAction === 'sync' ? 'Sinkronisasi...' : 'Sinkronisasi Tanggal'"></span>
+                                </button>
+                                <button @click="checkSystemStatus()" :disabled="maintenanceAction" class="btn-compact inline-flex justify-center items-center border border-transparent font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700">
+                                    <i class="fa-solid" :class="maintenanceAction === 'status' ? 'fa-spinner fa-spin' : 'fa-shield-halved'"></i><span>Cek Ulang Status</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-lg shadow overflow-hidden card-shadow">
+                        <div class="px-4 py-5 sm:px-6 border-b border-gray-200 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                            <div>
+                                <h3 class="text-lg leading-6 font-medium text-gray-900 flex items-center"><i class="fa-solid fa-clock-rotate-left text-blue-600 mr-2"></i>Riwayat Backup</h3>
+                                <p class="mt-1 text-sm text-gray-500">Snapshot tersimpan untuk export, audit, dan pemulihan data.</p>
+                            </div>
+                            <div class="flex flex-col gap-2 sm:flex-row">
+                                <input type="search" x-model="backupSearchTerm" @input="backupCurrentPage = 1" placeholder="Cari nama backup..." aria-label="Cari backup" class="sm:w-56">
+                                <select x-model="backupTypeFilter" @change="backupCurrentPage = 1" aria-label="Filter tipe backup" class="sm:w-44">
+                                    <option value="">Semua tipe</option>
+                                    <option value="daily">Arsip</option>
+                                    <option value="pre_reset">Sebelum reset</option>
+                                    <option value="pre_restore">Pengaman restore</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">File</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal Data</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipe</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ukuran / Dibuat</th>
+                                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200">
+                                    <template x-for="backup in paginatedBackupHistory" :key="backup.filename">
+                                        <tr>
+                                            <td class="px-4 py-3 text-sm font-medium text-gray-900 whitespace-nowrap" x-text="backup.filename"></td>
+                                            <td class="px-4 py-3 text-sm text-gray-600 whitespace-nowrap" x-text="backup.displayDate"></td>
+                                            <td class="px-4 py-3 text-sm whitespace-nowrap"><span class="inline-flex px-2 py-1 text-xs rounded-full" :class="backup.type === 'pre_restore' ? 'bg-orange-100 text-orange-800' : (backup.type === 'pre_reset' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800')" x-text="backupTypeLabel(backup.type)"></span></td>
+                                            <td class="px-4 py-3 text-sm text-gray-600 whitespace-nowrap"><span x-text="formatFileSize(backup.size)"></span><span class="text-gray-400 mx-1">·</span><span x-text="formatDateTime(backup.created)"></span></td>
+                                            <td class="px-4 py-3 text-sm text-right whitespace-nowrap"><div class="table-actions justify-end"><a :href="`/api/download-backup/${encodeURIComponent(backup.filename)}`" class="btn-action btn-action-neutral"><i class="fa-solid fa-download"></i>JSON</a><a :href="`/api/export-backup/${encodeURIComponent(backup.filename)}`" class="btn-action btn-action-primary"><i class="fa-solid fa-file-excel"></i>Excel</a><button @click="openRestoreModal(backup)" :disabled="maintenanceAction" class="btn-action btn-action-danger"><i class="fa-solid fa-arrow-rotate-left"></i>Restore</button></div></td>
+                                        </tr>
+                                    </template>
+                                    <tr x-show="!paginatedBackupHistory.length"><td colspan="5" class="px-4 py-10 text-center text-sm text-gray-500"><i class="fa-solid fa-box-open text-2xl mb-2 block text-gray-300"></i>Belum ada backup yang sesuai filter.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div x-show="filteredBackupHistory.length" class="bg-white px-4 py-3 flex flex-wrap gap-3 items-center justify-between border-t border-gray-200">
+                            <div class="text-sm font-medium text-gray-700"><span x-text="(backupCurrentPage - 1) * Number(backupsPerPage) + 1"></span><span class="mx-1">-</span><span x-text="Math.min(backupCurrentPage * Number(backupsPerPage), filteredBackupHistory.length)"></span><span class="ml-1">dari</span><span class="ml-1" x-text="filteredBackupHistory.length"></span></div>
+                            <div class="flex space-x-1">
+                                <button @click="backupCurrentPage--" :disabled="backupCurrentPage === 1" class="pagination-btn" :class="{'disabled': backupCurrentPage === 1}">&lsaquo;</button>
+                                <template x-for="page in backupPages" :key="page"><button @click="backupCurrentPage = page" class="pagination-btn" :class="{'active': page === backupCurrentPage}" x-text="page"></button></template>
+                                <button @click="backupCurrentPage++" :disabled="backupCurrentPage >= totalBackupPages" class="pagination-btn" :class="{'disabled': backupCurrentPage >= totalBackupPages}">&rsaquo;</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
 	                <!-- Defect Category Page - Admin and Admin Operator QC -->
 	                <div x-show="currentPage === 'defect-categories' && canManageDefectCategories()" class="fade-in">
@@ -1932,6 +2030,52 @@
 	                        </button>
 	                        <button type="button" @click="closeDefectCategoryModal()" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
 	                            <i class="fa-solid fa-xmark mr-2"></i>Batal
+	                        </button>
+	                    </div>
+	                </form>
+	            </div>
+	        </div>
+	    </div>
+
+	    <!-- Restore Backup Confirmation -->
+	    <div x-show="restoreModal.open" class="fixed inset-0 overflow-y-auto z-50" x-cloak>
+	        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+	            <div class="fixed inset-0 transition-opacity" aria-hidden="true" @click="closeRestoreModal()">
+	                <div class="absolute inset-0 bg-gray-900 opacity-75"></div>
+	            </div>
+	            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+	            <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-xl sm:w-full">
+	                <form @submit.prevent="restoreBackup()">
+	                    <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-5">
+	                        <div class="flex items-start gap-4">
+	                            <div class="restore-warning-icon"><i class="fa-solid fa-arrow-rotate-left"></i></div>
+	                            <div class="min-w-0 flex-1">
+	                                <h3 class="text-lg leading-6 font-semibold text-gray-900">Konfirmasi Restore Backup</h3>
+	                                <p class="mt-2 text-sm text-gray-600">Data line dan model di dalam snapshot akan ditambahkan atau menimpa model dengan ID yang sama. Data lain yang tidak terdapat di snapshot tetap dipertahankan.</p>
+	                            </div>
+	                        </div>
+
+	                        <div class="restore-backup-summary mt-5">
+	                            <div><span>File backup</span><strong x-text="restoreModal.backup?.filename || '-' "></strong></div>
+	                            <div><span>Tanggal data</span><strong x-text="restoreModal.backup?.displayDate || '-' "></strong></div>
+	                            <div><span>Ukuran</span><strong x-text="formatFileSize(restoreModal.backup?.size)"></strong></div>
+	                        </div>
+
+	                        <div class="mt-4 rounded-md border border-green-200 bg-green-50 p-3 text-sm text-green-800">
+	                            <i class="fa-solid fa-shield-halved mr-1"></i> Sistem membuat backup pengaman otomatis sebelum proses restore dimulai.
+	                        </div>
+
+	                        <div class="mt-5">
+	                            <label for="restore-confirmation" class="block text-sm font-medium text-gray-700">Ketik <strong>RESTORE</strong> untuk melanjutkan</label>
+	                            <input id="restore-confirmation" type="text" x-model="restoreModal.confirmation" autocomplete="off" placeholder="RESTORE" class="mt-1 block w-full uppercase" :disabled="maintenanceAction === 'restore'">
+	                        </div>
+	                    </div>
+	                    <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+	                        <button type="submit" :disabled="restoreModal.confirmation !== 'RESTORE' || maintenanceAction" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 sm:ml-3 sm:w-auto sm:text-sm">
+	                            <i class="fa-solid" :class="maintenanceAction === 'restore' ? 'fa-spinner fa-spin' : 'fa-arrow-rotate-left'"></i><span x-text="maintenanceAction === 'restore' ? 'Memulihkan Data...' : 'Restore Sekarang'"></span>
+	                        </button>
+	                        <button type="button" @click="closeRestoreModal()" :disabled="maintenanceAction === 'restore'" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+	                            <i class="fa-solid fa-xmark"></i>Batal
 	                        </button>
 	                    </div>
 	                </form>

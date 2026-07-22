@@ -14,6 +14,7 @@ const {
   hasDateReportAccess,
   isValidDateInput,
   isValidDateRange,
+  isValidProductionSnapshot,
   mergeProductionSnapshotsByDate,
   parseNonNegativeInteger,
   summarizeProductionSnapshotByLine
@@ -50,6 +51,15 @@ test('date range requires two valid dates in chronological order', () => {
   assert.equal(isValidDateRange('2026-07-22', '2026-07-22'), true);
   assert.equal(isValidDateRange('2026-07-23', '2026-07-22'), false);
   assert.equal(isValidDateRange('20-07-2026', '2026-07-22'), false);
+});
+
+test('production snapshot validation rejects malformed restore payloads', () => {
+  assert.equal(isValidProductionSnapshot({ lines: {} }), true);
+  assert.equal(isValidProductionSnapshot({ lines: { 'Line 1': { models: {} } } }), true);
+  assert.equal(isValidProductionSnapshot(null), false);
+  assert.equal(isValidProductionSnapshot({}), false);
+  assert.equal(isValidProductionSnapshot({ lines: [] }), false);
+  assert.equal(isValidProductionSnapshot({ lines: { 'Line 1': { models: [] } } }), false);
 });
 
 test('daily line summary separates critical, major, and minor defects', () => {
@@ -133,6 +143,25 @@ test('dashboard chart includes only models active in Management Line', () => {
     Array.from(dashboard.allDashboardChartData, item => item.modelId),
     ['model1', 'model2']
   );
+});
+
+test('maintenance backup history supports type filtering and pagination', () => {
+  const context = { console, Date, Intl, Map, Math, Set, parseInt };
+  const alpineSource = fs.readFileSync(path.join(__dirname, '..', 'public/assets/js/alpine.js'), 'utf8');
+  vm.runInNewContext(alpineSource, context);
+
+  const dashboard = context.dashboard();
+  dashboard.backupsPerPage = 1;
+  dashboard.backupHistory = [
+    { filename: 'data_2026-07-22_1.json', date: '2026-07-22', type: 'daily' },
+    { filename: 'data_2026-07-22_2_pre_restore_a.json', date: '2026-07-22', type: 'pre_restore' }
+  ];
+  dashboard.backupTypeFilter = 'pre_restore';
+
+  assert.deepEqual(Array.from(dashboard.filteredBackupHistory, item => item.type), ['pre_restore']);
+  assert.equal(dashboard.totalBackupPages, 1);
+  assert.equal(dashboard.paginatedBackupHistory[0].filename, 'data_2026-07-22_2_pre_restore_a.json');
+  assert.equal(dashboard.formatFileSize(2048), '2.0 KB');
 });
 
 test('date report exposes the same complete production and QC fields for every viewer', () => {

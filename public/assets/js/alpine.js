@@ -59,6 +59,7 @@ function dashboard() {
         dateReport: [],
         reportStartDate: getJakartaDateInput(),
         reportEndDate: getJakartaDateInput(),
+        reportLineFilter: '',
         productionClockMinute: null,
         qcHourIndex: 0,
 
@@ -1117,6 +1118,7 @@ function dashboard() {
 
             try {
                 const params = new URLSearchParams({ startDate: this.reportStartDate, endDate: this.reportEndDate });
+                if (this.reportLineFilter) params.set('line', this.reportLineFilter);
                 const response = await fetch(`/api/date-report?${params.toString()}`);
                 if (response.ok) {
                     this.dateReport = await response.json();
@@ -1143,15 +1145,19 @@ function dashboard() {
 
             try {
                 const params = new URLSearchParams({ startDate: this.reportStartDate, endDate: this.reportEndDate });
+                if (this.reportLineFilter) params.set('line', this.reportLineFilter);
                 const response = await fetch(`/api/export-date-report?${params.toString()}`);
                 if (response.ok) {
                     const blob = await response.blob();
                     const url = window.URL.createObjectURL(blob);
                     const a = document.createElement('a');
                     a.href = url;
+                    const safeLineSuffix = this.reportLineFilter
+                        ? `_${this.reportLineFilter.replace(/[^a-zA-Z0-9_-]+/g, '_')}`
+                        : '';
                     a.download = this.reportStartDate === this.reportEndDate
-                        ? `Production_Report_${this.reportStartDate}.xlsx`
-                        : `Production_Report_${this.reportStartDate}_to_${this.reportEndDate}.xlsx`;
+                        ? `Production_Report${safeLineSuffix}_${this.reportStartDate}.xlsx`
+                        : `Production_Report${safeLineSuffix}_${this.reportStartDate}_to_${this.reportEndDate}.xlsx`;
                     document.body.appendChild(a);
                     a.click();
                     window.URL.revokeObjectURL(url);
@@ -2694,6 +2700,14 @@ function dashboard() {
                 .filter(line => this.isManagementModelActive(line.lineName, line.modelId))
                 .map(line => line.lineName)
                 .filter(Boolean))]
+                .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+        },
+
+        get availableReportLines() {
+            return [...new Set([
+                ...(this.lines || []).map(line => line.name),
+                ...(this.dateReport || []).map(report => report.line)
+            ].filter(Boolean))]
                 .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
         },
 

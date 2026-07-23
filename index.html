@@ -1316,6 +1316,18 @@
 	                                    </div>
 	                                </div>
 	                                <div class="filter-group">
+	                                    <span class="filter-caption"><i class="fa-solid fa-industry"></i>Line</span>
+	                                    <div class="filter-control filter-control-select has-icon">
+	                                        <i class="fa-solid fa-industry filter-control-icon"></i>
+	                                        <select x-model="reportLineFilter" @change="currentReportPage = 1" aria-label="Filter laporan berdasarkan line" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+	                                            <option value="">Semua Line</option>
+	                                            <template x-for="lineName in availableReportLines" :key="lineName">
+	                                                <option :value="lineName" x-text="lineName"></option>
+	                                            </template>
+	                                        </select>
+	                                    </div>
+	                                </div>
+	                                <div class="filter-group">
 		                                    <button @click="loadDateReport()" class="btn-compact inline-flex items-center border border-transparent font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
 		                                        <i class="fa-solid fa-magnifying-glass-chart mr-2"></i>Lihat Laporan
 		                                    </button>
@@ -1328,7 +1340,7 @@
                             <!-- Date Report Results with Pagination -->
 	                            <div x-show="dateReport && dateReport.length > 0" class="report-results mt-4">
 	                                <div class="report-results-header flex justify-between items-center mb-4">
-	                                    <h4 class="text-lg font-medium text-gray-900 flex items-center"><i class="fa-solid fa-table-list text-blue-600 mr-2"></i>Hasil Laporan: <span class="ml-1" x-text="reportStartDate === reportEndDate ? reportStartDate : reportStartDate + ' s.d. ' + reportEndDate"></span></h4>
+	                                    <h4 class="text-lg font-medium text-gray-900 flex items-center"><i class="fa-solid fa-table-list text-blue-600 mr-2"></i>Hasil Laporan: <span class="ml-1" x-text="(reportStartDate === reportEndDate ? reportStartDate : reportStartDate + ' s.d. ' + reportEndDate) + (reportLineFilter ? ' - ' + reportLineFilter : '')"></span></h4>
                                     
 	                                    <div class="filter-group">
 	                                        <span class="filter-caption"><i class="fa-solid fa-table-list"></i>Tampilkan</span>

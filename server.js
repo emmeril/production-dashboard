@@ -2314,6 +2314,18 @@ function filterProductionDataByDate(data, date) {
   return { ...data, lines };
 }
 
+function filterProductionDataByLine(data, lineName) {
+  const selectedLine = String(lineName || '').trim();
+  if (!selectedLine) return { ...data, lines: { ...(data?.lines || {}) } };
+
+  const line = data?.lines?.[selectedLine];
+  return {
+    ...data,
+    lines: line ? { [selectedLine]: line } : {},
+    activeLine: line ? selectedLine : ''
+  };
+}
+
 function isValidDateRange(startDate, endDate) {
   return isValidDateInput(startDate)
     && isValidDateInput(endDate)
@@ -3652,14 +3664,14 @@ app.post('/api/update-line/:lineName/:modelId', requireLogin, requireLineAccess,
 });
 
 app.get('/api/date-report', requireLogin, requireDateReportAccess, autoCheckDateReset, async (req, res) => {
-  const { startDate, endDate } = req.query;
+  const { startDate, endDate, line } = req.query;
 
   if (!isValidDateRange(startDate, endDate)) {
     return res.status(400).json({ error: 'Rentang tanggal tidak valid. Gunakan tanggal mulai dan tanggal selesai dengan format YYYY-MM-DD.' });
   }
 
   try {
-    const data = buildDateRangeProductionData(startDate, endDate);
+    const data = filterProductionDataByLine(buildDateRangeProductionData(startDate, endDate), line);
     const reportData = buildProductionReportRows(data);
     res.json(reportData);
   } catch (error) {
@@ -4305,19 +4317,23 @@ async function generateScopedLineReportExcel(modelData, lineName, modelId, role)
 }
 
 app.get('/api/export-date-report', requireLogin, requireDateReportAccess, autoCheckDateReset, async (req, res) => {
-  const { startDate, endDate } = req.query;
+  const { startDate, endDate, line } = req.query;
 
   if (!isValidDateRange(startDate, endDate)) {
     return res.status(400).json({ error: 'Rentang tanggal tidak valid. Gunakan tanggal mulai dan tanggal selesai dengan format YYYY-MM-DD.' });
   }
 
   try {
-    const data = buildDateRangeProductionData(startDate, endDate);
+    const selectedLine = String(line || '').trim();
+    const data = filterProductionDataByLine(buildDateRangeProductionData(startDate, endDate), selectedLine);
     const reportLabel = startDate === endDate ? startDate : `${startDate} s.d. ${endDate}`;
     const workbook = await generateStyledDateReportExcel(data, reportLabel);
+    const safeLineSuffix = selectedLine
+      ? `_${selectedLine.replace(/[^a-zA-Z0-9_-]+/g, '_')}`
+      : '';
     const downloadFilename = startDate === endDate
-      ? `Production_Report_${startDate}.xlsx`
-      : `Production_Report_${startDate}_to_${endDate}.xlsx`;
+      ? `Production_Report${safeLineSuffix}_${startDate}.xlsx`
+      : `Production_Report${safeLineSuffix}_${startDate}_to_${endDate}.xlsx`;
 
     res.setHeader('Content-Disposition', `attachment; filename="${downloadFilename}"`);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -5275,6 +5291,7 @@ module.exports = {
   classifyLegacySnapshot,
   extractHistoryDate,
   filterProductionDataByDate,
+  filterProductionDataByLine,
   generateModelId,
   generateStyledDateReportExcel,
   getToday,

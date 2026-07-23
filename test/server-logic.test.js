@@ -13,6 +13,7 @@ const {
   classifyLegacySnapshot,
   extractHistoryDate,
   filterProductionDataByDate,
+  filterProductionDataByLine,
   generateModelId,
   generateStyledDateReportExcel,
   hasDateReportAccess,
@@ -363,6 +364,18 @@ test('date report exposes the same complete production and QC fields for every v
   assert.equal(row.defectTypes, 'Loose thread (1), Open seam (1)');
 });
 
+test('report line filter combines current and historical line options', () => {
+  const context = { console, Date, Intl, Map, Math, Set, parseInt };
+  const alpineSource = fs.readFileSync(path.join(__dirname, '..', 'public/assets/js/alpine.js'), 'utf8');
+  vm.runInNewContext(alpineSource, context);
+
+  const dashboard = context.dashboard();
+  dashboard.lines = [{ name: 'Line 10' }, { name: 'Line 2' }];
+  dashboard.dateReport = [{ line: 'Line Lama' }, { line: 'Line 2' }];
+
+  assert.deepEqual(Array.from(dashboard.availableReportLines), ['Line 2', 'Line 10', 'Line Lama']);
+});
+
 test('Excel summary matches the complete daily report structure', async () => {
   const data = {
     lines: {
@@ -419,6 +432,23 @@ test('date filtering keeps report exports scoped without mutating live data', ()
 
   assert.deepEqual(Object.keys(filtered.lines['Line 1'].models), ['current']);
   assert.deepEqual(Object.keys(data.lines['Line 1'].models), ['current', 'historical']);
+});
+
+test('line filtering scopes reports without mutating production data', () => {
+  const data = {
+    activeLine: 'Line 1',
+    lines: {
+      'Line 1': { models: { model1: { outputDay: 10 } } },
+      'Line 2': { models: { model2: { outputDay: 20 } } }
+    }
+  };
+
+  const filtered = filterProductionDataByLine(data, 'Line 2');
+
+  assert.deepEqual(Object.keys(filtered.lines), ['Line 2']);
+  assert.equal(filtered.activeLine, 'Line 2');
+  assert.deepEqual(Object.keys(data.lines), ['Line 1', 'Line 2']);
+  assert.deepEqual(Object.keys(filterProductionDataByLine(data, '').lines), ['Line 1', 'Line 2']);
 });
 
 test('date range merge keeps models with the same ID on different dates', () => {

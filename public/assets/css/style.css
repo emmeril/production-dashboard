@@ -286,6 +286,30 @@
 	            gap: 0.4rem;
 	        }
 
+	        /* Keep line actions in the same semantic slot on every row. */
+	        .line-management-actions {
+	            display: grid;
+	            grid-template-columns: repeat(2, minmax(150px, 1fr));
+	            grid-template-areas:
+	                "edit toggle"
+	                "delete-model delete-line";
+	            align-items: stretch;
+	            gap: 0.4rem;
+	            min-width: 340px;
+	        }
+
+	        .line-management-actions .line-action-edit { grid-area: edit; }
+	        .line-management-actions .line-action-toggle { grid-area: toggle; }
+	        .line-management-actions .line-action-delete-model { grid-area: delete-model; }
+	        .line-management-actions .line-action-delete-line { grid-area: delete-line; }
+
+	        .line-management-actions .btn-action {
+	            width: 100%;
+	            min-width: 0;
+	            gap: 0.4rem;
+	            white-space: nowrap;
+	        }
+
 	        .btn-action {
 	            display: inline-flex;
 	            align-items: center;

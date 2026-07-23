@@ -1132,13 +1132,13 @@
                                                     <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800" x-show="line.data.outputDay < line.data.target && line.data.outputDay > 0">Behind</span>
                                                     <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800" x-show="line.data.outputDay === 0">No Data</span>
                                                 </td>
-	                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-medium">
-		                                                    <div class="table-actions">
-		                                                    <button @click="openLineModal(line)" :disabled="isWorkScheduleLocked()" class="schedule-action btn-action btn-action-primary"><i class="fa-solid fa-pen-to-square"></i>Edit</button>
-		                                                    <button @click="setActiveModel(line.lineName, line.modelId)" :disabled="isWorkScheduleLocked()" class="schedule-action btn-action" :class="(line.data.lineActiveModels || []).includes(line.modelId) ? 'btn-action-neutral' : 'btn-action-success'"><i class="fa-solid" :class="(line.data.lineActiveModels || []).includes(line.modelId) ? 'fa-toggle-off' : 'fa-toggle-on'"></i><span x-text="(line.data.lineActiveModels || []).includes(line.modelId) ? 'Nonaktifkan' : 'Aktifkan'"></span></button>
-		                                                    <button @click="deleteModel(line.lineName, line.modelId)" class="btn-action btn-action-danger" x-show="currentUser.role === 'admin' && !(line.data.lineActiveModels || []).includes(line.modelId)"><i class="fa-solid fa-trash"></i>Hapus Model</button>
-		                                                    <button @click="deleteLine(line.lineName, line.modelCount)" class="btn-action btn-action-danger" x-show="currentUser.role === 'admin' && line.isFirstModel"><i class="fa-solid fa-trash-can"></i><span x-text="line.modelCount > 1 ? 'Hapus Line dan Model' : 'Hapus Line'"></span></button>
-		                                                    </div>
+	                                                <td class="px-4 py-3 text-sm font-medium align-top">
+	                                                    <div class="line-management-actions">
+	                                                        <button @click="openLineModal(line)" :disabled="isWorkScheduleLocked()" class="schedule-action btn-action btn-action-primary line-action-edit"><i class="fa-solid fa-pen-to-square"></i><span>Edit</span></button>
+	                                                        <button @click="setActiveModel(line.lineName, line.modelId)" :disabled="isWorkScheduleLocked()" class="schedule-action btn-action line-action-toggle" :class="(line.data.lineActiveModels || []).includes(line.modelId) ? 'btn-action-neutral' : 'btn-action-success'"><i class="fa-solid" :class="(line.data.lineActiveModels || []).includes(line.modelId) ? 'fa-toggle-off' : 'fa-toggle-on'"></i><span x-text="(line.data.lineActiveModels || []).includes(line.modelId) ? 'Nonaktifkan' : 'Aktifkan'"></span></button>
+	                                                        <button @click="deleteModel(line.lineName, line.modelId)" class="btn-action btn-action-danger line-action-delete-model" x-show="currentUser.role === 'admin' && !(line.data.lineActiveModels || []).includes(line.modelId)"><i class="fa-solid fa-trash"></i><span>Hapus Model</span></button>
+	                                                        <button @click="deleteLine(line.lineName, line.modelCount)" class="btn-action btn-action-danger line-action-delete-line" x-show="currentUser.role === 'admin' && line.isFirstModel"><i class="fa-solid fa-trash-can"></i><span x-text="line.modelCount > 1 ? 'Hapus Line dan Model' : 'Hapus Line'"></span></button>
+	                                                    </div>
 	                                                </td>
                                             </tr>
                                         </template>

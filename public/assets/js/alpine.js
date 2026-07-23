@@ -462,6 +462,17 @@ function dashboard() {
         },
 
         async loadCurrentPageData() {
+            if (this.currentUser.role === 'operator'
+                && this.currentModelId
+                && !this.isManagementModelActive(this.currentLine, this.currentModelId)) {
+                this.currentPage = 'line-summary';
+                this.currentLine = '';
+                this.currentModelId = '';
+                this.savePageState();
+                this.showToast('Model tersimpan sudah tidak Active. Silakan pilih model aktif.', 'info');
+                return;
+            }
+
             if ((this.currentPage === 'line-detail' || this.currentPage === 'input-data') && this.currentLine) {
                 await this.loadLineDetail(this.currentLine, this.currentModelId);
             }
@@ -542,6 +553,12 @@ function dashboard() {
         async inputData(lineName, modelId) {
             if (!this.canManageProduction() && !this.canManageQc()) {
                 this.showToast('Anda tidak memiliki akses untuk input data', 'error');
+                return;
+            }
+
+            if (!this.isManagementModelActive(lineName, modelId)) {
+                this.showToast('Model ini tidak berstatus Active di Management Line. Pilih model aktif untuk input.', 'error');
+                this.changePage('line-summary');
                 return;
             }
 
@@ -662,8 +679,11 @@ function dashboard() {
                         this.lineNameFilter = '';
                         this.currentLinePage = 1;
                     }
-                    if (this.dashboardLineFilter && !this.availableManagementLines.includes(this.dashboardLineFilter)) {
+                    if (this.dashboardLineFilter && !this.availableDashboardLines.includes(this.dashboardLineFilter)) {
                         this.dashboardLineFilter = '';
+                        this.dashboardCurrentPage = 1;
+                    }
+                    if (this.dashboardCurrentPage > Math.max(1, this.totalDashboardPages)) {
                         this.dashboardCurrentPage = 1;
                     }
                 }
@@ -1983,6 +2003,26 @@ function dashboard() {
             });
         },
 
+        formatDashboardDate(value) {
+            if (!value) return 'Belum ada data';
+            const date = new Date(`${value}T00:00:00`);
+            if (Number.isNaN(date.getTime())) return value;
+            return date.toLocaleDateString('id-ID', {
+                day: '2-digit', month: 'short', year: 'numeric'
+            });
+        },
+
+        formatDashboardNumber(value) {
+            return (Number(value) || 0).toLocaleString('id-ID');
+        },
+
+        formatDashboardPercent(value) {
+            return `${(Number(value) || 0).toLocaleString('id-ID', {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 2
+            })}%`;
+        },
+
         currentDateKey() {
             const now = new Date();
             const year = now.getFullYear();
@@ -2338,28 +2378,115 @@ function dashboard() {
 	        },
 
         get selectedDashboardLineData() {
+            const activeModelKeys = this.activeManagementModelKeys;
             return [...(this.dashboardData.lineDaily || [])]
+                .filter(item => activeModelKeys.has(`${item.lineName}|${item.modelId}`))
                 .sort((a, b) => new Date(a.date) - new Date(b.date) || a.lineName.localeCompare(b.lineName, undefined, { numeric: true }));
         },
 
-        get selectedDashboardSummary() {
-            const summary = [...(this.dashboardData.daily || [])].reverse()[0];
+	        get selectedDashboardSummary() {
+	            const activeData = this.selectedDashboardLineData;
+	            const latestDate = activeData[activeData.length - 1]?.date || '';
+	            const activeRows = activeData.filter(item => item.date === latestDate);
+	            if (!activeRows.length) return {
+	                date: '',
+	                lineCount: 0,
+	                modelCount: 0,
+	                target: 0,
+	                output: 0,
+                defect: 0,
+	                criticalDefect: 0,
+	                majorDefect: 0,
+	                minorDefect: 0,
+                qcChecked: 0,
+                defectRate: 0
+	            };
 
-	            return summary || {
+	            const summary = activeRows.reduce((result, item) => {
+	                result.target += Number(item.target) || 0;
+	                result.output += Number(item.output) || 0;
+	                result.defect += Number(item.defect) || 0;
+	                result.criticalDefect += Number(item.criticalDefect) || 0;
+	                result.majorDefect += Number(item.majorDefect) || 0;
+	                result.minorDefect += Number(item.minorDefect) || 0;
+	                result.qcChecked += Number(item.qcChecked) || 0;
+	                result.lineNames.add(item.lineName);
+	                return result;
+	            }, {
+	                date: latestDate,
+	                modelCount: activeRows.length,
 	                target: 0,
 	                output: 0,
 	                defect: 0,
+	                criticalDefect: 0,
+	                majorDefect: 0,
+	                minorDefect: 0,
 	                qcChecked: 0,
-	                defectRate: 0
-	            };
+	                lineNames: new Set()
+	            });
+
+	            summary.lineCount = summary.lineNames.size;
+	            summary.defectRate = summary.qcChecked > 0
+	                ? Number(((summary.defect / summary.qcChecked) * 100).toFixed(2))
+	                : 0;
+	            delete summary.lineNames;
+	            return summary;
         },
+
+	        get dashboardGoodCount() {
+	            return Math.max((Number(this.selectedDashboardSummary.qcChecked) || 0)
+	                - (Number(this.selectedDashboardSummary.defect) || 0), 0);
+	        },
+
+	        get dashboardAchievementPercent() {
+	            const target = Number(this.selectedDashboardSummary.target) || 0;
+	            const output = Number(this.selectedDashboardSummary.output) || 0;
+	            return target > 0 ? Number(((output / target) * 100).toFixed(2)) : 0;
+	        },
+
+	        get dashboardAchievementStatus() {
+	            const target = Number(this.selectedDashboardSummary.target) || 0;
+	            if (target <= 0) return 'Target belum diisi';
+	            if (this.dashboardAchievementPercent >= 100) return 'Target tercapai';
+	            if (this.dashboardAchievementPercent >= 80) return 'Mendekati target';
+	            return 'Perlu perhatian';
+	        },
+
+	        get dashboardAchievementTone() {
+	            const target = Number(this.selectedDashboardSummary.target) || 0;
+            if (target <= 0) return 'is-neutral';
+            if (this.dashboardAchievementPercent >= 100) return 'is-success';
+            if (this.dashboardAchievementPercent >= 80) return 'is-warning';
+            return 'is-danger';
+	        },
+
+	        get dashboardOutputGapLabel() {
+	            const gap = (Number(this.selectedDashboardSummary.output) || 0)
+	                - (Number(this.selectedDashboardSummary.target) || 0);
+            if (!(Number(this.selectedDashboardSummary.target) > 0)) return 'Belum ada target pembanding.';
+            if (gap >= 0) return `Melebihi target ${this.formatDashboardNumber(gap)} unit.`;
+            return `Kurang ${this.formatDashboardNumber(Math.abs(gap))} unit dari target.`;
+	        },
+
+	        get dashboardQualityStatus() {
+	            const qcChecked = Number(this.selectedDashboardSummary.qcChecked) || 0;
+            const defectRate = Number(this.selectedDashboardSummary.defectRate) || 0;
+            if (qcChecked <= 0) return 'Belum diperiksa';
+            if (defectRate > 5) return 'Perlu perhatian';
+            return 'Dalam batas';
+	        },
+
+	        get dashboardQualityTone() {
+	            const qcChecked = Number(this.selectedDashboardSummary.qcChecked) || 0;
+            const defectRate = Number(this.selectedDashboardSummary.defectRate) || 0;
+            if (qcChecked <= 0) return 'is-neutral';
+            return defectRate > 5 ? 'is-danger' : 'is-success';
+	        },
 
         get allDashboardChartData() {
             const groupedByLineDateModel = new Map();
-            const activeModelKeys = this.activeManagementModelKeys;
 
             this.selectedDashboardLineData
-                .filter(item => activeModelKeys.has(`${item.lineName}|${item.modelId}`))
                 .forEach(item => {
                     const lineName = item.lineName || '-';
                     const date = item.date || '';
@@ -2450,12 +2577,13 @@ function dashboard() {
                 .map(line => `${line.lineName}|${line.modelId}`));
         },
 
-        get dashboardDailyDetails() {
-            const activeModelKeys = this.activeManagementModelKeys;
+        isManagementModelActive(lineName, modelId) {
+            return this.activeManagementModelKeys.has(`${lineName}|${modelId}`);
+        },
 
+        get dashboardDailyDetails() {
             return this.selectedDashboardLineData
-                .filter(item => item.date === this.currentDateKey()
-                    && activeModelKeys.has(`${item.lineName}|${item.modelId}`))
+	                .filter(item => item.date === this.currentDateKey())
                 .sort((a, b) => a.lineName.localeCompare(b.lineName, undefined, { numeric: true })
                     || (a.modelId || '').localeCompare(b.modelId || '', undefined, { numeric: true }));
         },
@@ -2473,6 +2601,7 @@ function dashboard() {
             if (!this.linesWithModels) return [];
 
             return this.linesWithModels.filter(line => {
+                const matchesActiveModel = this.isManagementModelActive(line.lineName, line.modelId);
                 // Search filter
                 const searchTerm = this.dashboardSearchTerm.toLowerCase();
                 const matchesSearch = !searchTerm ||
@@ -2495,7 +2624,7 @@ function dashboard() {
                     }
                 }
 
-                return matchesSearch && matchesLine && matchesStatus;
+                return matchesActiveModel && matchesSearch && matchesLine && matchesStatus;
             });
         },
 
@@ -2538,6 +2667,14 @@ function dashboard() {
         // Lines pagination
         get availableManagementLines() {
             return [...new Set((this.linesWithModels || [])
+                .map(line => line.lineName)
+                .filter(Boolean))]
+                .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+        },
+
+        get availableDashboardLines() {
+            return [...new Set((this.linesWithModels || [])
+                .filter(line => this.isManagementModelActive(line.lineName, line.modelId))
                 .map(line => line.lineName)
                 .filter(Boolean))]
                 .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));

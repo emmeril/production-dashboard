@@ -1362,6 +1362,13 @@ function ensureLineActiveModels(line) {
   return line;
 }
 
+function isModelActiveInManagement(data, lineName, modelId) {
+  const line = data?.lines?.[lineName];
+  if (!line || !modelId) return false;
+  const normalizedLine = ensureLineActiveModels(line);
+  return (normalizedLine.activeModels || []).includes(String(modelId));
+}
+
 function recalculateModelTotals(model) {
   let totalOutput = 0;
   let totalDefect = 0;
@@ -1614,6 +1621,18 @@ function requireLineAccess(req, res, next) {
   }
 
   res.status(403).json({ error: 'Access denied to this line' });
+}
+
+function requireActiveModelForOperator(req, res, next) {
+  const user = getAuthenticatedSessionUser(req);
+  if (normalizeRole(user?.role) !== 'operator') return next();
+
+  const data = readProductionData();
+  if (isModelActiveInManagement(data, req.params.lineName, req.params.modelId)) return next();
+
+  return res.status(403).json({
+    error: 'Model tidak berstatus Active di Management Line. Pilih model aktif untuk input.'
+  });
 }
 
 function requireProductionWriteAccess(req, res, next) {
@@ -2417,11 +2436,12 @@ function summarizeProductionSnapshot(data, date, defectConfig = readDefectConfig
   };
 
   Object.keys(data.lines || {}).forEach(lineName => {
-    const line = data.lines[lineName];
+    const line = ensureLineActiveModels(data.lines[lineName]);
     let hasModelForDate = false;
 
-    Object.keys(line.models || {}).forEach(modelId => {
+    (line.activeModels || []).forEach(modelId => {
       const model = line.models[modelId];
+      if (!model) return;
       if (model.date && model.date !== date) return;
 
       hasModelForDate = true;
@@ -2747,7 +2767,7 @@ app.post('/api/update-hourly-direct/:lineName', requireLogin, requireLineAccess,
   });
 });
 
-app.post('/api/update-hourly/:lineName/:modelId', requireLogin, requireLineAccess, requireProductionWriteAccess, autoCheckDateReset, async (req, res) => {
+app.post('/api/update-hourly/:lineName/:modelId', requireLogin, requireLineAccess, requireProductionWriteAccess, autoCheckDateReset, requireActiveModelForOperator, async (req, res) => {
   const { lineName, modelId } = req.params;
   const { hourIndex, output, defect, qcChecked, targetManual, defectDetails } = req.body;
 
@@ -2806,7 +2826,7 @@ app.post('/api/update-hourly/:lineName/:modelId', requireLogin, requireLineAcces
   });
 });
 
-app.post('/api/update-production/:lineName/:modelId', requireLogin, requireLineAccess, requireProductionWriteAccess, autoCheckDateReset, async (req, res) => {
+app.post('/api/update-production/:lineName/:modelId', requireLogin, requireLineAccess, requireProductionWriteAccess, autoCheckDateReset, requireActiveModelForOperator, async (req, res) => {
   const { lineName, modelId } = req.params;
   const { hourIndex, output, targetManual } = req.body;
   const data = readProductionData();
@@ -2854,7 +2874,7 @@ app.post('/api/update-production/:lineName/:modelId', requireLogin, requireLineA
   });
 });
 
-app.post('/api/qc-check/:lineName/:modelId', requireLogin, requireLineAccess, requireQcWriteAccess, autoCheckDateReset, async (req, res) => {
+app.post('/api/qc-check/:lineName/:modelId', requireLogin, requireLineAccess, requireQcWriteAccess, autoCheckDateReset, requireActiveModelForOperator, async (req, res) => {
   if (req.session.user?.role === 'operator') {
     const jakartaTimeParts = new Intl.DateTimeFormat('en-US', {
       timeZone: 'Asia/Jakarta', hour: 'numeric', minute: 'numeric', hour12: false
@@ -2917,7 +2937,7 @@ app.post('/api/qc-check/:lineName/:modelId', requireLogin, requireLineAccess, re
   });
 });
 
-app.post('/api/update-target-manual/:lineName/:modelId', requireLogin, requireLineAccess, requireProductionWriteAccess, autoCheckDateReset, async (req, res) => {
+app.post('/api/update-target-manual/:lineName/:modelId', requireLogin, requireLineAccess, requireProductionWriteAccess, autoCheckDateReset, requireActiveModelForOperator, async (req, res) => {
   const { lineName, modelId } = req.params;
   const { hourIndex, targetManual } = req.body;
 
@@ -2962,7 +2982,7 @@ app.post('/api/update-target-manual/:lineName/:modelId', requireLogin, requireLi
 	  });
 });
 
-app.post('/api/update-hourly-direct/:lineName/:modelId', requireLogin, requireLineAccess, requireProductionWriteAccess, autoCheckDateReset, async (req, res) => {
+app.post('/api/update-hourly-direct/:lineName/:modelId', requireLogin, requireLineAccess, requireProductionWriteAccess, autoCheckDateReset, requireActiveModelForOperator, async (req, res) => {
   const { lineName, modelId } = req.params;
   const { hourIndex, output, defect, qcChecked, targetManual, defectDetails } = req.body;
 
@@ -3486,7 +3506,7 @@ app.post('/api/lines/:lineName/active-model', requireLogin, requireLineManagemen
   });
 });
 
-app.get('/api/line/:lineName/:modelId', requireLogin, requireLineAccess, autoCheckDateReset, async (req, res) => {
+app.get('/api/line/:lineName/:modelId', requireLogin, requireLineAccess, autoCheckDateReset, requireActiveModelForOperator, async (req, res) => {
   const { lineName, modelId } = req.params;
   const data = readProductionData();
   
@@ -4419,7 +4439,7 @@ app.get('/api/defect-config', requireLogin, async (req, res) => {
   res.json(readDefectConfig());
 });
 
-app.delete('/api/production/:lineName/:modelId/:hourIndex', requireLogin, requireLineAccess, requireProductionWriteAccess, autoCheckDateReset, async (req, res) => {
+app.delete('/api/production/:lineName/:modelId/:hourIndex', requireLogin, requireLineAccess, requireProductionWriteAccess, autoCheckDateReset, requireActiveModelForOperator, async (req, res) => {
   const { lineName, modelId } = req.params;
   const index = parseInt(req.params.hourIndex);
   const data = readProductionData();
@@ -5199,12 +5219,14 @@ module.exports = {
   initSequelizeStorage,
   isValidDateInput,
   isValidDateRange,
+  isModelActiveInManagement,
   mergeProductionSnapshotsByDate,
   isValidProductionSnapshot,
   parseNonNegativeInteger,
   readProductionSnapshotForDate,
   recoverProductionSnapshotsFromDatabaseBackups,
   sequelize,
+  summarizeProductionSnapshot,
   summarizeProductionSnapshotByLine,
   verifyPassword
 };

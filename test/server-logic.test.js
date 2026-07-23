@@ -19,9 +19,11 @@ const {
   hashPassword,
   isValidDateInput,
   isValidDateRange,
+  isModelActiveInManagement,
   isValidProductionSnapshot,
   mergeProductionSnapshotsByDate,
   parseNonNegativeInteger,
+  summarizeProductionSnapshot,
   summarizeProductionSnapshotByLine,
   verifyPassword
 } = require('../server');
@@ -200,6 +202,46 @@ test('daily line summary includes every active management-line model only', () =
   assert.equal(summaries.reduce((total, summary) => total + summary.output, 0), 30);
 });
 
+test('dashboard summary totals only models marked active in Management Line', () => {
+  const data = {
+    lines: {
+      'Line 1': {
+        activeModels: ['model1', 'model2'],
+        models: {
+          model1: { date: '2026-07-21', target: 100, outputDay: 80, actualDefect: 2, qcChecking: 40 },
+          model2: { date: '2026-07-21', target: 120, outputDay: 110, actualDefect: 1, qcChecking: 50 },
+          model3: { date: '2026-07-21', target: 999, outputDay: 999, actualDefect: 99, qcChecking: 99 }
+        }
+      }
+    }
+  };
+
+  const summary = summarizeProductionSnapshot(data, '2026-07-21');
+
+  assert.equal(summary.modelCount, 2);
+  assert.equal(summary.lineCount, 1);
+  assert.equal(summary.target, 220);
+  assert.equal(summary.output, 190);
+  assert.equal(summary.defect, 3);
+  assert.equal(summary.qcChecked, 90);
+});
+
+test('operator model guard recognizes only models active in Management Line', () => {
+  const data = {
+    lines: {
+      'Line 1': {
+        activeModels: ['model1', 'model2'],
+        models: { model1: {}, model2: {}, model3: {} }
+      }
+    }
+  };
+
+  assert.equal(isModelActiveInManagement(data, 'Line 1', 'model1'), true);
+  assert.equal(isModelActiveInManagement(data, 'Line 1', 'model2'), true);
+  assert.equal(isModelActiveInManagement(data, 'Line 1', 'model3'), false);
+  assert.equal(isModelActiveInManagement(data, 'Line 2', 'model1'), false);
+});
+
 test('dashboard chart includes only models active in Management Line', () => {
   const context = { console, Date, Intl, Map, Math, Set, parseInt };
   const alpineSource = fs.readFileSync(path.join(__dirname, '..', 'public/assets/js/alpine.js'), 'utf8');
@@ -207,18 +249,25 @@ test('dashboard chart includes only models active in Management Line', () => {
 
   const dashboard = context.dashboard();
   dashboard.linesWithModels = [
-    { lineName: 'Line 1', modelId: 'model1', data: { lineActiveModels: ['model1', 'model2'] } },
-    { lineName: 'Line 1', modelId: 'model2', data: { lineActiveModels: ['model1', 'model2'] } },
-    { lineName: 'Line 1', modelId: 'model3', data: { lineActiveModels: ['model1', 'model2'] } }
+    { lineName: 'Line 1', modelId: 'model1', data: { lineActiveModels: ['model1', 'model2'], labelWeek: '', model: 'Model A', target: 15, outputDay: 10 } },
+    { lineName: 'Line 1', modelId: 'model2', data: { lineActiveModels: ['model1', 'model2'], labelWeek: '', model: 'Model B', target: 25, outputDay: 20 } },
+    { lineName: 'Line 1', modelId: 'model3', data: { lineActiveModels: ['model1', 'model2'], labelWeek: '', model: 'Model C', target: 35, outputDay: 30 } }
   ];
   dashboard.dashboardData.lineDaily = [
-    { date: '2026-07-22', lineName: 'Line 1', modelId: 'model1', model: 'Model A', output: 10 },
-    { date: '2026-07-22', lineName: 'Line 1', modelId: 'model2', model: 'Model B', output: 20 },
-    { date: '2026-07-22', lineName: 'Line 1', modelId: 'model3', model: 'Model C', output: 30 }
+    { date: '2026-07-22', lineName: 'Line 1', modelId: 'model1', model: 'Model A', target: 15, output: 10 },
+    { date: '2026-07-22', lineName: 'Line 1', modelId: 'model2', model: 'Model B', target: 25, output: 20 },
+    { date: '2026-07-22', lineName: 'Line 1', modelId: 'model3', model: 'Model C', target: 35, output: 30 }
   ];
 
   assert.deepEqual(
     Array.from(dashboard.allDashboardChartData, item => item.modelId),
+    ['model1', 'model2']
+  );
+  assert.equal(dashboard.selectedDashboardSummary.modelCount, 2);
+  assert.equal(dashboard.selectedDashboardSummary.target, 40);
+  assert.equal(dashboard.selectedDashboardSummary.output, 30);
+  assert.deepEqual(
+    Array.from(dashboard.filteredDashboardLines, item => item.modelId),
     ['model1', 'model2']
   );
 });

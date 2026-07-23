@@ -156,14 +156,66 @@
                     <span>Di luar hari atau jam kerja. Tombol tambah, simpan, edit, dan hapus dinonaktifkan sampai jadwal kerja berikutnya.</span>
                 </div>
                 <!-- Dashboard Page -->
-	                <div x-show="currentPage === 'dashboard' && canViewDashboard()" class="fade-in">
-                    <div class="mb-6">
-	                        <h1 class="text-2xl font-bold text-gray-800 flex items-center"><i class="fa-solid fa-gauge-high text-blue-600 mr-3"></i>Dashboard Produksi</h1>
-	                        <p class="text-gray-600">Ringkasan performa produksi berdasarkan line</p>
+	                <div x-show="currentPage === 'dashboard' && canViewDashboard()" class="fade-in production-dashboard-page">
+                    <div class="mb-6 dashboard-page-heading">
+                        <div>
+                        <h1 class="text-2xl font-bold text-gray-800 flex items-center"><i class="fa-solid fa-gauge-high text-blue-600 mr-3"></i>Dashboard Produksi</h1>
+                        <p class="text-gray-600">Baca capaian produksi, hasil QC, dan sumber defect dalam satu tampilan.</p>
+                        </div>
+                        <div class="dashboard-snapshot" aria-label="Periode data dashboard">
+                            <i class="fa-regular fa-calendar"></i>
+                            <div>
+                                <span>Snapshot terbaru</span>
+                                <strong x-text="formatDashboardDate(selectedDashboardSummary.date)"></strong>
+                            </div>
+                            <small x-show="selectedDashboardSummary.modelCount">
+                                <span x-text="formatDashboardNumber(selectedDashboardSummary.lineCount)"></span> line ·
+                                <span x-text="formatDashboardNumber(selectedDashboardSummary.modelCount)"></span> model
+                            </small>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-kpi-grid mb-6">
+                        <section x-show="!isQcReportViewer()" class="dashboard-kpi-card dashboard-kpi-production" :class="dashboardAchievementTone">
+                            <div class="dashboard-kpi-heading">
+                                <div><p class="dashboard-kpi-eyebrow">Produksi</p><h2>Capaian Output</h2></div>
+                                <span class="dashboard-status-badge" x-text="dashboardAchievementStatus"></span>
+                            </div>
+                            <div class="dashboard-kpi-main"><strong x-text="formatDashboardNumber(selectedDashboardSummary.output)"></strong><span>unit output</span></div>
+                            <div class="dashboard-progress-copy"><span>Target <b x-text="formatDashboardNumber(selectedDashboardSummary.target)"></b> unit</span><strong x-text="formatDashboardPercent(dashboardAchievementPercent)"></strong></div>
+                            <div class="dashboard-progress" role="progressbar" :aria-valuenow="dashboardAchievementPercent" aria-valuemin="0" aria-valuemax="100"><div :style="`width: ${Math.min(dashboardAchievementPercent, 100)}%`"></div></div>
+                            <p class="dashboard-kpi-note" x-text="dashboardOutputGapLabel"></p>
+                        </section>
+
+                        <section x-show="!isSewingReportViewer()" class="dashboard-kpi-card dashboard-kpi-qc">
+                            <div class="dashboard-kpi-heading">
+                                <div><p class="dashboard-kpi-eyebrow">Quality Control</p><h2>Hasil Pemeriksaan</h2></div>
+                                <i class="fa-solid fa-clipboard-check dashboard-kpi-icon"></i>
+                            </div>
+                            <div class="dashboard-kpi-main dashboard-kpi-main-good"><strong x-text="formatDashboardNumber(dashboardGoodCount)"></strong><span>unit lolos QC</span></div>
+                            <div class="dashboard-kpi-breakdown"><div><span>Diperiksa</span><strong x-text="formatDashboardNumber(selectedDashboardSummary.qcChecked)"></strong></div><div><span>Defect</span><strong class="text-red-600" x-text="formatDashboardNumber(selectedDashboardSummary.defect)"></strong></div></div>
+                            <p class="dashboard-kpi-note">Lolos QC = diperiksa dikurangi total defect.</p>
+                        </section>
+
+                        <section x-show="!isSewingReportViewer()" class="dashboard-kpi-card dashboard-kpi-quality" :class="dashboardQualityTone">
+                            <div class="dashboard-kpi-heading">
+                                <div><p class="dashboard-kpi-eyebrow">Kualitas</p><h2>Tingkat Defect</h2></div>
+                                <span class="dashboard-status-badge" x-text="dashboardQualityStatus"></span>
+                            </div>
+                            <div class="dashboard-kpi-main"><strong x-text="formatDashboardPercent(selectedDashboardSummary.defectRate)"></strong><span>dari unit yang diperiksa</span></div>
+                            <div class="dashboard-severity-list" aria-label="Defect berdasarkan tingkat keparahan"><span><i class="severity-dot is-critical"></i>Critical <b x-text="formatDashboardNumber(selectedDashboardSummary.criticalDefect)"></b></span><span><i class="severity-dot is-major"></i>Major <b x-text="formatDashboardNumber(selectedDashboardSummary.majorDefect)"></b></span><span><i class="severity-dot is-minor"></i>Minor <b x-text="formatDashboardNumber(selectedDashboardSummary.minorDefect)"></b></span></div>
+                            <p class="dashboard-kpi-note">Acuan perhatian: defect rate di atas 5%.</p>
+                        </section>
+
+                        <section x-show="currentUser.role === 'admin'" class="dashboard-kpi-card dashboard-kpi-operators">
+                            <div class="dashboard-kpi-heading"><div><p class="dashboard-kpi-eyebrow">Tim</p><h2>Operator Terdaftar</h2></div><i class="fa-solid fa-users dashboard-kpi-icon"></i></div>
+                            <div class="dashboard-kpi-main"><strong x-text="formatDashboardNumber(dashboardData.activeOperators)"></strong><span>akun operator</span></div>
+                            <p class="dashboard-kpi-note">Jumlah akun operator, bukan status kehadiran real-time.</p>
+                        </section>
                     </div>
 
                     <!-- Summary Cards -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6" :class="isSewingReportViewer() ? 'lg:grid-cols-2' : 'lg:grid-cols-4'">
+                    <div class="legacy-dashboard-kpis grid grid-cols-1 md:grid-cols-2 gap-4 mb-6" :class="isSewingReportViewer() ? 'lg:grid-cols-2' : 'lg:grid-cols-4'">
 	                        <div x-show="!isQcReportViewer()" class="bg-white rounded-lg shadow p-4 card-shadow">
                             <div class="flex items-center">
                                 <div class="rounded-full bg-blue-100 p-3 mr-4">
@@ -242,7 +294,7 @@
 	                            </div>
 	                        </div>
 
-	                       <!-- Di bagian Summary Cards, tambahkan x-show pada kartu Operator Aktif -->
+	                       <!-- Legacy KPI markup kept for compatibility with existing bindings. -->
 <div class="bg-white rounded-lg shadow p-4 card-shadow" x-show="currentUser.role === 'admin'">
     <div class="flex items-center">
         <div class="rounded-full bg-purple-100 p-3 mr-4">
@@ -258,13 +310,13 @@
 </div>
 	                    </div>
 
-	                    <div class="dashboard-overview-grid grid grid-cols-1 xl:grid-cols-3 gap-6 mb-6">
-	                        <div class="xl:col-span-2 bg-white rounded-lg shadow overflow-hidden card-shadow">
+	                    <div class="dashboard-overview-grid grid grid-cols-1 gap-6 mb-6">
+	                        <div class="bg-white rounded-lg shadow overflow-hidden card-shadow">
 	                            <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
 	                                <div class="flex flex-wrap items-center justify-between gap-3">
 	                                    <div>
-	                                        <h3 class="text-lg leading-6 font-medium text-gray-900 flex items-center"><i class="fa-solid fa-chart-simple text-blue-600 mr-2"></i>Chart Akumulasi Data Tiap Hari</h3>
-	                                        <p class="mt-1 max-w-2xl text-sm text-gray-500">Data model aktif dari Management Line, ditampilkan per line seperti slideshow</p>
+	                                        <h3 class="text-lg leading-6 font-medium text-gray-900 flex items-center"><i class="fa-solid fa-chart-simple text-blue-600 mr-2"></i>Tren Produksi per Line</h3>
+	                                        <p class="mt-1 max-w-2xl text-sm text-gray-500">Bandingkan target, output, dan defect dari model aktif berdasarkan tanggal. Gunakan filter untuk fokus ke line tertentu.</p>
 	                                    </div>
 	                                    <div class="chart-legend">
 	                                        <span><span class="legend-dot chart-bar-target"></span>Target</span>
@@ -274,12 +326,12 @@
 	                                </div>
 		                            </div>
 		                            <div class="p-4">
-		                                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
-		                                    <select x-model="dashboardChartDateRange" @change="resetDashboardChartPage()" class="rounded-md border-gray-300 text-sm"><option value="7">7 hari terakhir</option><option value="14">14 hari terakhir</option><option value="30">30 hari terakhir</option><option value="all">Semua tanggal</option></select>
-		                                    <select x-model="dashboardChartLine" @change="resetDashboardChartPage()" class="rounded-md border-gray-300 text-sm"><option value="">Semua line</option><template x-for="lineName in dashboardChartAvailableLines" :key="lineName"><option :value="lineName" x-text="lineName"></option></template></select>
+	                                <div class="dashboard-chart-filters grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+	                                    <label><span>Rentang waktu</span><select x-model="dashboardChartDateRange" @change="resetDashboardChartPage()" class="rounded-md border-gray-300 text-sm"><option value="7">7 hari terakhir</option><option value="14">14 hari terakhir</option><option value="30">30 hari terakhir</option><option value="all">Semua tanggal</option></select></label>
+	                                    <label><span>Line produksi</span><select x-model="dashboardChartLine" @change="resetDashboardChartPage()" class="rounded-md border-gray-300 text-sm"><option value="">Semua line</option><template x-for="lineName in dashboardChartAvailableLines" :key="lineName"><option :value="lineName" x-text="lineName"></option></template></select></label>
 		                                    <button type="button" @click="toggleDashboardChartAutoplay()" :disabled="dashboardChartTotalPages <= 1" class="dashboard-chart-autoplay-btn" :class="dashboardChartAutoPlay ? 'is-playing' : 'is-paused'">
 		                                        <i class="fa-solid" :class="dashboardChartAutoPlay ? 'fa-pause' : 'fa-play'"></i>
-		                                        <span x-text="dashboardChartTotalPages <= 1 ? 'Hanya satu line' : (dashboardChartAutoPlay ? 'Jeda slideshow' : 'Lanjutkan slideshow')"></span>
+	                                        <span x-text="dashboardChartTotalPages <= 1 ? 'Satu line' : (dashboardChartAutoPlay ? 'Jeda pergantian line' : 'Putar otomatis')"></span>
 		                                    </button>
 		                                </div>
 		                                <div x-show="dashboardChartData.length > 0" class="dashboard-chart-frame" @mouseenter="stopDashboardChartAutoplay()" @mouseleave="startDashboardChartAutoplay()">
@@ -295,28 +347,35 @@
 
 	                        <div class="dashboard-daily-card bg-white rounded-lg shadow overflow-hidden card-shadow">
 	                            <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
-	                                <h3 class="text-lg leading-6 font-medium text-gray-900 flex items-center"><i class="fa-solid fa-calendar-day text-blue-600 mr-2"></i>Detail Data Per Hari</h3>
-	                                <p class="mt-1 max-w-2xl text-sm text-gray-500">Daftar model aktif dari Management Line untuk hari ini</p>
+	                                <h3 class="text-lg leading-6 font-medium text-gray-900 flex items-center"><i class="fa-solid fa-calendar-day text-blue-600 mr-2"></i>Rincian Produksi Hari Ini</h3>
+	                                <p class="mt-1 max-w-2xl text-sm text-gray-500">Setiap baris mewakili satu line dan model aktif pada <span class="font-semibold" x-text="formatDashboardDate(currentDateKey())"></span>.</p>
 	                            </div>
 		                            <div class="dashboard-daily-scroll overflow-x-auto">
 	                                <table class="min-w-full divide-y divide-gray-200">
 	                                    <thead class="bg-gray-50">
 	                                        <tr>
+	                                            <th colspan="4" class="dashboard-table-group dashboard-table-identity">Identitas</th>
+	                                            <th colspan="3" class="dashboard-table-group dashboard-table-production-group">Produksi</th>
+	                                            <th colspan="7" class="dashboard-table-group dashboard-table-quality-group">Hasil QC</th>
+	                                            <th colspan="2" class="dashboard-table-group dashboard-table-defect-group">Rincian defect</th>
+	                                        </tr>
+	                                        <tr>
 	                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal</th>
 	                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Line</th>
-	                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Label/Week</th>
+	                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Week / Label</th>
 	                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Model</th>
 	                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Target</th>
 	                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Output</th>
-	                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">QC</th>
-	                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Good</th>
+	                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Capaian</th>
+	                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Diperiksa</th>
+	                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lolos</th>
 	                                            <th class="px-4 py-3 whitespace-nowrap text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Defect</th>
 	                                            <th class="px-4 py-3 text-left text-xs font-medium text-red-700 uppercase tracking-wider">Critical</th>
 	                                            <th class="px-4 py-3 text-left text-xs font-medium text-orange-700 uppercase tracking-wider">Major</th>
 	                                            <th class="px-4 py-3 text-left text-xs font-medium text-yellow-700 uppercase tracking-wider">Minor</th>
 	                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rate</th>
-	                                            <th class="px-4 py-3 whitespace-nowrap text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Defect Area</th>
-	                                            <th class="px-4 py-3 whitespace-nowrap text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jenis Defect</th>
+	                                            <th class="px-4 py-3 whitespace-nowrap text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Area defect</th>
+	                                            <th class="px-4 py-3 whitespace-nowrap text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jenis defect</th>
 	                                        </tr>
 	                                    </thead>
 	                                    <tbody class="bg-white divide-y divide-gray-200">
@@ -326,21 +385,22 @@
 	                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900" x-text="day.lineName"></td>
 	                                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700" x-text="day.labelWeek || '-'"></td>
 	                                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700" x-text="day.model || '-'"></td>
-	                                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700" x-text="day.target"></td>
-	                                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700" x-text="day.output"></td>
-	                                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700" x-text="day.qcChecked"></td>
-	                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-semibold text-green-600" x-text="Math.max((day.qcChecked || 0) - (day.defect || 0), 0)"></td>
-	                                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700" x-text="day.defect"></td>
-	                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-semibold text-red-700" x-text="day.criticalDefect || 0"></td>
-	                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-semibold text-orange-700" x-text="day.majorDefect || 0"></td>
-	                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-semibold text-yellow-700" x-text="day.minorDefect || 0"></td>
-	                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-semibold" :class="day.defectRate > 5 ? 'text-red-600' : 'text-green-600'" x-text="day.defectRate + '%'"></td>
+	                                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700" x-text="formatDashboardNumber(day.target)"></td>
+	                                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700" x-text="formatDashboardNumber(day.output)"></td>
+	                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-semibold" :class="day.target > 0 && day.output >= day.target ? 'text-green-600' : 'text-amber-600'" x-text="formatDashboardPercent(day.target > 0 ? (day.output / day.target) * 100 : 0)"></td>
+	                                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700" x-text="formatDashboardNumber(day.qcChecked)"></td>
+	                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-semibold text-green-600" x-text="formatDashboardNumber(Math.max((day.qcChecked || 0) - (day.defect || 0), 0))"></td>
+	                                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700" x-text="formatDashboardNumber(day.defect)"></td>
+	                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-semibold text-red-700" x-text="formatDashboardNumber(day.criticalDefect)"></td>
+	                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-semibold text-orange-700" x-text="formatDashboardNumber(day.majorDefect)"></td>
+	                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-semibold text-yellow-700" x-text="formatDashboardNumber(day.minorDefect)"></td>
+	                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-semibold" :class="day.defectRate > 5 ? 'text-red-600' : 'text-green-600'" x-text="formatDashboardPercent(day.defectRate)"></td>
 	                                                <td class="px-4 py-3 min-w-48 whitespace-nowrap text-sm text-gray-700" :title="formatDashboardCounter(day.areaCounts)" x-text="formatDashboardCounter(day.areaCounts)"></td>
 	                                                <td class="px-4 py-3 min-w-48 whitespace-nowrap text-sm text-gray-700" :title="formatDashboardCounter(day.typeCounts)" x-text="formatDashboardCounter(day.typeCounts)"></td>
 	                                            </tr>
 	                                        </template>
 	                                        <tr x-show="dashboardDailyDetails.length === 0">
-	                                            <td colspan="15" class="px-4 py-8 text-center text-sm text-gray-500">Belum ada detail data line.</td>
+	                                            <td colspan="16" class="px-4 py-8 text-center text-sm text-gray-500">Belum ada detail data line untuk hari ini.</td>
 	                                        </tr>
 	                                    </tbody>
 	                                </table>
@@ -351,8 +411,8 @@
 	                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 	                        <div class="bg-white rounded-lg shadow overflow-hidden card-shadow">
 	                            <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
-	                                <h3 class="text-lg leading-6 font-medium text-gray-900 flex items-center"><i class="fa-solid fa-location-dot text-blue-600 mr-2"></i>Top 5 Defect Area</h3>
-	                                <p class="mt-1 max-w-2xl text-sm text-gray-500">Area defect terbanyak dari data harian</p>
+	                                <h3 class="text-lg leading-6 font-medium text-gray-900 flex items-center"><i class="fa-solid fa-location-dot text-blue-600 mr-2"></i>5 Area Defect Terbanyak</h3>
+	                                <p class="mt-1 max-w-2xl text-sm text-gray-500">Akumulasi model aktif dari seluruh snapshot harian yang tersedia.</p>
 	                            </div>
 		                            <div class="top-defect-scroll p-4">
 	                                <template x-for="item in selectedDashboardTopDefectAreas" :key="item.name">
@@ -360,7 +420,7 @@
 	                                        <div class="min-w-0">
 	                                            <div class="flex items-center justify-between gap-2 mb-2">
 	                                                <span class="text-sm font-semibold text-gray-900 truncate" x-text="item.name"></span>
-	                                                <span class="text-xs font-bold text-red-700" x-text="item.count"></span>
+	                                                <span class="text-xs font-bold text-red-700"><b x-text="formatDashboardNumber(item.count)"></b> defect</span>
 	                                            </div>
 	                                            <div class="top-defect-meter"><div class="top-defect-fill" :style="'width: ' + topDefectPercent(item.count, selectedDashboardTopDefectAreas) + '%'"></div></div>
 	                                        </div>
@@ -372,8 +432,8 @@
 
 	                        <div class="bg-white rounded-lg shadow overflow-hidden card-shadow">
 	                            <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
-	                                <h3 class="text-lg leading-6 font-medium text-gray-900 flex items-center"><i class="fa-solid fa-tags text-blue-600 mr-2"></i>Top 5 Jenis Defect</h3>
-	                                <p class="mt-1 max-w-2xl text-sm text-gray-500">Jenis defect terbanyak dari data harian</p>
+	                                <h3 class="text-lg leading-6 font-medium text-gray-900 flex items-center"><i class="fa-solid fa-tags text-blue-600 mr-2"></i>5 Jenis Defect Terbanyak</h3>
+	                                <p class="mt-1 max-w-2xl text-sm text-gray-500">Akumulasi model aktif dari seluruh snapshot harian yang tersedia.</p>
 	                            </div>
 		                            <div class="top-defect-scroll p-4">
 	                                <template x-for="item in selectedDashboardTopDefectTypes" :key="item.name">
@@ -381,7 +441,7 @@
 	                                        <div class="min-w-0">
 	                                            <div class="flex items-center justify-between gap-2 mb-2">
 	                                                <span class="text-sm font-semibold text-gray-900 truncate" x-text="item.name"></span>
-	                                                <span class="text-xs font-bold text-red-700" x-text="item.count"></span>
+	                                                <span class="text-xs font-bold text-red-700"><b x-text="formatDashboardNumber(item.count)"></b> defect</span>
 	                                            </div>
 	                                            <div class="top-defect-meter"><div class="top-defect-fill" :style="'width: ' + topDefectPercent(item.count, selectedDashboardTopDefectTypes) + '%'"></div></div>
 	                                        </div>
@@ -398,7 +458,7 @@
 	                <div x-show="currentPage === 'line-summary'" class="fade-in">
 	                    <div class="mb-6">
 	                        <h1 class="text-2xl font-bold text-gray-800 flex items-center"><i class="fa-solid fa-industry text-blue-600 mr-3"></i>Ringkasan Line Produksi</h1>
-	                        <p class="text-gray-600">Status produksi per line dan model</p>
+	                        <p class="text-gray-600">Status produksi hanya untuk model yang Active di Management Line.</p>
 	                    </div>
 
 	                    <div class="bg-white rounded-lg shadow overflow-hidden card-shadow">
@@ -406,7 +466,7 @@
                             <div class="flex flex-col md:flex-row md:items-center md:justify-between">
                                 <div>
 	                                    <h3 class="text-lg leading-6 font-medium text-gray-900 flex items-center"><i class="fa-solid fa-industry text-blue-600 mr-2"></i>Ringkasan Line Produksi</h3>
-                                    <p class="mt-1 max-w-2xl text-sm text-gray-500">Status produksi per line dan model</p>
+                                    <p class="mt-1 max-w-2xl text-sm text-gray-500">Pilih tombol Input pada model aktif yang sesuai dengan pekerjaan operator.</p>
                                 </div>
 	                                <div class="filter-toolbar line-management-toolbar mt-4 md:mt-0 mb-0">
 	                                    <div class="filter-group">
@@ -420,7 +480,7 @@
 	                                            <i class="fa-solid fa-industry filter-control-icon"></i>
 	                                            <select x-model="dashboardLineFilter" @change="dashboardCurrentPage = 1" aria-label="Filter ringkasan berdasarkan line" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
 	                                                <option value="">Semua Line</option>
-	                                                <template x-for="lineName in availableManagementLines" :key="lineName">
+	                                                <template x-for="lineName in availableDashboardLines" :key="lineName">
 	                                                    <option :value="lineName" x-text="lineName"></option>
 	                                                </template>
 	                                            </select>
@@ -470,6 +530,7 @@
                                                 <div class="flex items-center">
                                                     <div class="text-sm font-medium text-gray-900" x-text="line.lineName"></div>
                                                     <span class="model-badge bg-blue-100 text-blue-800" x-text="line.modelId"></span>
+	                                                    <span class="active-model-badge"><i class="fa-solid fa-check"></i>Active</span>
                                                 </div>
                                                 <div class="text-sm text-gray-500" x-text="line.data.labelWeek"></div>
                                             </td>
@@ -539,6 +600,9 @@
 	                                            </td>
                                         </tr>
                                     </template>
+	                                <tr x-show="filteredDashboardLines.length === 0">
+	                                    <td colspan="8" class="px-6 py-10 text-center text-sm text-gray-500">Belum ada model berstatus Active di Management Line.</td>
+	                                </tr>
                                 </tbody>
                             </table>
                         </div>
@@ -546,7 +610,7 @@
                         <div class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
                             <div class="flex-1 flex justify-between items-center">
                                 <div class="text-sm font-medium text-gray-700">
-                                    <span x-text="(dashboardCurrentPage - 1) * dashboardItemsPerPage + 1"></span>
+	                                <span x-text="filteredDashboardLines.length ? (dashboardCurrentPage - 1) * dashboardItemsPerPage + 1 : 0"></span>
                                     <span class="mx-1">-</span>
                                     <span x-text="Math.min(dashboardCurrentPage * dashboardItemsPerPage, filteredDashboardLines.length)"></span>
                                 </div>

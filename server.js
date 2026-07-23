@@ -5,6 +5,7 @@ const session = require('express-session');
 const XLSX = require('xlsx');
 const ExcelJS = require('exceljs');
 const crypto = require('crypto');
+const bcrypt = require('bcryptjs');
 const sqlite3 = require('sqlite3');
 const { Sequelize, DataTypes } = require('sequelize');
 
@@ -13,6 +14,7 @@ const port = process.env.PORT || 3000;
 const databasePath = path.resolve(process.env.DATABASE_PATH || path.join(__dirname, 'production-dashboard.sqlite'));
 const databaseBackupDir = path.resolve(process.env.DATABASE_BACKUP_DIR || path.join(__dirname, 'database-backups'));
 const legacyHistoryDir = path.resolve(process.env.LEGACY_HISTORY_DIR || path.join(__dirname, 'history'));
+const bootstrapCredentialsPath = path.join(databaseBackupDir, 'bootstrap-credentials.json');
 const sequelize = new Sequelize({
   dialect: 'sqlite',
   storage: databasePath,
@@ -88,7 +90,7 @@ app.use((req, res, next) => {
   }
   return next();
 });
-app.use(express.static('.'));
+app.use('/public', express.static(path.join(__dirname, 'public')));
 
 const sessionSecret = process.env.SESSION_SECRET;
 if (!sessionSecret) {
@@ -108,11 +110,91 @@ app.use(session({
 }));
 
 function hashPassword(password) {
-  return crypto.createHash('sha256').update(password).digest('hex');
+  return bcrypt.hashSync(String(password), 12);
 }
 
 function verifyPassword(password, hashedPassword) {
-  return hashPassword(password) === hashedPassword;
+  if (typeof hashedPassword !== 'string') return false;
+  if (hashedPassword.startsWith('$2')) {
+    return bcrypt.compareSync(String(password), hashedPassword);
+  }
+
+  if (/^[a-f0-9]{64}$/i.test(hashedPassword)) {
+    return crypto.createHash('sha256').update(String(password)).digest('hex') === hashedPassword;
+  }
+
+  return false;
+}
+
+function isLegacySha256PasswordHash(hashedPassword) {
+  return typeof hashedPassword === 'string' && /^[a-f0-9]{64}$/i.test(hashedPassword);
+}
+
+function normalizeRole(role) {
+  return role === 'admin_operator' ? 'admin_operator_sewing' : role;
+}
+
+function normalizeUserRecord(user) {
+  if (!user || typeof user !== 'object') return user;
+
+  return {
+    ...user,
+    role: normalizeRole(user.role),
+    sessionVersion: Number.isInteger(user.sessionVersion) && user.sessionVersion > 0
+      ? user.sessionVersion
+      : 1
+  };
+}
+
+function buildSessionUser(user) {
+  if (!user) return null;
+
+  const normalizedUser = normalizeUserRecord(user);
+  return {
+    id: normalizedUser.id,
+    name: normalizedUser.name,
+    username: normalizedUser.username,
+    line: normalizedUser.line,
+    role: normalizedUser.role,
+    sessionVersion: normalizedUser.sessionVersion
+  };
+}
+
+const LEGACY_DEFAULT_PASSWORD_HASHES_BY_USERNAME = {
+  operator1: 'ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f',
+  admin_operator: '40cc70c95776bb2d926894c02448c65b15421bcec8cd86d9193a488193932fbc',
+  admin: '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9'
+};
+
+let bootstrapCredentialsCache = null;
+
+function readBootstrapCredentials() {
+  if (bootstrapCredentialsCache) return bootstrapCredentialsCache;
+
+  fs.mkdirSync(databaseBackupDir, { recursive: true });
+
+  if (fs.existsSync(bootstrapCredentialsPath)) {
+    try {
+      bootstrapCredentialsCache = JSON.parse(fs.readFileSync(bootstrapCredentialsPath, 'utf8'));
+      return bootstrapCredentialsCache;
+    } catch (error) {
+      console.error('ERROR: Gagal membaca bootstrap credentials, membuat ulang:', error.message);
+    }
+  }
+
+  bootstrapCredentialsCache = {
+    operator: process.env.DEFAULT_OPERATOR_PASSWORD || crypto.randomBytes(12).toString('base64url'),
+    adminOperator: process.env.DEFAULT_ADMIN_OPERATOR_PASSWORD || crypto.randomBytes(12).toString('base64url'),
+    admin: process.env.DEFAULT_ADMIN_PASSWORD || crypto.randomBytes(12).toString('base64url')
+  };
+
+  try {
+    fs.writeFileSync(bootstrapCredentialsPath, JSON.stringify(bootstrapCredentialsCache, null, 2), { mode: 0o600 });
+  } catch (error) {
+    console.error('ERROR: Gagal menyimpan bootstrap credentials:', error.message);
+  }
+
+  return bootstrapCredentialsCache;
 }
 
 function getToday() {
@@ -244,31 +326,36 @@ function buildInitialProductionData() {
 }
 
 function buildInitialUsersData() {
+  const bootstrapCredentials = readBootstrapCredentials();
+
   return {
     "users": [
       {
         "id": 1,
         "username": "operator1",
-        "password": hashPassword("password123"),
+        "password": hashPassword(bootstrapCredentials.operator),
         "name": "Ahmad Susanto",
         "line": "F1-5A",
-        "role": "operator"
+        "role": "operator",
+        "sessionVersion": 1
       },
       {
         "id": 2,
         "username": "admin_operator",
-        "password": hashPassword("adminop123"),
+        "password": hashPassword(bootstrapCredentials.adminOperator),
         "name": "Admin Operator",
         "line": "all",
-        "role": "admin_operator_sewing"
+        "role": "admin_operator_sewing",
+        "sessionVersion": 1
       },
       {
         "id": 3,
         "username": "admin",
-        "password": hashPassword("admin123"),
+        "password": hashPassword(bootstrapCredentials.admin),
         "name": "Administrator",
         "line": "all",
-        "role": "admin"
+        "role": "admin",
+        "sessionVersion": 1
       }
     ]
   };
@@ -431,11 +518,56 @@ function calculateDefectSeverityBreakdown(model, config = readDefectConfig()) {
 function buildPublicModelResponse(model) {
   const defectConfig = readDefectConfig();
   const severityMaps = buildDefectSeverityMaps(defectConfig);
-  const response = { ...model };
-
-  if (!response.targetPerHour) {
-    response.targetPerHour = Math.round((response.target || 0) / PRODUCTION_HOURS.length);
-  }
+  const target = Number(model?.target) || 0;
+  const targetPerHour = Number(model?.targetPerHour) || Math.round(target / PRODUCTION_HOURS.length);
+  const hourlyData = Array.isArray(model?.hourly_data) ? model.hourly_data : [];
+  const qcChecks = Array.isArray(model?.qcChecks) ? model.qcChecks : [];
+  const response = {
+    id: model?.id,
+    labelWeek: model?.labelWeek || '',
+    model: model?.model || '',
+    date: model?.date || '',
+    target,
+    targetPerHour,
+    outputDay: Number(model?.outputDay) || 0,
+    qcChecking: Number(model?.qcChecking) || 0,
+    actualDefect: Number(model?.actualDefect) || 0,
+    defectRatePercentage: Number(model?.defectRatePercentage) || 0,
+    hourly_data: hourlyData.map(hour => ({
+      hour: hour?.hour || '',
+      targetManual: Number(hour?.targetManual) || 0,
+      output: Number(hour?.output) || 0,
+      defect: Number(hour?.defect) || 0,
+      qcChecked: Number(hour?.qcChecked) || 0,
+      selisih: Number(hour?.selisih) || 0,
+      defectDetails: Array.isArray(hour?.defectDetails)
+        ? hour.defectDetails.map(detail => ({
+          type: detail?.type || '',
+          area: detail?.area || '',
+          quantity: Number(detail?.quantity) || 0
+        }))
+        : []
+    })),
+    operators: Array.isArray(model?.operators)
+      ? model.operators.map(operator => ({
+        id: operator?.id,
+        position: operator?.position || '',
+        target: Number(operator?.target) || 0,
+        output: Number(operator?.output) || 0,
+        defect: Number(operator?.defect) || 0,
+        efficiency: Number(operator?.efficiency) || 0,
+        status: operator?.status || ''
+      }))
+      : [],
+    qcChecks: qcChecks.map(check => ({
+      id: check?.id,
+      result: check?.result || '',
+      hourIndex: Number.isInteger(check?.hourIndex) ? check.hourIndex : null,
+      hour: check?.hour || '',
+      type: check?.type || '',
+      area: check?.area || ''
+    }))
+  };
 
   response.defectBreakdown = calculateDefectSeverityBreakdown(response, defectConfig);
   const actualDefect = parseInt(response.actualDefect);
@@ -475,6 +607,7 @@ async function upsertAppData(key, data) {
         await AppData.upsert({ key, payload });
       } catch (error) {
         console.error(`ERROR: Gagal menyimpan ${key} ke database:`, error.message);
+        throw error;
       }
     });
 
@@ -1038,7 +1171,9 @@ function checkAndResetDataForNewDay() {
   });
 
   if (resetCount > 0) {
-    writeProductionData(data);
+    void writeProductionData(data).catch(error => {
+      console.error('ERROR: Gagal menyimpan data reset harian:', error.message);
+    });
     console.log(`✅ Auto-reset selesai: ${resetCount} model direset ke tanggal ${today}`);
     
     // Simpan snapshot hari ini setelah reset.
@@ -1072,24 +1207,43 @@ function readProductionData() {
 }
 
 function writeProductionData(data) {
-  try {
-    productionDataCache = data;
-    void upsertAppData(PRODUCTION_DATA_KEY, data);
-  } catch (error) {
-    console.error('ERROR: Gagal menulis production data ke cache:', error.message);
-  }
+  productionDataCache = data;
+  return upsertAppData(PRODUCTION_DATA_KEY, data);
 }
 
 function readUsersData() {
   try {
     let migrated = false;
-    (usersDataCache.users || []).forEach(user => {
-      if (user.role === 'admin_operator') {
-        user.role = 'admin_operator_sewing';
+    const users = Array.isArray(usersDataCache.users) ? usersDataCache.users : [];
+    usersDataCache.users = users.map(user => {
+      let normalizedUser = normalizeUserRecord(user);
+      const legacyDefaultHash = LEGACY_DEFAULT_PASSWORD_HASHES_BY_USERNAME[normalizedUser.username];
+      if (legacyDefaultHash && normalizedUser.password === legacyDefaultHash) {
+        const bootstrapCredentials = readBootstrapCredentials();
+        const bootstrapPassword = normalizedUser.username === 'admin'
+          ? bootstrapCredentials.admin
+          : (normalizedUser.username === 'admin_operator' ? bootstrapCredentials.adminOperator : bootstrapCredentials.operator);
+        normalizedUser = {
+          ...normalizedUser,
+          password: hashPassword(bootstrapPassword),
+          sessionVersion: normalizedUser.sessionVersion + 1
+        };
         migrated = true;
       }
+
+      if (normalizedUser.role !== user.role
+        || normalizedUser.sessionVersion !== user.sessionVersion
+        || normalizedUser.password !== user.password) {
+        migrated = true;
+      }
+      return normalizedUser;
     });
-    if (migrated) void upsertAppData(USERS_DATA_KEY, usersDataCache);
+
+    if (migrated) {
+      void upsertAppData(USERS_DATA_KEY, usersDataCache).catch(error => {
+        console.error('ERROR: Gagal menyimpan migrasi user:', error.message);
+      });
+    }
     return usersDataCache;
   } catch (error) {
     console.error('ERROR: Gagal membaca users data cache:', error.message);
@@ -1098,12 +1252,10 @@ function readUsersData() {
 }
 
 function writeUsersData(data) {
-  try {
-    usersDataCache = data;
-    void upsertAppData(USERS_DATA_KEY, data);
-  } catch (error) {
-    console.error('ERROR: Gagal menulis users data ke cache:', error.message);
-  }
+  usersDataCache = {
+    users: Array.isArray(data?.users) ? data.users.map(normalizeUserRecord) : []
+  };
+  return upsertAppData(USERS_DATA_KEY, usersDataCache);
 }
 
 function readDefectConfig() {
@@ -1117,12 +1269,8 @@ function readDefectConfig() {
 }
 
 function writeDefectConfig(data) {
-  try {
-    defectConfigCache = normalizeDefectConfig(data);
-    void upsertAppData(DEFECT_CONFIG_KEY, defectConfigCache);
-  } catch (error) {
-    console.error('ERROR: Gagal menulis defect config ke cache:', error.message);
-  }
+  defectConfigCache = normalizeDefectConfig(data);
+  return upsertAppData(DEFECT_CONFIG_KEY, defectConfigCache);
 }
 
 function readPublicDisplaySettings() {
@@ -1136,14 +1284,9 @@ function readPublicDisplaySettings() {
 }
 
 function writePublicDisplaySettings(data) {
-  try {
-    publicDisplaySettingsCache = normalizePublicDisplaySettings(data);
-    void upsertAppData(PUBLIC_DISPLAY_SETTINGS_KEY, publicDisplaySettingsCache);
-    return publicDisplaySettingsCache;
-  } catch (error) {
-    console.error('ERROR: Gagal menulis public display settings ke cache:', error.message);
-    return readPublicDisplaySettings();
-  }
+  publicDisplaySettingsCache = normalizePublicDisplaySettings(data);
+  return upsertAppData(PUBLIC_DISPLAY_SETTINGS_KEY, publicDisplaySettingsCache)
+    .then(() => publicDisplaySettingsCache);
 }
 
 function readWorkScheduleSettings() {
@@ -1153,8 +1296,8 @@ function readWorkScheduleSettings() {
 
 function writeWorkScheduleSettings(data) {
   workScheduleSettingsCache = normalizeWorkScheduleSettings(data);
-  void upsertAppData(WORK_SCHEDULE_SETTINGS_KEY, workScheduleSettingsCache);
-  return workScheduleSettingsCache;
+  return upsertAppData(WORK_SCHEDULE_SETTINGS_KEY, workScheduleSettingsCache)
+    .then(() => workScheduleSettingsCache);
 }
 
 function generateUserId(users) {
@@ -1368,8 +1511,33 @@ function isSafeHistoryFilename(filename) {
     && /^data_[A-Za-z0-9_.-]+\.json$/.test(filename);
 }
 
+function getAuthenticatedSessionUser(req) {
+  const sessionUser = req.session?.user;
+  if (!sessionUser) return null;
+
+  const usersData = readUsersData();
+  const currentUser = usersData.users.find(user => user.id === sessionUser.id);
+  if (!currentUser) {
+    delete req.session.user;
+    return null;
+  }
+
+  const normalizedCurrentUser = normalizeUserRecord(currentUser);
+  const sessionVersion = Number.isInteger(sessionUser.sessionVersion) && sessionUser.sessionVersion > 0
+    ? sessionUser.sessionVersion
+    : 1;
+
+  if (sessionVersion !== normalizedCurrentUser.sessionVersion) {
+    delete req.session.user;
+    return null;
+  }
+
+  req.session.user = buildSessionUser(normalizedCurrentUser);
+  return req.session.user;
+}
+
 function requireLogin(req, res, next) {
-  if (req.session.user) {
+  if (getAuthenticatedSessionUser(req)) {
     next();
   } else {
     res.status(401).json({ error: 'Unauthorized - Please login' });
@@ -1377,7 +1545,7 @@ function requireLogin(req, res, next) {
 }
 
 function hasAnyRole(user, allowedRoles) {
-  const role = user?.role === 'admin_operator' ? 'admin_operator_sewing' : user?.role;
+  const role = normalizeRole(user?.role);
   return Boolean(role && allowedRoles.includes(role));
 }
 
@@ -1389,7 +1557,7 @@ function hasDateReportAccess(user) {
 }
 
 function requireAdmin(req, res, next) {
-  if (hasAnyRole(req.session.user, ['admin'])) {
+  if (hasAnyRole(getAuthenticatedSessionUser(req), ['admin'])) {
     next();
   } else {
     res.status(403).json({ error: 'Forbidden - Admin access required' });
@@ -1397,7 +1565,7 @@ function requireAdmin(req, res, next) {
 }
 
 function requireAdminOrAdminOperator(req, res, next) {
-  if (hasAnyRole(req.session.user, ['admin', ...ADMIN_OPERATOR_ROLES])) {
+  if (hasAnyRole(getAuthenticatedSessionUser(req), ['admin', ...ADMIN_OPERATOR_ROLES])) {
     next();
   } else {
     res.status(403).json({ error: 'Forbidden - Admin or Admin Operator access required' });
@@ -1405,7 +1573,7 @@ function requireAdminOrAdminOperator(req, res, next) {
 }
 
 function requireLineManagementAccess(req, res, next) {
-  if (hasAnyRole(req.session.user, ['admin', 'admin_operator_sewing'])) {
+  if (hasAnyRole(getAuthenticatedSessionUser(req), ['admin', 'admin_operator_sewing'])) {
     next();
   } else {
     res.status(403).json({ error: 'Forbidden - Line management access required' });
@@ -1413,7 +1581,7 @@ function requireLineManagementAccess(req, res, next) {
 }
 
 function requireDateReportAccess(req, res, next) {
-  if (hasDateReportAccess(req.session.user)) {
+  if (hasDateReportAccess(getAuthenticatedSessionUser(req))) {
     next();
   } else {
     res.status(403).json({ error: 'Forbidden - Date report access required' });
@@ -1421,10 +1589,10 @@ function requireDateReportAccess(req, res, next) {
 }
 
 function requireLineAccess(req, res, next) {
-  const user = req.session.user;
+  const user = getAuthenticatedSessionUser(req);
   const lineName = req.params.lineName;
-  const role = user?.role === 'admin_operator' ? 'admin_operator_sewing' : user?.role;
-  
+  const role = normalizeRole(user?.role);
+
   if (!user) {
     return res.status(401).json({ error: 'Unauthorized - Please login' });
   }
@@ -1441,24 +1609,24 @@ function requireLineAccess(req, res, next) {
 }
 
 function requireProductionWriteAccess(req, res, next) {
-  if (!hasAnyRole(req.session.user, ['admin', 'admin_operator_sewing', 'operator'])) {
+  if (!hasAnyRole(getAuthenticatedSessionUser(req), ['admin', 'admin_operator_sewing', 'operator'])) {
     return res.status(403).json({ error: 'Akses input hasil sewing diperlukan' });
   }
   return next();
 }
 
 function requireQcWriteAccess(req, res, next) {
-  if (hasAnyRole(req.session.user, ['admin', 'operator'])) return next();
+  if (hasAnyRole(getAuthenticatedSessionUser(req), ['admin', 'operator'])) return next();
   res.status(403).json({ error: 'Akses input hasil QC diperlukan' });
 }
 
 function requireQcManageAccess(req, res, next) {
-  if (hasAnyRole(req.session.user, ['admin', 'admin_operator_qc'])) return next();
+  if (hasAnyRole(getAuthenticatedSessionUser(req), ['admin', 'admin_operator_qc'])) return next();
   res.status(403).json({ error: 'Akses kelola hasil QC diperlukan' });
 }
 
 function requireDefectCategoryAccess(req, res, next) {
-  if (hasAnyRole(req.session.user, ['admin', 'admin_operator_qc'])) return next();
+  if (hasAnyRole(getAuthenticatedSessionUser(req), ['admin', 'admin_operator_qc'])) return next();
   res.status(403).json({ error: 'Akses kelola kategori defect diperlukan' });
 }
 
@@ -1549,7 +1717,7 @@ app.use('/api', (req, res, next) => {
 });
 
 // ENDPOINT UNTUK MENDAPATKAN DAFTAR BACKUP DATA
-app.get('/api/backup-history', requireLogin, requireAdmin, (req, res) => {
+app.get('/api/backup-history', requireLogin, requireAdmin, async (req, res) => {
   try {
     const snapshotBackups = Array.from(productionSnapshotCache.values()).map(snapshot => ({
       filename: snapshot.filename,
@@ -1645,7 +1813,7 @@ app.post('/api/restore-backup/:filename', requireLogin, requireAdmin, async (req
       currentData.activeLine = backupData.activeLine;
     }
     
-    writeProductionData(currentData);
+    await writeProductionData(currentData);
     
     // Update backup hari ini setelah restore
     updateTodayBackup();
@@ -1668,7 +1836,7 @@ app.post('/api/restore-backup/:filename', requireLogin, requireAdmin, async (req
   }
 });
 
-app.get('/api/download-backup/:filename', requireLogin, requireAdmin, (req, res) => {
+app.get('/api/download-backup/:filename', requireLogin, requireAdmin, async (req, res) => {
   const { filename } = req.params;
   const snapshot = isSafeBackupFilename(filename) ? getSnapshotByFilename(filename) : null;
 
@@ -1682,7 +1850,7 @@ app.get('/api/download-backup/:filename', requireLogin, requireAdmin, (req, res)
   res.type('application/json').send(snapshot.payload);
 });
 
-app.get('/api/download-database-backup/:filename', requireLogin, requireAdmin, (req, res) => {
+app.get('/api/download-database-backup/:filename', requireLogin, requireAdmin, async (req, res) => {
   const { filename } = req.params;
   const backup = listDatabaseBackupFiles().find(item => item.filename === filename);
   if (!backup) return res.status(404).json({ error: 'Database backup not found' });
@@ -1914,7 +2082,7 @@ app.post('/api/organize-backups', requireLogin, requireAdmin, async (req, res) =
 });
 
 // ENDPOINT UNTUK CEK STATUS SISTEM
-app.get('/api/system-status', requireLogin, requireAdmin, (req, res) => {
+app.get('/api/system-status', requireLogin, requireAdmin, async (req, res) => {
   const data = readProductionData();
   const today = getToday();
   const now = new Date();
@@ -1968,7 +2136,7 @@ app.get('/api/system-status', requireLogin, requireAdmin, (req, res) => {
 });
 
 // ENDPOINT UNTUK MENDAPATKAN DAFTAR TANGGAL YANG TERSEDIA
-app.get('/api/available-dates', requireLogin, requireDateReportAccess, (req, res) => {
+app.get('/api/available-dates', requireLogin, requireDateReportAccess, async (req, res) => {
   try {
     const dates = getAvailableHistoryDates();
     
@@ -2321,7 +2489,7 @@ function topCounterItems(counter, limit = 5) {
     .slice(0, limit);
 }
 
-app.get('/api/dashboard-summary', requireLogin, requireAdminOrAdminOperator, autoCheckDateReset, (req, res) => {
+app.get('/api/dashboard-summary', requireLogin, requireAdminOrAdminOperator, autoCheckDateReset, async (req, res) => {
   try {
     const snapshotsByDate = new Map();
     const currentData = readProductionData();
@@ -2376,47 +2544,52 @@ app.get('/api/dashboard-summary', requireLogin, requireAdminOrAdminOperator, aut
   }
 });
 
-app.post('/api/login', (req, res) => {
+app.post('/api/login', async (req, res) => {
   const { username, password } = req.body;
   if (typeof username !== 'string' || typeof password !== 'string' || !username.trim() || !password) {
     return res.status(400).json({ error: 'Username and password are required' });
   }
-  const usersData = readUsersData();
-  const user = usersData.users.find(u => u.username === username.trim());
 
-  if (user && verifyPassword(password, user.password)) {
-    const normalizedRole = user.role === 'admin_operator' ? 'admin_operator_sewing' : user.role;
-    req.session.user = {
-      id: user.id,
-      name: user.name,
-      username: user.username,
-      line: user.line,
-      role: normalizedRole
-    };
-    res.json({
-      message: 'Login successful',
-      user: req.session.user
-    });
-  } else {
-    res.status(401).json({ error: 'Invalid username or password' });
+  try {
+    const usersData = readUsersData();
+    const user = usersData.users.find(u => u.username === username.trim());
+
+    if (user && verifyPassword(password, user.password)) {
+      if (isLegacySha256PasswordHash(user.password)) {
+        user.password = hashPassword(password);
+        user.sessionVersion = (Number(user.sessionVersion) || 1) + 1;
+        await writeUsersData(usersData);
+      }
+
+      req.session.user = buildSessionUser(user);
+      return res.json({
+        message: 'Login successful',
+        user: req.session.user
+      });
+    }
+
+    return res.status(401).json({ error: 'Invalid username or password' });
+  } catch (error) {
+    console.error('Error during login:', error);
+    return res.status(500).json({ error: 'Login failed' });
   }
 });
 
-app.post('/api/logout', (req, res) => {
+app.post('/api/logout', async (req, res) => {
   req.session.destroy();
   res.json({ message: 'Logout successful' });
 });
 
-app.get('/api/current-user', (req, res) => {
-  if (req.session.user) {
-    if (req.session.user.role === 'admin_operator') req.session.user.role = 'admin_operator_sewing';
-    res.json(req.session.user);
+app.get('/api/current-user', async (req, res) => {
+  const user = getAuthenticatedSessionUser(req);
+  if (user) {
+    res.json(user);
   } else {
     res.status(401).json({ error: 'Not logged in' });
   }
 });
 
-app.post('/api/update-hourly/:lineName', requireLogin, requireLineAccess, requireProductionWriteAccess, autoCheckDateReset, (req, res) => {
+app.post('/api/update-hourly/:lineName', requireLogin, requireLineAccess, requireProductionWriteAccess, autoCheckDateReset, async (req, res) => {
   const { lineName } = req.params;
   const { hourIndex, output, defect, qcChecked, targetManual, defectDetails } = req.body;
   const data = readProductionData();
@@ -2462,7 +2635,7 @@ app.post('/api/update-hourly/:lineName', requireLogin, requireLineAccess, requir
 
   const summary = recalculateModelTotals(active.model);
 
-  writeProductionData(data);
+  await writeProductionData(data);
   updateTodayBackup();
 
   res.json({
@@ -2476,7 +2649,7 @@ app.post('/api/update-hourly/:lineName', requireLogin, requireLineAccess, requir
   });
 });
 
-app.post('/api/update-target-manual/:lineName', requireLogin, requireLineAccess, requireProductionWriteAccess, autoCheckDateReset, (req, res) => {
+app.post('/api/update-target-manual/:lineName', requireLogin, requireLineAccess, requireProductionWriteAccess, autoCheckDateReset, async (req, res) => {
   const { lineName } = req.params;
   const { hourIndex, targetManual } = req.body;
   const data = readProductionData();
@@ -2501,7 +2674,7 @@ app.post('/api/update-target-manual/:lineName', requireLogin, requireLineAccess,
   active.model.hourly_data[index].selisih = (parseInt(active.model.hourly_data[index].output) || 0) - nextTargetManual;
   const summary = recalculateModelTotals(active.model);
 
-  writeProductionData(data);
+  await writeProductionData(data);
   updateTodayBackup();
 
   res.json({
@@ -2512,7 +2685,7 @@ app.post('/api/update-target-manual/:lineName', requireLogin, requireLineAccess,
   });
 });
 
-app.post('/api/update-hourly-direct/:lineName', requireLogin, requireLineAccess, requireProductionWriteAccess, autoCheckDateReset, (req, res) => {
+app.post('/api/update-hourly-direct/:lineName', requireLogin, requireLineAccess, requireProductionWriteAccess, autoCheckDateReset, async (req, res) => {
   const { lineName } = req.params;
   const { hourIndex, output, defect, qcChecked, targetManual } = req.body;
   const data = readProductionData();
@@ -2553,7 +2726,7 @@ app.post('/api/update-hourly-direct/:lineName', requireLogin, requireLineAccess,
 
   const summary = recalculateModelTotals(active.model);
 
-  writeProductionData(data);
+  await writeProductionData(data);
   updateTodayBackup();
 
   res.json({
@@ -2567,7 +2740,7 @@ app.post('/api/update-hourly-direct/:lineName', requireLogin, requireLineAccess,
   });
 });
 
-app.post('/api/update-hourly/:lineName/:modelId', requireLogin, requireLineAccess, requireProductionWriteAccess, autoCheckDateReset, (req, res) => {
+app.post('/api/update-hourly/:lineName/:modelId', requireLogin, requireLineAccess, requireProductionWriteAccess, autoCheckDateReset, async (req, res) => {
   const { lineName, modelId } = req.params;
   const { hourIndex, output, defect, qcChecked, targetManual, defectDetails } = req.body;
 
@@ -2611,7 +2784,7 @@ app.post('/api/update-hourly/:lineName/:modelId', requireLogin, requireLineAcces
 
   const summary = recalculateModelTotals(data.lines[lineName].models[modelId]);
 
-  writeProductionData(data);
+  await writeProductionData(data);
   
   // ✅ UPDATE BACKUP HARI INI SETELAH MENGUPDATE DATA
   updateTodayBackup();
@@ -2626,7 +2799,7 @@ app.post('/api/update-hourly/:lineName/:modelId', requireLogin, requireLineAcces
   });
 });
 
-app.post('/api/update-production/:lineName/:modelId', requireLogin, requireLineAccess, requireProductionWriteAccess, autoCheckDateReset, (req, res) => {
+app.post('/api/update-production/:lineName/:modelId', requireLogin, requireLineAccess, requireProductionWriteAccess, autoCheckDateReset, async (req, res) => {
   const { lineName, modelId } = req.params;
   const { hourIndex, output, targetManual } = req.body;
   const data = readProductionData();
@@ -2661,7 +2834,7 @@ app.post('/api/update-production/:lineName/:modelId', requireLogin, requireLineA
 	  };
 
   const summary = recalculateModelTotals(model);
-  writeProductionData(data);
+  await writeProductionData(data);
   updateTodayBackup();
 
   res.json({
@@ -2674,7 +2847,7 @@ app.post('/api/update-production/:lineName/:modelId', requireLogin, requireLineA
   });
 });
 
-app.post('/api/qc-check/:lineName/:modelId', requireLogin, requireLineAccess, requireQcWriteAccess, autoCheckDateReset, (req, res) => {
+app.post('/api/qc-check/:lineName/:modelId', requireLogin, requireLineAccess, requireQcWriteAccess, autoCheckDateReset, async (req, res) => {
   if (req.session.user?.role === 'operator') {
     const jakartaTimeParts = new Intl.DateTimeFormat('en-US', {
       timeZone: 'Asia/Jakarta', hour: 'numeric', minute: 'numeric', hour12: false
@@ -2723,7 +2896,7 @@ app.post('/api/qc-check/:lineName/:modelId', requireLogin, requireLineAccess, re
   model.qcChecks.push(qcCheck);
 
   const summary = recalculateModelTotals(model);
-  writeProductionData(data);
+  await writeProductionData(data);
   updateTodayBackup();
 
   res.json({
@@ -2737,7 +2910,7 @@ app.post('/api/qc-check/:lineName/:modelId', requireLogin, requireLineAccess, re
   });
 });
 
-app.post('/api/update-target-manual/:lineName/:modelId', requireLogin, requireLineAccess, requireProductionWriteAccess, autoCheckDateReset, (req, res) => {
+app.post('/api/update-target-manual/:lineName/:modelId', requireLogin, requireLineAccess, requireProductionWriteAccess, autoCheckDateReset, async (req, res) => {
   const { lineName, modelId } = req.params;
   const { hourIndex, targetManual } = req.body;
 
@@ -2770,7 +2943,7 @@ app.post('/api/update-target-manual/:lineName/:modelId', requireLogin, requireLi
 	  });
 	  model.target = totalTarget;
 
-  writeProductionData(data);
+  await writeProductionData(data);
   
   // ✅ UPDATE BACKUP HARI INI
   updateTodayBackup();
@@ -2782,7 +2955,7 @@ app.post('/api/update-target-manual/:lineName/:modelId', requireLogin, requireLi
 	  });
 });
 
-app.post('/api/update-hourly-direct/:lineName/:modelId', requireLogin, requireLineAccess, requireProductionWriteAccess, autoCheckDateReset, (req, res) => {
+app.post('/api/update-hourly-direct/:lineName/:modelId', requireLogin, requireLineAccess, requireProductionWriteAccess, autoCheckDateReset, async (req, res) => {
   const { lineName, modelId } = req.params;
   const { hourIndex, output, defect, qcChecked, targetManual, defectDetails } = req.body;
 
@@ -2828,7 +3001,7 @@ app.post('/api/update-hourly-direct/:lineName/:modelId', requireLogin, requireLi
 
   const summary = recalculateModelTotals(model);
 
-  writeProductionData(data);
+  await writeProductionData(data);
   
   // ✅ UPDATE BACKUP HARI INI
   updateTodayBackup();
@@ -2843,7 +3016,7 @@ app.post('/api/update-hourly-direct/:lineName/:modelId', requireLogin, requireLi
   });
 });
 
-app.get('/api/history/files', requireLogin, requireAdmin, (req, res) => {
+app.get('/api/history/files', requireLogin, requireAdmin, async (req, res) => {
   try {
     const historyFiles = getHistoryFiles();
     res.json(historyFiles);
@@ -2853,7 +3026,7 @@ app.get('/api/history/files', requireLogin, requireAdmin, (req, res) => {
   }
 });
 
-app.get('/api/history/:filename', requireLogin, requireAdmin, (req, res) => {
+app.get('/api/history/:filename', requireLogin, requireAdmin, async (req, res) => {
   const { filename } = req.params;
   
   if (!isSafeHistoryFilename(filename)) {
@@ -2872,7 +3045,7 @@ app.get('/api/history/:filename', requireLogin, requireAdmin, (req, res) => {
   }
 });
 
-app.get('/api/history/:filename/export', requireLogin, requireAdmin, (req, res) => {
+app.get('/api/history/:filename/export', requireLogin, requireAdmin, async (req, res) => {
   const { filename } = req.params;
   
   if (!isSafeHistoryFilename(filename)) {
@@ -3006,7 +3179,7 @@ app.post('/api/backup/now', requireLogin, requireAdmin, async (req, res) => {
   }
 });
 
-app.post('/api/sync-dates', requireLogin, requireAdmin, (req, res) => {
+app.post('/api/sync-dates', requireLogin, requireAdmin, async (req, res) => {
   console.log('🔄 Manual sync-dates endpoint called');
   const resetCount = checkAndResetDataForNewDay();
   const today = getToday();
@@ -3028,7 +3201,7 @@ app.post('/api/sync-dates', requireLogin, requireAdmin, (req, res) => {
   }
 });
 
-app.get('/api/lines', requireLogin, autoCheckDateReset, (req, res) => {
+app.get('/api/lines', requireLogin, autoCheckDateReset, async (req, res) => {
   const user = req.session.user;
   const role = user.role === 'admin_operator' ? 'admin_operator_sewing' : user.role;
   const data = readProductionData();
@@ -3048,7 +3221,7 @@ app.get('/api/lines', requireLogin, autoCheckDateReset, (req, res) => {
   res.status(403).json({ error: 'Access denied' });
 });
 
-app.get('/api/lines/:lineName/models', requireLogin, requireLineAccess, autoCheckDateReset, (req, res) => {
+app.get('/api/lines/:lineName/models', requireLogin, requireLineAccess, autoCheckDateReset, async (req, res) => {
   const { lineName } = req.params;
   const data = readProductionData();
 
@@ -3059,7 +3232,7 @@ app.get('/api/lines/:lineName/models', requireLogin, requireLineAccess, autoChec
   res.json(data.lines[lineName].models || {});
 });
 
-app.post('/api/lines', requireLogin, requireLineManagementAccess, (req, res) => {
+app.post('/api/lines', requireLogin, requireLineManagementAccess, async (req, res) => {
   const { lineName, labelWeek, model, target, date } = req.body;
   const data = readProductionData();
 
@@ -3099,7 +3272,7 @@ app.post('/api/lines', requireLogin, requireLineManagementAccess, (req, res) => 
     activeModels: [modelId]
   };
 
-  writeProductionData(data);
+  await writeProductionData(data);
   
   // ✅ UPDATE BACKUP HARI INI
   updateTodayBackup();
@@ -3114,7 +3287,7 @@ app.post('/api/lines', requireLogin, requireLineManagementAccess, (req, res) => 
   });
 });
 
-app.post('/api/lines/:lineName/models', requireLogin, requireLineManagementAccess, (req, res) => {
+app.post('/api/lines/:lineName/models', requireLogin, requireLineManagementAccess, async (req, res) => {
   const { lineName } = req.params;
   const { labelWeek, model, target, date } = req.body;
   const data = readProductionData();
@@ -3149,7 +3322,7 @@ app.post('/api/lines/:lineName/models', requireLogin, requireLineManagementAcces
     operators: []
   };
 
-  writeProductionData(data);
+  await writeProductionData(data);
   
   // ✅ UPDATE BACKUP HARI INI
   updateTodayBackup();
@@ -3161,7 +3334,7 @@ app.post('/api/lines/:lineName/models', requireLogin, requireLineManagementAcces
   });
 });
 
-app.put('/api/lines/:lineName', requireLogin, requireLineManagementAccess, autoCheckDateReset, (req, res) => {
+app.put('/api/lines/:lineName', requireLogin, requireLineManagementAccess, autoCheckDateReset, async (req, res) => {
   const lineName = req.params.lineName;
   const { labelWeek, model, target, modelId, date } = req.body;
   const data = readProductionData();
@@ -3198,7 +3371,7 @@ app.put('/api/lines/:lineName', requireLogin, requireLineManagementAccess, autoC
   });
   data.lines[lineName].models[targetModelId].target = totalTarget;
 
-  writeProductionData(data);
+  await writeProductionData(data);
   
   // ✅ UPDATE BACKUP HARI INI
   updateTodayBackup();
@@ -3209,7 +3382,7 @@ app.put('/api/lines/:lineName', requireLogin, requireLineManagementAccess, autoC
   });
 });
 
-app.delete('/api/lines/:lineName/models/:modelId', requireLogin, requireAdmin, (req, res) => {
+app.delete('/api/lines/:lineName/models/:modelId', requireLogin, requireAdmin, async (req, res) => {
   const { lineName, modelId } = req.params;
   const data = readProductionData();
 
@@ -3240,7 +3413,7 @@ app.delete('/api/lines/:lineName/models/:modelId', requireLogin, requireAdmin, (
     data.lines[lineName].activeModels = [data.lines[lineName].activeModel];
   }
 
-  writeProductionData(data);
+  await writeProductionData(data);
   
   // ✅ UPDATE BACKUP HARI INI
   updateTodayBackup();
@@ -3248,7 +3421,7 @@ app.delete('/api/lines/:lineName/models/:modelId', requireLogin, requireAdmin, (
   res.json({ message: `Model ${modelId} deleted from line ${lineName} successfully` });
 });
 
-app.delete('/api/lines/:lineName', requireLogin, requireAdmin, (req, res) => {
+app.delete('/api/lines/:lineName', requireLogin, requireAdmin, async (req, res) => {
   const lineName = req.params.lineName;
   const data = readProductionData();
 
@@ -3257,7 +3430,7 @@ app.delete('/api/lines/:lineName', requireLogin, requireAdmin, (req, res) => {
   }
 
   delete data.lines[lineName];
-  writeProductionData(data);
+  await writeProductionData(data);
   
   // ✅ UPDATE BACKUP HARI INI
   updateTodayBackup();
@@ -3265,7 +3438,7 @@ app.delete('/api/lines/:lineName', requireLogin, requireAdmin, (req, res) => {
   res.json({ message: `Line ${lineName} deleted successfully` });
 });
 
-app.post('/api/lines/:lineName/active-model', requireLogin, requireLineManagementAccess, autoCheckDateReset, (req, res) => {
+app.post('/api/lines/:lineName/active-model', requireLogin, requireLineManagementAccess, autoCheckDateReset, async (req, res) => {
   const { lineName } = req.params;
   const { modelId } = req.body;
   const data = readProductionData();
@@ -3293,7 +3466,7 @@ app.post('/api/lines/:lineName/active-model', requireLogin, requireLineManagemen
 
   line.activeModels = Array.from(activeModels);
   line.activeModel = line.activeModels[0] || null;
-  writeProductionData(data);
+  await writeProductionData(data);
   
   // UPDATE BACKUP HARI INI
   updateTodayBackup();
@@ -3307,7 +3480,7 @@ app.post('/api/lines/:lineName/active-model', requireLogin, requireLineManagemen
   });
 });
 
-app.get('/api/line/:lineName/:modelId', requireLogin, requireLineAccess, autoCheckDateReset, (req, res) => {
+app.get('/api/line/:lineName/:modelId', requireLogin, requireLineAccess, autoCheckDateReset, async (req, res) => {
   const { lineName, modelId } = req.params;
   const data = readProductionData();
   
@@ -3323,7 +3496,7 @@ app.get('/api/line/:lineName/:modelId', requireLogin, requireLineAccess, autoChe
   });
 });
 
-app.get('/api/line/:lineName', requireLogin, requireLineAccess, autoCheckDateReset, (req, res) => {
+app.get('/api/line/:lineName', requireLogin, requireLineAccess, autoCheckDateReset, async (req, res) => {
   const { lineName } = req.params;
   const data = readProductionData();
   
@@ -3343,7 +3516,7 @@ app.get('/api/line/:lineName', requireLogin, requireLineAccess, autoCheckDateRes
   });
 });
 
-app.post('/api/update-line/:lineName/:modelId', requireLogin, requireLineAccess, requireLineManagementAccess, autoCheckDateReset, (req, res) => {
+app.post('/api/update-line/:lineName/:modelId', requireLogin, requireLineAccess, requireLineManagementAccess, autoCheckDateReset, async (req, res) => {
   const { lineName, modelId } = req.params;
   const newData = req.body;
 
@@ -3381,7 +3554,7 @@ app.post('/api/update-line/:lineName/:modelId', requireLogin, requireLineAccess,
 
   recalculateModelTotals(model);
 
-  writeProductionData(data);
+  await writeProductionData(data);
   
   // ✅ UPDATE BACKUP HARI INI
   updateTodayBackup();
@@ -3389,7 +3562,7 @@ app.post('/api/update-line/:lineName/:modelId', requireLogin, requireLineAccess,
   res.json({ message: `Model ${modelId} in line ${lineName} updated successfully.`, data: model });
 });
 
-app.get('/api/date-report', requireLogin, requireDateReportAccess, autoCheckDateReset, (req, res) => {
+app.get('/api/date-report', requireLogin, requireDateReportAccess, autoCheckDateReset, async (req, res) => {
   const { startDate, endDate } = req.query;
 
   if (!isValidDateRange(startDate, endDate)) {
@@ -3407,7 +3580,7 @@ app.get('/api/date-report', requireLogin, requireDateReportAccess, autoCheckDate
   }
 });
 
-app.get('/api/date-report/:date', requireLogin, requireDateReportAccess, autoCheckDateReset, (req, res) => {
+app.get('/api/date-report/:date', requireLogin, requireDateReportAccess, autoCheckDateReset, async (req, res) => {
   const date = req.params.date;
   
   if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
@@ -4123,12 +4296,12 @@ app.get('/api/export-date-report/:date/:lineName/:modelId', requireLogin, requir
   }
 });
 
-app.get('/api/operator-count', requireLogin, requireAdminOrAdminOperator, (req, res) => {
+app.get('/api/operator-count', requireLogin, requireAdminOrAdminOperator, async (req, res) => {
   const operatorCount = readUsersData().users.filter(user => user.role === 'operator').length;
   res.json({ operatorCount });
 });
 
-app.get('/api/users', requireLogin, requireAdmin, (req, res) => {
+app.get('/api/users', requireLogin, requireAdmin, async (req, res) => {
   const usersData = readUsersData();
   const usersWithoutPasswords = usersData.users.map(user => {
     const { password, ...userWithoutPassword } = user;
@@ -4137,7 +4310,7 @@ app.get('/api/users', requireLogin, requireAdmin, (req, res) => {
   res.json(usersWithoutPasswords || []);
 });
 
-app.get('/api/operators/:lineName', requireLogin, requireLineAccess, autoCheckDateReset, (req, res) => {
+app.get('/api/operators/:lineName', requireLogin, requireLineAccess, autoCheckDateReset, async (req, res) => {
   const { lineName } = req.params;
   const data = readProductionData();
   const active = getActiveModel(data, lineName);
@@ -4149,7 +4322,7 @@ app.get('/api/operators/:lineName', requireLogin, requireLineAccess, autoCheckDa
   res.json(active.model.operators || []);
 });
 
-app.post('/api/operators/:lineName', requireLogin, requireLineManagementAccess, autoCheckDateReset, (req, res) => {
+app.post('/api/operators/:lineName', requireLogin, requireLineManagementAccess, autoCheckDateReset, async (req, res) => {
   const { lineName } = req.params;
   const { name, position, target, output, defect, status } = req.body;
   const data = readProductionData();
@@ -4175,13 +4348,13 @@ app.post('/api/operators/:lineName', requireLogin, requireLineManagementAccess, 
 
   operators.push(operator);
   active.model.operators = operators;
-  writeProductionData(data);
+  await writeProductionData(data);
   updateTodayBackup();
 
   res.json({ message: 'Operator created successfully', operator });
 });
 
-app.put('/api/operators/:lineName/:operatorId', requireLogin, requireLineManagementAccess, autoCheckDateReset, (req, res) => {
+app.put('/api/operators/:lineName/:operatorId', requireLogin, requireLineManagementAccess, autoCheckDateReset, async (req, res) => {
   const { lineName, operatorId } = req.params;
   const { name, position, target, output, defect, status } = req.body;
   const data = readProductionData();
@@ -4211,13 +4384,13 @@ app.put('/api/operators/:lineName/:operatorId', requireLogin, requireLineManagem
   };
 
   active.model.operators = operators;
-  writeProductionData(data);
+  await writeProductionData(data);
   updateTodayBackup();
 
   res.json({ message: 'Operator updated successfully', operator: operators[operatorIndex] });
 });
 
-app.delete('/api/operators/:lineName/:operatorId', requireLogin, requireAdmin, autoCheckDateReset, (req, res) => {
+app.delete('/api/operators/:lineName/:operatorId', requireLogin, requireAdmin, autoCheckDateReset, async (req, res) => {
   const { lineName, operatorId } = req.params;
   const data = readProductionData();
   const active = getActiveModel(data, lineName);
@@ -4234,17 +4407,17 @@ app.delete('/api/operators/:lineName/:operatorId', requireLogin, requireAdmin, a
 
   const [operator] = operators.splice(operatorIndex, 1);
   active.model.operators = operators;
-  writeProductionData(data);
+  await writeProductionData(data);
   updateTodayBackup();
 
   res.json({ message: 'Operator deleted successfully', operator });
 });
 
-app.get('/api/defect-config', requireLogin, (req, res) => {
+app.get('/api/defect-config', requireLogin, async (req, res) => {
   res.json(readDefectConfig());
 });
 
-app.delete('/api/production/:lineName/:modelId/:hourIndex', requireLogin, requireLineAccess, requireProductionWriteAccess, autoCheckDateReset, (req, res) => {
+app.delete('/api/production/:lineName/:modelId/:hourIndex', requireLogin, requireLineAccess, requireProductionWriteAccess, autoCheckDateReset, async (req, res) => {
   const { lineName, modelId } = req.params;
   const index = parseInt(req.params.hourIndex);
   const data = readProductionData();
@@ -4269,12 +4442,12 @@ app.delete('/api/production/:lineName/:modelId/:hourIndex', requireLogin, requir
   };
 
   const summary = recalculateModelTotals(model);
-  writeProductionData(data);
+  await writeProductionData(data);
   updateTodayBackup();
   res.json({ message: 'Hasil sewing berhasil dihapus', data: model, summary });
 });
 
-app.delete('/api/qc-check/:lineName/:modelId/:checkId', requireLogin, requireLineAccess, requireQcManageAccess, autoCheckDateReset, (req, res) => {
+app.delete('/api/qc-check/:lineName/:modelId/:checkId', requireLogin, requireLineAccess, requireQcManageAccess, autoCheckDateReset, async (req, res) => {
   const { lineName, modelId, checkId } = req.params;
   const data = readProductionData();
   const model = data.lines?.[lineName]?.models?.[modelId];
@@ -4287,13 +4460,13 @@ app.delete('/api/qc-check/:lineName/:modelId/:checkId', requireLogin, requireLin
 
   const [deletedCheck] = model.qcChecks.splice(checkIndex, 1);
   const summary = recalculateModelTotals(model);
-  writeProductionData(data);
+  await writeProductionData(data);
   updateTodayBackup();
 
   res.json({ message: 'Data QC berhasil dihapus', deletedCheck, data: model, summary });
 });
 
-app.put('/api/qc-check/:lineName/:modelId/:checkId', requireLogin, requireLineAccess, requireQcManageAccess, autoCheckDateReset, (req, res) => {
+app.put('/api/qc-check/:lineName/:modelId/:checkId', requireLogin, requireLineAccess, requireQcManageAccess, autoCheckDateReset, async (req, res) => {
   const { lineName, modelId, checkId } = req.params;
   const { type, area, notes } = req.body;
   const data = readProductionData();
@@ -4314,40 +4487,40 @@ app.put('/api/qc-check/:lineName/:modelId/:checkId', requireLogin, requireLineAc
   check.updatedAt = new Date().toISOString();
 
   const summary = recalculateModelTotals(model);
-  writeProductionData(data);
+  await writeProductionData(data);
   updateTodayBackup();
   res.json({ message: 'Data defect berhasil diperbarui', check, data: model, summary });
 });
 
-app.get('/api/public-display-settings', (req, res) => {
+app.get('/api/public-display-settings', async (req, res) => {
   res.json(readPublicDisplaySettings());
 });
 
-app.put('/api/public-display-settings', requireLogin, requireAdmin, (req, res) => {
-  const settings = writePublicDisplaySettings(req.body || {});
+app.put('/api/public-display-settings', requireLogin, requireAdmin, async (req, res) => {
+  const settings = await writePublicDisplaySettings(req.body || {});
   res.json({ message: 'Public display settings updated successfully', settings });
 });
 
-app.get('/api/work-schedule-settings', requireLogin, (req, res) => {
+app.get('/api/work-schedule-settings', requireLogin, async (req, res) => {
   res.json(readWorkScheduleSettings());
 });
 
-app.get('/api/public/work-schedule-status', (req, res) => {
+app.get('/api/public/work-schedule-status', async (req, res) => {
   const settings = readWorkScheduleSettings();
   res.json({ settings, withinWorkSchedule: isWithinWorkSchedule() });
 });
 
-app.put('/api/work-schedule-settings', requireLogin, requireAdmin, (req, res) => {
-  const settings = writeWorkScheduleSettings(req.body || {});
+app.put('/api/work-schedule-settings', requireLogin, requireAdmin, async (req, res) => {
+  const settings = await writeWorkScheduleSettings(req.body || {});
   res.json({ message: 'Pengaturan hari kerja berhasil disimpan', settings });
 });
 
-app.get('/api/defect-types', requireLogin, (req, res) => {
+app.get('/api/defect-types', requireLogin, async (req, res) => {
   const config = readDefectConfig();
   res.json((config.defectTypes || []).filter(type => type.active !== false));
 });
 
-app.post('/api/defect-types', requireLogin, requireDefectCategoryAccess, (req, res) => {
+app.post('/api/defect-types', requireLogin, requireDefectCategoryAccess, async (req, res) => {
   const { name, severity = 'minor', active = true } = req.body;
   const config = readDefectConfig();
   config.defectTypes = config.defectTypes || [];
@@ -4358,12 +4531,12 @@ app.post('/api/defect-types', requireLogin, requireDefectCategoryAccess, (req, r
 
   const defectType = { id: generateNumericId(config.defectTypes), name: name.trim(), severity: normalizeDefectSeverity(severity), active: Boolean(active) };
   config.defectTypes.push(defectType);
-  writeDefectConfig(config);
+  await writeDefectConfig(config);
 
   res.json({ message: 'Defect type created successfully', defectType });
 });
 
-app.put('/api/defect-types/:id', requireLogin, requireDefectCategoryAccess, (req, res) => {
+app.put('/api/defect-types/:id', requireLogin, requireDefectCategoryAccess, async (req, res) => {
   const { id } = req.params;
   const { name, severity = 'minor', active = true } = req.body;
   const config = readDefectConfig();
@@ -4380,12 +4553,12 @@ app.put('/api/defect-types/:id', requireLogin, requireDefectCategoryAccess, (req
   defectType.name = name.trim();
   defectType.severity = normalizeDefectSeverity(severity);
   defectType.active = Boolean(active);
-  writeDefectConfig(config);
+  await writeDefectConfig(config);
 
   res.json({ message: 'Defect type updated successfully', defectType });
 });
 
-app.delete('/api/defect-types/:id', requireLogin, requireDefectCategoryAccess, (req, res) => {
+app.delete('/api/defect-types/:id', requireLogin, requireDefectCategoryAccess, async (req, res) => {
   const { id } = req.params;
   const config = readDefectConfig();
   const index = (config.defectTypes || []).findIndex(type => String(type.id) === String(id));
@@ -4395,17 +4568,17 @@ app.delete('/api/defect-types/:id', requireLogin, requireDefectCategoryAccess, (
   }
 
   const [defectType] = config.defectTypes.splice(index, 1);
-  writeDefectConfig(config);
+  await writeDefectConfig(config);
 
   res.json({ message: 'Defect type deleted successfully', defectType });
 });
 
-app.get('/api/defect-areas', requireLogin, (req, res) => {
+app.get('/api/defect-areas', requireLogin, async (req, res) => {
   const config = readDefectConfig();
   res.json((config.defectAreas || []).filter(area => area.active !== false));
 });
 
-app.post('/api/defect-areas', requireLogin, requireDefectCategoryAccess, (req, res) => {
+app.post('/api/defect-areas', requireLogin, requireDefectCategoryAccess, async (req, res) => {
   const { name, active = true } = req.body;
   const config = readDefectConfig();
   config.defectAreas = config.defectAreas || [];
@@ -4416,12 +4589,12 @@ app.post('/api/defect-areas', requireLogin, requireDefectCategoryAccess, (req, r
 
   const defectArea = { id: generateNumericId(config.defectAreas), name: name.trim(), active: Boolean(active) };
   config.defectAreas.push(defectArea);
-  writeDefectConfig(config);
+  await writeDefectConfig(config);
 
   res.json({ message: 'Defect area created successfully', defectArea });
 });
 
-app.put('/api/defect-areas/:id', requireLogin, requireDefectCategoryAccess, (req, res) => {
+app.put('/api/defect-areas/:id', requireLogin, requireDefectCategoryAccess, async (req, res) => {
   const { id } = req.params;
   const { name, active = true } = req.body;
   const config = readDefectConfig();
@@ -4438,12 +4611,12 @@ app.put('/api/defect-areas/:id', requireLogin, requireDefectCategoryAccess, (req
   defectArea.name = name.trim();
   delete defectArea.severity;
   defectArea.active = Boolean(active);
-  writeDefectConfig(config);
+  await writeDefectConfig(config);
 
   res.json({ message: 'Defect area updated successfully', defectArea });
 });
 
-app.delete('/api/defect-areas/:id', requireLogin, requireDefectCategoryAccess, (req, res) => {
+app.delete('/api/defect-areas/:id', requireLogin, requireDefectCategoryAccess, async (req, res) => {
   const { id } = req.params;
   const config = readDefectConfig();
   const index = (config.defectAreas || []).findIndex(area => String(area.id) === String(id));
@@ -4453,12 +4626,12 @@ app.delete('/api/defect-areas/:id', requireLogin, requireDefectCategoryAccess, (
   }
 
   const [defectArea] = config.defectAreas.splice(index, 1);
-  writeDefectConfig(config);
+  await writeDefectConfig(config);
 
   res.json({ message: 'Defect area deleted successfully', defectArea });
 });
 
-app.post('/api/users', requireLogin, requireAdmin, (req, res) => {
+app.post('/api/users', requireLogin, requireAdmin, async (req, res) => {
   const { username, password, name, line, role } = req.body;
   const usersData = readUsersData();
   const allowedRoles = ['admin', 'admin_operator_sewing', 'admin_operator_qc', 'operator'];
@@ -4482,11 +4655,12 @@ app.post('/api/users', requireLogin, requireAdmin, (req, res) => {
     password: hashPassword(password),
     name: name.trim(),
     line,
-    role
+    role,
+    sessionVersion: 1
   };
 
   usersData.users.push(newUser);
-  writeUsersData(usersData);
+  await writeUsersData(usersData);
 
   const { password: _, ...userWithoutPassword } = newUser;
   
@@ -4496,7 +4670,7 @@ app.post('/api/users', requireLogin, requireAdmin, (req, res) => {
   });
 });
 
-app.put('/api/users/:id', requireLogin, requireAdmin, (req, res) => {
+app.put('/api/users/:id', requireLogin, requireAdmin, async (req, res) => {
   const userId = parseInt(req.params.id);
   const { username, password, name, line, role } = req.body;
   const usersData = readUsersData();
@@ -4522,14 +4696,18 @@ app.put('/api/users/:id', requireLogin, requireAdmin, (req, res) => {
     username: normalizedUsername,
     name: name.trim(),
     line,
-    role
+    role,
+    sessionVersion: (Number(usersData.users[userIndex].sessionVersion) || 1) + 1
   };
 
   if (password && password.trim() !== '') {
     usersData.users[userIndex].password = hashPassword(password);
   }
 
-  writeUsersData(usersData);
+  await writeUsersData(usersData);
+  if (req.session.user?.id === userId) {
+    req.session.user = buildSessionUser(usersData.users[userIndex]);
+  }
 
   const { password: _, ...userWithoutPassword } = usersData.users[userIndex];
   
@@ -4539,7 +4717,7 @@ app.put('/api/users/:id', requireLogin, requireAdmin, (req, res) => {
   });
 });
 
-app.delete('/api/users/:id', requireLogin, requireAdmin, (req, res) => {
+app.delete('/api/users/:id', requireLogin, requireAdmin, async (req, res) => {
   const userId = parseInt(req.params.id);
   const usersData = readUsersData();
 
@@ -4553,7 +4731,7 @@ app.delete('/api/users/:id', requireLogin, requireAdmin, (req, res) => {
   }
 
   const deletedUser = usersData.users.splice(userIndex, 1)[0];
-  writeUsersData(usersData);
+  await writeUsersData(usersData);
 
   const { password: _, ...userWithoutPassword } = deletedUser;
   
@@ -4867,7 +5045,7 @@ async function generateStyledExcelData(modelData, lineName, modelId) {
   return workbook;
 }
 
-app.get('/api/public/line/:lineName', autoCheckDateReset, (req, res) => {
+app.get('/api/public/line/:lineName', autoCheckDateReset, async (req, res) => {
   if (!isWithinWorkSchedule()) {
     return res.status(403).json({ error: 'Public display hanya tersedia pada hari dan jam kerja' });
   }
@@ -4887,7 +5065,7 @@ app.get('/api/public/line/:lineName', autoCheckDateReset, (req, res) => {
   res.json(buildPublicModelResponse(activeModel.model));
 });
 
-app.get('/api/public/line/:lineName/active-models', autoCheckDateReset, (req, res) => {
+app.get('/api/public/line/:lineName/active-models', autoCheckDateReset, async (req, res) => {
   if (!isWithinWorkSchedule()) {
     return res.status(403).json({ error: 'Public display hanya tersedia pada hari dan jam kerja' });
   }
@@ -4915,7 +5093,7 @@ app.get('/api/public/line/:lineName/active-models', autoCheckDateReset, (req, re
   });
 });
 
-app.get('/api/public/line/:lineName/:modelId', autoCheckDateReset, (req, res) => {
+app.get('/api/public/line/:lineName/:modelId', autoCheckDateReset, async (req, res) => {
   if (!isWithinWorkSchedule()) {
     return res.status(403).json({ error: 'Public display hanya tersedia pada hari dan jam kerja' });
   }
@@ -4932,18 +5110,29 @@ app.get('/api/public/line/:lineName/:modelId', autoCheckDateReset, (req, res) =>
   res.json(buildPublicModelResponse(modelData));
 });
 
-app.get('/public-display', (req, res) => {
+app.get('/public-display', async (req, res) => {
   res.sendFile(path.join(__dirname, 'public-display.html'));
 });
 
 // Frontend SPA routes. Legacy pages such as /admin, /leader, /line/:line,
 // and /input/:line now use the Alpine/Tailwind dashboard entry point.
-app.get(['/admin', '/leader', '/line/:lineName', '/input/:lineName'], (req, res) => {
+app.get(['/admin', '/leader', '/line/:lineName', '/input/:lineName'], async (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-app.get('/', (req, res) => {
+app.get('/', async (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+app.use((error, req, res, next) => {
+  console.error('Unhandled request error:', error);
+  if (res.headersSent) return next(error);
+
+  if (req.path.startsWith('/api/')) {
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+
+  return res.status(500).send('Internal server error');
 });
 
 async function startServer() {
@@ -5007,8 +5196,7 @@ async function startServer() {
   console.log(`✅ Backup SQLite harian dengan retensi ${DATABASE_BACKUP_RETENTION} file`);
   console.log(`✅ Laporan berdasarkan tanggal`);
   console.log(`✅ Backup dan History System`);
-  console.log(`✅ Export Excel dengan styling`);
-  console.log(`✅ Password encryption dengan SHA-256`);
+  console.log(`- Password hashing with bcrypt`);
   console.log(`✅ Unique user ID management`);
   console.log(`✅ Tanggal operasional konsisten dengan timezone WIB`);
   console.log(`✅ Reset data operator setiap ganti hari`);
@@ -5016,11 +5204,7 @@ async function startServer() {
   console.log(`=================================`);
   console.log(`🌍 Timezone: Indonesia (WIB - UTC+7)`);
   console.log(`📅 Tanggal Hari Ini: ${getToday()}`);
-  console.log(`=================================`);
-  console.log(`👤 Default Users:`);
-  console.log(`- Admin: admin / admin123`);
-  console.log(`- Admin Operator Sewing: admin_operator / adminop123`);
-  console.log(`- Operator: operator1 / password123`);
+  console.log(`- Bootstrap credentials: ${bootstrapCredentialsPath}`);
   console.log(`=================================`);
   });
 }
@@ -5031,6 +5215,7 @@ if (require.main === module) {
 
 module.exports = {
   app,
+  buildPublicModelResponse,
   calculateDefectSeverityBreakdown,
   buildDateReportRows,
   buildProductionReportRows,
@@ -5041,6 +5226,7 @@ module.exports = {
   generateStyledDateReportExcel,
   getToday,
   hasDateReportAccess,
+  hashPassword,
   initSequelizeStorage,
   isValidDateInput,
   isValidDateRange,
@@ -5050,5 +5236,6 @@ module.exports = {
   readProductionSnapshotForDate,
   recoverProductionSnapshotsFromDatabaseBackups,
   sequelize,
-  summarizeProductionSnapshotByLine
+  summarizeProductionSnapshotByLine,
+  verifyPassword
 };

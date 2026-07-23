@@ -3,8 +3,11 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
+const crypto = require('node:crypto');
 
 const {
+  app,
+  buildPublicModelResponse,
   buildDateReportRows,
   calculateDefectSeverityBreakdown,
   classifyLegacySnapshot,
@@ -13,13 +16,79 @@ const {
   generateModelId,
   generateStyledDateReportExcel,
   hasDateReportAccess,
+  hashPassword,
   isValidDateInput,
   isValidDateRange,
   isValidProductionSnapshot,
   mergeProductionSnapshotsByDate,
   parseNonNegativeInteger,
-  summarizeProductionSnapshotByLine
+  summarizeProductionSnapshotByLine,
+  verifyPassword
 } = require('../server');
+
+test('password hashing uses bcrypt while accepting legacy SHA-256 hashes', () => {
+  const hash = hashPassword('secret-password');
+  assert.match(hash, /^\$2[aby]\$/);
+  assert.equal(verifyPassword('secret-password', hash), true);
+  assert.equal(verifyPassword('wrong-password', hash), false);
+
+  const legacyHash = crypto.createHash('sha256').update('legacy-password').digest('hex');
+  assert.equal(verifyPassword('legacy-password', legacyHash), true);
+});
+
+test('public model response omits internal user and lock fields', () => {
+  const publicModel = buildPublicModelResponse({
+    id: 'model1',
+    labelWeek: 'W30',
+    model: 'Model A',
+    date: '2026-07-23',
+    target: 100,
+    outputDay: 80,
+    actualDefect: 1,
+    qcChecking: 20,
+    defectRatePercentage: 5,
+    productionLockedBy: 'operator1',
+    notes: 'internal note',
+    hourly_data: [{
+      hour: '07:00 - 08:00',
+      targetManual: 10,
+      output: 8,
+      defect: 1,
+      qcChecked: 5,
+      productionLockedBy: 'operator1',
+      defectDetails: [{ type: 'Open seam', area: 'Body', quantity: 1, notes: 'internal detail' }]
+    }],
+    qcChecks: [{
+      id: 1,
+      result: 'defect',
+      type: 'Open seam',
+      area: 'Body',
+      notes: 'operator note',
+      checkedAt: '2026-07-23T01:00:00.000Z'
+    }],
+    operators: [{ id: 1, name: 'Operator Name', position: 'Sewing', target: 10, output: 8, defect: 1, efficiency: 80, status: 'active' }]
+  });
+
+  assert.equal(publicModel.productionLockedBy, undefined);
+  assert.equal(publicModel.notes, undefined);
+  assert.equal(publicModel.hourly_data[0].productionLockedBy, undefined);
+  assert.equal(publicModel.hourly_data[0].defectDetails[0].notes, undefined);
+  assert.equal(publicModel.qcChecks[0].notes, undefined);
+  assert.equal(publicModel.qcChecks[0].checkedAt, undefined);
+  assert.equal(publicModel.operators[0].name, undefined);
+});
+
+test('static middleware does not expose project root files', async t => {
+  const server = app.listen(0);
+  t.after(() => new Promise(resolve => server.close(resolve)));
+  const baseUrl = 'http://127.0.0.1:' + server.address().port;
+
+  const sourceResponse = await fetch(baseUrl + '/server.js');
+  const assetResponse = await fetch(baseUrl + '/public/assets/js/alpine.js');
+
+  assert.equal(sourceResponse.status, 404);
+  assert.equal(assetResponse.status, 200);
+});
 
 test('generateModelId fills a gap without overwriting a later model', () => {
   const models = { model1: {}, model3: {} };

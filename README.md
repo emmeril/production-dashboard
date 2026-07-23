@@ -26,13 +26,13 @@ Dashboard produksi berbasis Express untuk memantau output line, target per jam, 
 | `admin_operator_qc` | Dashboard, ringkasan line, report produksi dan QC lengkap, koreksi hasil QC, dan pengelolaan kategori defect. |
 | `operator` | Ringkasan line dan input line miliknya. Tidak bisa melihat dashboard utama. Data produksi per jam terkunci setelah disimpan. |
 
-Default user saat inisialisasi ada di `server.js`:
+User awal dibuat saat inisialisasi pertama. Password bootstrap disimpan di `database-backups/bootstrap-credentials.json`, atau bisa ditentukan lewat env var `DEFAULT_ADMIN_PASSWORD`, `DEFAULT_ADMIN_OPERATOR_PASSWORD`, dan `DEFAULT_OPERATOR_PASSWORD` sebelum server pertama kali dijalankan.
 
-| Username | Password | Role |
-| --- | --- | --- |
-| `admin` | `admin123` | `admin` |
-| `admin_operator` | `adminop123` | `admin_operator` |
-| `operator1` | `password123` | `operator` |
+| Username | Role |
+| --- | --- |
+| `admin` | `admin` |
+| `admin_operator` | `admin_operator_sewing` |
+| `operator1` | `operator` |
 
 ## Requirement
 
@@ -180,6 +180,6 @@ node --check public/assets/js/alpine.js
 
 ## Catatan Keamanan
 
-- Ganti password default sebelum dipakai di produksi.
+- Amankan file bootstrap credential dan ganti password awal setelah setup.
 - Batasi akses jaringan ke server bila dipakai di area internal produksi.
 - Backup folder `history` dan file SQLite secara berkala.

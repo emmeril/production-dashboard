@@ -54,6 +54,8 @@ pnpm install
 
 ## Menjalankan Aplikasi
 
+Konfigurasi lokal dibaca otomatis dari file `.env`. Environment variable yang sudah diberikan oleh server, PM2, Docker, atau shell tetap memiliki prioritas dan tidak akan ditimpa oleh file tersebut.
+
 Jalankan server dengan package script:
 
 ```bash
@@ -140,14 +142,16 @@ File dan folder penting:
 | Path | Keterangan |
 | --- | --- |
 | `production-dashboard.sqlite` | Database SQLite lokal. |
-| `database-backups/` | Backup SQLite konsisten dari `VACUUM INTO`, dengan retensi default 30 file. |
+| `database-backups/` | Backup SQLite konsisten dari `VACUUM INTO`, dengan retensi default 7 hari. |
 | `public-display.html` | Tampilan public display monitor. |
 
 Histori harian dan snapshot restore tersimpan di database. Instalasi lama akan mengimpor file JSON dari `history/` satu kali, membuat backup database pengaman, kemudian membersihkan file JSON tersebut. Sistem tidak lagi membuat arsip pada setiap startup.
 
 Saat startup, sistem juga memulihkan snapshot yang belum ada dari file SQLite di `database-backups/`. Snapshot yang sudah ada di database aktif tidak ditimpa, sehingga histori tetap tersedia setelah database aktif diganti atau dipulihkan dari backup lama.
 
-Retensi dapat diatur melalui `DATABASE_BACKUP_RETENTION` dan `ARCHIVE_SNAPSHOT_RETENTION`.
+File backup SQLite yang berumur lebih dari 7 hari dihapus otomatis saat startup dan setiap satu jam oleh background worker. Hanya file backup dengan pola nama aplikasi yang dibersihkan; file seperti `bootstrap-credentials.json` tidak disentuh.
+
+Retensi backup SQLite dapat diatur dalam satuan hari melalui `DATABASE_BACKUP_RETENTION_DAYS` (atau nama lama `DATABASE_BACKUP_RETENTION`). Retensi snapshot arsip di database tetap dapat diatur melalui `ARCHIVE_SNAPSHOT_RETENTION`.
 
 ## Development Notes
 

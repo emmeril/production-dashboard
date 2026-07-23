@@ -197,3 +197,60 @@ test('missing snapshots are recovered from SQLite backups without replacing acti
     fs.rmSync(tempDir, { recursive: true, force: true });
   }
 });
+
+test('database backups older than seven days are deleted without touching other files', () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'production-dashboard-retention-'));
+  const backupDir = path.join(tempDir, 'database-backups');
+  fs.mkdirSync(backupDir, { recursive: true });
+
+  const expiredBackup = path.join(backupDir, 'production-dashboard_2026-07-15_manual_1_abcdef12.sqlite');
+  const boundaryBackup = path.join(backupDir, 'production-dashboard_2026-07-16_manual_2_abcdef13.sqlite');
+  const unrelatedFile = path.join(backupDir, 'keep-me.sqlite');
+  fs.writeFileSync(expiredBackup, 'expired');
+  fs.writeFileSync(boundaryBackup, 'boundary');
+  fs.writeFileSync(unrelatedFile, 'unrelated');
+  fs.utimesSync(expiredBackup, new Date('2026-07-15T11:59:59.000Z'), new Date('2026-07-15T11:59:59.000Z'));
+  fs.utimesSync(boundaryBackup, new Date('2026-07-16T12:00:00.000Z'), new Date('2026-07-16T12:00:00.000Z'));
+  fs.utimesSync(unrelatedFile, new Date('2026-07-01T00:00:00.000Z'), new Date('2026-07-01T00:00:00.000Z'));
+
+  const script = `
+    const fs = require('fs');
+    const server = require(${JSON.stringify(path.join(__dirname, '..', 'server.js'))});
+    (async () => {
+      const deletedCount = await server.pruneDatabaseBackups(new Date('2026-07-23T12:00:00.000Z'));
+      console.log('RETENTION_RESULT=' + JSON.stringify({
+        deletedCount,
+        files: fs.readdirSync(${JSON.stringify(backupDir)}).sort()
+      }));
+      await server.sequelize.close();
+    })().catch(error => {
+      console.error(error);
+      process.exitCode = 1;
+    });
+  `;
+  const childEnv = {
+    ...process.env,
+    DATABASE_PATH: path.join(tempDir, 'dashboard.sqlite'),
+    DATABASE_BACKUP_DIR: backupDir,
+    DATABASE_BACKUP_RETENTION_DAYS: '7',
+    SESSION_SECRET: 'test-secret'
+  };
+  delete childEnv.NODE_TEST_CONTEXT;
+  delete childEnv.NODE_CHANNEL_FD;
+
+  const result = spawnSync(process.execPath, ['-e', script], {
+    cwd: path.join(__dirname, '..'),
+    env: childEnv,
+    encoding: 'utf8'
+  });
+
+  try {
+    assert.equal(result.status, 0, result.stderr || result.stdout);
+    assert.match(
+      result.stdout,
+      /RETENTION_RESULT={"deletedCount":1,"files":\["keep-me.sqlite","production-dashboard_2026-07-16_manual_2_abcdef13.sqlite"\]}/
+    );
+  } finally {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  }
+});

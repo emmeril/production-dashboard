@@ -1,6 +1,6 @@
-const express = require('express');
 const fs = require('fs');
 const path = require('path');
+const express = require('express');
 const session = require('express-session');
 const XLSX = require('xlsx');
 const ExcelJS = require('exceljs');
@@ -8,6 +8,27 @@ const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const sqlite3 = require('sqlite3');
 const { Sequelize, DataTypes } = require('sequelize');
+
+function loadLocalEnvironment() {
+  const envPath = path.join(__dirname, '.env');
+  if (!fs.existsSync(envPath)) return;
+
+  fs.readFileSync(envPath, 'utf8').split(/\r?\n/).forEach(line => {
+    const match = line.match(/^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$/);
+    if (!match || process.env[match[1]] !== undefined) return;
+
+    let value = match[2].trim();
+    if ((value.startsWith('"') && value.endsWith('"'))
+      || (value.startsWith("'") && value.endsWith("'"))) {
+      value = value.slice(1, -1);
+    } else {
+      value = value.replace(/\s+#.*$/, '').trim();
+    }
+    process.env[match[1]] = value;
+  });
+}
+
+loadLocalEnvironment();
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -76,9 +97,14 @@ const productionSnapshotCache = new Map();
 let databaseInitialized = false;
 const appDataWriteQueues = new Map();
 let snapshotWriteQueue = Promise.resolve();
-const DATABASE_BACKUP_RETENTION = Math.max(1, Number(process.env.DATABASE_BACKUP_RETENTION) || 30);
+const DATABASE_BACKUP_RETENTION_DAYS = Math.max(
+  1,
+  Number(process.env.DATABASE_BACKUP_RETENTION_DAYS || process.env.DATABASE_BACKUP_RETENTION) || 7
+);
+const DATABASE_BACKUP_CLEANUP_INTERVAL_MS = 60 * 60 * 1000;
 const ARCHIVE_SNAPSHOT_RETENTION = Math.max(1, Number(process.env.ARCHIVE_SNAPSHOT_RETENTION) || 30);
 let lastScheduledDatabaseBackupDate = '';
+let databaseBackupCleanupRunning = false;
 
 function normalizeLogMessage(message) {
   return String(message || '')
@@ -877,10 +903,54 @@ async function recoverProductionSnapshotsFromDatabaseBackups() {
   return recoveredRecords.length;
 }
 
-function pruneDatabaseBackups() {
-  listDatabaseBackupFiles().slice(DATABASE_BACKUP_RETENTION).forEach(backup => {
-    fs.unlinkSync(backup.path);
-  });
+async function pruneDatabaseBackups(now = new Date()) {
+  const cutoff = new Date(now).getTime() - (DATABASE_BACKUP_RETENTION_DAYS * 24 * 60 * 60 * 1000);
+  const expiredBackups = listDatabaseBackupFiles()
+    .filter(backup => backup.created.getTime() < cutoff);
+  let deletedCount = 0;
+
+  for (const backup of expiredBackups) {
+    try {
+      await fs.promises.unlink(backup.path);
+      deletedCount += 1;
+      logger.info(`Backup database kedaluwarsa dihapus: ${backup.filename}`);
+    } catch (error) {
+      // Another cleanup worker may have removed the file between listing and unlinking.
+      if (error.code !== 'ENOENT') {
+        logger.warn(`Backup database gagal dihapus (${backup.filename}): ${error.message}`);
+      }
+    }
+  }
+
+  return deletedCount;
+}
+
+async function runDatabaseBackupCleanup() {
+  if (databaseBackupCleanupRunning) return 0;
+  databaseBackupCleanupRunning = true;
+
+  try {
+    const deletedCount = await pruneDatabaseBackups();
+    if (deletedCount > 0) {
+      logger.info(`Pembersihan backup database selesai: ${deletedCount} file lebih lama dari ${DATABASE_BACKUP_RETENTION_DAYS} hari dihapus`);
+    }
+    return deletedCount;
+  } catch (error) {
+    logger.error('Pembersihan backup database gagal', error.message);
+    return 0;
+  } finally {
+    databaseBackupCleanupRunning = false;
+  }
+}
+
+function startDatabaseBackupCleanupWorker() {
+  // Run once immediately, then keep retention enforcement independent of backup creation.
+  void runDatabaseBackupCleanup();
+  const cleanupTimer = setInterval(() => {
+    void runDatabaseBackupCleanup();
+  }, DATABASE_BACKUP_CLEANUP_INTERVAL_MS);
+  cleanupTimer.unref?.();
+  return cleanupTimer;
 }
 
 async function createDatabaseBackup(label = 'manual') {
@@ -894,8 +964,8 @@ async function createDatabaseBackup(label = 'manual') {
   const escapedPath = backupPath.replace(/'/g, "''");
 
   await sequelize.query(`VACUUM INTO '${escapedPath}'`);
-  pruneDatabaseBackups();
   logger.info(`Backup database dibuat: ${filename}`);
+  if (databaseInitialized) void runDatabaseBackupCleanup();
   return backupPath;
 }
 
@@ -5176,6 +5246,7 @@ app.use((error, req, res, next) => {
 async function startServer() {
   await initSequelizeStorage();
   initializeDataFiles();
+  startDatabaseBackupCleanupWorker();
   lastScheduledDatabaseBackupDate = listDatabaseBackupFiles()
     .find(backup => backup.label === 'daily')?.date || '';
 
@@ -5240,6 +5311,7 @@ module.exports = {
   isValidProductionSnapshot,
   isBlankInputValue,
   parseNonNegativeInteger,
+  pruneDatabaseBackups,
   readProductionSnapshotForDate,
   recoverProductionSnapshotsFromDatabaseBackups,
   sequelize,

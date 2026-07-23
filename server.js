@@ -5,6 +5,7 @@ const session = require('express-session');
 const XLSX = require('xlsx');
 const ExcelJS = require('exceljs');
 const crypto = require('crypto');
+const sqlite3 = require('sqlite3');
 const { Sequelize, DataTypes } = require('sequelize');
 
 const app = express();
@@ -594,6 +595,121 @@ function listDatabaseBackupFiles() {
     .sort((a, b) => new Date(b.created) - new Date(a.created));
 }
 
+function queryReadOnlySqlite(databaseFile, sql, params = []) {
+  return new Promise((resolve, reject) => {
+    const backupDatabase = new sqlite3.Database(databaseFile, sqlite3.OPEN_READONLY, openError => {
+      if (openError) {
+        reject(openError);
+        return;
+      }
+
+      backupDatabase.all(sql, params, (queryError, rows) => {
+        backupDatabase.close(closeError => {
+          if (queryError) reject(queryError);
+          else if (closeError) reject(closeError);
+          else resolve(rows || []);
+        });
+      });
+    });
+  });
+}
+
+async function readSnapshotMetadataFromDatabaseBackup(backupPath) {
+  try {
+    return await queryReadOnlySqlite(
+      backupPath,
+      `SELECT filename, snapshotDate, type, size, contentHash, createdAt, updatedAt
+       FROM production_snapshots`
+    );
+  } catch (error) {
+    if (error.code === 'SQLITE_ERROR' && /no such table/i.test(error.message)) return [];
+    throw error;
+  }
+}
+
+async function recoverProductionSnapshotsFromDatabaseBackups() {
+  const existingFilenames = new Set(productionSnapshotCache.keys());
+  const candidates = new Map();
+
+  for (const backup of listDatabaseBackupFiles()) {
+    let rows;
+    try {
+      rows = await readSnapshotMetadataFromDatabaseBackup(backup.path);
+    } catch (error) {
+      console.warn(`WARNING: Backup SQLite dilewati (${backup.filename}): ${error.message}`);
+      continue;
+    }
+
+    rows.forEach(row => {
+      if (existingFilenames.has(row.filename)
+        || !isSafeBackupFilename(row.filename)
+        || !isValidDateInput(row.snapshotDate)) return;
+
+      const currentCandidate = candidates.get(row.filename);
+      if (!currentCandidate || new Date(row.updatedAt) > new Date(currentCandidate.updatedAt)) {
+        candidates.set(row.filename, { ...row, backupPath: backup.path });
+      }
+    });
+  }
+
+  if (!candidates.size) return 0;
+
+  const filenamesByBackup = new Map();
+  candidates.forEach(candidate => {
+    const filenames = filenamesByBackup.get(candidate.backupPath) || [];
+    filenames.push(candidate.filename);
+    filenamesByBackup.set(candidate.backupPath, filenames);
+  });
+
+  const recoveredRecords = [];
+  for (const [backupPath, filenames] of filenamesByBackup.entries()) {
+    for (let offset = 0; offset < filenames.length; offset += 500) {
+      const batch = filenames.slice(offset, offset + 500);
+      const placeholders = batch.map(() => '?').join(', ');
+      let rows;
+      try {
+        rows = await queryReadOnlySqlite(
+          backupPath,
+          `SELECT filename, snapshotDate, type, payload, createdAt, updatedAt
+           FROM production_snapshots
+           WHERE filename IN (${placeholders})`,
+          batch
+        );
+      } catch (error) {
+        console.warn(`WARNING: Payload snapshot dari ${path.basename(backupPath)} dilewati: ${error.message}`);
+        continue;
+      }
+
+      rows.forEach(row => {
+        const candidate = candidates.get(row.filename);
+        if (!candidate || candidate.backupPath !== backupPath) return;
+
+        const data = parsePayload(row.payload, null);
+        if (!isValidProductionSnapshot(data)) {
+          console.warn(`WARNING: Snapshot tidak valid dilewati: ${row.filename}`);
+          return;
+        }
+
+        recoveredRecords.push(buildSnapshotRecord(
+          row.filename,
+          row.snapshotDate,
+          row.type || 'archive',
+          data,
+          { createdAt: row.createdAt, updatedAt: row.updatedAt }
+        ));
+      });
+    }
+  }
+
+  if (!recoveredRecords.length) return 0;
+
+  await ProductionSnapshot.bulkCreate(recoveredRecords, { ignoreDuplicates: true });
+  await loadProductionSnapshotCache();
+  await pruneArchiveSnapshots();
+  console.log(`✅ ${recoveredRecords.length} snapshot dipulihkan dari backup SQLite ke database aktif`);
+  return recoveredRecords.length;
+}
+
 function pruneDatabaseBackups() {
   listDatabaseBackupFiles().slice(DATABASE_BACKUP_RETENTION).forEach(backup => {
     fs.unlinkSync(backup.path);
@@ -777,6 +893,7 @@ async function initSequelizeStorage() {
     } catch (error) {
       console.error('❌ Migrasi histori JSON dibatalkan; file lama dipertahankan:', error.message);
     }
+    await recoverProductionSnapshotsFromDatabaseBackups();
 
     databaseInitialized = true;
     console.log(`✅ Sequelize database siap: ${databasePath}`);
@@ -1783,9 +1900,11 @@ app.post('/api/organize-backups', requireLogin, requireAdmin, async (req, res) =
   try {
     const legacyCount = getLegacyHistoryJsonFiles().length;
     await migrateLegacyHistoryToDatabase();
+    const recoveredCount = await recoverProductionSnapshotsFromDatabaseBackups();
     res.json({
-      message: '✅ Snapshot lama sudah dimigrasikan ke database',
+      message: '✅ Snapshot lama sudah dimigrasikan dan dipulihkan ke database',
       movedCount: legacyCount,
+      recoveredCount,
       backupDir: databaseBackupDir
     });
   } catch (error) {
@@ -4929,6 +5048,7 @@ module.exports = {
   isValidProductionSnapshot,
   parseNonNegativeInteger,
   readProductionSnapshotForDate,
+  recoverProductionSnapshotsFromDatabaseBackups,
   sequelize,
   summarizeProductionSnapshotByLine
 };

@@ -145,6 +145,8 @@ File dan folder penting:
 
 Histori harian dan snapshot restore tersimpan di database. Instalasi lama akan mengimpor file JSON dari `history/` satu kali, membuat backup database pengaman, kemudian membersihkan file JSON tersebut. Sistem tidak lagi membuat arsip pada setiap startup.
 
+Saat startup, sistem juga memulihkan snapshot yang belum ada dari file SQLite di `database-backups/`. Snapshot yang sudah ada di database aktif tidak ditimpa, sehingga histori tetap tersedia setelah database aktif diganti atau dipulihkan dari backup lama.
+
 Retensi dapat diatur melalui `DATABASE_BACKUP_RETENTION` dan `ARCHIVE_SNAPSHOT_RETENTION`.
 
 ## Development Notes

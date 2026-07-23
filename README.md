@@ -151,7 +151,7 @@ Saat startup, sistem juga memulihkan snapshot yang belum ada dari file SQLite di
 
 File backup SQLite yang berumur lebih dari 7 hari dihapus otomatis saat startup dan setiap satu jam oleh background worker. Hanya file backup dengan pola nama aplikasi yang dibersihkan; file seperti `bootstrap-credentials.json` tidak disentuh.
 
-Retensi backup SQLite dapat diatur dalam satuan hari melalui `DATABASE_BACKUP_RETENTION_DAYS` (atau nama lama `DATABASE_BACKUP_RETENTION`). Retensi snapshot arsip di database tetap dapat diatur melalui `ARCHIVE_SNAPSHOT_RETENTION`.
+Retensi backup SQLite dapat diatur dalam satuan hari melalui `DATABASE_BACKUP_RETENTION_DAYS` (atau nama lama `DATABASE_BACKUP_RETENTION`). Snapshot harian, manual, dan snapshot pengaman restore/reset di dalam database tidak memiliki masa kedaluwarsa otomatis.
 
 ## Development Notes
 

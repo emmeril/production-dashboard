@@ -66,6 +66,78 @@ test('legacy history is migrated into SQLite before JSON files are removed', () 
   }
 });
 
+test('legacy archive snapshots are retained without an archive retention limit', () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'production-dashboard-archive-migration-'));
+  const historyDir = path.join(tempDir, 'history');
+  const backupDir = path.join(tempDir, 'database-backups');
+  const databasePath = path.join(tempDir, 'dashboard.sqlite');
+  fs.mkdirSync(historyDir, { recursive: true });
+
+  const archiveFiles = [
+    'data_2026-07-19_1000_manual_aaaa1111.json',
+    'data_2026-07-20_1000_manual_bbbb2222.json',
+    'data_2026-07-21_1000_manual_cccc3333.json'
+  ];
+
+  archiveFiles.forEach((filename, index) => {
+    const date = filename.slice(5, 15);
+    fs.writeFileSync(path.join(historyDir, filename), JSON.stringify({
+      lines: {
+        'Line 1': {
+          models: {
+            model1: { id: 'model1', date, outputDay: index + 1 }
+          }
+        }
+      },
+      activeLine: 'Line 1'
+    }));
+  });
+
+  const script = `
+    const server = require(${JSON.stringify(path.join(__dirname, '..', 'server.js'))});
+    (async () => {
+      await server.initSequelizeStorage();
+      const [rows] = await server.sequelize.query(
+        \`SELECT filename FROM production_snapshots WHERE type != 'daily' ORDER BY filename\`
+      );
+      console.log('ARCHIVE_RESULT=' + JSON.stringify(rows.map(row => row.filename)));
+      await server.sequelize.close();
+    })().catch(error => {
+      console.error(error);
+      process.exitCode = 1;
+    });
+  `;
+  const childEnv = {
+    ...process.env,
+    DATABASE_PATH: databasePath,
+    DATABASE_BACKUP_DIR: backupDir,
+    LEGACY_HISTORY_DIR: historyDir,
+    ARCHIVE_SNAPSHOT_RETENTION: '1',
+    SESSION_SECRET: 'test-secret'
+  };
+  delete childEnv.NODE_TEST_CONTEXT;
+  delete childEnv.NODE_CHANNEL_FD;
+
+  const result = spawnSync(process.execPath, ['-e', script], {
+    cwd: path.join(__dirname, '..'),
+    env: childEnv,
+    encoding: 'utf8'
+  });
+
+  try {
+    assert.equal(result.status, 0, result.stderr || result.stdout);
+    assert.match(
+      result.stdout,
+      /ARCHIVE_RESULT=\["data_2026-07-19_1000_manual_aaaa1111.json","data_2026-07-20_1000_manual_bbbb2222.json","data_2026-07-21_1000_manual_cccc3333.json"\]/
+    );
+    archiveFiles.forEach(filename => {
+      assert.equal(fs.existsSync(path.join(historyDir, filename)), false);
+    });
+  } finally {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  }
+});
+
 test('missing snapshots are recovered from SQLite backups without replacing active records', () => {
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'production-dashboard-recovery-'));
   const historyDir = path.join(tempDir, 'history');

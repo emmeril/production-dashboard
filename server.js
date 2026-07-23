@@ -102,7 +102,6 @@ const DATABASE_BACKUP_RETENTION_DAYS = Math.max(
   Number(process.env.DATABASE_BACKUP_RETENTION_DAYS || process.env.DATABASE_BACKUP_RETENTION) || 7
 );
 const DATABASE_BACKUP_CLEANUP_INTERVAL_MS = 60 * 60 * 1000;
-const ARCHIVE_SNAPSHOT_RETENTION = Math.max(1, Number(process.env.ARCHIVE_SNAPSHOT_RETENTION) || 30);
 let lastScheduledDatabaseBackupDate = '';
 let databaseBackupCleanupRunning = false;
 
@@ -729,18 +728,6 @@ function getLatestSnapshotForDate(date) {
     .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))[0] || null;
 }
 
-async function pruneArchiveSnapshots() {
-  const archives = Array.from(productionSnapshotCache.values())
-    .filter(snapshot => snapshot.type !== 'daily')
-    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-  const expired = archives.slice(ARCHIVE_SNAPSHOT_RETENTION);
-
-  for (const snapshot of expired) {
-    productionSnapshotCache.delete(snapshot.filename);
-    await ProductionSnapshot.destroy({ where: { filename: snapshot.filename } });
-  }
-}
-
 function storeProductionSnapshot(filename, snapshotDate, type, data, timestamps = {}) {
   const existing = getSnapshotByFilename(filename);
   const record = buildSnapshotRecord(filename, snapshotDate, type, data, {
@@ -753,7 +740,6 @@ function storeProductionSnapshot(filename, snapshotDate, type, data, timestamps 
     .catch(() => {})
     .then(async () => {
       await ProductionSnapshot.upsert(record);
-      if (type !== 'daily') await pruneArchiveSnapshots();
     })
     .catch(error => {
       logger.error(`Gagal menyimpan snapshot ${filename} ke database`, error.message);
@@ -898,7 +884,6 @@ async function recoverProductionSnapshotsFromDatabaseBackups() {
 
   await ProductionSnapshot.bulkCreate(recoveredRecords, { ignoreDuplicates: true });
   await loadProductionSnapshotCache();
-  await pruneArchiveSnapshots();
   logger.info(`Snapshot dipulihkan dari backup SQLite: ${recoveredRecords.length}`);
   return recoveredRecords.length;
 }
@@ -1008,14 +993,7 @@ async function migrateLegacyHistoryToDatabase() {
   });
 
   const uniqueFiles = Array.from(newestByFilename.values());
-  const canonicalFiles = uniqueFiles.filter(file => /^data_\d{4}-\d{2}-\d{2}\.json$/.test(file.filename));
-  const archiveFiles = uniqueFiles
-    .filter(file => !canonicalFiles.includes(file))
-    .sort((a, b) => b.modified - a.modified)
-    .slice(0, ARCHIVE_SNAPSHOT_RETENTION);
-  const selectedFiles = [...canonicalFiles, ...archiveFiles];
-
-  for (const file of selectedFiles) {
+  for (const file of uniqueFiles) {
     const classification = classifyLegacySnapshot(file.filename);
     if (!classification) continue;
 
@@ -1035,7 +1013,6 @@ async function migrateLegacyHistoryToDatabase() {
   }
 
   await loadProductionSnapshotCache();
-  await pruneArchiveSnapshots();
   const migrationBackup = await createDatabaseBackup('json_migration');
 
   legacyFiles.forEach(file => fs.unlinkSync(file.path));

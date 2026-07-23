@@ -243,6 +243,10 @@ function parseNonNegativeInteger(value, fallback = null) {
   return Number.isInteger(number) && number >= 0 ? number : null;
 }
 
+function isBlankInputValue(value) {
+  return value === undefined || value === null || (typeof value === 'string' && value.trim() === '');
+}
+
 function isValidDateInput(value) {
   return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value);
 }
@@ -1711,6 +1715,13 @@ function rejectUnavailableOperatorProductionHour(req, res, hour) {
   return false;
 }
 
+function rejectBlankOperatorProductionOutput(req, res, output) {
+  if (req.session.user?.role !== 'operator' || !isBlankInputValue(output)) return false;
+
+  res.status(400).json({ error: 'Output produksi wajib diisi sebelum menyimpan' });
+  return true;
+}
+
 function autoCheckDateReset(req, res, next) {
   checkAndResetDataForNewDay();
   next();
@@ -2633,6 +2644,7 @@ app.post('/api/update-hourly/:lineName', requireLogin, requireLineAccess, requir
 
 	  const currentHour = active.model.hourly_data[index];
 	  if (rejectUnavailableOperatorProductionHour(req, res, currentHour)) return;
+	  if (rejectBlankOperatorProductionOutput(req, res, output)) return;
 	  if (hasAnyRole(req.session.user, ['admin_operator_sewing']) && (defect !== undefined || qcChecked !== undefined || defectDetails !== undefined)) {
 	    return res.status(403).json({ error: 'Admin Operator Sewing tidak dapat mengubah data QC' });
 	  }
@@ -2738,6 +2750,7 @@ app.post('/api/update-hourly-direct/:lineName', requireLogin, requireLineAccess,
 	    return res.status(400).json({ error: 'Data produksi dan QC harus berupa bilangan bulat tidak negatif' });
 	  }
 	  if (rejectUnavailableOperatorProductionHour(req, res, active.model.hourly_data[index])) return;
+	  if (rejectBlankOperatorProductionOutput(req, res, output)) return;
 
 	  active.model.hourly_data[index] = {
 	    ...active.model.hourly_data[index],
@@ -2784,6 +2797,7 @@ app.post('/api/update-hourly/:lineName/:modelId', requireLogin, requireLineAcces
 
   const currentHour = data.lines[lineName].models[modelId].hourly_data[index];
   if (rejectUnavailableOperatorProductionHour(req, res, currentHour)) return;
+  if (rejectBlankOperatorProductionOutput(req, res, output)) return;
   if (hasAnyRole(req.session.user, ['admin_operator_sewing']) && (defect !== undefined || qcChecked !== undefined || defectDetails !== undefined)) {
     return res.status(403).json({ error: 'Admin Operator Sewing tidak dapat mengubah data QC' });
   }
@@ -2843,6 +2857,7 @@ app.post('/api/update-production/:lineName/:modelId', requireLogin, requireLineA
 
 	  const currentHour = model.hourly_data[index];
 	  if (rejectUnavailableOperatorProductionHour(req, res, currentHour)) return;
+	  if (rejectBlankOperatorProductionOutput(req, res, output)) return;
 
   const nextOutput = parseNonNegativeInteger(output, 0);
   const nextTargetManual = parseNonNegativeInteger(targetManual, parseNonNegativeInteger(currentHour.targetManual, 0));
@@ -3000,6 +3015,7 @@ app.post('/api/update-hourly-direct/:lineName/:modelId', requireLogin, requireLi
 
   const currentHour = model.hourly_data[index];
   if (rejectUnavailableOperatorProductionHour(req, res, currentHour)) return;
+  if (rejectBlankOperatorProductionOutput(req, res, output)) return;
 
   if (hasAnyRole(req.session.user, ['admin_operator_sewing']) && (defect !== undefined || qcChecked !== undefined || defectDetails !== undefined)) {
     return res.status(403).json({ error: 'Admin Operator Sewing tidak dapat mengubah data QC' });
@@ -5222,6 +5238,7 @@ module.exports = {
   isModelActiveInManagement,
   mergeProductionSnapshotsByDate,
   isValidProductionSnapshot,
+  isBlankInputValue,
   parseNonNegativeInteger,
   readProductionSnapshotForDate,
   recoverProductionSnapshotsFromDatabaseBackups,

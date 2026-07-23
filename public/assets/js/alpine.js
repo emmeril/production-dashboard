@@ -1205,7 +1205,7 @@ function dashboard() {
         resetInputForm() {
             this.inputForm = {
                 hourIndex: 0,
-                output: 0,
+                output: this.currentUser.role === 'operator' ? '' : 0,
                 targetManual: 0,
                 defectDetails: []
             };
@@ -1221,9 +1221,16 @@ function dashboard() {
 	            const hour = this.lineDetail.hourly_data?.[this.inputForm.hourIndex];
 	            if (!hour) return;
 
-	            this.inputForm.output = parseInt(hour.output) || 0;
+	            const output = parseInt(hour.output) || 0;
+	            this.inputForm.output = this.currentUser.role === 'operator' && !hour.productionLocked && output === 0
+	                ? ''
+	                : output;
 	            this.inputForm.targetManual = parseInt(hour.targetManual) || 0;
 	        },
+
+        isProductionOutputBlank(value = this.inputForm.output) {
+            return value === undefined || value === null || String(value).trim() === '';
+        },
 
 	        isProductionHourLocked(hour) {
 	            return this.currentUser.role === 'operator' && (
@@ -1328,6 +1335,11 @@ function dashboard() {
 	                return;
 	            }
 
+            if (this.currentUser.role === 'operator' && this.isProductionOutputBlank()) {
+                this.showToast('Output produksi wajib diisi sebelum menyimpan', 'error');
+                return;
+            }
+
 	            this.isSavingProduction = true;
 	            try {
 	                const response = await fetch(`/api/update-production/${this.currentLine}/${this.currentModelId}`, {
@@ -1337,7 +1349,7 @@ function dashboard() {
                     },
                     body: JSON.stringify({
                         hourIndex: this.inputForm.hourIndex,
-                        output: parseInt(this.inputForm.output) || 0,
+                        output: this.inputForm.output,
                         targetManual: parseInt(this.inputForm.targetManual) || 0
                     })
                 });
@@ -1502,7 +1514,12 @@ function dashboard() {
 	                return;
             }
 
-            const hour = this.lineDetail.hourly_data[hourIndex];
+	            const hour = this.lineDetail.hourly_data[hourIndex];
+
+            if (this.currentUser.role === 'operator' && this.isProductionOutputBlank(hour.output)) {
+                this.showToast('Output produksi wajib diisi sebelum menyimpan', 'error');
+                return;
+            }
 
 	        if (this.isProductionHourLocked(hour)) {
 	            const message = this.isProductionHourTooEarly(hour)
@@ -1521,7 +1538,7 @@ function dashboard() {
                     },
                     body: JSON.stringify({
                         hourIndex: hourIndex,
-                        output: parseInt(hour.output) || 0,
+                        output: hour.output,
                         targetManual: parseInt(hour.targetManual) || 0
                     })
                 });

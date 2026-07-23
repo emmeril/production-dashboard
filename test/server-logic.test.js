@@ -21,6 +21,7 @@ const {
   isValidDateRange,
   isModelActiveInManagement,
   isValidProductionSnapshot,
+  isBlankInputValue,
   mergeProductionSnapshotsByDate,
   parseNonNegativeInteger,
   summarizeProductionSnapshot,
@@ -104,6 +105,35 @@ test('parseNonNegativeInteger preserves zero and rejects invalid production valu
   assert.equal(parseNonNegativeInteger(undefined, 7), 7);
   assert.equal(parseNonNegativeInteger(-1, 0), null);
   assert.equal(parseNonNegativeInteger(1.5, 0), null);
+});
+
+test('blank production output values are distinguishable from an explicit zero', () => {
+  assert.equal(isBlankInputValue(undefined), true);
+  assert.equal(isBlankInputValue(null), true);
+  assert.equal(isBlankInputValue(''), true);
+  assert.equal(isBlankInputValue('   '), true);
+  assert.equal(isBlankInputValue(0), false);
+  assert.equal(isBlankInputValue('0'), false);
+});
+
+test('operator production form keeps an unsaved zero output visibly empty', () => {
+  const context = { console, Date, Intl, Map, Math, Set, parseInt };
+  const alpineSource = fs.readFileSync(path.join(__dirname, '..', 'public/assets/js/alpine.js'), 'utf8');
+  vm.runInNewContext(alpineSource, context);
+
+  const dashboard = context.dashboard();
+  dashboard.currentUser.role = 'operator';
+  dashboard.inputForm.hourIndex = 0;
+  dashboard.lineDetail.hourly_data = [{ output: 0, targetManual: 25, productionLocked: false }];
+
+  dashboard.syncInputFormFromSelectedHour();
+  assert.equal(dashboard.inputForm.output, '');
+  assert.equal(dashboard.isProductionOutputBlank(), true);
+
+  dashboard.lineDetail.hourly_data[0].productionLocked = true;
+  dashboard.syncInputFormFromSelectedHour();
+  assert.equal(dashboard.inputForm.output, 0);
+  assert.equal(dashboard.isProductionOutputBlank(), false);
 });
 
 test('history dates are recognized for canonical and archived backup names', () => {

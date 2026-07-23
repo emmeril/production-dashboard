@@ -8,6 +8,16 @@ function getJakartaDateInput() {
     }).format(new Date());
 }
 
+function logClientError(context, error) {
+    const message = String(context || 'Client error').replace(/:\s*$/, '');
+    if (typeof error === 'undefined') {
+        console.error(`[dashboard] [ERROR] ${message}`);
+        return;
+    }
+
+    console.error(`[dashboard] [ERROR] ${message}`, error);
+}
+
 function dashboard() {
     return {
         // Authentication state
@@ -233,7 +243,7 @@ function dashboard() {
                     this.isAuthenticated = false;
                 }
             } catch (error) {
-                console.error('Auth check failed:', error);
+                logClientError('Auth check failed:', error);
                 this.isAuthenticated = false;
             }
         },
@@ -270,7 +280,7 @@ function dashboard() {
                     this.showToast(error.error, 'error');
                 }
             } catch (error) {
-                console.error('Login error:', error);
+                logClientError('Login error:', error);
                 this.loginError = 'Network error. Please try again.';
                 this.showToast('Network error. Please try again.', 'error');
             }
@@ -280,7 +290,7 @@ function dashboard() {
             try {
                 await fetch('/api/logout', { method: 'POST' });
             } catch (error) {
-                console.error('Logout error:', error);
+                logClientError('Logout error:', error);
             } finally {
                 this.stopDashboardChartAutoplay();
                 this.isAuthenticated = false;
@@ -601,7 +611,7 @@ function dashboard() {
                             }
                         }
 	                    } catch (error) {
-	                        console.error('Error restoring page state:', error);
+	                        logClientError('Error restoring page state:', error);
 	                    }
 	                }
 
@@ -656,11 +666,9 @@ function dashboard() {
                         this.dashboardLineFilter = '';
                         this.dashboardCurrentPage = 1;
                     }
-                } else {
-                    console.error('Failed to load lines');
                 }
             } catch (error) {
-                console.error('Error loading lines:', error);
+                logClientError('Error loading lines:', error);
                 this.showToast('Error loading lines', 'error');
             }
         },
@@ -693,12 +701,11 @@ function dashboard() {
                     }
                     this.selectCurrentProductionHour();
                 } else {
-                    console.error('Failed to load line detail');
                     this.showToast('Failed to load line detail', 'error');
                 }
             } catch (error) {
                 if (error.name === 'AbortError') return;
-                console.error('Error loading line detail:', error);
+                logClientError('Error loading line detail:', error);
                 this.showToast('Error loading line detail', 'error');
             } finally {
                 if (requestId === this.lineDetailRequestId) {
@@ -767,11 +774,9 @@ function dashboard() {
                 const response = await fetch('/api/users');
                 if (response.ok) {
                     this.users = await response.json();
-                } else {
-                    console.error('Failed to load users');
                 }
             } catch (error) {
-                console.error('Error loading users:', error);
+                logClientError('Error loading users:', error);
                 this.showToast('Error loading users', 'error');
             }
         },
@@ -789,7 +794,7 @@ function dashboard() {
                     this.showToast('Gagal memuat kategori defect', 'error');
                 }
             } catch (error) {
-                console.error('Error loading defect config:', error);
+                logClientError('Error loading defect config:', error);
                 this.showToast('Error loading defect config', 'error');
             }
         },
@@ -879,7 +884,7 @@ function dashboard() {
                     return false;
                 }
             } catch (error) {
-                console.error('Error saving defect category:', error);
+                logClientError('Error saving defect category:', error);
                 this.showToast('Error saving defect category', 'error');
                 return false;
             }
@@ -906,7 +911,7 @@ function dashboard() {
                     this.showToast(error.error || 'Gagal menghapus kategori defect', 'error');
                 }
             } catch (error) {
-                console.error('Error deleting defect category:', error);
+                logClientError('Error deleting defect category:', error);
                 this.showToast('Error deleting defect category', 'error');
 	            }
 	        },
@@ -944,7 +949,7 @@ function dashboard() {
 	                    this.showToast('Gagal memuat setting public display', 'error');
 	                }
 	            } catch (error) {
-	                console.error('Error loading public display settings:', error);
+	                logClientError('Error loading public display settings:', error);
 	                this.showToast('Error loading public display settings', 'error');
 	            }
 	        },
@@ -966,7 +971,7 @@ function dashboard() {
 	                    this.showToast(error.error || 'Gagal menyimpan setting public display', 'error');
 	                }
 	            } catch (error) {
-	                console.error('Error saving public display settings:', error);
+	                logClientError('Error saving public display settings:', error);
 	                this.showToast('Error saving public display settings', 'error');
 	            }
 	        },
@@ -981,7 +986,7 @@ function dashboard() {
 	                if (!response.ok) throw new Error('Gagal memuat pengaturan hari kerja');
 	                this.workScheduleSettings = await response.json();
 	            } catch (error) {
-	                console.error('Error loading work schedule settings:', error);
+	                logClientError('Error loading work schedule settings:', error);
 	                this.showToast(error.message, 'error');
 	            }
 	        },
@@ -1028,7 +1033,7 @@ function dashboard() {
 	                this.workScheduleSettings = result.settings;
 	                this.showToast(result.message, 'success');
 	            } catch (error) {
-	                console.error('Error saving work schedule settings:', error);
+	                logClientError('Error saving work schedule settings:', error);
 	                this.showToast(error.message, 'error');
 	            }
 	        },
@@ -1098,11 +1103,10 @@ function dashboard() {
                     this.currentReportPage = 1; // Reset to first page
                     this.showToast(this.dateReport.length ? 'Laporan berhasil dimuat' : 'Tidak ada data pada rentang tanggal tersebut', this.dateReport.length ? 'success' : 'info');
                 } else {
-                    console.error('Failed to load date report');
                     this.showToast('Gagal memuat laporan', 'error');
                 }
             } catch (error) {
-                console.error('Error loading date report:', error);
+                logClientError('Error loading date report:', error);
                 this.showToast('Error loading date report', 'error');
             }
         },
@@ -1138,7 +1142,7 @@ function dashboard() {
                     this.showToast(error.error || 'Failed to export Excel', 'error');
                 }
             } catch (error) {
-                console.error('Error exporting Excel:', error);
+                logClientError('Error exporting Excel:', error);
                 this.showToast('Error exporting Excel', 'error');
             }
         },
@@ -1172,7 +1176,7 @@ function dashboard() {
                 document.body.removeChild(a);
                 this.showToast(`Detail ${line.line} berhasil diexport`, 'success');
             } catch (error) {
-                console.error('Error exporting line detail:', error);
+                logClientError('Error exporting line detail:', error);
                 this.showToast('Error export detail line', 'error');
             }
         },
@@ -1328,7 +1332,7 @@ function dashboard() {
                     this.showToast(error.error || 'Failed to save data', 'error');
                 }
 	            } catch (error) {
-	                console.error('Error saving hourly data:', error);
+	                logClientError('Error saving hourly data:', error);
 	                this.showToast('Error saving data', 'error');
 	            } finally {
 	                this.isSavingProduction = false;
@@ -1378,7 +1382,7 @@ function dashboard() {
                     this.showToast(error.error || 'Gagal menyimpan QC check', 'error');
                 }
 	            } catch (error) {
-	                console.error('Error saving QC check:', error);
+	                logClientError('Error saving QC check:', error);
 	                this.showToast('Error saving QC check', 'error');
 	            } finally {
 	                this.isSavingQc = false;
@@ -1400,7 +1404,7 @@ function dashboard() {
 	                this.qcCurrentPage = Math.min(this.qcCurrentPage, this.totalQcPages);
 	                await this.loadDashboardData();
 	            } catch (error) {
-	                console.error('Error deleting QC check:', error);
+	                logClientError('Error deleting QC check:', error);
 	                this.showToast('Error menghapus data QC', 'error');
 	            }
 	        },
@@ -1430,7 +1434,7 @@ function dashboard() {
 	                await this.loadLineDetail(this.currentLine, this.currentModelId);
 	                await this.loadDashboardData();
 	            } catch (error) {
-	                console.error('Error updating QC check:', error);
+	                logClientError('Error updating QC check:', error);
 	                this.showToast('Error memperbarui defect', 'error');
 	            }
 	        },
@@ -1464,7 +1468,7 @@ function dashboard() {
                     this.showToast(error.error || 'Failed to update target manual', 'error');
                 }
             } catch (error) {
-                console.error('Error updating target manual:', error);
+                logClientError('Error updating target manual:', error);
                 this.showToast('Error updating target manual', 'error');
             }
         },
@@ -1511,7 +1515,7 @@ function dashboard() {
                     this.showToast(error.error || 'Failed to save data', 'error');
                 }
 	            } catch (error) {
-	                console.error('Error saving hourly data:', error);
+	                logClientError('Error saving hourly data:', error);
 	                this.showToast('Error saving data', 'error');
 	            } finally {
 	                this.isSavingProduction = false;
@@ -1590,7 +1594,7 @@ function dashboard() {
                     this.showToast(error.error || `Failed to ${this.lineModal.isEdit ? 'update' : 'create'} line`, 'error');
                 }
             } catch (error) {
-                console.error('Error saving line:', error);
+                logClientError('Error saving line:', error);
                 this.showToast('Error saving line', 'error');
             }
         },
@@ -1615,7 +1619,7 @@ function dashboard() {
                     this.showToast(error.error || 'Failed to add model', 'error');
                 }
             } catch (error) {
-                console.error('Error saving model:', error);
+                logClientError('Error saving model:', error);
                 this.showToast('Error saving model', 'error');
             }
         },
@@ -1639,7 +1643,7 @@ function dashboard() {
                     this.showToast(error.error || 'Failed to delete model', 'error');
                 }
             } catch (error) {
-                console.error('Error deleting model:', error);
+                logClientError('Error deleting model:', error);
                 this.showToast('Error deleting model', 'error');
             }
         },
@@ -1662,7 +1666,7 @@ function dashboard() {
                     this.showToast(result.error || 'Failed to update active model', 'error');
                 }
             } catch (error) {
-                console.error('Error updating active model:', error);
+                logClientError('Error updating active model:', error);
                 this.showToast('Error updating active model', 'error');
             }
         },
@@ -1690,7 +1694,7 @@ function dashboard() {
                     this.showToast(error.error || 'Failed to delete line', 'error');
                 }
             } catch (error) {
-                console.error('Error deleting line:', error);
+                logClientError('Error deleting line:', error);
                 this.showToast('Error deleting line', 'error');
             }
         },
@@ -1751,7 +1755,7 @@ function dashboard() {
                     this.showToast(error.error || `Failed to ${this.userModal.isEdit ? 'update' : 'create'} user`, 'error');
                 }
             } catch (error) {
-                console.error('Error saving user:', error);
+                logClientError('Error saving user:', error);
                 this.showToast('Error saving user', 'error');
             }
         },
@@ -1774,7 +1778,7 @@ function dashboard() {
                     this.showToast(error.error || 'Failed to delete user', 'error');
                 }
             } catch (error) {
-                console.error('Error deleting user:', error);
+                logClientError('Error deleting user:', error);
                 this.showToast('Error deleting user', 'error');
             }
         },
@@ -1801,7 +1805,7 @@ function dashboard() {
                 this.maintenanceStatus = await response.json();
                 return this.maintenanceStatus;
             } catch (error) {
-                console.error('Error loading system status:', error);
+                logClientError('Error loading system status:', error);
                 this.maintenanceStatus = null;
                 this.showToast(error.message, 'error');
                 return null;
@@ -1816,7 +1820,7 @@ function dashboard() {
                 this.backupCurrentPage = Math.min(this.backupCurrentPage, Math.max(1, this.totalBackupPages));
                 return this.backupHistory;
             } catch (error) {
-                console.error('Error loading backup history:', error);
+                logClientError('Error loading backup history:', error);
                 this.backupHistory = [];
                 this.showToast(error.message, 'error');
                 return [];
@@ -1840,7 +1844,7 @@ function dashboard() {
                     this.showToast(error.error || 'Failed to create backup', 'error');
                 }
             } catch (error) {
-                console.error('Error creating backup:', error);
+                logClientError('Error creating backup:', error);
                 this.showToast('Error creating backup', 'error');
             } finally {
                 this.maintenanceAction = '';
@@ -1868,7 +1872,7 @@ function dashboard() {
                     this.showToast(error.error || 'Failed to sync dates', 'error');
                 }
             } catch (error) {
-                console.error('Error syncing dates:', error);
+                logClientError('Error syncing dates:', error);
                 this.showToast('Error syncing dates', 'error');
             } finally {
                 this.maintenanceAction = '';
@@ -1927,7 +1931,7 @@ function dashboard() {
                 await this.loadDashboardData();
                 await this.loadMaintenanceData();
             } catch (error) {
-                console.error('Error restoring backup:', error);
+                logClientError('Error restoring backup:', error);
                 this.showToast(error.message, 'error');
             } finally {
                 this.maintenanceAction = '';
@@ -2435,7 +2439,7 @@ function dashboard() {
 	                await this.loadLineDetail(lineName, modelId);
 	                await this.loadDashboardData();
 	            } catch (error) {
-	                console.error('Error deleting sewing result:', error);
+	                logClientError('Error deleting sewing result:', error);
 	                this.showToast('Error menghapus hasil sewing', 'error');
 	            }
 	        },

@@ -366,6 +366,16 @@
 
     <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
     <script>
+        function logPublicDisplayError(context, error) {
+            const message = String(context || 'Public display error').replace(/:\s*$/, '');
+            if (typeof error === 'undefined') {
+                console.error(`[public-display] [ERROR] ${message}`);
+                return;
+            }
+
+            console.error(`[public-display] [ERROR] ${message}`, error);
+        }
+
         function publicDisplay() {
             return {
                 lineData: {
@@ -525,7 +535,7 @@
                         }
                     } catch (error) {
                         if (error.name === 'AbortError') return;
-                        console.error('Error loading line data:', error);
+                        logPublicDisplayError('Error loading line data:', error);
                         this.errorMessage = error.message || 'Terjadi kesalahan saat memuat data';
                     } finally {
                         if (requestId === this.refreshRequestId) {
@@ -548,7 +558,7 @@
                             this.errorMessage = '';
                         }
                     } catch (error) {
-                        console.error('Error loading work schedule status:', error);
+                        logPublicDisplayError('Error loading work schedule status:', error);
                         this.isWithinWorkSchedule = false;
                     } finally {
                         this.scheduleLoaded = true;
@@ -677,7 +687,7 @@
 	                            this.refreshInterval = this.displaySettings.refreshInterval;
 	                        }
 	                    } catch (error) {
-	                        console.error('Error loading public display settings:', error);
+	                        logPublicDisplayError('Error loading public display settings:', error);
 	                    }
 	                },
 
@@ -971,7 +981,7 @@
         
         document.addEventListener('DOMContentLoaded', function() {
             if (typeof Alpine === 'undefined') {
-                console.error('Alpine.js tidak terdeteksi. Pastikan sudah dimuat.');
+                logPublicDisplayError('Alpine.js tidak terdeteksi. Pastikan sudah dimuat.');
             }
         });
     </script>

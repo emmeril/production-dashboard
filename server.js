@@ -80,6 +80,36 @@ const DATABASE_BACKUP_RETENTION = Math.max(1, Number(process.env.DATABASE_BACKUP
 const ARCHIVE_SNAPSHOT_RETENTION = Math.max(1, Number(process.env.ARCHIVE_SNAPSHOT_RETENTION) || 30);
 let lastScheduledDatabaseBackupDate = '';
 
+function normalizeLogMessage(message) {
+  return String(message || '')
+    .replace(/[^\x20-\x7E]+/g, '')
+    .replace(/^\s*(ERROR|WARNING)\s*:?\s*/i, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function logMessage(level, message) {
+  return `[${new Date().toISOString()}] [${level}] ${normalizeLogMessage(message)}`;
+}
+
+const logger = {
+  info(message, ...details) {
+    console.log(logMessage('INFO', message), ...details);
+  },
+  warn(message, ...details) {
+    console.warn(logMessage('WARN', message), ...details);
+  },
+  error(message, error) {
+    if (typeof error === 'undefined') {
+      console.error(logMessage('ERROR', message));
+      return;
+    }
+
+    console.error(logMessage('ERROR', message), error instanceof Error ? (error.stack || error.message) : error);
+  }
+};
+
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use((req, res, next) => {
@@ -94,7 +124,7 @@ app.use('/public', express.static(path.join(__dirname, 'public')));
 
 const sessionSecret = process.env.SESSION_SECRET;
 if (!sessionSecret) {
-  console.warn('SESSION_SECRET is not set; using an ephemeral session secret. Set SESSION_SECRET in production.');
+  logger.warn('SESSION_SECRET is not set; using an ephemeral session secret. Set SESSION_SECRET in production.');
 }
 
 app.use(session({
@@ -178,7 +208,7 @@ function readBootstrapCredentials() {
       bootstrapCredentialsCache = JSON.parse(fs.readFileSync(bootstrapCredentialsPath, 'utf8'));
       return bootstrapCredentialsCache;
     } catch (error) {
-      console.error('ERROR: Gagal membaca bootstrap credentials, membuat ulang:', error.message);
+      logger.error('Gagal membaca bootstrap credentials, membuat ulang', error.message);
     }
   }
 
@@ -191,7 +221,7 @@ function readBootstrapCredentials() {
   try {
     fs.writeFileSync(bootstrapCredentialsPath, JSON.stringify(bootstrapCredentialsCache, null, 2), { mode: 0o600 });
   } catch (error) {
-    console.error('ERROR: Gagal menyimpan bootstrap credentials:', error.message);
+    logger.error('Gagal menyimpan bootstrap credentials', error.message);
   }
 
   return bootstrapCredentialsCache;
@@ -606,7 +636,7 @@ async function upsertAppData(key, data) {
       try {
         await AppData.upsert({ key, payload });
       } catch (error) {
-        console.error(`ERROR: Gagal menyimpan ${key} ke database:`, error.message);
+        logger.error(`Gagal menyimpan ${key} ke database`, error.message);
         throw error;
       }
     });
@@ -696,7 +726,7 @@ function storeProductionSnapshot(filename, snapshotDate, type, data, timestamps 
       if (type !== 'daily') await pruneArchiveSnapshots();
     })
     .catch(error => {
-      console.error(`ERROR: Gagal menyimpan snapshot ${filename} ke database:`, error.message);
+      logger.error(`Gagal menyimpan snapshot ${filename} ke database`, error.message);
     });
 
   return record;
@@ -769,7 +799,7 @@ async function recoverProductionSnapshotsFromDatabaseBackups() {
     try {
       rows = await readSnapshotMetadataFromDatabaseBackup(backup.path);
     } catch (error) {
-      console.warn(`WARNING: Backup SQLite dilewati (${backup.filename}): ${error.message}`);
+      logger.warn(`Backup SQLite dilewati (${backup.filename}): ${error.message}`);
       continue;
     }
 
@@ -809,7 +839,7 @@ async function recoverProductionSnapshotsFromDatabaseBackups() {
           batch
         );
       } catch (error) {
-        console.warn(`WARNING: Payload snapshot dari ${path.basename(backupPath)} dilewati: ${error.message}`);
+        logger.warn(`Payload snapshot dari ${path.basename(backupPath)} dilewati: ${error.message}`);
         continue;
       }
 
@@ -819,7 +849,7 @@ async function recoverProductionSnapshotsFromDatabaseBackups() {
 
         const data = parsePayload(row.payload, null);
         if (!isValidProductionSnapshot(data)) {
-          console.warn(`WARNING: Snapshot tidak valid dilewati: ${row.filename}`);
+          logger.warn(`Snapshot tidak valid dilewati: ${row.filename}`);
           return;
         }
 
@@ -839,14 +869,13 @@ async function recoverProductionSnapshotsFromDatabaseBackups() {
   await ProductionSnapshot.bulkCreate(recoveredRecords, { ignoreDuplicates: true });
   await loadProductionSnapshotCache();
   await pruneArchiveSnapshots();
-  console.log(`✅ ${recoveredRecords.length} snapshot dipulihkan dari backup SQLite ke database aktif`);
+  logger.info(`Snapshot dipulihkan dari backup SQLite: ${recoveredRecords.length}`);
   return recoveredRecords.length;
 }
 
 function pruneDatabaseBackups() {
   listDatabaseBackupFiles().slice(DATABASE_BACKUP_RETENTION).forEach(backup => {
     fs.unlinkSync(backup.path);
-    console.log(`🧹 Backup database lama dihapus: ${backup.filename}`);
   });
 }
 
@@ -862,7 +891,7 @@ async function createDatabaseBackup(label = 'manual') {
 
   await sequelize.query(`VACUUM INTO '${escapedPath}'`);
   pruneDatabaseBackups();
-  console.log(`💾 Backup database dibuat: ${filename}`);
+  logger.info(`Backup database dibuat: ${filename}`);
   return backupPath;
 }
 
@@ -936,7 +965,7 @@ async function migrateLegacyHistoryToDatabase() {
   const migrationBackup = await createDatabaseBackup('json_migration');
 
   legacyFiles.forEach(file => fs.unlinkSync(file.path));
-  console.log(`✅ ${legacyFiles.length} file JSON lama dimigrasikan/dibersihkan setelah backup ${path.basename(migrationBackup)}`);
+  logger.info(`Migrasi file JSON lama selesai: ${legacyFiles.length} file, backup ${path.basename(migrationBackup)}`);
 }
 
 async function initSequelizeStorage() {
@@ -959,9 +988,8 @@ async function initSequelizeStorage() {
       if (fs.existsSync(legacyDataPath)) {
         try {
           initialProductionData = JSON.parse(fs.readFileSync(legacyDataPath, 'utf8'));
-          console.log('✅ Migrasi data produksi dari data.json ke Sequelize berhasil');
         } catch (error) {
-          console.error('❌ ERROR: Gagal migrasi data.json, memakai data default:', error.message);
+          logger.error('Gagal migrasi data.json, memakai data default', error.message);
         }
       }
 
@@ -974,9 +1002,8 @@ async function initSequelizeStorage() {
       if (fs.existsSync(legacyUsersPath)) {
         try {
           initialUsersData = JSON.parse(fs.readFileSync(legacyUsersPath, 'utf8'));
-          console.log('✅ Migrasi data user dari users.json ke Sequelize berhasil');
         } catch (error) {
-          console.error('❌ ERROR: Gagal migrasi users.json, memakai user default:', error.message);
+          logger.error('Gagal migrasi users.json, memakai user default', error.message);
         }
       }
 
@@ -1024,14 +1051,14 @@ async function initSequelizeStorage() {
     try {
       await migrateLegacyHistoryToDatabase();
     } catch (error) {
-      console.error('❌ Migrasi histori JSON dibatalkan; file lama dipertahankan:', error.message);
+      logger.error('Migrasi histori JSON dibatalkan; file lama dipertahankan', error.message);
     }
     await recoverProductionSnapshotsFromDatabaseBackups();
 
     databaseInitialized = true;
-    console.log(`✅ Sequelize database siap: ${databasePath}`);
+    logger.info(`Sequelize database siap: ${databasePath}`);
   } catch (error) {
-    console.error('❌ ERROR: Inisialisasi Sequelize gagal:', error.message);
+    logger.error('Inisialisasi Sequelize gagal', error.message);
     databaseInitialized = false;
   }
 }
@@ -1085,7 +1112,6 @@ function backupDataBeforeReset(data, today) {
         storeProductionSnapshot(`data_${date}.json`, date, 'daily', filterProductionDataByDate(data, date));
       });
 
-      console.log(`✅ Backup data sebelum reset disimpan: ${backupFileName}`);
       
       // Hitung jumlah model yang dibackup
       let modelCount = 0;
@@ -1093,15 +1119,14 @@ function backupDataBeforeReset(data, today) {
         modelCount += Object.keys(backupData.lines[lineName].models).length;
       });
       
-      console.log(`   Jumlah line yang dibackup: ${Object.keys(backupData.lines).length}`);
-      console.log(`   Jumlah model yang dibackup: ${modelCount}`);
+      logger.info(`Backup data sebelum reset disimpan: ${backupFileName} (${Object.keys(backupData.lines).length} line, ${modelCount} model)`);
       
       return backupData;
     }
     
     return null;
   } catch (error) {
-    console.error('❌ Error dalam backup data sebelum reset:', error);
+    logger.error('Gagal membuat backup data sebelum reset', error);
     return null;
   }
 }
@@ -1111,21 +1136,9 @@ function checkAndResetDataForNewDay() {
   const today = getToday();
   let resetCount = 0;
 
-  console.log(`\n📊 Memulai reset data untuk tanggal baru: ${today}`);
 
   // Backup data sebelum reset untuk tanggal yang berbeda
-  const backupData = backupDataBeforeReset(data, today);
-  
-  // Tampilkan info backup
-  if (backupData && Object.keys(backupData.lines).length > 0) {
-    let backupModelCount = 0;
-    Object.keys(backupData.lines).forEach(lineName => {
-      backupModelCount += Object.keys(backupData.lines[lineName].models).length;
-    });
-    console.log(`✅ Total ${backupModelCount} model dari ${Object.keys(backupData.lines).length} line telah dibackup sebelum reset`);
-  } else {
-    console.log(`ℹ️  Tidak ada data yang perlu dibackup (semua model sudah menggunakan tanggal ${today})`);
-  }
+  backupDataBeforeReset(data, today);
 
   Object.keys(data.lines).forEach(lineName => {
     const line = data.lines[lineName];
@@ -1134,7 +1147,6 @@ function checkAndResetDataForNewDay() {
       
       // Reset hanya jika tanggal model berbeda dengan hari ini
       if (model.date !== today) {
-        console.log(`🔄 Reset data untuk line ${lineName}, model ${modelId} dari ${model.date} ke ${today}`);
         
         const masterData = {
           id: model.id || modelId,
@@ -1172,14 +1184,12 @@ function checkAndResetDataForNewDay() {
 
   if (resetCount > 0) {
     void writeProductionData(data).catch(error => {
-      console.error('ERROR: Gagal menyimpan data reset harian:', error.message);
+      logger.error('Gagal menyimpan data reset harian', error.message);
     });
-    console.log(`✅ Auto-reset selesai: ${resetCount} model direset ke tanggal ${today}`);
+    logger.info(`Auto-reset selesai: ${resetCount} model direset ke tanggal ${today}`);
     
     // Simpan snapshot hari ini setelah reset.
     updateTodayBackup();
-  } else {
-    console.log(`ℹ️  Tidak ada data yang perlu direset (semua model sudah menggunakan tanggal ${today})`);
   }
 
   return resetCount;
@@ -1201,7 +1211,7 @@ function readProductionData() {
   try {
     return productionDataCache;
   } catch (error) {
-    console.error('ERROR: Gagal membaca production data cache:', error.message);
+    logger.error('Gagal membaca production data cache', error.message);
     return { lines: {}, activeLine: '' };
   }
 }
@@ -1241,12 +1251,12 @@ function readUsersData() {
 
     if (migrated) {
       void upsertAppData(USERS_DATA_KEY, usersDataCache).catch(error => {
-        console.error('ERROR: Gagal menyimpan migrasi user:', error.message);
+        logger.error('Gagal menyimpan migrasi user', error.message);
       });
     }
     return usersDataCache;
   } catch (error) {
-    console.error('ERROR: Gagal membaca users data cache:', error.message);
+    logger.error('Gagal membaca users data cache', error.message);
     return { users: [] };
   }
 }
@@ -1263,7 +1273,7 @@ function readDefectConfig() {
     defectConfigCache = normalizeDefectConfig(defectConfigCache);
     return defectConfigCache;
   } catch (error) {
-    console.error('ERROR: Gagal membaca defect config cache:', error.message);
+    logger.error('Gagal membaca defect config cache', error.message);
     return buildInitialDefectConfig();
   }
 }
@@ -1278,7 +1288,7 @@ function readPublicDisplaySettings() {
     publicDisplaySettingsCache = normalizePublicDisplaySettings(publicDisplaySettingsCache);
     return publicDisplaySettingsCache;
   } catch (error) {
-    console.error('ERROR: Gagal membaca public display settings cache:', error.message);
+    logger.error('Gagal membaca public display settings cache', error.message);
     return buildInitialPublicDisplaySettings();
   }
 }
@@ -1427,10 +1437,9 @@ function updateTodayBackup() {
     const today = getToday();
     const filename = `data_${today}.json`;
     storeProductionSnapshot(filename, today, 'daily', data);
-    console.log(`💾 Snapshot hari ini di-update di database: ${filename}`);
     return filename;
   } catch (error) {
-    console.error('❌ Error updating today backup:', error);
+    logger.error('Gagal memperbarui snapshot hari ini', error);
     return null;
   }
 }
@@ -1448,10 +1457,9 @@ function createArchiveBackup(label = '') {
       ? 'pre_restore'
       : (safeLabel === 'pre_reset' ? 'pre_reset' : (safeLabel === 'manual' ? 'manual' : 'archive'));
     storeProductionSnapshot(filename, today, type, data);
-    console.log(`💾 Snapshot arsip dibuat di database: ${filename}`);
     return filename;
   } catch (error) {
-    console.error('❌ Error creating archive backup:', error);
+    logger.error('Gagal membuat snapshot arsip', error);
     return null;
   }
 }
@@ -1746,7 +1754,7 @@ app.get('/api/backup-history', requireLogin, requireAdmin, async (req, res) => {
     
     res.json(backupFiles);
   } catch (error) {
-    console.error('❌ Error reading backup history:', error);
+    logger.error('Gagal membaca riwayat backup', error);
     res.status(500).json({ error: 'Failed to read backup history' });
   }
 });
@@ -1776,7 +1784,7 @@ app.post('/api/restore-backup/:filename', requireLogin, requireAdmin, async (req
     }
     const safetyDatabaseFile = await createDatabaseBackup('pre_restore');
     
-    console.log(`🔄 Memulihkan backup dari: ${filename}`);
+    logger.info(`Restore backup dimulai: ${filename}`);
     
     // Pulihkan line/model dari snapshot, termasuk mengganti model yang sudah ada.
     currentData.lines = currentData.lines || {};
@@ -1831,7 +1839,7 @@ app.post('/api/restore-backup/:filename', requireLogin, requireAdmin, async (req
       }, 0)
     });
   } catch (error) {
-    console.error('❌ Error restoring backup:', error);
+    logger.error('Gagal memulihkan backup', error);
     res.status(500).json({ error: 'Failed to restore backup: ' + error.message });
   }
 });
@@ -2056,9 +2064,8 @@ app.get('/api/export-backup/:filename', requireLogin, requireAdmin, async (req, 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     
     await workbook.xlsx.write(res);
-    console.log(`✅ Backup exported: ${filename}`);
   } catch (error) {
-    console.error('❌ Error exporting backup:', error);
+    logger.error('Gagal mengekspor backup', error);
     res.status(500).json({ error: 'Failed to export backup: ' + error.message });
   }
 });
@@ -2076,7 +2083,7 @@ app.post('/api/organize-backups', requireLogin, requireAdmin, async (req, res) =
       backupDir: databaseBackupDir
     });
   } catch (error) {
-    console.error('❌ Error organizing backups:', error);
+    logger.error('Gagal mengatur backup', error);
     res.status(500).json({ error: 'Failed to organize backups: ' + error.message });
   }
 });
@@ -2148,7 +2155,7 @@ app.get('/api/available-dates', requireLogin, requireDateReportAccess, async (re
     
     res.json(dates);
   } catch (error) {
-    console.error('❌ Error getting available dates:', error);
+    logger.error('Gagal mengambil tanggal yang tersedia', error);
     res.status(500).json({ error: 'Failed to get available dates' });
   }
 });
@@ -2539,7 +2546,7 @@ app.get('/api/dashboard-summary', requireLogin, requireAdminOrAdminOperator, aut
       topDefectTypes: topCounterItems(totalTypeCounts, 5)
     });
   } catch (error) {
-    console.error('Error building dashboard summary:', error);
+    logger.error('Error building dashboard summary:', error);
     res.status(500).json({ error: 'Failed to build dashboard summary' });
   }
 });
@@ -2570,7 +2577,7 @@ app.post('/api/login', async (req, res) => {
 
     return res.status(401).json({ error: 'Invalid username or password' });
   } catch (error) {
-    console.error('Error during login:', error);
+    logger.error('Error during login:', error);
     return res.status(500).json({ error: 'Login failed' });
   }
 });
@@ -3021,7 +3028,7 @@ app.get('/api/history/files', requireLogin, requireAdmin, async (req, res) => {
     const historyFiles = getHistoryFiles();
     res.json(historyFiles);
   } catch (error) {
-    console.error('❌ Error getting history files:', error);
+    logger.error('Gagal mengambil file histori', error);
     res.status(500).json({ error: 'Failed to get history files' });
   }
 });
@@ -3040,7 +3047,7 @@ app.get('/api/history/:filename', requireLogin, requireAdmin, async (req, res) =
     }
     res.json(historyData);
   } catch (error) {
-    console.error('❌ Error reading history file:', error);
+    logger.error('Gagal membaca file histori', error);
     res.status(500).json({ error: 'Failed to read history data' });
   }
 });
@@ -3159,7 +3166,7 @@ app.get('/api/history/:filename/export', requireLogin, requireAdmin, async (req,
     
     res.send(excelBuffer);
   } catch (error) {
-    console.error('❌ Export history error:', error);
+    logger.error('Gagal mengekspor histori', error);
     res.status(500).json({ error: 'Failed to export history data' });
   }
 });
@@ -3174,13 +3181,12 @@ app.post('/api/backup/now', requireLogin, requireAdmin, async (req, res) => {
       snapshot: snapshotFilename
     });
   } catch (error) {
-    console.error('❌ Error creating backup:', error);
+    logger.error('Gagal membuat backup', error);
     res.status(500).json({ error: 'Failed to create backup' });
   }
 });
 
 app.post('/api/sync-dates', requireLogin, requireAdmin, async (req, res) => {
-  console.log('🔄 Manual sync-dates endpoint called');
   const resetCount = checkAndResetDataForNewDay();
   const today = getToday();
   
@@ -3572,10 +3578,9 @@ app.get('/api/date-report', requireLogin, requireDateReportAccess, autoCheckDate
   try {
     const data = buildDateRangeProductionData(startDate, endDate);
     const reportData = buildProductionReportRows(data);
-    console.log(`✅ Laporan rentang ${startDate} sampai ${endDate} berhasil dibuat. Jumlah data: ${reportData.length}`);
     res.json(reportData);
   } catch (error) {
-    console.error('❌ Error generating date range report:', error);
+    logger.error('Gagal membuat laporan rentang tanggal', error);
     res.status(500).json({ error: 'Failed to generate date range report: ' + error.message });
   }
 });
@@ -3593,10 +3598,9 @@ app.get('/api/date-report/:date', requireLogin, requireDateReportAccess, autoChe
     
     const reportData = buildDateReportRows(data, date);
     
-    console.log(`✅ Laporan tanggal ${date} berhasil dibuat. Jumlah data: ${reportData.length}`);
     res.json(reportData);
   } catch (error) {
-    console.error('❌ Error generating date report:', error);
+    logger.error('Gagal membuat laporan tanggal', error);
     res.status(500).json({ error: 'Failed to generate date report: ' + error.message });
   }
 });
@@ -4235,9 +4239,8 @@ app.get('/api/export-date-report', requireLogin, requireDateReportAccess, autoCh
     res.setHeader('Content-Disposition', `attachment; filename="${downloadFilename}"`);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     await workbook.xlsx.write(res);
-    console.log(`✅ Export Excel untuk rentang ${startDate} sampai ${endDate} berhasil`);
   } catch (error) {
-    console.error('❌ Export date range report error:', error);
+    logger.error('Gagal mengekspor laporan rentang tanggal', error);
     res.status(500).json({ error: 'Failed to export date range report: ' + error.message });
   }
 });
@@ -4260,9 +4263,8 @@ app.get('/api/export-date-report/:date', requireLogin, requireDateReportAccess, 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     
     await workbook.xlsx.write(res);
-    console.log(`✅ Export Excel dengan styling untuk tanggal ${date} berhasil`);
   } catch (error) {
-    console.error('❌ Export date report error:', error);
+    logger.error('Gagal mengekspor laporan tanggal', error);
     res.status(500).json({ error: 'Failed to export date report: ' + error.message });
   }
 });
@@ -4291,7 +4293,7 @@ app.get('/api/export-date-report/:date/:lineName/:modelId', requireLogin, requir
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     await workbook.xlsx.write(res);
   } catch (error) {
-    console.error('Export detail date report error:', error);
+    logger.error('Export detail date report error:', error);
     res.status(500).json({ error: 'Failed to export line detail: ' + error.message });
   }
 });
@@ -5125,7 +5127,7 @@ app.get('/', async (req, res) => {
 });
 
 app.use((error, req, res, next) => {
-  console.error('Unhandled request error:', error);
+  logger.error('Unhandled request error:', error);
   if (res.headersSent) return next(error);
 
   if (req.path.startsWith('/api/')) {
@@ -5144,13 +5146,9 @@ async function startServer() {
   setInterval(async () => {
     const now = new Date();
     const today = getToday();
-    console.log(`\nSystem check at: ${now.toLocaleString('id-ID')}, Date: ${today}`);
     
     // Cek dan reset data untuk hari baru
-    const resetCount = checkAndResetDataForNewDay();
-    if (resetCount > 0) {
-      console.log(`Auto reset data selesai: ${resetCount} model direset`);
-    }
+    checkAndResetDataForNewDay();
     
     // Satu backup database konsisten per hari pada 00:01 WIB.
     const utcHours = now.getUTCHours();
@@ -5159,53 +5157,24 @@ async function startServer() {
       try {
         await createDatabaseBackup('daily');
         lastScheduledDatabaseBackupDate = today;
-        console.log('Daily database backup executed');
       } catch (error) {
-        console.error('Daily database backup failed:', error.message);
+        logger.error('Daily database backup failed', error);
       }
     }
   }, 60000); // Check every minute
 
   // Check for date reset on startup dengan delay
   setTimeout(() => {
-    const resetCount = checkAndResetDataForNewDay();
-    if (resetCount > 0) {
-      console.log(`Auto reset saat startup: ${resetCount} model direset`);
-    }
+    checkAndResetDataForNewDay();
   }, 10000); // Increase delay to 10 seconds
 
   // Sinkronkan snapshot harian saat startup tanpa membuat arsip baru.
   setTimeout(() => {
     updateTodayBackup();
-    console.log('Today database snapshot initialized');
   }, 15000);
 
   app.listen(port, () => {
-  console.log(`=================================`);
-  console.log(`🚀 Production Dashboard System`);
-  console.log(`✅ Server berjalan di http://localhost:${port}`);
-  console.log(`=================================`);
-  console.log(`📋 FITUR UTAMA:`);
-  console.log(`✅ Multi-Model Support per Line`);
-  console.log(`✅ Manajemen Line, User, dan Operator`);
-  console.log(`✅ Role: Admin, Admin Operator, Operator`);
-  console.log(`✅ Input langsung di tabel Data Per Jam`);
-  console.log(`✅ Target berdasarkan manual input`);
-  console.log(`✅ AUTO RESET DATA SETIAP HARI BARU`);
-  console.log(`✅ SNAPSHOT HISTORI DI DATABASE`);
-  console.log(`✅ Backup SQLite harian dengan retensi ${DATABASE_BACKUP_RETENTION} file`);
-  console.log(`✅ Laporan berdasarkan tanggal`);
-  console.log(`✅ Backup dan History System`);
-  console.log(`- Password hashing with bcrypt`);
-  console.log(`✅ Unique user ID management`);
-  console.log(`✅ Tanggal operasional konsisten dengan timezone WIB`);
-  console.log(`✅ Reset data operator setiap ganti hari`);
-  console.log(`✅ Daily backup dan auto-sync tanggal`);
-  console.log(`=================================`);
-  console.log(`🌍 Timezone: Indonesia (WIB - UTC+7)`);
-  console.log(`📅 Tanggal Hari Ini: ${getToday()}`);
-  console.log(`- Bootstrap credentials: ${bootstrapCredentialsPath}`);
-  console.log(`=================================`);
+    logger.info(`Server berjalan di http://localhost:${port}`);
   });
 }
 

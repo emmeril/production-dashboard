@@ -1992,6 +1992,10 @@ function dashboard() {
             }[type] || type || '-';
         },
 
+        displayBackupFilename(filename) {
+            return String(filename || '-').replace(/\.sqlite$/i, '');
+        },
+
         formatFileSize(bytes) {
             const size = Number(bytes) || 0;
             if (size < 1024) return `${size} B`;

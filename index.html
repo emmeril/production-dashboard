@@ -1663,11 +1663,11 @@
                             </div>
                         </div>
                         <div class="maintenance-health-card">
-                            <div class="maintenance-health-icon bg-slate-100 text-slate-700"><i class="fa-solid fa-hard-drive"></i></div>
+                            <div class="maintenance-health-icon bg-red-50 text-red-700" title="Oracle Database Express Edition"><i class="fa-brands fa-oracle"></i></div>
                             <div>
                                 <p class="maintenance-label">Ukuran Data Aktif</p>
                                 <p class="maintenance-value" x-text="maintenanceStatus ? formatFileSize(maintenanceStatus.dataSize) : '-' "></p>
-                                <p class="maintenance-meta" x-text="maintenanceStatus?.today || 'Tanggal operasional -'"></p>
+                                <p class="maintenance-meta">Oracle Database Express Edition</p>
                             </div>
                         </div>
                     </div>
@@ -1725,7 +1725,7 @@
                                 <tbody class="bg-white divide-y divide-gray-200">
                                     <template x-for="backup in paginatedBackupHistory" :key="backup.filename">
                                         <tr>
-                                            <td class="px-4 py-3 text-sm font-medium text-gray-900 whitespace-nowrap" x-text="backup.filename"></td>
+                                            <td class="px-4 py-3 text-sm font-medium text-gray-900 whitespace-nowrap" x-text="displayBackupFilename(backup.filename)"></td>
                                             <td class="px-4 py-3 text-sm text-gray-600 whitespace-nowrap" x-text="backup.displayDate"></td>
                                             <td class="px-4 py-3 text-sm whitespace-nowrap"><span class="inline-flex px-2 py-1 text-xs rounded-full" :class="backup.type === 'pre_restore' ? 'bg-orange-100 text-orange-800' : (backup.type === 'pre_reset' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800')" x-text="backupTypeLabel(backup.type)"></span></td>
                                             <td class="px-4 py-3 text-sm text-gray-600 whitespace-nowrap"><span x-text="formatFileSize(backup.size)"></span><span class="text-gray-400 mx-1">·</span><span x-text="formatDateTime(backup.created)"></span></td>
@@ -2135,7 +2135,7 @@
 	                        </div>
 
 	                        <div class="restore-backup-summary mt-5">
-	                            <div><span>File backup</span><strong x-text="restoreModal.backup?.filename || '-' "></strong></div>
+	                            <div><span>File backup</span><strong x-text="displayBackupFilename(restoreModal.backup?.filename)"></strong></div>
 	                            <div><span>Tanggal data</span><strong x-text="restoreModal.backup?.displayDate || '-' "></strong></div>
 	                            <div><span>Ukuran</span><strong x-text="formatFileSize(restoreModal.backup?.size)"></strong></div>
 	                        </div>

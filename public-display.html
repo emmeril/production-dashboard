@@ -5,6 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DISPLAY LINE</title>
     <style>
+        :root {
+          --display-background: #0b1220;
+          --table-header: #1e293b;
+          --table-border: #334155;
+          --table-text: #e5e7eb;
+          --table-muted: #cbd5e1;
+          --table-active: #f59e0b;
+        }
+
         @font-face {
           font-family: 'Noto IKEA Latin';
           src: url('fonts/NotoIKEA.woff2') format('woff2'),
@@ -16,8 +25,10 @@
           padding: 0;
 	          margin-left: var(--display-margin-left, 30px);
 	          margin-top: var(--display-margin-top, 12px);
-          background-color: #111;
-          color: #fff;
+          background-color: var(--display-background);
+          background-image: radial-gradient(circle at 15% 0%, rgba(30, 64, 175, 0.2), transparent 42%),
+                            radial-gradient(circle at 90% 100%, rgba(14, 116, 144, 0.14), transparent 38%);
+          color: var(--table-text);
           font-family: 'Noto IKEA Latin', Arial, Helvetica, sans-serif;
 	          font-size: var(--display-body-font-size, 18px);
           text-align: center;
@@ -31,35 +42,42 @@
         .main-table {
           width: 100%;
           border-collapse: collapse;
+          background: linear-gradient(135deg, rgba(30, 41, 59, 0.98) 0%, rgba(15, 23, 42, 0.98) 52%, rgba(8, 47, 73, 0.96) 100%);
         }
 
         .main-table td,
         .main-table th {
           padding: 1px;
-          border: 1px solid #fff;
+          border: 1px solid var(--table-border);
+          background: var(--cell-gradient, linear-gradient(135deg, #1e293b 0%, #111827 58%, #123047 100%));
           text-align: center;
           vertical-align: middle;
 	          font-size: var(--display-cell-font-size, 16px);
-          color: #FFEB3B;
+          color: var(--table-text);
           word-wrap: break-word;
-          font-weight: bold;
+          font-weight: 700;
+          letter-spacing: 0.02em;
         }
 
         .main-table th {
-          background-color: #222;
-          color: #f1f1f1;
+          background: linear-gradient(135deg, #26354b 0%, var(--table-header) 58%, #153149 100%);
+          color: #f8fafc;
+          letter-spacing: 0.05em;
         }
 
         .main-table tr:nth-child(even) {
-          background-color: #1c1c1c;
+          --cell-gradient: linear-gradient(135deg, #243249 0%, #162033 52%, #12354c 100%);
         }
 
         .main-table tr:nth-child(odd) {
-          background-color: #181818;
+          --cell-gradient: linear-gradient(135deg, #1e293b 0%, #111827 52%, #0e3146 100%);
         }
 
         .main-table .target4 { color: white; }
-        .main-table .target4b { background-color: yellow; color: black; }
+        .main-table .target4b {
+          background: linear-gradient(135deg, #fff7ae 0%, #facc15 55%, #e29b08 100%);
+          color: black;
+        }
 
         .main-table .outputisi,
         .main-table .outputisired {
@@ -77,15 +95,20 @@
           color: black;
         }
 
-        .main-table .outday { background-color: #fff; }
-        .main-table .outday1 { background-color: #FFD8D8; }
+        .main-table .outday {
+          background: linear-gradient(135deg, #f8fafc 0%, #dbe4ef 52%, #aebed0 100%);
+        }
+
+        .main-table .outday1 {
+          background: linear-gradient(135deg, #ffe4e6 0%, #fda4af 55%, #e8798a 100%);
+        }
 
         .main-table .perday {
 	          font-size: var(--display-percent-font-size, 40px);
           font-weight: 900;
-          color: navy;
-          background-color: #add8e6;
-          border: 1px solid black;
+          color: #172554;
+          background: linear-gradient(135deg, #e0f2fe 0%, #93c5fd 55%, #60a5fa 100%);
+          border: 1px solid #64748b;
         }
 
         .main-table .isin,
@@ -96,23 +119,23 @@
         }
 
         .main-table .isin {
-          background-color: white;
-          color: black;
+          background: linear-gradient(135deg, #f8fafc 0%, #dbe4ef 52%, #aebed0 100%);
+          color: #0f172a;
         }
 
         .main-table .isi {
-          background-color: yellow;
-          color: black;
+          background: linear-gradient(135deg, #fef9c3 0%, #fde047 55%, #eab308 100%);
+          color: #422006;
         }
 
         .main-table .isie {
-          background-color: #EFC4CA;
+          background: linear-gradient(135deg, #ffe4e6 0%, #fda4af 55%, #e8798a 100%);
         }
 
         .main-table .bawah,
         .main-table .bawah1 {
           font-weight: bold;
-          color: white;
+          color: var(--table-muted);
         }
 
         .main-table .bawah { font-size: 1.8em; }
@@ -125,6 +148,9 @@
           border-collapse: collapse;
           overflow: hidden;
           margin-top: 10px;
+          border-radius: 24px;
+          background: linear-gradient(135deg, #1e293b 0%, #0f172a 55%, #0c3347 100%);
+          box-shadow: 0 18px 45px rgba(2, 6, 23, 0.45);
         }
 
 	        .date {
@@ -143,23 +169,25 @@
         .table-defect {
             width: 100%;
             border-collapse: collapse;
+            clip-path: inset(0 round 12px);
         }
 
         .histor th,
         .table-defect th {
-            border: 1px solid #666;
-            background: #222;
-            color: #fff;
+            border: 1px solid var(--table-border);
+            background: linear-gradient(135deg, #26354b 0%, var(--table-header) 62%, #153149 100%);
+            color: #f8fafc;
             padding: 1px;
 	            font-size: var(--display-side-font-size, 14px);
         }
 
         .histor td,
         .table-defect td {
-            border: 1px solid #666;
+            border: 1px solid var(--table-border);
             padding: 4px;
 	            font-size: var(--display-side-font-size, 14px);
-            font-weight: 900;
+            font-weight: 700;
+            color: var(--table-text);
         }
 
 	        .histor .hour-cell {
@@ -168,8 +196,8 @@
 	        }
 
         .histor .hour-active {
-            background: #ff0 !important;
-            color: #000 !important;
+            background: linear-gradient(135deg, #fde68a 0%, var(--table-active) 58%, #d97706 100%) !important;
+            color: #1c1917 !important;
         }
 
 	        .histor .output-ok {

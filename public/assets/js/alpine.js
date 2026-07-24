@@ -1988,7 +1988,7 @@ function dashboard() {
                 archive: 'Snapshot arsip',
                 pre_reset: 'Sebelum reset',
                 pre_restore: 'Pengaman restore',
-                database: 'Backup SQLite'
+                database: 'Backup Database'
             }[type] || type || '-';
         },
 

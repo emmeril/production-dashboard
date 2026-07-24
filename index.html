@@ -1663,7 +1663,11 @@
                             </div>
                         </div>
                         <div class="maintenance-health-card">
-                            <div class="maintenance-health-icon bg-red-50 text-red-700" title="Oracle Database Express Edition"><i class="fa-brands fa-oracle"></i></div>
+                            <div class="maintenance-health-icon bg-red-50 text-red-700" title="Oracle Database Express Edition">
+                                <svg class="h-5 w-7" viewBox="0 0 40 32" fill="currentColor" role="img" aria-label="Oracle">
+                                    <path fill-rule="evenodd" d="M10 6h20a10 10 0 0 1 0 20H10A10 10 0 0 1 10 6Zm0 5a5 5 0 0 0 0 10h20a5 5 0 0 0 0-10H10Z" clip-rule="evenodd"></path>
+                                </svg>
+                            </div>
                             <div>
                                 <p class="maintenance-label">Ukuran Data Aktif</p>
                                 <p class="maintenance-value" x-text="maintenanceStatus ? formatFileSize(maintenanceStatus.dataSize) : '-' "></p>
@@ -1707,7 +1711,7 @@
                                     <option value="archive">Snapshot arsip</option>
                                     <option value="pre_reset">Sebelum reset</option>
                                     <option value="pre_restore">Pengaman restore</option>
-                                    <option value="database">Backup SQLite</option>
+                                    <option value="database">Backup Database</option>
                                 </select>
                             </div>
                         </div>
@@ -1729,7 +1733,7 @@
                                             <td class="px-4 py-3 text-sm text-gray-600 whitespace-nowrap" x-text="backup.displayDate"></td>
                                             <td class="px-4 py-3 text-sm whitespace-nowrap"><span class="inline-flex px-2 py-1 text-xs rounded-full" :class="backup.type === 'pre_restore' ? 'bg-orange-100 text-orange-800' : (backup.type === 'pre_reset' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800')" x-text="backupTypeLabel(backup.type)"></span></td>
                                             <td class="px-4 py-3 text-sm text-gray-600 whitespace-nowrap"><span x-text="formatFileSize(backup.size)"></span><span class="text-gray-400 mx-1">·</span><span x-text="formatDateTime(backup.created)"></span></td>
-                                            <td class="px-4 py-3 text-sm text-right whitespace-nowrap"><div class="table-actions justify-end"><a :href="backup.storage === 'database' ? `/api/download-database-backup/${encodeURIComponent(backup.filename)}` : `/api/download-backup/${encodeURIComponent(backup.filename)}`" class="btn-action btn-action-neutral"><i class="fa-solid fa-download"></i><span x-text="backup.storage === 'database' ? 'SQLite' : 'JSON'"></span></a><a x-show="backup.exportable" :href="`/api/export-backup/${encodeURIComponent(backup.filename)}`" class="btn-action btn-action-primary"><i class="fa-solid fa-file-excel"></i>Excel</a><button x-show="backup.restorable" @click="openRestoreModal(backup)" :disabled="maintenanceAction" class="btn-action btn-action-danger"><i class="fa-solid fa-arrow-rotate-left"></i>Restore</button></div></td>
+                                            <td class="px-4 py-3 text-sm text-right whitespace-nowrap"><div class="table-actions justify-end"><a :href="backup.storage === 'database' ? `/api/download-database-backup/${encodeURIComponent(backup.filename)}` : `/api/download-backup/${encodeURIComponent(backup.filename)}`" class="btn-action btn-action-neutral"><i class="fa-solid fa-download"></i><span x-text="backup.storage === 'database' ? 'Database' : 'JSON'"></span></a><a x-show="backup.exportable" :href="`/api/export-backup/${encodeURIComponent(backup.filename)}`" class="btn-action btn-action-primary"><i class="fa-solid fa-file-excel"></i>Excel</a><button x-show="backup.restorable" @click="openRestoreModal(backup)" :disabled="maintenanceAction" class="btn-action btn-action-danger"><i class="fa-solid fa-arrow-rotate-left"></i>Restore</button></div></td>
                                         </tr>
                                     </template>
                                     <tr x-show="!paginatedBackupHistory.length"><td colspan="5" class="px-4 py-10 text-center text-sm text-gray-500"><i class="fa-solid fa-box-open text-2xl mb-2 block text-gray-300"></i>Belum ada backup yang sesuai filter.</td></tr>

@@ -321,7 +321,7 @@ test('maintenance backup history supports type filtering and pagination', () => 
   assert.equal(dashboard.totalBackupPages, 1);
   assert.equal(dashboard.paginatedBackupHistory[0].filename, 'data_2026-07-22_2_pre_restore_a.json');
   assert.equal(dashboard.formatFileSize(2048), '2.0 KB');
-  assert.equal(dashboard.backupTypeLabel('database'), 'Backup SQLite');
+  assert.equal(dashboard.backupTypeLabel('database'), 'Backup Database');
   assert.equal(
     dashboard.displayBackupFilename('production-dashboard_2026-07-22_manual_1_abcd1234.sqlite'),
     'production-dashboard_2026-07-22_manual_1_abcd1234'

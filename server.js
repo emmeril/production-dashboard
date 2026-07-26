@@ -94,6 +94,7 @@ let defectConfigCache = { defectTypes: [], defectAreas: [] };
 let publicDisplaySettingsCache = {};
 let workScheduleSettingsCache = {};
 const productionSnapshotCache = new Map();
+const productionImportPreviewCache = new Map();
 let databaseInitialized = false;
 const appDataWriteQueues = new Map();
 let snapshotWriteQueue = Promise.resolve();
@@ -102,6 +103,8 @@ const DATABASE_BACKUP_RETENTION_DAYS = Math.max(
   Number(process.env.DATABASE_BACKUP_RETENTION_DAYS || process.env.DATABASE_BACKUP_RETENTION) || 7
 );
 const DATABASE_BACKUP_CLEANUP_INTERVAL_MS = 60 * 60 * 1000;
+const PRODUCTION_IMPORT_PREVIEW_TTL_MS = 30 * 60 * 1000;
+const PRODUCTION_IMPORT_MAX_ROWS = 2000;
 let lastScheduledDatabaseBackupDate = '';
 let databaseBackupCleanupRunning = false;
 
@@ -310,6 +313,289 @@ function createHourlyData(target) {
   });
 
   return hourlyData;
+}
+
+function distributeImportTotal(total) {
+  const value = Math.max(0, parseInt(total) || 0);
+  const base = Math.floor(value / PRODUCTION_HOURS.length);
+  const remainder = value % PRODUCTION_HOURS.length;
+  return PRODUCTION_HOURS.map((hour, index) => ({
+    hour,
+    value: base + (index < remainder ? 1 : 0)
+  }));
+}
+
+function normalizeProductionImportDate(value) {
+  let parts = null;
+
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    parts = {
+      year: value.getUTCFullYear(),
+      month: value.getUTCMonth() + 1,
+      day: value.getUTCDate()
+    };
+  } else if (typeof value === 'number' && Number.isFinite(value)) {
+    const parsed = XLSX.SSF.parse_date_code(value);
+    if (parsed) parts = { year: parsed.y, month: parsed.m, day: parsed.d };
+  } else {
+    const text = String(value || '').trim();
+    let match = text.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+    if (match) {
+      parts = { year: Number(match[1]), month: Number(match[2]), day: Number(match[3]) };
+    } else {
+      match = text.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
+      if (match) parts = { year: Number(match[3]), month: Number(match[2]), day: Number(match[1]) };
+    }
+  }
+
+  if (!parts) return '';
+  const normalized = `${String(parts.year).padStart(4, '0')}-${String(parts.month).padStart(2, '0')}-${String(parts.day).padStart(2, '0')}`;
+  const candidate = new Date(`${normalized}T00:00:00Z`);
+  if (Number.isNaN(candidate.getTime())
+    || candidate.getUTCFullYear() !== parts.year
+    || candidate.getUTCMonth() + 1 !== parts.month
+    || candidate.getUTCDate() !== parts.day) return '';
+  return normalized;
+}
+
+function normalizeProductionImportHeader(value) {
+  return String(value || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+const PRODUCTION_IMPORT_HEADER_ALIASES = {
+  date: ['tanggal', 'date'],
+  line: ['line', 'linename', 'namaline'],
+  labelWeek: ['labelweek', 'label', 'week'],
+  model: ['model', 'namamodel'],
+  target: ['target'],
+  output: ['output', 'hasilproduksi', 'totaloutput'],
+  qcChecked: ['qcdiperiksa', 'qcchecked', 'qcchecking', 'totalqc'],
+  defect: ['totaldefect', 'defect', 'actualdefect'],
+  criticalDefect: ['defectcritical', 'criticaldefect'],
+  majorDefect: ['defectmajor', 'majordefect'],
+  minorDefect: ['defectminor', 'minordefect'],
+  notes: ['catatan', 'notes', 'keterangan']
+};
+
+function findProductionImportHeaderIndexes(headerRow) {
+  const normalizedHeaders = headerRow.map(normalizeProductionImportHeader);
+  return Object.fromEntries(Object.entries(PRODUCTION_IMPORT_HEADER_ALIASES).map(([field, aliases]) => [
+    field,
+    normalizedHeaders.findIndex(header => aliases.includes(header))
+  ]));
+}
+
+function parseProductionImportInteger(value, label, errors, options = {}) {
+  const blank = value === undefined || value === null || String(value).trim() === '';
+  if (blank && options.optional) return null;
+  if (blank) {
+    errors.push(`${label} wajib diisi`);
+    return 0;
+  }
+
+  const number = Number(value);
+  if (!Number.isInteger(number) || number < 0) {
+    errors.push(`${label} harus berupa bilangan bulat tidak negatif`);
+    return 0;
+  }
+  return number;
+}
+
+function normalizeProductionImportText(value, label, errors, options = {}) {
+  const text = String(value || '').trim();
+  if (!text && options.required) errors.push(`${label} wajib diisi`);
+  if (text.length > (options.maxLength || 300)) errors.push(`${label} terlalu panjang`);
+  return text;
+}
+
+function productionImportIdentity(row) {
+  return [row.date, row.line, row.labelWeek, row.model]
+    .map(value => String(value || '').trim().toLowerCase())
+    .join('|');
+}
+
+function findExistingProductionImportModel(snapshot, row) {
+  const models = snapshot?.lines?.[row.line]?.models || {};
+  const rowLabel = String(row.labelWeek || '').trim().toLowerCase();
+  const rowModel = String(row.model || '').trim().toLowerCase();
+  return Object.entries(models).filter(([, model]) => {
+    const modelName = String(model?.model || '').trim().toLowerCase();
+    const modelLabel = String(model?.labelWeek || '').trim().toLowerCase();
+    return modelName === rowModel && modelLabel === rowLabel;
+  });
+}
+
+function parseProductionImportRows(sheetRows, options = {}) {
+  const today = options.today || getToday();
+  const getSnapshot = options.getSnapshot || readProductionSnapshotForDate;
+  if (!Array.isArray(sheetRows) || sheetRows.length === 0) {
+    return { rows: [], summary: { total: 0, valid: 0, invalid: 0, warnings: 0, newRecords: 0, replacements: 0, dates: 0 } };
+  }
+
+  const headerIndexes = findProductionImportHeaderIndexes(sheetRows[0] || []);
+  const requiredHeaders = ['date', 'line', 'model', 'target', 'output', 'qcChecked', 'defect'];
+  const missingHeaders = requiredHeaders.filter(field => headerIndexes[field] < 0);
+  if (missingHeaders.length > 0) {
+    const labels = {
+      date: 'Tanggal', line: 'Line', model: 'Model', target: 'Target', output: 'Output',
+      qcChecked: 'QC Diperiksa', defect: 'Total Defect'
+    };
+    const error = `Kolom wajib tidak ditemukan: ${missingHeaders.map(field => labels[field]).join(', ')}`;
+    return {
+      rows: [{ rowNumber: 1, action: 'invalid', errors: [error], warnings: [] }],
+      summary: { total: 0, valid: 0, invalid: 1, warnings: 0, newRecords: 0, replacements: 0, dates: 0 }
+    };
+  }
+
+  const dataRows = sheetRows.slice(1)
+    .map((cells, index) => ({ cells, rowNumber: index + 2 }))
+    .filter(({ cells }) => Array.isArray(cells) && cells.some(value => String(value ?? '').trim() !== ''));
+
+  if (dataRows.length > PRODUCTION_IMPORT_MAX_ROWS) {
+    return {
+      rows: [{ rowNumber: 1, action: 'invalid', errors: [`Maksimal ${PRODUCTION_IMPORT_MAX_ROWS} baris data per import`], warnings: [] }],
+      summary: { total: dataRows.length, valid: 0, invalid: dataRows.length, warnings: 0, newRecords: 0, replacements: 0, dates: 0 }
+    };
+  }
+
+  const rows = dataRows.map(({ cells, rowNumber }) => {
+    const errors = [];
+    const warnings = [];
+    const value = field => headerIndexes[field] >= 0 ? cells[headerIndexes[field]] : '';
+    const date = normalizeProductionImportDate(value('date'));
+    if (!date) errors.push('Tanggal tidak valid. Gunakan format YYYY-MM-DD');
+    else if (date >= today) errors.push(`Tanggal harus sebelum tanggal operasional hari ini (${today})`);
+
+    const row = {
+      rowNumber,
+      date,
+      line: normalizeProductionImportText(value('line'), 'Line', errors, { required: true, maxLength: 100 }),
+      labelWeek: normalizeProductionImportText(value('labelWeek'), 'Label/Week', errors, { maxLength: 150 }),
+      model: normalizeProductionImportText(value('model'), 'Model', errors, { required: true, maxLength: 300 }),
+      target: parseProductionImportInteger(value('target'), 'Target', errors),
+      output: parseProductionImportInteger(value('output'), 'Output', errors),
+      qcChecked: parseProductionImportInteger(value('qcChecked'), 'QC Diperiksa', errors),
+      defect: parseProductionImportInteger(value('defect'), 'Total Defect', errors),
+      criticalDefect: parseProductionImportInteger(value('criticalDefect'), 'Defect Critical', errors, { optional: true }),
+      majorDefect: parseProductionImportInteger(value('majorDefect'), 'Defect Major', errors, { optional: true }),
+      minorDefect: parseProductionImportInteger(value('minorDefect'), 'Defect Minor', errors, { optional: true }),
+      notes: normalizeProductionImportText(value('notes'), 'Catatan', errors, { maxLength: 500 }),
+      action: 'new',
+      existingModelId: '',
+      errors,
+      warnings
+    };
+
+    if (row.defect > row.qcChecked) errors.push('Total Defect tidak boleh lebih besar dari QC Diperiksa');
+    const severityValues = [row.criticalDefect, row.majorDefect, row.minorDefect];
+    if (severityValues.some(item => item !== null)) {
+      const severityTotal = severityValues.reduce((total, item) => total + (item || 0), 0);
+      if (severityTotal !== row.defect) errors.push('Jumlah Defect Critical, Major, dan Minor harus sama dengan Total Defect');
+      row.criticalDefect = row.criticalDefect || 0;
+      row.majorDefect = row.majorDefect || 0;
+      row.minorDefect = row.minorDefect || 0;
+    } else {
+      row.criticalDefect = 0;
+      row.majorDefect = 0;
+      row.minorDefect = row.defect;
+      if (row.defect > 0) warnings.push('Rincian severity kosong; seluruh defect akan dicatat sebagai Minor');
+    }
+    return row;
+  });
+
+  const rowsByIdentity = new Map();
+  rows.forEach(row => {
+    if (!row.date || !row.line || !row.model) return;
+    const key = productionImportIdentity(row);
+    const duplicates = rowsByIdentity.get(key) || [];
+    duplicates.push(row);
+    rowsByIdentity.set(key, duplicates);
+  });
+  rowsByIdentity.forEach(duplicates => {
+    if (duplicates.length < 2) return;
+    duplicates.forEach(row => row.errors.push('Data tanggal, line, label/week, dan model terduplikasi di file'));
+  });
+
+  const snapshots = new Map();
+  rows.forEach(row => {
+    if (row.errors.length > 0 || !row.date) {
+      row.action = 'invalid';
+      return;
+    }
+    if (!snapshots.has(row.date)) snapshots.set(row.date, getSnapshot(row.date));
+    const matches = findExistingProductionImportModel(snapshots.get(row.date), row);
+    if (matches.length > 1) {
+      row.errors.push('Ada lebih dari satu data existing dengan identitas yang sama; rapikan data sebelum import');
+      row.action = 'invalid';
+    } else if (matches.length === 1) {
+      row.action = 'replace';
+      row.existingModelId = matches[0][0];
+      row.warnings.push('Data existing akan diganti setelah konfirmasi');
+    }
+  });
+
+  const summary = {
+    total: rows.length,
+    valid: rows.filter(row => row.errors.length === 0).length,
+    invalid: rows.filter(row => row.errors.length > 0).length,
+    warnings: rows.reduce((total, row) => total + row.warnings.length, 0),
+    newRecords: rows.filter(row => row.errors.length === 0 && row.action === 'new').length,
+    replacements: rows.filter(row => row.errors.length === 0 && row.action === 'replace').length,
+    dates: new Set(rows.filter(row => row.errors.length === 0).map(row => row.date)).size
+  };
+  return { rows, summary };
+}
+
+function parseProductionImportWorkbook(buffer, options = {}) {
+  const workbook = XLSX.read(buffer, { type: 'buffer', cellDates: true });
+  const sheetName = workbook.SheetNames.find(name => normalizeProductionImportHeader(name) === 'dataproduksi')
+    || workbook.SheetNames[0];
+  if (!sheetName) throw new Error('Workbook tidak memiliki worksheet');
+  const sheetRows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1, defval: '', raw: true });
+  return parseProductionImportRows(sheetRows, options);
+}
+
+function buildImportedProductionModel(row, modelId) {
+  const hourlyData = createHourlyData(row.target);
+  const outputs = distributeImportTotal(row.output);
+  const qcChecked = distributeImportTotal(row.qcChecked);
+  const defects = distributeImportTotal(row.defect);
+  const productiveIndexes = hourlyData
+    .map((hour, index) => ({ hour, index }))
+    .filter(item => item.hour.hour !== '11:00 - 13:00');
+
+  productiveIndexes.forEach((item, productionIndex) => {
+    item.hour.output = outputs[productionIndex].value;
+    item.hour.qcChecked = qcChecked[productionIndex].value;
+    item.hour.defect = defects[productionIndex].value;
+    item.hour.selisih = item.hour.output - item.hour.targetManual;
+  });
+
+  const firstProductionHour = productiveIndexes[0]?.hour;
+  if (firstProductionHour) {
+    firstProductionHour.defectDetails = [
+      { type: 'Import historis - Critical', area: 'Data lama', quantity: row.criticalDefect, severity: 'critical' },
+      { type: 'Import historis - Major', area: 'Data lama', quantity: row.majorDefect, severity: 'major' },
+      { type: 'Import historis - Minor', area: 'Data lama', quantity: row.minorDefect, severity: 'minor' }
+    ].filter(detail => detail.quantity > 0);
+  }
+
+  return {
+    id: modelId,
+    labelWeek: row.labelWeek,
+    model: row.model,
+    date: row.date,
+    target: row.target,
+    targetPerHour: Math.round(row.target / PRODUCTION_HOURS.length),
+    outputDay: row.output,
+    qcChecking: row.qcChecked,
+    actualDefect: row.defect,
+    defectRatePercentage: row.qcChecked > 0 ? parseFloat(((row.defect / row.qcChecked) * 100).toFixed(2)) : 0,
+    hourly_data: hourlyData,
+    operators: [],
+    notes: row.notes,
+    importedHistoricalData: true
+  };
 }
 
 function applyDailyTarget(model, target) {
@@ -545,9 +831,11 @@ function calculateDefectSeverityBreakdown(model, config = readDefectConfig()) {
   const breakdown = buildEmptyDefectBreakdown(qcChecking);
   const severityMaps = buildDefectSeverityMaps(config);
 
-  const addDefect = (type, area, quantity = 1) => {
+  const addDefect = (type, area, quantity = 1, explicitSeverity = '') => {
     const count = Math.max(parseInt(quantity) || 1, 0);
-    const severity = getDefectSeverity(type, severityMaps);
+    const severity = ['minor', 'major', 'critical'].includes(explicitSeverity)
+      ? explicitSeverity
+      : getDefectSeverity(type, severityMaps);
 
     breakdown.all.count += count;
     breakdown[severity].count += count;
@@ -560,7 +848,7 @@ function calculateDefectSeverityBreakdown(model, config = readDefectConfig()) {
   } else {
     (model.hourly_data || []).forEach(hour => {
       (hour.defectDetails || []).forEach(detail => {
-        addDefect(detail.type, detail.area, detail.quantity);
+        addDefect(detail.type, detail.area, detail.quantity, detail.severity);
       });
     });
   }
@@ -603,7 +891,8 @@ function buildPublicModelResponse(model) {
         ? hour.defectDetails.map(detail => ({
           type: detail?.type || '',
           area: detail?.area || '',
-          quantity: Number(detail?.quantity) || 0
+          quantity: Number(detail?.quantity) || 0,
+          severity: normalizeDefectSeverity(detail?.severity)
         }))
         : []
     })),
@@ -1799,6 +2088,201 @@ app.use('/api', (req, res, next) => {
   if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) return next();
   if (['/login', '/logout'].includes(req.path)) return next();
   return requireWorkScheduleForWrite(req, res, next);
+});
+
+function productionImportTemplateWorkbook() {
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = 'Production Dashboard System';
+  workbook.created = new Date();
+
+  const sheet = workbook.addWorksheet('Data Produksi');
+  const headers = [
+    'Tanggal', 'Line', 'Label/Week', 'Model', 'Target', 'Output', 'QC Diperiksa',
+    'Total Defect', 'Defect Critical', 'Defect Major', 'Defect Minor', 'Catatan'
+  ];
+  sheet.addRow(headers);
+  sheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFF' } };
+  sheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '1F4E78' } };
+  sheet.getRow(1).alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+  sheet.getRow(1).height = 30;
+  [14, 18, 18, 36, 14, 14, 16, 16, 18, 16, 16, 32].forEach((width, index) => {
+    sheet.getColumn(index + 1).width = width;
+  });
+  sheet.getColumn(1).numFmt = 'yyyy-mm-dd';
+  [5, 6, 7, 8, 9, 10, 11].forEach(column => {
+    sheet.getColumn(column).numFmt = '0';
+  });
+  sheet.autoFilter = { from: 'A1', to: 'L1' };
+  sheet.views = [{ state: 'frozen', ySplit: 1 }];
+
+  const instructions = workbook.addWorksheet('Petunjuk');
+  instructions.getColumn(1).width = 24;
+  instructions.getColumn(2).width = 100;
+  instructions.addRow(['Kolom', 'Keterangan']);
+  instructions.getRow(1).font = { bold: true, color: { argb: 'FFFFFF' } };
+  instructions.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '70AD47' } };
+  [
+    ['Tanggal', 'Wajib. Gunakan format YYYY-MM-DD dan hanya tanggal sebelum hari ini.'],
+    ['Line', 'Wajib. Nama line produksi.'],
+    ['Label/Week', 'Opsional. Isi label atau minggu produksi jika tersedia.'],
+    ['Model', 'Wajib. Nama model produksi.'],
+    ['Target, Output, QC Diperiksa, Total Defect', 'Wajib, bilangan bulat tidak negatif. Total Defect tidak boleh lebih besar dari QC Diperiksa.'],
+    ['Defect Critical/Major/Minor', 'Opsional. Jika diisi, jumlah ketiganya harus sama dengan Total Defect. Jika kosong, defect otomatis dianggap Minor.'],
+    ['Catatan', 'Opsional. Keterangan sumber data lama.'],
+    ['Alur import', 'Isi sheet Data Produksi, simpan sebagai .xlsx, unggah ke aplikasi, periksa hasil review, lalu ketik IMPORT untuk konfirmasi.']
+  ].forEach(row => instructions.addRow(row));
+  instructions.eachRow(row => {
+    row.alignment = { vertical: 'top', wrapText: true };
+    row.height = 30;
+  });
+
+  const example = workbook.addWorksheet('Contoh');
+  const exampleDate = new Date(`${getToday()}T00:00:00Z`);
+  exampleDate.setUTCDate(exampleDate.getUTCDate() - 1);
+  example.addRow(headers);
+  example.addRow([exampleDate.toISOString().slice(0, 10), 'F1-5A', 'AP/14', 'Contoh Model', 180, 165, 40, 2, 0, 1, 1, 'Hapus sheet ini jika tidak diperlukan']);
+  example.getRow(1).font = { bold: true, color: { argb: 'FFFFFF' } };
+  example.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'A5A5A5' } };
+  example.columns = headers.map((header, index) => ({ header, width: [14, 18, 18, 36, 14, 14, 16, 16, 18, 16, 16, 32][index] }));
+  example.getRow(3).values = ['Jangan impor baris contoh ini', '', '', '', '', '', '', '', '', '', '', ''];
+  example.mergeCells('A3:L3');
+  example.getCell('A3').font = { italic: true, color: { argb: 'C00000' } };
+  return workbook;
+}
+
+function cleanExpiredProductionImportPreviews() {
+  const now = Date.now();
+  productionImportPreviewCache.forEach((preview, token) => {
+    if (now - preview.createdAt > PRODUCTION_IMPORT_PREVIEW_TTL_MS) productionImportPreviewCache.delete(token);
+  });
+}
+
+app.get('/api/production-import/template', requireLogin, requireAdmin, async (req, res) => {
+  try {
+    const workbook = productionImportTemplateWorkbook();
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename="Template_Import_Data_Produksi.xlsx"');
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (error) {
+    logger.error('Gagal membuat template import produksi', error);
+    res.status(500).json({ error: 'Gagal membuat template Excel' });
+  }
+});
+
+app.post('/api/production-import/preview', requireLogin, requireAdmin,
+  express.raw({ type: ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel', 'application/octet-stream'], limit: '10mb' }),
+  async (req, res) => {
+    cleanExpiredProductionImportPreviews();
+    if (!Buffer.isBuffer(req.body) || req.body.length === 0) {
+      return res.status(400).json({ error: 'File Excel wajib diunggah' });
+    }
+
+    try {
+      const parsed = parseProductionImportWorkbook(req.body);
+      if (parsed.summary.total === 0) {
+        return res.status(400).json({ error: 'Sheet Data Produksi belum berisi data' });
+      }
+      const token = parsed.summary.invalid === 0 && parsed.summary.total > 0
+        ? crypto.randomBytes(24).toString('hex')
+        : '';
+      if (token) {
+        const snapshotHashes = {};
+        parsed.rows.filter(row => row.errors.length === 0).forEach(row => {
+          if (Object.prototype.hasOwnProperty.call(snapshotHashes, row.date)) return;
+          snapshotHashes[row.date] = getLatestSnapshotForDate(row.date)?.contentHash || '';
+        });
+        productionImportPreviewCache.set(token, {
+          token,
+          userId: getAuthenticatedSessionUser(req).id,
+          createdAt: Date.now(),
+          rows: parsed.rows.filter(row => row.errors.length === 0),
+          summary: parsed.summary,
+          snapshotHashes,
+          filename: String(req.headers['x-file-name'] || 'import.xlsx').slice(0, 150)
+        });
+      }
+      return res.json({
+        token,
+        rows: parsed.rows,
+        summary: parsed.summary,
+        canImport: Boolean(token)
+      });
+    } catch (error) {
+      logger.warn(`File import produksi tidak dapat dibaca: ${error.message}`);
+      return res.status(400).json({ error: 'File Excel tidak valid atau rusak' });
+    }
+  });
+
+app.post('/api/production-import/confirm', requireLogin, requireAdmin, async (req, res) => {
+  cleanExpiredProductionImportPreviews();
+  const token = String(req.body?.token || '');
+  const preview = productionImportPreviewCache.get(token);
+  const user = getAuthenticatedSessionUser(req);
+  if (!preview || preview.userId !== user.id) {
+    return res.status(400).json({ error: 'Review import sudah kedaluwarsa. Unggah ulang file Excel.' });
+  }
+
+  for (const [date, expectedHash] of Object.entries(preview.snapshotHashes)) {
+    const currentHash = getLatestSnapshotForDate(date)?.contentHash || '';
+    if (currentHash !== expectedHash) {
+      productionImportPreviewCache.delete(token);
+      return res.status(409).json({ error: `Data tanggal ${date} berubah setelah review. Silakan lakukan review ulang.` });
+    }
+  }
+
+  try {
+    const snapshots = new Map();
+    preview.rows.forEach(row => {
+      if (!snapshots.has(row.date)) {
+        const source = readProductionSnapshotForDate(row.date);
+        snapshots.set(row.date, source ? JSON.parse(JSON.stringify(source)) : { lines: {}, activeLine: '' });
+      }
+    });
+
+    const safetyFiles = [];
+    snapshots.forEach((snapshot, date) => {
+      if (getLatestSnapshotForDate(date)) {
+        const filename = `data_${date}_${Date.now()}_pre_import_${crypto.randomBytes(4).toString('hex')}.json`;
+        storeProductionSnapshot(filename, date, 'pre_import', snapshot);
+        safetyFiles.push(filename);
+      }
+    });
+
+    let created = 0;
+    let replaced = 0;
+    preview.rows.forEach(row => {
+      const snapshot = snapshots.get(row.date);
+      snapshot.lines = snapshot.lines || {};
+      const line = ensureLineActiveModels(snapshot.lines[row.line])
+        || { models: {}, activeModels: [], activeModel: null };
+      line.models = line.models || {};
+      const modelId = row.existingModelId || generateModelId(line.models);
+      line.models[modelId] = buildImportedProductionModel(row, modelId);
+      line.activeModels = Array.from(new Set([...(line.activeModels || []), modelId]));
+      line.activeModel = line.activeModels[0] || modelId;
+      snapshot.lines[row.line] = line;
+      snapshot.activeLine = snapshot.activeLine || row.line;
+      if (row.action === 'replace') replaced += 1;
+      else created += 1;
+    });
+
+    snapshots.forEach((snapshot, date) => {
+      storeProductionSnapshot(`data_${date}.json`, date, 'daily', snapshot);
+    });
+    await flushPendingDatabaseWrites();
+    productionImportPreviewCache.delete(token);
+    return res.json({
+      message: `Import berhasil: ${created} data baru, ${replaced} data diperbarui`,
+      created,
+      replaced,
+      dates: snapshots.size,
+      safetyFiles
+    });
+  } catch (error) {
+    logger.error('Gagal mengonfirmasi import produksi', error);
+    return res.status(500).json({ error: 'Import gagal disimpan' });
+  }
 });
 
 // ENDPOINT UNTUK MENDAPATKAN DAFTAR BACKUP DATA
@@ -5230,6 +5714,9 @@ app.use((error, req, res, next) => {
   if (res.headersSent) return next(error);
 
   if (req.path.startsWith('/api/')) {
+    if (error?.status === 413 || error?.type === 'entity.too.large') {
+      return res.status(413).json({ error: 'File terlalu besar. Maksimal 10 MB.' });
+    }
     return res.status(500).json({ error: 'Internal server error' });
   }
 
@@ -5305,6 +5792,10 @@ module.exports = {
   isValidProductionSnapshot,
   isBlankInputValue,
   parseNonNegativeInteger,
+  parseProductionImportRows,
+  parseProductionImportWorkbook,
+  buildImportedProductionModel,
+  productionImportTemplateWorkbook,
   pruneDatabaseBackups,
   readProductionSnapshotForDate,
   recoverProductionSnapshotsFromDatabaseBackups,

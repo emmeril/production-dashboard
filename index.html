@@ -1187,7 +1187,128 @@
 	                    </div>
 	                </div>
 
-                <!-- User Management - Hanya untuk Admin -->
+	                <!-- Historical Production Import - Hanya untuk Admin -->
+	                <div x-show="currentPage === 'production-import' && currentUser.role === 'admin'" class="fade-in">
+	                    <div class="mb-6">
+	                        <h1 class="text-2xl font-bold text-gray-800 flex items-center"><i class="fa-solid fa-file-import text-emerald-600 mr-3"></i>Import Data Produksi Lama</h1>
+	                        <p class="text-gray-600">Masukkan data produksi manual sebelum aplikasi digunakan. Data baru disimpan setelah lolos review dan dikonfirmasi.</p>
+	                    </div>
+
+	                    <div class="grid grid-cols-1 xl:grid-cols-3 gap-5 mb-6">
+	                        <section class="xl:col-span-2 bg-white rounded-xl shadow card-shadow overflow-hidden">
+	                            <div class="px-5 py-4 border-b border-gray-200 bg-gradient-to-r from-emerald-50 to-white">
+	                                <h2 class="font-semibold text-gray-900"><i class="fa-solid fa-cloud-arrow-up text-emerald-600 mr-2"></i>1. Isi dan unggah Excel</h2>
+	                                <p class="mt-1 text-sm text-gray-500">Gunakan template agar nama dan urutan kolom terbaca dengan benar.</p>
+	                            </div>
+	                            <div class="p-5 space-y-4">
+	                                <a href="/api/production-import/template" class="inline-flex items-center px-4 py-2 rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-800 font-medium hover:bg-emerald-100">
+	                                    <i class="fa-solid fa-file-excel mr-2"></i>Unduh Template Excel
+	                                </a>
+	                                <label class="block rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 p-6 text-center cursor-pointer hover:border-emerald-400 hover:bg-emerald-50 transition-colors">
+	                                    <input x-ref="productionImportFile" type="file" accept=".xlsx,.xls" class="sr-only" @change="selectProductionImportFile($event)">
+	                                    <i class="fa-solid fa-table text-3xl text-emerald-600"></i>
+	                                    <span class="mt-2 block font-semibold text-gray-800" x-text="productionImport.fileName || 'Pilih file Excel yang sudah diisi'"></span>
+	                                    <span class="mt-1 block text-xs text-gray-500">Format .xlsx/.xls, maksimal 10 MB dan 2.000 baris</span>
+	                                </label>
+	                                <button type="button" @click="previewProductionImport()" :disabled="!productionImport.file || productionImport.loading" class="inline-flex items-center justify-center px-5 py-2.5 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
+	                                    <i class="fa-solid mr-2" :class="productionImport.loading ? 'fa-spinner fa-spin' : 'fa-magnifying-glass-chart'"></i>
+	                                    <span x-text="productionImport.loading ? 'Memeriksa data...' : 'Review Data Import'"></span>
+	                                </button>
+	                            </div>
+	                        </section>
+
+	                        <aside class="rounded-xl bg-slate-900 text-slate-100 p-5 shadow-lg">
+	                            <p class="text-xs font-bold uppercase tracking-widest text-emerald-300">Pengaman Import</p>
+	                            <h2 class="mt-2 text-xl font-bold">Belum ada data yang langsung masuk</h2>
+	                            <ol class="mt-4 space-y-3 text-sm text-slate-300">
+	                                <li><span class="inline-flex w-6 h-6 items-center justify-center rounded-full bg-emerald-500 text-slate-950 font-bold mr-2">1</span>Template diisi untuk tanggal sebelum hari ini.</li>
+	                                <li><span class="inline-flex w-6 h-6 items-center justify-center rounded-full bg-emerald-500 text-slate-950 font-bold mr-2">2</span>Sistem menampilkan error, peringatan, dan data yang akan diganti.</li>
+	                                <li><span class="inline-flex w-6 h-6 items-center justify-center rounded-full bg-emerald-500 text-slate-950 font-bold mr-2">3</span>Admin mengetik IMPORT untuk menyimpan hasil review.</li>
+	                            </ol>
+	                        </aside>
+	                    </div>
+
+	                    <section x-show="productionImport.summary" class="bg-white rounded-xl shadow card-shadow overflow-hidden mb-6">
+	                        <div class="px-5 py-4 border-b border-gray-200 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+	                            <div>
+	                                <h2 class="font-semibold text-gray-900"><i class="fa-solid fa-clipboard-check text-blue-600 mr-2"></i>2. Review Hasil Import</h2>
+	                                <p class="text-sm text-gray-500">Periksa seluruh baris. Import hanya dapat dilanjutkan jika tidak ada error.</p>
+	                            </div>
+	                            <div class="flex flex-wrap gap-2 text-xs font-semibold">
+	                                <span class="px-3 py-1.5 rounded-full bg-slate-100 text-slate-700">Total <b x-text="productionImport.summary?.total || 0"></b></span>
+	                                <span class="px-3 py-1.5 rounded-full bg-green-100 text-green-800">Baru <b x-text="productionImport.summary?.newRecords || 0"></b></span>
+	                                <span class="px-3 py-1.5 rounded-full bg-amber-100 text-amber-800">Diperbarui <b x-text="productionImport.summary?.replacements || 0"></b></span>
+	                                <span class="px-3 py-1.5 rounded-full bg-red-100 text-red-800">Error <b x-text="productionImport.summary?.invalid || 0"></b></span>
+	                                <span class="px-3 py-1.5 rounded-full bg-blue-100 text-blue-800">Tanggal <b x-text="productionImport.summary?.dates || 0"></b></span>
+	                            </div>
+	                        </div>
+
+	                        <div class="overflow-x-auto">
+	                            <table class="min-w-full divide-y divide-gray-200">
+	                                <thead class="bg-gray-50">
+	                                    <tr>
+	                                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Baris</th>
+	                                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+	                                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tanggal</th>
+	                                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Line</th>
+	                                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Label/Week</th>
+	                                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Model</th>
+	                                        <th class="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase">Target</th>
+	                                        <th class="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase">Output</th>
+	                                        <th class="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase">QC</th>
+	                                        <th class="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase">Defect</th>
+	                                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Catatan Review</th>
+	                                    </tr>
+	                                </thead>
+	                                <tbody class="divide-y divide-gray-100">
+	                                    <template x-for="row in paginatedProductionImportRows" :key="row.rowNumber">
+	                                        <tr :class="(row.errors || []).length ? 'bg-red-50' : (row.action === 'replace' ? 'bg-amber-50' : 'bg-white')">
+	                                            <td class="px-3 py-3 text-sm text-gray-500" x-text="row.rowNumber"></td>
+	                                            <td class="px-3 py-3 whitespace-nowrap"><span class="px-2 py-1 rounded-full text-xs font-semibold" :class="(row.errors || []).length ? 'bg-red-100 text-red-800' : (row.action === 'replace' ? 'bg-amber-100 text-amber-800' : 'bg-green-100 text-green-800')" x-text="productionImportRowStatus(row)"></span></td>
+	                                            <td class="px-3 py-3 whitespace-nowrap text-sm text-gray-700" x-text="row.date || '-' "></td>
+	                                            <td class="px-3 py-3 whitespace-nowrap text-sm font-medium text-gray-900" x-text="row.line || '-' "></td>
+	                                            <td class="px-3 py-3 whitespace-nowrap text-sm text-gray-600" x-text="row.labelWeek || '-' "></td>
+	                                            <td class="px-3 py-3 min-w-56 text-sm text-gray-700" x-text="row.model || '-' "></td>
+	                                            <td class="px-3 py-3 text-right text-sm" x-text="row.target ?? '-' "></td>
+	                                            <td class="px-3 py-3 text-right text-sm" x-text="row.output ?? '-' "></td>
+	                                            <td class="px-3 py-3 text-right text-sm" x-text="row.qcChecked ?? '-' "></td>
+	                                            <td class="px-3 py-3 text-right text-sm" x-text="row.defect ?? '-' "></td>
+	                                            <td class="px-3 py-3 min-w-72 text-xs">
+	                                                <p x-show="(row.errors || []).length" class="text-red-700" x-text="(row.errors || []).join('; ')"></p>
+	                                                <p x-show="(row.warnings || []).length" class="text-amber-700" x-text="(row.warnings || []).join('; ')"></p>
+	                                                <span x-show="!(row.errors || []).length && !(row.warnings || []).length" class="text-gray-400">Siap diimport</span>
+	                                            </td>
+	                                        </tr>
+	                                    </template>
+	                                </tbody>
+	                            </table>
+	                        </div>
+	                        <div x-show="(productionImport.rows || []).length > productionImport.perPage" class="px-5 py-4 border-t border-gray-200 flex items-center justify-between">
+	                            <span class="text-sm text-gray-500">Halaman <b x-text="productionImport.currentPage"></b> dari <b x-text="totalProductionImportPages"></b></span>
+	                            <div class="flex gap-2">
+	                                <button @click="productionImport.currentPage--" :disabled="productionImport.currentPage <= 1" class="px-3 py-1.5 border rounded-md disabled:opacity-40">Sebelumnya</button>
+	                                <button @click="productionImport.currentPage++" :disabled="productionImport.currentPage >= totalProductionImportPages" class="px-3 py-1.5 border rounded-md disabled:opacity-40">Berikutnya</button>
+	                            </div>
+	                        </div>
+	                    </section>
+
+	                    <section x-show="productionImport.token" class="rounded-xl border border-amber-200 bg-amber-50 p-5 mb-6">
+	                        <h2 class="font-semibold text-amber-950"><i class="fa-solid fa-triangle-exclamation mr-2"></i>3. Konfirmasi penyimpanan</h2>
+	                        <p class="mt-1 text-sm text-amber-800">Data berstatus <b>Akan diperbarui</b> akan mengganti data lama dengan identitas tanggal, line, label/week, dan model yang sama. Backup pengaman dibuat otomatis.</p>
+	                        <div class="mt-4 flex flex-col sm:flex-row gap-3 sm:items-end">
+	                            <label class="block flex-1 max-w-md">
+	                                <span class="block text-xs font-bold uppercase tracking-wide text-amber-900 mb-1">Ketik IMPORT</span>
+	                                <input type="text" x-model="productionImport.confirmation" autocomplete="off" class="w-full px-3 py-2 border border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:outline-none" placeholder="IMPORT">
+	                            </label>
+	                            <button type="button" @click="confirmProductionImport()" :disabled="productionImport.confirmation !== 'IMPORT' || productionImport.confirming" class="inline-flex items-center justify-center px-5 py-2.5 rounded-lg bg-emerald-600 text-white font-semibold hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed">
+	                                <i class="fa-solid mr-2" :class="productionImport.confirming ? 'fa-spinner fa-spin' : 'fa-database'"></i>
+	                                <span x-text="productionImport.confirming ? 'Menyimpan...' : 'Konfirmasi Import'"></span>
+	                            </button>
+	                        </div>
+	                    </section>
+	                </div>
+
+	                <!-- User Management - Hanya untuk Admin -->
                 <div x-show="currentPage === 'user-management' && currentUser.role === 'admin'" class="bg-white rounded-lg shadow overflow-hidden card-shadow mb-6 fade-in">
                         <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
 	                            <h3 class="text-lg leading-6 font-medium text-gray-900 flex items-center"><i class="fa-solid fa-users-gear text-blue-600 mr-2"></i>Manajemen User</h3>

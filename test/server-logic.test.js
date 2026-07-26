@@ -23,8 +23,12 @@ const {
   isModelActiveInManagement,
   isValidProductionSnapshot,
   isBlankInputValue,
+  buildImportedProductionModel,
   mergeProductionSnapshotsByDate,
+  parseProductionImportRows,
+  parseProductionImportWorkbook,
   parseNonNegativeInteger,
+  productionImportTemplateWorkbook,
   summarizeProductionSnapshot,
   summarizeProductionSnapshotByLine,
   verifyPassword
@@ -115,6 +119,103 @@ test('blank production output values are distinguishable from an explicit zero',
   assert.equal(isBlankInputValue('   '), true);
   assert.equal(isBlankInputValue(0), false);
   assert.equal(isBlankInputValue('0'), false);
+});
+
+test('historical production import validates rows before creating a review token', () => {
+  const parsed = parseProductionImportRows([
+    ['Tanggal', 'Line', 'Label/Week', 'Model', 'Target', 'Output', 'QC Diperiksa', 'Total Defect', 'Defect Critical', 'Defect Major', 'Defect Minor', 'Catatan'],
+    ['2026-07-20', 'F1-5A', 'W29', 'Model Lama', 180, 165, 40, 2, '', '', '', 'Catatan manual']
+  ], {
+    today: '2026-07-26',
+    getSnapshot: () => null
+  });
+
+  assert.equal(parsed.summary.total, 1);
+  assert.equal(parsed.summary.valid, 1);
+  assert.equal(parsed.summary.invalid, 0);
+  assert.equal(parsed.summary.newRecords, 1);
+  assert.equal(parsed.rows[0].minorDefect, 2);
+  assert.match(parsed.rows[0].warnings[0], /Minor/);
+});
+
+test('historical production import rejects duplicate rows and invalid QC totals', () => {
+  const parsed = parseProductionImportRows([
+    ['Tanggal', 'Line', 'Model', 'Target', 'Output', 'QC Diperiksa', 'Total Defect'],
+    ['2026-07-20', 'Line 1', 'Model A', 100, 90, 2, 3],
+    ['2026-07-20', 'Line 1', 'Model A', 100, 90, 10, 1]
+  ], {
+    today: '2026-07-26',
+    getSnapshot: () => null
+  });
+
+  assert.equal(parsed.summary.invalid, 2);
+  assert.ok(parsed.rows[0].errors.some(error => /tidak boleh lebih besar/.test(error)));
+  assert.ok(parsed.rows.every(row => row.errors.some(error => /terduplikasi/.test(error))));
+});
+
+test('historical production review marks matching date-line-label-model as replacement', () => {
+  const snapshot = {
+    lines: {
+      'Line 1': {
+        activeModels: ['model3'],
+        models: {
+          model3: { date: '2026-07-20', labelWeek: 'W29', model: 'Model A' }
+        }
+      }
+    }
+  };
+  const parsed = parseProductionImportRows([
+    ['Tanggal', 'Line', 'Label/Week', 'Model', 'Target', 'Output', 'QC Diperiksa', 'Total Defect'],
+    ['2026-07-20', 'Line 1', 'W29', 'Model A', 100, 95, 20, 1]
+  ], {
+    today: '2026-07-26',
+    getSnapshot: () => snapshot
+  });
+
+  assert.equal(parsed.summary.replacements, 1);
+  assert.equal(parsed.rows[0].action, 'replace');
+  assert.equal(parsed.rows[0].existingModelId, 'model3');
+});
+
+test('historical production model preserves imported daily totals and severity', () => {
+  const model = buildImportedProductionModel({
+    date: '2026-07-20',
+    labelWeek: 'W29',
+    model: 'Model A',
+    target: 101,
+    output: 87,
+    qcChecked: 20,
+    defect: 6,
+    criticalDefect: 1,
+    majorDefect: 2,
+    minorDefect: 3,
+    notes: 'Data manual'
+  }, 'model2');
+  const breakdown = calculateDefectSeverityBreakdown(model);
+
+  assert.equal(model.hourly_data.reduce((total, hour) => total + hour.targetManual, 0), 101);
+  assert.equal(model.hourly_data.reduce((total, hour) => total + hour.output, 0), 87);
+  assert.equal(model.hourly_data.reduce((total, hour) => total + hour.qcChecked, 0), 20);
+  assert.equal(model.hourly_data.reduce((total, hour) => total + hour.defect, 0), 6);
+  assert.equal(breakdown.critical.count, 1);
+  assert.equal(breakdown.major.count, 2);
+  assert.equal(breakdown.minor.count, 3);
+});
+
+test('historical production Excel template is readable without phantom data rows', async () => {
+  const workbook = productionImportTemplateWorkbook();
+  workbook.getWorksheet('Data Produksi').addRow([
+    '2026-07-20', 'Line 1', 'W29', 'Model A', 100, 90, 20, 2, 0, 1, 1, 'Migrasi'
+  ]);
+  const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
+  const parsed = parseProductionImportWorkbook(buffer, {
+    today: '2026-07-26',
+    getSnapshot: () => null
+  });
+
+  assert.equal(parsed.summary.total, 1);
+  assert.equal(parsed.rows[0].rowNumber, 2);
+  assert.equal(parsed.rows[0].action, 'new');
 });
 
 test('operator production form keeps an unsaved zero output visibly empty', () => {

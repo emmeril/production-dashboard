@@ -153,6 +153,18 @@ function dashboard() {
 	        backupHistory: [],
 	        maintenanceLoading: false,
 	        maintenanceAction: '',
+	        productionImport: {
+	            file: null,
+	            fileName: '',
+	            loading: false,
+	            confirming: false,
+	            token: '',
+	            rows: [],
+	            summary: null,
+	            confirmation: '',
+	            currentPage: 1,
+	            perPage: 20
+	        },
 	        backupSearchTerm: '',
 	        backupTypeFilter: '',
 	        backupCurrentPage: 1,
@@ -319,6 +331,7 @@ function dashboard() {
 	                }
                 if (this.currentUser.role === 'admin') {
 	                    this.navigation.push(
+	                        { name: 'Import Data Lama', page: 'production-import', iconClass: 'fa-file-import' },
 	                        { name: 'Manajemen User', page: 'user-management', iconClass: 'fa-users-gear' },
 	                        { name: 'Kategori Defect', page: 'defect-categories', iconClass: 'fa-triangle-exclamation' },
 	                        { name: 'Hari Kerja', page: 'work-schedule-settings', iconClass: 'fa-calendar-days' },
@@ -442,7 +455,7 @@ function dashboard() {
                 return this.canViewReport();
             }
 
-	            if (state.currentPage === 'user-management' || state.currentPage === 'defect-categories' || state.currentPage === 'work-schedule-settings' || state.currentPage === 'public-display-settings' || state.currentPage === 'system-actions') {
+	            if (state.currentPage === 'production-import' || state.currentPage === 'user-management' || state.currentPage === 'defect-categories' || state.currentPage === 'work-schedule-settings' || state.currentPage === 'public-display-settings' || state.currentPage === 'system-actions') {
 	                return state.currentPage === 'defect-categories'
 	                    ? this.canManageDefectCategories()
 	                    : this.currentUser.role === 'admin';
@@ -538,6 +551,92 @@ function dashboard() {
 	            }
 	            if (page === 'system-actions') {
 	                this.loadMaintenanceData();
+	            }
+	        },
+
+	        selectProductionImportFile(event) {
+	            const file = event.target.files?.[0] || null;
+	            this.productionImport = {
+	                ...this.productionImport,
+	                file,
+	                fileName: file?.name || '',
+	                token: '',
+	                rows: [],
+	                summary: null,
+	                confirmation: '',
+	                currentPage: 1
+	            };
+	        },
+
+	        async previewProductionImport() {
+	            const file = this.productionImport.file;
+	            if (!file) {
+	                this.showToast('Pilih file Excel terlebih dahulu', 'error');
+	                return;
+	            }
+	            if (!/\.xlsx?$/i.test(file.name)) {
+	                this.showToast('File harus berformat .xlsx atau .xls', 'error');
+	                return;
+	            }
+
+	            this.productionImport.loading = true;
+	            this.productionImport.token = '';
+	            this.productionImport.confirmation = '';
+	            try {
+	                const response = await fetch('/api/production-import/preview', {
+	                    method: 'POST',
+	                    headers: {
+	                        'Content-Type': file.type || 'application/octet-stream',
+	                        'X-File-Name': encodeURIComponent(file.name)
+	                    },
+	                    body: file
+	                });
+	                const result = await response.json();
+	                if (!response.ok) throw new Error(result.error || 'Gagal membaca file Excel');
+	                this.productionImport.rows = result.rows || [];
+	                this.productionImport.summary = result.summary || null;
+	                this.productionImport.token = result.token || '';
+	                this.productionImport.currentPage = 1;
+	                this.showToast(result.canImport
+	                    ? 'Review selesai. Periksa data sebelum konfirmasi.'
+	                    : 'Review menemukan data yang harus diperbaiki.', result.canImport ? 'success' : 'error');
+	            } catch (error) {
+	                logClientError('Production import preview failed:', error);
+	                this.showToast(error.message || 'Gagal membaca file Excel', 'error');
+	            } finally {
+	                this.productionImport.loading = false;
+	            }
+	        },
+
+	        async confirmProductionImport() {
+	            if (!this.productionImport.token || this.productionImport.confirmation !== 'IMPORT') return;
+	            this.productionImport.confirming = true;
+	            try {
+	                const response = await fetch('/api/production-import/confirm', {
+	                    method: 'POST',
+	                    headers: { 'Content-Type': 'application/json' },
+	                    body: JSON.stringify({ token: this.productionImport.token })
+	                });
+	                const result = await response.json();
+	                if (!response.ok) throw new Error(result.error || 'Import gagal disimpan');
+	                this.showToast(result.message || 'Import data produksi berhasil', 'success');
+	                this.productionImport = {
+	                    ...this.productionImport,
+	                    file: null,
+	                    fileName: '',
+	                    token: '',
+	                    rows: [],
+	                    summary: null,
+	                    confirmation: '',
+	                    currentPage: 1
+	                };
+	                if (this.$refs.productionImportFile) this.$refs.productionImportFile.value = '';
+	                await this.loadDashboardData();
+	            } catch (error) {
+	                logClientError('Production import confirmation failed:', error);
+	                this.showToast(error.message || 'Import gagal disimpan', 'error');
+	            } finally {
+	                this.productionImport.confirming = false;
 	            }
 	        },
 
@@ -2257,6 +2356,22 @@ function dashboard() {
         },
 
         // Pagination Computed Properties
+
+	        get paginatedProductionImportRows() {
+	            const perPage = Number(this.productionImport.perPage) || 20;
+	            const start = (this.productionImport.currentPage - 1) * perPage;
+	            return (this.productionImport.rows || []).slice(start, start + perPage);
+	        },
+
+	        get totalProductionImportPages() {
+	            const perPage = Number(this.productionImport.perPage) || 20;
+	            return Math.max(1, Math.ceil((this.productionImport.rows || []).length / perPage));
+	        },
+
+	        productionImportRowStatus(row) {
+	            if ((row.errors || []).length > 0) return 'Tidak valid';
+	            return row.action === 'replace' ? 'Akan diperbarui' : 'Data baru';
+	        },
 
 	        get filteredBackupHistory() {
 	            const search = this.backupSearchTerm.trim().toLowerCase();

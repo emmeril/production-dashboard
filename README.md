@@ -14,7 +14,7 @@ Dashboard produksi berbasis Express untuk memantau output line, target per jam, 
 - Management user, kategori defect, dan Maintenance Center untuk admin.
 - Maintenance Center menampilkan kesehatan sistem, snapshot database, backup SQLite, export Excel, dan restore dengan backup pengaman otomatis.
 - Laporan berdasarkan tanggal dan export Excel.
-- Import data historis dipisahkan menjadi template Sewing per jam dan template QC dengan dropdown defect.
+- Input data historis dipisahkan menjadi template Produksi per jam dan template QC dengan dropdown defect.
 - Public display monitor di `/public-display` dengan layout statik seperti display line.
 - Histori produksi tersimpan di tabel `production_snapshots`; backup fisik SQLite dibuat harian atau secara manual.
 
@@ -140,10 +140,10 @@ Endpoint utama:
 
 Admin menggunakan dua template dan dua proses import yang terpisah:
 
-1. `Import Sewing` diisi satu baris untuk setiap jam produksi. Kolom utamanya adalah `Tanggal`, `Line`, `Label/Week`, `Model`, `Jam`, `Target Manual`, dan `Output`. Seluruh delapan jam produksi wajib diisi; target dan output harian dihitung otomatis.
-2. `Import QC` dilakukan setelah model Sewing tersedia. Setiap baris berisi `Jam`, `Hasil QC`, dan `Qty`. Untuk hasil `Good`, jenis dan area defect dikosongkan. Untuk hasil `Defect`, pengguna memilih `Jenis Defect` dan `Defect Area` melalui dropdown yang diambil dari master aplikasi.
+1. `Input Produksi` diisi satu baris untuk setiap jam produksi. Kolom utamanya adalah `Tanggal`, `Line`, `Label/Week`, `Model`, `Jam`, `Target Manual`, dan `Output`. Seluruh delapan jam produksi wajib diisi; target dan output harian dihitung otomatis.
+2. `Input QC` dilakukan setelah data Produksi tersedia. Setiap baris berisi `Jam`, `Hasil QC`, dan `Qty`. Untuk hasil `Good`, jenis dan area defect dikosongkan. Untuk hasil `Defect`, pengguna memilih `Jenis Defect` dan `Defect Area` melalui dropdown yang diambil dari master aplikasi.
 
-QC Checked, Good, Total Defect, severity, dan defect rate dihitung otomatis dari baris QC. Import Sewing tidak menghapus data QC yang sudah ada, sedangkan import QC tidak mengubah target maupun output Sewing. Kedua template menyertakan petunjuk, referensi dropdown, dan contoh dari data historis tersimpan.
+QC Checked, Good, Total Defect, severity, dan defect rate dihitung otomatis dari baris QC. Input Produksi tidak menghapus data QC yang sudah ada, sedangkan Input QC tidak mengubah target maupun output Produksi. Kedua template menyertakan petunjuk, referensi dropdown, dan contoh dari data historis tersimpan.
 
 ## Data dan Backup
 

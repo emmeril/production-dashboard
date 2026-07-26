@@ -884,7 +884,7 @@
                 <div x-show="currentPage === 'input-data' && (canManageProduction() || canManageQc())" class="fade-in">
                     <div class="mb-6 flex justify-between items-center">
                         <div>
-	                            <h1 class="text-2xl font-bold text-gray-800 flex items-center"><i class="fa-solid fa-keyboard text-blue-600 mr-3"></i><span x-text="'Input Data - Line ' + currentLine + ' - ' + currentModelId"></span></h1>
+	                            <h1 class="text-2xl font-bold text-gray-800 flex items-center"><i class="fa-solid fa-keyboard text-blue-600 mr-3"></i><span x-text="'Input Produksi dan QC - Line ' + currentLine + ' - ' + currentModelId"></span></h1>
                             <p class="text-gray-600" x-text="lineDetail.labelWeek + ' - ' + lineDetail.model"></p>
                         </div>
 	                        <button @click="changePage('line-summary')" class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
@@ -1197,26 +1197,26 @@
 	                    <div class="grid grid-cols-1 xl:grid-cols-3 gap-5 mb-6">
 	                        <section class="xl:col-span-2 bg-white rounded-xl shadow card-shadow overflow-hidden">
 	                            <div class="px-5 py-4 border-b border-gray-200 bg-gradient-to-r from-emerald-50 to-white">
-	                                <h2 class="font-semibold text-gray-900"><i class="fa-solid fa-cloud-arrow-up text-emerald-600 mr-2"></i>1. Pilih jenis import</h2>
-	                                <p class="mt-1 text-sm text-gray-500">Data Sewing dan QC memakai template serta proses import yang terpisah.</p>
+	                                <h2 class="font-semibold text-gray-900"><i class="fa-solid fa-cloud-arrow-up text-emerald-600 mr-2"></i>1. Pilih jenis input</h2>
+	                                <p class="mt-1 text-sm text-gray-500">Input Produksi dan QC memakai template serta proses import yang terpisah.</p>
 	                            </div>
 	                            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 p-5">
 	                                <div class="rounded-xl border border-blue-200 bg-blue-50 p-4">
 	                                    <div class="flex items-center justify-between gap-3">
-	                                        <div><h3 class="font-bold text-blue-950"><i class="fa-solid fa-shirt mr-2"></i>Import Sewing</h3><p class="mt-1 text-xs text-blue-800">Target manual dan output untuk setiap jam produksi.</p></div>
+	                                        <div><h3 class="font-bold text-blue-950"><i class="fa-solid fa-industry mr-2"></i>Input Produksi</h3><p class="mt-1 text-xs text-blue-800">Target manual dan output untuk setiap jam produksi.</p></div>
 	                                        <span class="rounded-full bg-blue-200 px-2.5 py-1 text-xs font-bold text-blue-900">Langkah 1</span>
 	                                    </div>
-	                                    <a href="/api/production-import/template/sewing" class="mt-4 inline-flex items-center px-3 py-2 rounded-lg border border-blue-300 bg-white text-blue-800 text-sm font-semibold hover:bg-blue-100"><i class="fa-solid fa-file-excel mr-2"></i>Template Sewing</a>
+	                                    <a href="/api/production-import/template/sewing" class="mt-4 inline-flex items-center px-3 py-2 rounded-lg border border-blue-300 bg-white text-blue-800 text-sm font-semibold hover:bg-blue-100"><i class="fa-solid fa-file-excel mr-2"></i>Template Produksi</a>
 	                                    <label class="mt-3 block rounded-lg border-2 border-dashed border-blue-300 bg-white p-4 text-center cursor-pointer hover:bg-blue-100">
 	                                        <input x-ref="sewingImportFile" type="file" accept=".xlsx,.xls" class="sr-only" @change="selectProductionImportFile($event, 'sewing')">
 	                                        <i class="fa-solid fa-upload text-xl text-blue-600"></i>
-	                                        <span class="mt-1 block text-sm font-semibold text-blue-950" x-text="productionImport.kind === 'sewing' && productionImport.fileName ? productionImport.fileName : 'Pilih file Sewing'"></span>
+	                                        <span class="mt-1 block text-sm font-semibold text-blue-950" x-text="productionImport.kind === 'sewing' && productionImport.fileName ? productionImport.fileName : 'Pilih file Produksi'"></span>
 	                                    </label>
 	                                </div>
 
 	                                <div class="rounded-xl border border-amber-200 bg-amber-50 p-4">
 	                                    <div class="flex items-center justify-between gap-3">
-	                                        <div><h3 class="font-bold text-amber-950"><i class="fa-solid fa-clipboard-check mr-2"></i>Import QC</h3><p class="mt-1 text-xs text-amber-800">Good/Defect, qty, jenis defect, dan area defect.</p></div>
+	                                        <div><h3 class="font-bold text-amber-950"><i class="fa-solid fa-clipboard-check mr-2"></i>Input QC</h3><p class="mt-1 text-xs text-amber-800">Good/Defect, qty, jenis defect, dan area defect.</p></div>
 	                                        <span class="rounded-full bg-amber-200 px-2.5 py-1 text-xs font-bold text-amber-900">Langkah 2</span>
 	                                    </div>
 	                                    <a href="/api/production-import/template/qc" class="mt-4 inline-flex items-center px-3 py-2 rounded-lg border border-amber-300 bg-white text-amber-800 text-sm font-semibold hover:bg-amber-100"><i class="fa-solid fa-file-excel mr-2"></i>Template QC</a>
@@ -1227,10 +1227,10 @@
 	                                    </label>
 	                                </div>
 	                                <div class="lg:col-span-2 flex flex-col sm:flex-row sm:items-center gap-3 border-t border-gray-200 pt-4">
-	                                    <div class="flex-1 text-sm text-gray-600"><span class="font-semibold" x-text="productionImport.kind ? 'File ' + (productionImport.kind === 'sewing' ? 'Sewing' : 'QC') + ' dipilih' : 'Pilih salah satu file untuk mulai review'"></span><span class="block text-xs text-gray-500">Format .xlsx/.xls, maksimal 10 MB.</span></div>
+	                                    <div class="flex-1 text-sm text-gray-600"><span class="font-semibold" x-text="productionImport.kind ? 'File ' + (productionImport.kind === 'sewing' ? 'Produksi' : 'QC') + ' dipilih' : 'Pilih salah satu file untuk mulai review'"></span><span class="block text-xs text-gray-500">Format .xlsx/.xls, maksimal 10 MB.</span></div>
 	                                    <button type="button" @click="previewProductionImport()" :disabled="!productionImport.file || productionImport.loading" class="inline-flex items-center justify-center px-5 py-2.5 rounded-lg bg-slate-900 text-white font-semibold hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed">
 	                                        <i class="fa-solid mr-2" :class="productionImport.loading ? 'fa-spinner fa-spin' : 'fa-magnifying-glass-chart'"></i>
-	                                        <span x-text="productionImport.loading ? 'Memeriksa data...' : 'Review Import ' + (productionImport.kind === 'qc' ? 'QC' : 'Sewing')"></span>
+	                                        <span x-text="productionImport.loading ? 'Memeriksa data...' : 'Review Input ' + (productionImport.kind === 'qc' ? 'QC' : 'Produksi')"></span>
 	                                    </button>
 	                                </div>
 	                            </div>
@@ -1240,8 +1240,8 @@
 	                            <p class="text-xs font-bold uppercase tracking-widest text-emerald-300">Pengaman Import</p>
 	                            <h2 class="mt-2 text-xl font-bold">Belum ada data yang langsung masuk</h2>
 	                            <ol class="mt-4 space-y-3 text-sm text-slate-300">
-	                                <li><span class="inline-flex w-6 h-6 items-center justify-center rounded-full bg-emerald-500 text-slate-950 font-bold mr-2">1</span>Import Sewing lebih dulu untuk membuat data produksi per jam.</li>
-	                                <li><span class="inline-flex w-6 h-6 items-center justify-center rounded-full bg-emerald-500 text-slate-950 font-bold mr-2">2</span>Import QC setelah model Sewing tersedia.</li>
+	                                <li><span class="inline-flex w-6 h-6 items-center justify-center rounded-full bg-emerald-500 text-slate-950 font-bold mr-2">1</span>Input Produksi lebih dulu untuk membuat data produksi per jam.</li>
+	                                <li><span class="inline-flex w-6 h-6 items-center justify-center rounded-full bg-emerald-500 text-slate-950 font-bold mr-2">2</span>Input QC setelah data Produksi tersedia.</li>
 	                                <li><span class="inline-flex w-6 h-6 items-center justify-center rounded-full bg-emerald-500 text-slate-950 font-bold mr-2">3</span>Setiap file direview dan dikonfirmasi secara terpisah.</li>
 	                            </ol>
 	                        </aside>
@@ -1250,7 +1250,7 @@
 	                    <section x-show="productionImport.summary" class="bg-white rounded-xl shadow card-shadow overflow-hidden mb-6">
 	                        <div class="px-5 py-4 border-b border-gray-200 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
 	                            <div>
-	                                <h2 class="font-semibold text-gray-900"><i class="fa-solid fa-clipboard-check text-blue-600 mr-2"></i>2. Review Import <span x-text="productionImport.kind === 'qc' ? 'QC' : 'Sewing'"></span></h2>
+	                                <h2 class="font-semibold text-gray-900"><i class="fa-solid fa-clipboard-check text-blue-600 mr-2"></i>2. Review Input <span x-text="productionImport.kind === 'qc' ? 'QC' : 'Produksi'"></span></h2>
 	                                <p class="text-sm text-gray-500">Periksa seluruh baris. Import hanya dapat dilanjutkan jika tidak ada error.</p>
 	                            </div>
 	                            <div class="flex flex-wrap gap-2 text-xs font-semibold">
@@ -1295,7 +1295,7 @@
 	                                            <td class="px-3 py-3 text-right text-sm" x-text="row.output ?? '-' "></td>
 	                                            <td class="px-3 py-3 text-right text-sm" x-text="row.qcChecked ?? '-' "></td>
 	                                            <td class="px-3 py-3 text-right text-sm" x-text="row.defect ?? '-' "></td>
-	                                            <td class="px-3 py-3 whitespace-nowrap text-xs font-semibold" :class="row.importKind === 'qc' ? 'text-amber-700' : 'text-blue-700'" x-text="row.importKind === 'qc' ? 'QC' : 'Sewing'"></td>
+	                                            <td class="px-3 py-3 whitespace-nowrap text-xs font-semibold" :class="row.importKind === 'qc' ? 'text-amber-700' : 'text-blue-700'" x-text="row.importKind === 'qc' ? 'QC' : 'Produksi'"></td>
 	                                            <td class="px-3 py-3 min-w-56 text-xs text-gray-700" x-text="row.defectAreaSummary || '-' "></td>
 	                                            <td class="px-3 py-3 min-w-56 text-xs text-gray-700" x-text="row.defectTypeSummary || '-' "></td>
 	                                            <td class="px-3 py-3 min-w-72 text-xs">
@@ -1319,7 +1319,7 @@
 
 	                    <section x-show="productionImport.token" class="rounded-xl border border-amber-200 bg-amber-50 p-5 mb-6">
 	                        <h2 class="font-semibold text-amber-950"><i class="fa-solid fa-triangle-exclamation mr-2"></i>3. Konfirmasi penyimpanan</h2>
-	                        <p class="mt-1 text-sm text-amber-800" x-text="productionImport.kind === 'qc' ? 'Data QC model yang sama akan diganti. Target dan output Sewing tidak berubah. Backup pengaman dibuat otomatis.' : 'Data Sewing model yang sama akan diperbarui. Data QC yang sudah ada tetap dipertahankan. Backup pengaman dibuat otomatis.'"></p>
+	                        <p class="mt-1 text-sm text-amber-800" x-text="productionImport.kind === 'qc' ? 'Data QC model yang sama akan diganti. Target dan output Produksi tidak berubah. Backup pengaman dibuat otomatis.' : 'Data Produksi model yang sama akan diperbarui. Data QC yang sudah ada tetap dipertahankan. Backup pengaman dibuat otomatis.'"></p>
 	                        <div class="mt-4 flex flex-col sm:flex-row gap-3 sm:items-end">
 	                            <label class="block flex-1 max-w-md">
 	                                <span class="block text-xs font-bold uppercase tracking-wide text-amber-900 mb-1">Ketik IMPORT</span>
@@ -1327,7 +1327,7 @@
 	                            </label>
 	                            <button type="button" @click="confirmProductionImport()" :disabled="productionImport.confirmation !== 'IMPORT' || productionImport.confirming" class="inline-flex items-center justify-center px-5 py-2.5 rounded-lg bg-emerald-600 text-white font-semibold hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed">
 	                                <i class="fa-solid mr-2" :class="productionImport.confirming ? 'fa-spinner fa-spin' : 'fa-database'"></i>
-	                                <span x-text="productionImport.confirming ? 'Menyimpan...' : 'Konfirmasi Import ' + (productionImport.kind === 'qc' ? 'QC' : 'Sewing')"></span>
+	                                <span x-text="productionImport.confirming ? 'Menyimpan...' : 'Konfirmasi Input ' + (productionImport.kind === 'qc' ? 'QC' : 'Produksi')"></span>
 	                            </button>
 	                        </div>
 	                    </section>

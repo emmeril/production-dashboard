@@ -359,7 +359,7 @@ test('sewing import uses a simple one-row-per-hour template', async () => {
     ['07:00 - 08:00', 10, 9], ['08:00 - 09:00', 10, 9], ['09:00 - 10:00', 10, 9], ['10:00 - 11:00', 10, 9],
     ['13:00 - 14:00', 10, 9], ['14:00 - 15:00', 10, 9], ['15:00 - 16:00', 10, 9], ['16:00 - 17:00', 10, 9]
   ];
-  rows.forEach(([hour, target, output]) => workbook.getWorksheet('Data Sewing').addRow([
+  rows.forEach(([hour, target, output]) => workbook.getWorksheet('Data Produksi').addRow([
     '2026-07-20', 'Line 1', 'W29', 'Model A', hour, target, output, 'Sewing lama'
   ]));
   const parsed = parseSewingImportWorkbook(Buffer.from(await workbook.xlsx.writeBuffer()), {
@@ -371,7 +371,7 @@ test('sewing import uses a simple one-row-per-hour template', async () => {
   assert.equal(parsed.rows[0].target, 80);
   assert.equal(parsed.rows[0].output, 72);
   assert.equal(parsed.rows[0].hourlyData.length, 9);
-  assert.equal(workbook.getWorksheet('Data Sewing').getCell('E2').dataValidation.formulae[0], "'Referensi Jam'!$A$2:$A$9");
+  assert.equal(workbook.getWorksheet('Data Produksi').getCell('E2').dataValidation.formulae[0], "'Referensi Jam'!$A$2:$A$9");
 
   const model = buildImportedSewingModel(parsed.rows[0], 'model1');
   assert.equal(model.outputDay, 72);
@@ -463,7 +463,7 @@ test('QC import rejects rows when sewing model has not been imported', async () 
     getSnapshot: () => null
   });
   assert.equal(parsed.summary.invalid, 1);
-  assert.ok(parsed.rows[0].errors.some(error => /Import data sewing terlebih dahulu/.test(error)));
+  assert.ok(parsed.rows[0].errors.some(error => /Input data produksi terlebih dahulu/.test(error)));
 });
 
 test('operator production form keeps an unsaved zero output visibly empty', () => {

@@ -578,7 +578,7 @@ function dashboard() {
 	                return;
 	            }
 	            if (!['sewing', 'qc'].includes(kind)) {
-	                this.showToast('Pilih jenis import Sewing atau QC', 'error');
+	                this.showToast('Pilih jenis input Produksi atau QC', 'error');
 	                return;
 	            }
 	            if (!/\.xlsx?$/i.test(file.name)) {
@@ -605,7 +605,7 @@ function dashboard() {
 	                this.productionImport.token = result.token || '';
 	                this.productionImport.currentPage = 1;
 	                this.showToast(result.canImport
-	                    ? `Review import ${kind === 'sewing' ? 'Sewing' : 'QC'} selesai. Periksa data sebelum konfirmasi.`
+	                    ? `Review input ${kind === 'sewing' ? 'Produksi' : 'QC'} selesai. Periksa data sebelum konfirmasi.`
 	                    : 'Review menemukan data yang harus diperbaiki.', result.canImport ? 'success' : 'error');
 	            } catch (error) {
 	                logClientError('Production import preview failed:', error);
@@ -1435,7 +1435,7 @@ function dashboard() {
 	            if (this.isSavingProduction) return;
 
 	            if (!this.canManageProduction()) {
-	                this.showToast('Anda tidak memiliki akses untuk input hasil sewing', 'error');
+	                this.showToast('Anda tidak memiliki akses untuk input hasil produksi', 'error');
 	                return;
 	            }
 
@@ -2705,21 +2705,21 @@ function dashboard() {
         },
 
 	        async deleteProductionHour(lineName, modelId, hourIndex) {
-	            if (!this.canCorrectProduction() || !confirm('Hapus hasil sewing pada jam ini?')) return;
+	            if (!this.canCorrectProduction() || !confirm('Hapus hasil produksi pada jam ini?')) return;
 
 	            try {
 	                const response = await fetch(`/api/production/${lineName}/${modelId}/${hourIndex}`, { method: 'DELETE' });
 	                if (!response.ok) {
 	                    const error = await response.json();
-	                    this.showToast(error.error || 'Gagal menghapus hasil sewing', 'error');
+	                    this.showToast(error.error || 'Gagal menghapus hasil produksi', 'error');
 	                    return;
 	                }
-	                this.showToast('Hasil sewing berhasil dihapus', 'success');
+	                this.showToast('Hasil produksi berhasil dihapus', 'success');
 	                await this.loadLineDetail(lineName, modelId);
 	                await this.loadDashboardData();
 	            } catch (error) {
 	                logClientError('Error deleting sewing result:', error);
-	                this.showToast('Error menghapus hasil sewing', 'error');
+	                this.showToast('Error menghapus hasil produksi', 'error');
 	            }
 	        },
 

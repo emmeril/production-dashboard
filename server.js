@@ -869,9 +869,10 @@ function buildImportedProductionModel(row, modelId) {
   };
 }
 
-function readImportSheetRows(buffer, normalizedSheetName) {
+function readImportSheetRows(buffer, normalizedSheetNames) {
   const workbook = XLSX.read(buffer, { type: 'buffer', cellDates: true });
-  const sheetName = workbook.SheetNames.find(name => normalizeProductionImportHeader(name) === normalizedSheetName)
+  const acceptedNames = Array.isArray(normalizedSheetNames) ? normalizedSheetNames : [normalizedSheetNames];
+  const sheetName = workbook.SheetNames.find(name => acceptedNames.includes(normalizeProductionImportHeader(name)))
     || workbook.SheetNames[0];
   if (!sheetName) throw new Error('Workbook tidak memiliki worksheet');
   return XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1, defval: '', raw: true });
@@ -880,7 +881,7 @@ function readImportSheetRows(buffer, normalizedSheetName) {
 function parseSewingImportWorkbook(buffer, options = {}) {
   const today = options.today || getToday();
   const getSnapshot = options.getSnapshot || readProductionSnapshotForDate;
-  const sheetRows = readImportSheetRows(buffer, 'datasewing');
+  const sheetRows = readImportSheetRows(buffer, ['dataproduksi', 'datasewing']);
   const aliases = {
     date: ['tanggal', 'date'], line: ['line', 'namaline'], labelWeek: ['labelweek', 'label', 'week'],
     model: ['model', 'namamodel'], hour: ['jam', 'hour'], targetManual: ['targetmanual', 'targetperjam', 'target'],
@@ -903,7 +904,7 @@ function parseSewingImportWorkbook(buffer, options = {}) {
     .map((cells, index) => ({ cells, rowNumber: index + 2 }))
     .filter(({ cells }) => cells.some(value => String(value ?? '').trim() !== ''));
   if (rawRows.length > PRODUCTION_IMPORT_MAX_ROWS * PRODUCTION_HOURS.length) {
-    const row = { rowNumber: 1, action: 'invalid', errors: ['Jumlah baris Data Sewing melebihi batas'], warnings: [] };
+    const row = { rowNumber: 1, action: 'invalid', errors: ['Jumlah baris Data Produksi melebihi batas'], warnings: [] };
     return { rows: [row], summary: summarizeProductionImportRows([row]) };
   }
 
@@ -978,7 +979,7 @@ function parseSewingImportWorkbook(buffer, options = {}) {
       } else if (matches.length === 1) {
         row.action = 'replace';
         row.existingModelId = matches[0][0];
-        row.warnings.push('Data sewing existing akan diperbarui; data QC tetap dipertahankan');
+        row.warnings.push('Data produksi existing akan diperbarui; data QC tetap dipertahankan');
       }
     }
     if (row.errors.length > 0) row.action = 'invalid';
@@ -1137,7 +1138,7 @@ function parseQcImportWorkbook(buffer, options = {}) {
       if (!snapshots.has(row.date)) snapshots.set(row.date, getSnapshot(row.date));
       const matches = findExistingProductionImportModel(snapshots.get(row.date), row);
       if (matches.length === 0) {
-        row.errors.push('Data sewing belum ditemukan. Import data sewing terlebih dahulu');
+        row.errors.push('Data produksi belum ditemukan. Input data produksi terlebih dahulu');
       } else if (matches.length > 1) {
         row.errors.push('Ada lebih dari satu model existing dengan identitas yang sama');
       } else {
@@ -2579,7 +2580,7 @@ function requireActiveModelForOperator(req, res, next) {
 
 function requireProductionWriteAccess(req, res, next) {
   if (!hasAnyRole(getAuthenticatedSessionUser(req), ['admin', 'admin_operator_sewing', 'operator'])) {
-    return res.status(403).json({ error: 'Akses input hasil sewing diperlukan' });
+    return res.status(403).json({ error: 'Akses input hasil produksi diperlukan' });
   }
   return next();
 }
@@ -2734,7 +2735,7 @@ function sewingImportTemplateWorkbook(options = {}) {
   const samples = Array.isArray(options.sampleRows) ? options.sampleRows : getProductionImportTemplateSampleRows(3);
   const headers = ['Tanggal', 'Line', 'Label/Week', 'Model', 'Jam', 'Target Manual', 'Output', 'Catatan'];
   const widths = [14, 18, 18, 38, 20, 16, 14, 32];
-  const sheet = workbook.addWorksheet('Data Sewing');
+  const sheet = workbook.addWorksheet('Data Produksi');
   sheet.addRow(headers);
   styleImportWorksheet(sheet, widths, 'H');
   sheet.getColumn(1).numFmt = 'yyyy-mm-dd';
@@ -2756,12 +2757,12 @@ function sewingImportTemplateWorkbook(options = {}) {
   const instructions = workbook.addWorksheet('Petunjuk');
   instructions.addRow(['Bagian', 'Keterangan']);
   [
-    ['Tujuan', 'Import khusus data hasil sewing. Tidak mengubah data QC yang sudah tersimpan.'],
+    ['Tujuan', 'Input khusus data hasil produksi. Tidak mengubah data QC yang sudah tersimpan.'],
     ['Satu baris', 'Satu jam produksi untuk satu model. Pilih Jam dari dropdown.'],
     ['Jam wajib', `Isi seluruh ${PRODUCTION_HOURS.length} jam produksi untuk setiap model: ${PRODUCTION_HOURS.join(', ')}.`],
     ['Target Manual dan Output', 'Wajib berupa bilangan bulat tidak negatif. Total harian dihitung otomatis dari seluruh baris per jam.'],
     ['Identitas model', 'Tanggal, Line, Label/Week, dan Model harus sama pada seluruh jam untuk model yang sama.'],
-    ['Urutan import', 'Import Sewing terlebih dahulu. Setelah berhasil, gunakan template Import QC.']
+    ['Urutan input', 'Input Produksi terlebih dahulu. Setelah berhasil, gunakan template Input QC.']
   ].forEach(row => instructions.addRow(row));
   instructions.getColumn(1).width = 26;
   instructions.getColumn(2).width = 105;
@@ -2780,7 +2781,7 @@ function sewingImportTemplateWorkbook(options = {}) {
       ]);
     });
   });
-  if (example.rowCount === 1) example.addRow(['Belum ada contoh data sewing historis.']);
+  if (example.rowCount === 1) example.addRow(['Belum ada contoh data produksi historis.']);
   return workbook;
 }
 
@@ -3072,7 +3073,7 @@ app.get('/api/production-import/template/:kind', requireLogin, requireAdmin, asy
   if (!['sewing', 'qc'].includes(kind)) return res.status(404).json({ error: 'Jenis template tidak dikenal' });
   try {
     const workbook = kind === 'sewing' ? sewingImportTemplateWorkbook() : qcImportTemplateWorkbook();
-    const filename = kind === 'sewing' ? 'Template_Import_Sewing.xlsx' : 'Template_Import_QC.xlsx';
+    const filename = kind === 'sewing' ? 'Template_Input_Produksi.xlsx' : 'Template_Input_QC.xlsx';
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     await workbook.xlsx.write(res);
@@ -3115,7 +3116,7 @@ app.post('/api/production-import/:kind/preview', requireLogin, requireAdmin,
     if (!Buffer.isBuffer(req.body) || req.body.length === 0) return res.status(400).json({ error: 'File Excel wajib diunggah' });
     try {
       const parsed = kind === 'sewing' ? parseSewingImportWorkbook(req.body) : parseQcImportWorkbook(req.body);
-      if (parsed.summary.total === 0) return res.status(400).json({ error: `Sheet Data ${kind === 'sewing' ? 'Sewing' : 'QC'} belum berisi data` });
+      if (parsed.summary.total === 0) return res.status(400).json({ error: `Sheet Data ${kind === 'sewing' ? 'Produksi' : 'QC'} belum berisi data` });
       const token = cacheProductionImportPreview(req, parsed, kind);
       return res.json({ token, rows: parsed.rows, summary: parsed.summary, canImport: Boolean(token), kind });
     } catch (error) {
@@ -3187,8 +3188,8 @@ app.post('/api/production-import/:kind/confirm', requireLogin, requireAdmin, asy
     productionImportPreviewCache.delete(token);
     return res.json({
       message: kind === 'sewing'
-        ? `Import Sewing berhasil: ${created} model baru, ${updated} model diperbarui`
-        : `Import QC berhasil: ${updated} model diperbarui`,
+        ? `Input Produksi berhasil: ${created} model baru, ${updated} model diperbarui`
+        : `Input QC berhasil: ${updated} model diperbarui`,
       kind,
       created,
       updated,
@@ -3197,7 +3198,7 @@ app.post('/api/production-import/:kind/confirm', requireLogin, requireAdmin, asy
     });
   } catch (error) {
     logger.error(`Gagal mengonfirmasi import ${kind}`, error);
-    return res.status(500).json({ error: `Import ${kind === 'sewing' ? 'Sewing' : 'QC'} gagal disimpan` });
+    return res.status(500).json({ error: `Input ${kind === 'sewing' ? 'Produksi' : 'QC'} gagal disimpan` });
   }
 });
 
@@ -6044,7 +6045,7 @@ app.delete('/api/production/:lineName/:modelId/:hourIndex', requireLogin, requir
   }
 
   if (req.session.user.role === 'operator') {
-    return res.status(403).json({ error: 'Hanya admin atau Admin Operator Sewing yang dapat menghapus hasil sewing' });
+    return res.status(403).json({ error: 'Hanya admin atau petugas produksi yang dapat menghapus hasil produksi' });
   }
 
   const currentHour = model.hourly_data[index];

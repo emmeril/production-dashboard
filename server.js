@@ -315,14 +315,13 @@ function createHourlyData(target) {
   return hourlyData;
 }
 
+const QC_IMPORT_HOURS = createHourlyData(0).map(hour => hour.hour);
+
 function distributeImportTotal(total) {
   const value = Math.max(0, parseInt(total) || 0);
   const base = Math.floor(value / PRODUCTION_HOURS.length);
   const remainder = value % PRODUCTION_HOURS.length;
-  return PRODUCTION_HOURS.map((hour, index) => ({
-    hour,
-    value: base + (index < remainder ? 1 : 0)
-  }));
+  return PRODUCTION_HOURS.map((hour, index) => ({ hour, value: base + (index < remainder ? 1 : 0) }));
 }
 
 function normalizeProductionImportDate(value) {
@@ -363,25 +362,18 @@ function normalizeProductionImportHeader(value) {
 }
 
 const PRODUCTION_IMPORT_HEADER_ALIASES = {
-  date: ['tanggal', 'date'],
-  line: ['line', 'linename', 'namaline'],
-  labelWeek: ['labelweek', 'label', 'week'],
-  model: ['model', 'namamodel'],
-  target: ['target'],
-  output: ['output', 'hasilproduksi', 'totaloutput'],
-  qcChecked: ['qcdiperiksa', 'qcchecked', 'qcchecking', 'totalqc'],
-  defect: ['totaldefect', 'defect', 'actualdefect'],
-  criticalDefect: ['defectcritical', 'criticaldefect'],
-  majorDefect: ['defectmajor', 'majordefect'],
-  minorDefect: ['defectminor', 'minordefect'],
-  notes: ['catatan', 'notes', 'keterangan']
+  date: ['tanggal', 'date'], line: ['line', 'linename', 'namaline'], labelWeek: ['labelweek', 'label', 'week'],
+  model: ['model', 'namamodel'], target: ['target'], output: ['output', 'hasilproduksi', 'totaloutput'],
+  qcChecked: ['qcdiperiksa', 'qcchecked', 'qcchecking', 'totalqc'], defect: ['totaldefect', 'defect', 'actualdefect'],
+  criticalDefect: ['defectcritical', 'criticaldefect', 'critical'], majorDefect: ['defectmajor', 'majordefect', 'major'],
+  minorDefect: ['defectminor', 'minordefect', 'minor'], defectAreas: ['defectarea', 'areadefect'],
+  defectTypes: ['jenisdefect', 'defecttype', 'defecttypes'], notes: ['catatan', 'notes', 'keterangan']
 };
 
 function findProductionImportHeaderIndexes(headerRow) {
   const normalizedHeaders = headerRow.map(normalizeProductionImportHeader);
   return Object.fromEntries(Object.entries(PRODUCTION_IMPORT_HEADER_ALIASES).map(([field, aliases]) => [
-    field,
-    normalizedHeaders.findIndex(header => aliases.includes(header))
+    field, normalizedHeaders.findIndex(header => aliases.includes(header))
   ]));
 }
 
@@ -406,6 +398,58 @@ function normalizeProductionImportText(value, label, errors, options = {}) {
   if (!text && options.required) errors.push(`${label} wajib diisi`);
   if (text.length > (options.maxLength || 300)) errors.push(`${label} terlalu panjang`);
   return text;
+}
+
+function parseProductionImportCategories(value, label, errors) {
+  const text = String(value ?? '').trim();
+  if (!text || text === '-') return [];
+  if (text.length > 2000) {
+    errors.push(`${label} terlalu panjang`);
+    return [];
+  }
+  const entries = [];
+  text.replace(/[;\n]+/g, ',').split(',').map(item => item.trim()).filter(Boolean).forEach(item => {
+    const countedMatch = item.match(/^(.*?)\s*\(\s*(\d+)\s*\)$/);
+    if (!countedMatch && /[()]/.test(item)) {
+      errors.push(`${label} tidak valid: "${item}". Gunakan format Nama (Qty)`);
+      return;
+    }
+    const alternateMatch = countedMatch ? null : item.match(/^(.*?)\s*[:=xX]\s*(\d+)$/);
+    const name = String(countedMatch?.[1] ?? alternateMatch?.[1] ?? item).trim();
+    const quantity = Number(countedMatch?.[2] ?? alternateMatch?.[2] ?? '1');
+    if (!name || name.length > 300 || !Number.isInteger(quantity) || quantity <= 0) {
+      errors.push(`${label} tidak valid: "${item}". Gunakan format Nama (Qty)`);
+      return;
+    }
+    const existing = entries.find(entry => normalizeDefectKey(entry.name) === normalizeDefectKey(name));
+    if (existing) existing.quantity += quantity;
+    else entries.push({ name, quantity });
+  });
+  return entries;
+}
+
+function formatProductionImportCategories(entries = []) {
+  return entries.length
+    ? entries.map(entry => `${entry.name} (${entry.quantity})`).join(', ')
+    : '-';
+}
+
+function productionImportCategoryTotal(entries = []) {
+  return entries.reduce((total, entry) => total + (parseInt(entry.quantity) || 0), 0);
+}
+
+const PRODUCTION_IMPORT_HOURLY_HEADER_ALIASES = {
+  date: ['tanggal', 'date'], line: ['line', 'linename', 'namaline'], labelWeek: ['labelweek', 'label', 'week'],
+  model: ['model', 'namamodel'], hour: ['jam', 'hour', 'waktu'], targetManual: ['targetmanual', 'targetperjam', 'target'],
+  output: ['output', 'hasilproduksi', 'totaloutput'], qcChecked: ['qcdiperiksa', 'qcchecked', 'qcchecking', 'totalqc'],
+  defect: ['totaldefect', 'defect', 'actualdefect']
+};
+
+function findProductionImportHourlyHeaderIndexes(headerRow) {
+  const normalizedHeaders = headerRow.map(normalizeProductionImportHeader);
+  return Object.fromEntries(Object.entries(PRODUCTION_IMPORT_HOURLY_HEADER_ALIASES).map(([field, aliases]) => [
+    field, normalizedHeaders.findIndex(header => aliases.includes(header))
+  ]));
 }
 
 function productionImportIdentity(row) {
@@ -479,6 +523,8 @@ function parseProductionImportRows(sheetRows, options = {}) {
       criticalDefect: parseProductionImportInteger(value('criticalDefect'), 'Defect Critical', errors, { optional: true }),
       majorDefect: parseProductionImportInteger(value('majorDefect'), 'Defect Major', errors, { optional: true }),
       minorDefect: parseProductionImportInteger(value('minorDefect'), 'Defect Minor', errors, { optional: true }),
+      defectAreas: parseProductionImportCategories(value('defectAreas'), 'Defect Area', errors),
+      defectTypes: parseProductionImportCategories(value('defectTypes'), 'Jenis Defect', errors),
       notes: normalizeProductionImportText(value('notes'), 'Catatan', errors, { maxLength: 500 }),
       action: 'new',
       existingModelId: '',
@@ -500,6 +546,23 @@ function parseProductionImportRows(sheetRows, options = {}) {
       row.minorDefect = row.defect;
       if (row.defect > 0) warnings.push('Rincian severity kosong; seluruh defect akan dicatat sebagai Minor');
     }
+
+    const defectAreaTotal = productionImportCategoryTotal(row.defectAreas);
+    const defectTypeTotal = productionImportCategoryTotal(row.defectTypes);
+    if (row.defectAreas.length > 0 && defectAreaTotal !== row.defect) {
+      errors.push('Jumlah Qty pada Defect Area harus sama dengan Total Defect');
+    }
+    if (row.defectTypes.length > 0 && defectTypeTotal !== row.defect) {
+      errors.push('Jumlah Qty pada Jenis Defect harus sama dengan Total Defect');
+    }
+    if (row.defect > 0 && row.defectAreas.length === 0 && row.defectTypes.length > 0) {
+      warnings.push('Defect Area kosong; report area defect akan menampilkan -');
+    }
+    if (row.defect > 0 && row.defectTypes.length === 0 && row.defectAreas.length > 0) {
+      warnings.push('Jenis Defect kosong; report jenis defect akan menampilkan -');
+    }
+    row.defectAreaSummary = formatProductionImportCategories(row.defectAreas);
+    row.defectTypeSummary = formatProductionImportCategories(row.defectTypes);
     return row;
   });
 
@@ -534,7 +597,11 @@ function parseProductionImportRows(sheetRows, options = {}) {
     }
   });
 
-  const summary = {
+  return { rows, summary: summarizeProductionImportRows(rows) };
+}
+
+function summarizeProductionImportRows(rows = []) {
+  return {
     total: rows.length,
     valid: rows.filter(row => row.errors.length === 0).length,
     invalid: rows.filter(row => row.errors.length > 0).length,
@@ -543,7 +610,120 @@ function parseProductionImportRows(sheetRows, options = {}) {
     replacements: rows.filter(row => row.errors.length === 0 && row.action === 'replace').length,
     dates: new Set(rows.filter(row => row.errors.length === 0).map(row => row.date)).size
   };
-  return { rows, summary };
+}
+
+function parseProductionImportHourlySheet(sheetRows, summaryRows) {
+  if (!Array.isArray(sheetRows) || sheetRows.length === 0) return { issues: [] };
+  const headerIndexes = findProductionImportHourlyHeaderIndexes(sheetRows[0] || []);
+  const requiredHeaders = ['date', 'line', 'model', 'hour', 'targetManual', 'output', 'qcChecked', 'defect'];
+  const missingHeaders = requiredHeaders.filter(field => headerIndexes[field] < 0);
+  if (missingHeaders.length > 0) {
+    return {
+      issues: [{
+        rowNumber: 'Detail Per Jam!1',
+        errors: [`Kolom wajib Detail Per Jam tidak ditemukan: ${missingHeaders.join(', ')}`],
+        warnings: []
+      }]
+    };
+  }
+
+  const dataRows = sheetRows.slice(1)
+    .map((cells, index) => ({ cells, rowNumber: index + 2 }))
+    .filter(({ cells }) => Array.isArray(cells) && cells.some(value => String(value ?? '').trim() !== ''));
+  if (dataRows.length > PRODUCTION_IMPORT_MAX_ROWS * 9) {
+    return {
+      issues: [{
+        rowNumber: 'Detail Per Jam!1',
+        errors: [`Maksimal ${PRODUCTION_IMPORT_MAX_ROWS * 9} baris Detail Per Jam per import`],
+        warnings: []
+      }]
+    };
+  }
+
+  const rows = dataRows.map(({ cells, rowNumber }) => {
+    const errors = [];
+    const value = field => cells[headerIndexes[field]];
+    const date = normalizeProductionImportDate(value('date'));
+    if (!date) errors.push('Tanggal tidak valid. Gunakan format YYYY-MM-DD');
+    const row = {
+      rowNumber,
+      date,
+      line: normalizeProductionImportText(value('line'), 'Line', errors, { required: true, maxLength: 100 }),
+      labelWeek: normalizeProductionImportText(value('labelWeek'), 'Label/Week', errors, { maxLength: 150 }),
+      model: normalizeProductionImportText(value('model'), 'Model', errors, { required: true, maxLength: 300 }),
+      hour: normalizeProductionImportText(value('hour'), 'Jam', errors, { required: true, maxLength: 50 }),
+      targetManual: parseProductionImportInteger(value('targetManual'), 'Target Manual', errors),
+      output: parseProductionImportInteger(value('output'), 'Output', errors),
+      qcChecked: parseProductionImportInteger(value('qcChecked'), 'QC Checked', errors),
+      defect: parseProductionImportInteger(value('defect'), 'Total Defect', errors),
+      errors,
+      warnings: []
+    };
+    if (!createHourlyData(0).some(hour => hour.hour === row.hour)) {
+      errors.push(`Jam tidak dikenal: ${row.hour}`);
+    }
+    if (row.defect > row.qcChecked) errors.push('Total Defect tidak boleh lebih besar dari QC Checked');
+    row.selisih = row.output - row.targetManual;
+    return row;
+  });
+
+  const summaryByIdentity = new Map(summaryRows.map(row => [productionImportIdentity(row), row]));
+  const grouped = new Map();
+  rows.forEach(row => {
+    const key = productionImportIdentity(row);
+    const existing = grouped.get(key) || [];
+    existing.push(row);
+    grouped.set(key, existing);
+  });
+  const issues = [];
+  rows.forEach(row => {
+    const summary = summaryByIdentity.get(productionImportIdentity(row));
+    if (!summary) {
+      issues.push({
+        rowNumber: `Detail Per Jam!${row.rowNumber}`,
+        errors: [`Tidak ada baris summary yang cocok untuk tanggal, line, label/week, dan model`].concat(row.errors),
+        warnings: []
+      });
+    }
+  });
+
+  grouped.forEach((hourRows, key) => {
+    const summary = summaryByIdentity.get(key);
+    if (!summary) return;
+    if (hourRows.length !== new Set(hourRows.map(row => row.hour)).size) {
+      summary.errors.push('Detail Per Jam memiliki jam yang terduplikasi untuk identitas yang sama');
+    }
+    hourRows.forEach(row => {
+      if (row.errors.length > 0) summary.errors.push(`Detail Per Jam baris ${row.rowNumber}: ${row.errors.join('; ')}`);
+    });
+    if (hourRows.some(row => row.errors.length > 0)) return;
+
+    const expectedHours = PRODUCTION_HOURS;
+    const detailByHour = new Map(hourRows.map(row => [row.hour, row]));
+    const missingHours = expectedHours.filter(hour => !detailByHour.has(hour));
+    if (missingHours.length > 0) {
+      summary.errors.push(`Detail Per Jam belum lengkap. Jam yang belum diisi: ${missingHours.join(', ')}`);
+      return;
+    }
+    const hourlyData = createHourlyData(summary.target).map(hour => {
+      const detail = detailByHour.get(hour.hour);
+      return detail
+        ? { hour: detail.hour, targetManual: detail.targetManual, output: detail.output, qcChecked: detail.qcChecked, defect: detail.defect, selisih: detail.selisih }
+        : hour;
+    });
+    const totals = hourlyData.reduce((total, hour) => ({
+      target: total.target + hour.targetManual,
+      output: total.output + hour.output,
+      qcChecked: total.qcChecked + hour.qcChecked,
+      defect: total.defect + hour.defect
+    }), { target: 0, output: 0, qcChecked: 0, defect: 0 });
+    [['target', 'Target'], ['output', 'Output'], ['qcChecked', 'QC Checked'], ['defect', 'Total Defect']].forEach(([field, label]) => {
+      if (totals[field] !== summary[field]) summary.errors.push(`Total ${label} pada Detail Per Jam harus sama dengan nilai summary`);
+    });
+    if (summary.errors.length === 0) summary.hourlyData = hourlyData;
+  });
+
+  return { issues };
 }
 
 function parseProductionImportWorkbook(buffer, options = {}) {
@@ -552,33 +732,124 @@ function parseProductionImportWorkbook(buffer, options = {}) {
     || workbook.SheetNames[0];
   if (!sheetName) throw new Error('Workbook tidak memiliki worksheet');
   const sheetRows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1, defval: '', raw: true });
-  return parseProductionImportRows(sheetRows, options);
+  const parsed = parseProductionImportRows(sheetRows, options);
+  const hourlySheetName = workbook.SheetNames.find(name => normalizeProductionImportHeader(name) === 'detailperjam');
+  if (hourlySheetName) {
+    const hourlyRows = XLSX.utils.sheet_to_json(workbook.Sheets[hourlySheetName], { header: 1, defval: '', raw: true });
+    const hourlyResult = parseProductionImportHourlySheet(hourlyRows, parsed.rows);
+    hourlyResult.issues.forEach(issue => parsed.rows.push({ ...issue, action: 'invalid' }));
+    parsed.summary = summarizeProductionImportRows(parsed.rows);
+  }
+  return parsed;
+}
+
+function pairProductionImportCategories(types = [], areas = [], totalDefect = 0) {
+  const total = Math.max(parseInt(totalDefect) || 0, 0);
+  if (total === 0) return [];
+
+  const remainingTypes = (types.length ? types : [{ name: '', quantity: total }])
+    .map(entry => ({ ...entry, quantity: parseInt(entry.quantity) || 0 }));
+  const remainingAreas = (areas.length ? areas : [{ name: '', quantity: total }])
+    .map(entry => ({ ...entry, quantity: parseInt(entry.quantity) || 0 }));
+  const pairs = [];
+  let typeIndex = 0;
+  let areaIndex = 0;
+
+  while (typeIndex < remainingTypes.length && areaIndex < remainingAreas.length) {
+    const type = remainingTypes[typeIndex];
+    const area = remainingAreas[areaIndex];
+    const quantity = Math.min(type.quantity, area.quantity);
+    if (quantity > 0) pairs.push({ type: type.name, area: area.name, quantity });
+    type.quantity -= quantity;
+    area.quantity -= quantity;
+    if (type.quantity === 0) typeIndex += 1;
+    if (area.quantity === 0) areaIndex += 1;
+  }
+  return pairs;
+}
+
+function applyProductionImportSeverities(details = [], row = {}) {
+  const severityQueue = [
+    { severity: 'critical', quantity: parseInt(row.criticalDefect) || 0 },
+    { severity: 'major', quantity: parseInt(row.majorDefect) || 0 },
+    { severity: 'minor', quantity: parseInt(row.minorDefect) || 0 }
+  ];
+  const result = [];
+  let severityIndex = 0;
+
+  details.forEach(detail => {
+    let remaining = parseInt(detail.quantity) || 0;
+    while (remaining > 0 && severityIndex < severityQueue.length) {
+      const severity = severityQueue[severityIndex];
+      if (severity.quantity === 0) {
+        severityIndex += 1;
+        continue;
+      }
+      const quantity = Math.min(remaining, severity.quantity);
+      result.push({ ...detail, quantity, severity: severity.severity });
+      remaining -= quantity;
+      severity.quantity -= quantity;
+    }
+  });
+  return result;
+}
+
+function distributeProductionImportDefectDetails(hourlyData, details) {
+  const remainingDetails = details.map(detail => ({ ...detail, quantity: parseInt(detail.quantity) || 0 }));
+  let detailIndex = 0;
+  hourlyData.forEach(hour => {
+    let remainingHourDefect = parseInt(hour.defect) || 0;
+    hour.defectDetails = [];
+    while (remainingHourDefect > 0 && detailIndex < remainingDetails.length) {
+      const detail = remainingDetails[detailIndex];
+      if (detail.quantity === 0) {
+        detailIndex += 1;
+        continue;
+      }
+      const quantity = Math.min(remainingHourDefect, detail.quantity);
+      hour.defectDetails.push({ ...detail, quantity });
+      remainingHourDefect -= quantity;
+      detail.quantity -= quantity;
+    }
+  });
 }
 
 function buildImportedProductionModel(row, modelId) {
-  const hourlyData = createHourlyData(row.target);
-  const outputs = distributeImportTotal(row.output);
-  const qcChecked = distributeImportTotal(row.qcChecked);
-  const defects = distributeImportTotal(row.defect);
+  const hourlyData = Array.isArray(row.hourlyData)
+    ? row.hourlyData.map(hour => ({
+      hour: hour.hour,
+      output: parseInt(hour.output) || 0,
+      defect: parseInt(hour.defect) || 0,
+      qcChecked: parseInt(hour.qcChecked) || 0,
+      targetManual: parseInt(hour.targetManual) || 0,
+      selisih: (parseInt(hour.output) || 0) - (parseInt(hour.targetManual) || 0)
+    }))
+    : createHourlyData(row.target);
   const productiveIndexes = hourlyData
     .map((hour, index) => ({ hour, index }))
     .filter(item => item.hour.hour !== '11:00 - 13:00');
 
-  productiveIndexes.forEach((item, productionIndex) => {
-    item.hour.output = outputs[productionIndex].value;
-    item.hour.qcChecked = qcChecked[productionIndex].value;
-    item.hour.defect = defects[productionIndex].value;
-    item.hour.selisih = item.hour.output - item.hour.targetManual;
-  });
+  if (!Array.isArray(row.hourlyData)) {
+    const outputs = distributeImportTotal(row.output);
+    const qcChecked = distributeImportTotal(row.qcChecked);
+    const defects = distributeImportTotal(row.defect);
+    productiveIndexes.forEach((item, productionIndex) => {
+      item.hour.output = outputs[productionIndex].value;
+      item.hour.qcChecked = qcChecked[productionIndex].value;
+      item.hour.defect = defects[productionIndex].value;
+      item.hour.selisih = item.hour.output - item.hour.targetManual;
+    });
+  }
 
-  const firstProductionHour = productiveIndexes[0]?.hour;
-  if (firstProductionHour) {
-    firstProductionHour.defectDetails = [
+  const categoryDetails = pairProductionImportCategories(row.defectTypes, row.defectAreas, row.defect);
+  const defectDetails = categoryDetails.length > 0
+    ? applyProductionImportSeverities(categoryDetails, row)
+    : [
       { type: 'Import historis - Critical', area: 'Data lama', quantity: row.criticalDefect, severity: 'critical' },
       { type: 'Import historis - Major', area: 'Data lama', quantity: row.majorDefect, severity: 'major' },
       { type: 'Import historis - Minor', area: 'Data lama', quantity: row.minorDefect, severity: 'minor' }
     ].filter(detail => detail.quantity > 0);
-  }
+  distributeProductionImportDefectDetails(hourlyData, defectDetails);
 
   return {
     id: modelId,
@@ -596,6 +867,337 @@ function buildImportedProductionModel(row, modelId) {
     notes: row.notes,
     importedHistoricalData: true
   };
+}
+
+function readImportSheetRows(buffer, normalizedSheetName) {
+  const workbook = XLSX.read(buffer, { type: 'buffer', cellDates: true });
+  const sheetName = workbook.SheetNames.find(name => normalizeProductionImportHeader(name) === normalizedSheetName)
+    || workbook.SheetNames[0];
+  if (!sheetName) throw new Error('Workbook tidak memiliki worksheet');
+  return XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1, defval: '', raw: true });
+}
+
+function parseSewingImportWorkbook(buffer, options = {}) {
+  const today = options.today || getToday();
+  const getSnapshot = options.getSnapshot || readProductionSnapshotForDate;
+  const sheetRows = readImportSheetRows(buffer, 'datasewing');
+  const aliases = {
+    date: ['tanggal', 'date'], line: ['line', 'namaline'], labelWeek: ['labelweek', 'label', 'week'],
+    model: ['model', 'namamodel'], hour: ['jam', 'hour'], targetManual: ['targetmanual', 'targetperjam', 'target'],
+    output: ['output', 'hasilproduksi'], notes: ['catatan', 'notes', 'keterangan']
+  };
+  const normalizedHeaders = (sheetRows[0] || []).map(normalizeProductionImportHeader);
+  const indexes = Object.fromEntries(Object.entries(aliases).map(([field, values]) => [
+    field, normalizedHeaders.findIndex(header => values.includes(header))
+  ]));
+  const required = ['date', 'line', 'model', 'hour', 'targetManual', 'output'];
+  const missing = required.filter(field => indexes[field] < 0);
+  if (missing.length > 0) {
+    return {
+      rows: [{ rowNumber: 1, action: 'invalid', errors: [`Kolom wajib tidak ditemukan: ${missing.join(', ')}`], warnings: [] }],
+      summary: summarizeProductionImportRows([{ rowNumber: 1, action: 'invalid', errors: ['Header tidak lengkap'], warnings: [] }])
+    };
+  }
+
+  const rawRows = sheetRows.slice(1)
+    .map((cells, index) => ({ cells, rowNumber: index + 2 }))
+    .filter(({ cells }) => cells.some(value => String(value ?? '').trim() !== ''));
+  if (rawRows.length > PRODUCTION_IMPORT_MAX_ROWS * PRODUCTION_HOURS.length) {
+    const row = { rowNumber: 1, action: 'invalid', errors: ['Jumlah baris Data Sewing melebihi batas'], warnings: [] };
+    return { rows: [row], summary: summarizeProductionImportRows([row]) };
+  }
+
+  const parsedHours = rawRows.map(({ cells, rowNumber }) => {
+    const errors = [];
+    const value = field => indexes[field] >= 0 ? cells[indexes[field]] : '';
+    const date = normalizeProductionImportDate(value('date'));
+    if (!date) errors.push('Tanggal tidak valid. Gunakan format YYYY-MM-DD');
+    else if (date >= today) errors.push(`Tanggal harus sebelum tanggal operasional hari ini (${today})`);
+    const row = {
+      rowNumber,
+      date,
+      line: normalizeProductionImportText(value('line'), 'Line', errors, { required: true, maxLength: 100 }),
+      labelWeek: normalizeProductionImportText(value('labelWeek'), 'Label/Week', errors, { maxLength: 150 }),
+      model: normalizeProductionImportText(value('model'), 'Model', errors, { required: true, maxLength: 300 }),
+      hour: normalizeProductionImportText(value('hour'), 'Jam', errors, { required: true, maxLength: 50 }),
+      targetManual: parseProductionImportInteger(value('targetManual'), 'Target Manual', errors),
+      output: parseProductionImportInteger(value('output'), 'Output', errors),
+      notes: normalizeProductionImportText(value('notes'), 'Catatan', errors, { maxLength: 500 }),
+      errors
+    };
+    if (!PRODUCTION_HOURS.includes(row.hour)) errors.push(`Jam tidak dikenal: ${row.hour}`);
+    return row;
+  });
+
+  const grouped = new Map();
+  parsedHours.forEach(hour => {
+    const key = productionImportIdentity(hour);
+    const items = grouped.get(key) || [];
+    items.push(hour);
+    grouped.set(key, items);
+  });
+  const snapshots = new Map();
+  const rows = Array.from(grouped.values()).map(hours => {
+    const first = hours[0];
+    const errors = hours.flatMap(hour => hour.errors.map(error => `Baris ${hour.rowNumber}: ${error}`));
+    const warnings = [];
+    if (hours.length !== new Set(hours.map(hour => hour.hour)).size) errors.push('Jam produksi terduplikasi');
+    const missingHours = PRODUCTION_HOURS.filter(hour => !hours.some(item => item.hour === hour));
+    if (missingHours.length > 0) errors.push(`Jam produksi belum lengkap: ${missingHours.join(', ')}`);
+    const hourlyData = createHourlyData(0).map(hour => {
+      const imported = hours.find(item => item.hour === hour.hour);
+      return imported
+        ? { hour: imported.hour, targetManual: imported.targetManual, output: imported.output, selisih: imported.output - imported.targetManual, qcChecked: 0, defect: 0 }
+        : hour;
+    });
+    const target = hourlyData.reduce((total, hour) => total + hour.targetManual, 0);
+    const output = hourlyData.reduce((total, hour) => total + hour.output, 0);
+    const row = {
+      rowNumber: first.rowNumber,
+      date: first.date,
+      line: first.line,
+      labelWeek: first.labelWeek,
+      model: first.model,
+      target,
+      output,
+      qcChecked: null,
+      defect: null,
+      hourlyData,
+      notes: hours.map(hour => hour.notes).find(Boolean) || '',
+      action: 'new',
+      existingModelId: '',
+      errors,
+      warnings,
+      importKind: 'sewing'
+    };
+    if (errors.length === 0 && row.date) {
+      if (!snapshots.has(row.date)) snapshots.set(row.date, getSnapshot(row.date));
+      const matches = findExistingProductionImportModel(snapshots.get(row.date), row);
+      if (matches.length > 1) {
+        row.errors.push('Ada lebih dari satu model existing dengan identitas yang sama');
+      } else if (matches.length === 1) {
+        row.action = 'replace';
+        row.existingModelId = matches[0][0];
+        row.warnings.push('Data sewing existing akan diperbarui; data QC tetap dipertahankan');
+      }
+    }
+    if (row.errors.length > 0) row.action = 'invalid';
+    return row;
+  });
+  if (rows.length > PRODUCTION_IMPORT_MAX_ROWS) {
+    const row = { rowNumber: 1, action: 'invalid', errors: [`Maksimal ${PRODUCTION_IMPORT_MAX_ROWS} model per import`], warnings: [], importKind: 'sewing' };
+    return { rows: [row], summary: summarizeProductionImportRows([row]) };
+  }
+  return { rows, summary: summarizeProductionImportRows(rows) };
+}
+
+function normalizeQcImportResult(value) {
+  const result = String(value || '').trim().toLowerCase();
+  if (['good', 'baik', 'ok'].includes(result)) return 'good';
+  if (['defect', 'reject', 'ng'].includes(result)) return 'defect';
+  return '';
+}
+
+function parseQcImportWorkbook(buffer, options = {}) {
+  const today = options.today || getToday();
+  const getSnapshot = options.getSnapshot || readProductionSnapshotForDate;
+  const defectConfig = options.defectConfig || readDefectConfig();
+  const severityMaps = buildDefectSeverityMaps(defectConfig);
+  const sheetRows = readImportSheetRows(buffer, 'dataqc');
+  const aliases = {
+    date: ['tanggal', 'date'], line: ['line', 'namaline'], labelWeek: ['labelweek', 'label', 'week'],
+    model: ['model', 'namamodel'], hour: ['jam', 'hour'], result: ['hasilqc', 'hasil', 'result'],
+    quantity: ['qty', 'quantity', 'jumlah'], type: ['jenisdefect', 'defecttype'], area: ['defectarea', 'areadefect'],
+    notes: ['catatan', 'notes', 'keterangan']
+  };
+  const normalizedHeaders = (sheetRows[0] || []).map(normalizeProductionImportHeader);
+  const indexes = Object.fromEntries(Object.entries(aliases).map(([field, values]) => [
+    field, normalizedHeaders.findIndex(header => values.includes(header))
+  ]));
+  const required = ['date', 'line', 'model', 'hour', 'result', 'quantity', 'type', 'area'];
+  const missing = required.filter(field => indexes[field] < 0);
+  if (missing.length > 0) {
+    const row = { rowNumber: 1, action: 'invalid', errors: [`Kolom wajib tidak ditemukan: ${missing.join(', ')}`], warnings: [], importKind: 'qc' };
+    return { rows: [row], summary: summarizeProductionImportRows([row]) };
+  }
+
+  const validTypes = new Map((defectConfig.defectTypes || []).map(type => [normalizeDefectKey(type.name), type]));
+  const validAreas = new Map((defectConfig.defectAreas || []).map(area => [normalizeDefectKey(area.name), area]));
+  const rawRows = sheetRows.slice(1)
+    .map((cells, index) => ({ cells, rowNumber: index + 2 }))
+    .filter(({ cells }) => cells.some(value => String(value ?? '').trim() !== ''));
+  if (rawRows.length > PRODUCTION_IMPORT_MAX_ROWS * PRODUCTION_HOURS.length) {
+    const row = { rowNumber: 1, action: 'invalid', errors: ['Jumlah baris Data QC melebihi batas'], warnings: [], importKind: 'qc' };
+    return { rows: [row], summary: summarizeProductionImportRows([row]) };
+  }
+
+  const parsedEntries = rawRows.map(({ cells, rowNumber }) => {
+    const errors = [];
+    const warnings = [];
+    const value = field => indexes[field] >= 0 ? cells[indexes[field]] : '';
+    const date = normalizeProductionImportDate(value('date'));
+    if (!date) errors.push('Tanggal tidak valid. Gunakan format YYYY-MM-DD');
+    else if (date >= today) errors.push(`Tanggal harus sebelum tanggal operasional hari ini (${today})`);
+    const result = normalizeQcImportResult(value('result'));
+    if (!result) errors.push('Hasil QC harus Good atau Defect');
+    const typeText = String(value('type') || '').trim();
+    const areaText = String(value('area') || '').trim();
+    const typeConfig = validTypes.get(normalizeDefectKey(typeText));
+    const areaConfig = validAreas.get(normalizeDefectKey(areaText));
+    const entry = {
+      rowNumber,
+      date,
+      line: normalizeProductionImportText(value('line'), 'Line', errors, { required: true, maxLength: 100 }),
+      labelWeek: normalizeProductionImportText(value('labelWeek'), 'Label/Week', errors, { maxLength: 150 }),
+      model: normalizeProductionImportText(value('model'), 'Model', errors, { required: true, maxLength: 300 }),
+      hour: normalizeProductionImportText(value('hour'), 'Jam', errors, { required: true, maxLength: 50 }),
+      result,
+      quantity: parseProductionImportInteger(value('quantity'), 'Qty', errors),
+      type: typeText,
+      area: areaText,
+      notes: normalizeProductionImportText(value('notes'), 'Catatan', errors, { maxLength: 500 }),
+      errors,
+      warnings
+    };
+    if (entry.quantity === 0) errors.push('Qty harus lebih dari 0');
+    if (!QC_IMPORT_HOURS.includes(entry.hour)) errors.push(`Jam tidak dikenal: ${entry.hour}`);
+    if (result === 'defect') {
+      if (!typeText || !typeConfig) errors.push('Jenis Defect wajib dipilih dari daftar aplikasi');
+      if (!areaText || !areaConfig) errors.push('Defect Area wajib dipilih dari daftar aplikasi');
+      entry.severity = getDefectSeverity(typeText, severityMaps);
+    } else {
+      entry.type = '';
+      entry.area = '';
+      entry.severity = '';
+      if (typeText || areaText) warnings.push('Jenis dan area defect pada hasil Good diabaikan');
+    }
+    return entry;
+  });
+
+  const grouped = new Map();
+  parsedEntries.forEach(entry => {
+    const key = productionImportIdentity(entry);
+    const items = grouped.get(key) || [];
+    items.push(entry);
+    grouped.set(key, items);
+  });
+  const snapshots = new Map();
+  const rows = Array.from(grouped.values()).map(entries => {
+    const first = entries[0];
+    const errors = entries.flatMap(entry => entry.errors.map(error => `Baris ${entry.rowNumber}: ${error}`));
+    const warnings = entries.flatMap(entry => entry.warnings.map(warning => `Baris ${entry.rowNumber}: ${warning}`));
+    const hourlyQcData = createHourlyData(0).map(hour => {
+      const hourEntries = entries.filter(entry => entry.hour === hour.hour && entry.errors.length === 0);
+      const qcChecked = hourEntries.reduce((total, entry) => total + entry.quantity, 0);
+      const defectEntries = hourEntries.filter(entry => entry.result === 'defect');
+      return {
+        hour: hour.hour,
+        qcChecked,
+        defect: defectEntries.reduce((total, entry) => total + entry.quantity, 0),
+        defectDetails: defectEntries.map(entry => ({
+          type: entry.type,
+          area: entry.area,
+          quantity: entry.quantity,
+          severity: entry.severity,
+          notes: entry.notes
+        }))
+      };
+    });
+    const defectDetails = hourlyQcData.flatMap(hour => hour.defectDetails);
+    const defectTypes = [];
+    const defectAreas = [];
+    defectDetails.forEach(detail => {
+      const type = defectTypes.find(item => normalizeDefectKey(item.name) === normalizeDefectKey(detail.type));
+      if (type) type.quantity += detail.quantity;
+      else defectTypes.push({ name: detail.type, quantity: detail.quantity });
+      const area = defectAreas.find(item => normalizeDefectKey(item.name) === normalizeDefectKey(detail.area));
+      if (area) area.quantity += detail.quantity;
+      else defectAreas.push({ name: detail.area, quantity: detail.quantity });
+    });
+    const row = {
+      rowNumber: first.rowNumber,
+      date: first.date,
+      line: first.line,
+      labelWeek: first.labelWeek,
+      model: first.model,
+      target: null,
+      output: null,
+      qcChecked: hourlyQcData.reduce((total, hour) => total + hour.qcChecked, 0),
+      defect: hourlyQcData.reduce((total, hour) => total + hour.defect, 0),
+      defectTypeSummary: formatProductionImportCategories(defectTypes),
+      defectAreaSummary: formatProductionImportCategories(defectAreas),
+      hourlyQcData,
+      action: 'replace',
+      existingModelId: '',
+      errors,
+      warnings,
+      importKind: 'qc'
+    };
+    if (errors.length === 0 && row.date) {
+      if (!snapshots.has(row.date)) snapshots.set(row.date, getSnapshot(row.date));
+      const matches = findExistingProductionImportModel(snapshots.get(row.date), row);
+      if (matches.length === 0) {
+        row.errors.push('Data sewing belum ditemukan. Import data sewing terlebih dahulu');
+      } else if (matches.length > 1) {
+        row.errors.push('Ada lebih dari satu model existing dengan identitas yang sama');
+      } else {
+        row.existingModelId = matches[0][0];
+        row.target = matches[0][1].target || 0;
+        row.output = matches[0][1].outputDay || 0;
+        row.warnings.push('Data QC existing untuk model ini akan diganti');
+      }
+    }
+    if (row.errors.length > 0) row.action = 'invalid';
+    return row;
+  });
+  return { rows, summary: summarizeProductionImportRows(rows) };
+}
+
+function buildImportedSewingModel(row, modelId, existingModel = null) {
+  const existingHours = new Map((existingModel?.hourly_data || []).map(hour => [hour.hour, hour]));
+  const hourlyData = row.hourlyData.map(hour => {
+    const existing = existingHours.get(hour.hour) || {};
+    return {
+      ...existing,
+      hour: hour.hour,
+      targetManual: hour.targetManual,
+      output: hour.output,
+      selisih: hour.output - hour.targetManual,
+      qcChecked: parseInt(existing.qcChecked) || 0,
+      defect: parseInt(existing.defect) || 0,
+      defectDetails: existing.defectDetails || []
+    };
+  });
+  const model = {
+    ...(existingModel || {}),
+    id: modelId,
+    labelWeek: row.labelWeek,
+    model: row.model,
+    date: row.date,
+    target: row.target,
+    targetPerHour: Math.round(row.target / PRODUCTION_HOURS.length),
+    outputDay: row.output,
+    hourly_data: hourlyData,
+    operators: existingModel?.operators || [],
+    notes: row.notes || existingModel?.notes || '',
+    importedHistoricalData: true
+  };
+  recalculateModelTotals(model);
+  return model;
+}
+
+function applyImportedQcData(model, row) {
+  const qcByHour = new Map(row.hourlyQcData.map(hour => [hour.hour, hour]));
+  (model.hourly_data || []).forEach(hour => {
+    const imported = qcByHour.get(hour.hour) || { qcChecked: 0, defect: 0, defectDetails: [] };
+    hour.qcChecked = imported.qcChecked;
+    hour.defect = imported.defect;
+    hour.defectDetails = imported.defectDetails;
+  });
+  delete model.qcChecks;
+  model.importedHistoricalQcData = true;
+  recalculateModelTotals(model);
+  return model;
 }
 
 function applyDailyTarget(model, target) {
@@ -2090,30 +2692,258 @@ app.use('/api', (req, res, next) => {
   return requireWorkScheduleForWrite(req, res, next);
 });
 
-function productionImportTemplateWorkbook() {
+function getProductionImportTemplateSampleRows(limit = 6) {
+  const today = getToday();
+  const candidates = getAvailableHistoryDates()
+    .filter(date => date < today)
+    .flatMap(date => {
+      const snapshot = readProductionSnapshotForDate(date);
+      if (!snapshot) return [];
+      return buildDateReportRows(snapshot, date).map(row => ({
+        ...row,
+        hourlyData: snapshot.lines?.[row.line]?.models?.[row.modelId]?.hourly_data || [],
+        qcChecks: snapshot.lines?.[row.line]?.models?.[row.modelId]?.qcChecks || []
+      }));
+    })
+    .filter(row => row.date && row.line && row.model);
+
+  return candidates
+    .sort((a, b) => {
+      const defectPriority = Number((b.defect || 0) > 0) - Number((a.defect || 0) > 0);
+      return defectPriority
+        || String(b.date).localeCompare(String(a.date))
+        || (Number(b.defect) || 0) - (Number(a.defect) || 0)
+        || String(a.line).localeCompare(String(b.line));
+    })
+    .slice(0, limit);
+}
+
+function styleImportWorksheet(sheet, widths, endColumn) {
+  sheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFF' } };
+  sheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '1F4E78' } };
+  sheet.getRow(1).alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+  sheet.getRow(1).height = 30;
+  widths.forEach((width, index) => { sheet.getColumn(index + 1).width = width; });
+  sheet.autoFilter = { from: `A1`, to: `${endColumn}1` };
+  sheet.views = [{ state: 'frozen', ySplit: 1 }];
+}
+
+function sewingImportTemplateWorkbook(options = {}) {
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = 'Production Dashboard System';
+  const samples = Array.isArray(options.sampleRows) ? options.sampleRows : getProductionImportTemplateSampleRows(3);
+  const headers = ['Tanggal', 'Line', 'Label/Week', 'Model', 'Jam', 'Target Manual', 'Output', 'Catatan'];
+  const widths = [14, 18, 18, 38, 20, 16, 14, 32];
+  const sheet = workbook.addWorksheet('Data Sewing');
+  sheet.addRow(headers);
+  styleImportWorksheet(sheet, widths, 'H');
+  sheet.getColumn(1).numFmt = 'yyyy-mm-dd';
+  [6, 7].forEach(column => { sheet.getColumn(column).numFmt = '0'; });
+
+  const reference = workbook.addWorksheet('Referensi Jam');
+  reference.addRow(['Jam Produksi']);
+  PRODUCTION_HOURS.forEach(hour => reference.addRow([hour]));
+  reference.getColumn(1).width = 22;
+  reference.getRow(1).font = { bold: true };
+  for (let row = 2; row <= 2001; row += 1) {
+    sheet.getCell(row, 5).dataValidation = {
+      type: 'list',
+      allowBlank: false,
+      formulae: [`'Referensi Jam'!$A$2:$A$${PRODUCTION_HOURS.length + 1}`]
+    };
+  }
+
+  const instructions = workbook.addWorksheet('Petunjuk');
+  instructions.addRow(['Bagian', 'Keterangan']);
+  [
+    ['Tujuan', 'Import khusus data hasil sewing. Tidak mengubah data QC yang sudah tersimpan.'],
+    ['Satu baris', 'Satu jam produksi untuk satu model. Pilih Jam dari dropdown.'],
+    ['Jam wajib', `Isi seluruh ${PRODUCTION_HOURS.length} jam produksi untuk setiap model: ${PRODUCTION_HOURS.join(', ')}.`],
+    ['Target Manual dan Output', 'Wajib berupa bilangan bulat tidak negatif. Total harian dihitung otomatis dari seluruh baris per jam.'],
+    ['Identitas model', 'Tanggal, Line, Label/Week, dan Model harus sama pada seluruh jam untuk model yang sama.'],
+    ['Urutan import', 'Import Sewing terlebih dahulu. Setelah berhasil, gunakan template Import QC.']
+  ].forEach(row => instructions.addRow(row));
+  instructions.getColumn(1).width = 26;
+  instructions.getColumn(2).width = 105;
+  instructions.getRow(1).font = { bold: true, color: { argb: 'FFFFFF' } };
+  instructions.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '70AD47' } };
+  instructions.eachRow(row => { row.alignment = { vertical: 'top', wrapText: true }; row.height = 34; });
+
+  const example = workbook.addWorksheet('Contoh Riil');
+  example.addRow(headers);
+  styleImportWorksheet(example, widths, 'H');
+  samples.forEach(sample => {
+    (sample.hourlyData || []).filter(hour => PRODUCTION_HOURS.includes(hour.hour)).forEach(hour => {
+      example.addRow([
+        sample.date, sample.line, sample.labelWeek || '', sample.model || '', hour.hour,
+        parseInt(hour.targetManual) || 0, parseInt(hour.output) || 0, 'Contoh dari data tersimpan'
+      ]);
+    });
+  });
+  if (example.rowCount === 1) example.addRow(['Belum ada contoh data sewing historis.']);
+  return workbook;
+}
+
+function buildQcImportSampleEntries(samples = []) {
+  const rows = [];
+  samples.forEach(sample => {
+    const defectsByHour = new Map();
+    (sample.qcChecks || []).filter(check => check.result === 'defect').forEach(check => {
+      const hour = check.hour || sample.hourlyData?.[parseInt(check.hourIndex)]?.hour || '';
+      if (!QC_IMPORT_HOURS.includes(hour)) return;
+      const key = `${hour}|${check.type}|${check.area}`;
+      const current = defectsByHour.get(key) || { hour, type: check.type, area: check.area, quantity: 0, notes: check.notes || '' };
+      current.quantity += 1;
+      defectsByHour.set(key, current);
+    });
+    (sample.hourlyData || []).filter(hour => QC_IMPORT_HOURS.includes(hour.hour)).forEach(hour => {
+      const good = Math.max((parseInt(hour.qcChecked) || 0) - (parseInt(hour.defect) || 0), 0);
+      if (good > 0) rows.push({ sample, hour: hour.hour, result: 'Good', quantity: good, type: '', area: '', notes: '' });
+      const details = Array.from(defectsByHour.values()).filter(detail => detail.hour === hour.hour);
+      if (details.length > 0) {
+        details.forEach(detail => rows.push({ sample, hour: hour.hour, result: 'Defect', ...detail }));
+      } else {
+        (hour.defectDetails || []).forEach(detail => rows.push({
+          sample,
+          hour: hour.hour,
+          result: 'Defect',
+          quantity: parseInt(detail.quantity) || 1,
+          type: detail.type || '',
+          area: detail.area || '',
+          notes: detail.notes || ''
+        }));
+      }
+    });
+  });
+  return rows;
+}
+
+function qcImportTemplateWorkbook(options = {}) {
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = 'Production Dashboard System';
+  const defectConfig = options.defectConfig || readDefectConfig();
+  const samples = Array.isArray(options.sampleRows) ? options.sampleRows : getProductionImportTemplateSampleRows(3);
+  const headers = ['Tanggal', 'Line', 'Label/Week', 'Model', 'Jam', 'Hasil QC', 'Qty', 'Jenis Defect', 'Defect Area', 'Catatan'];
+  const widths = [14, 18, 18, 38, 20, 14, 12, 34, 34, 34];
+  const sheet = workbook.addWorksheet('Data QC');
+  sheet.addRow(headers);
+  styleImportWorksheet(sheet, widths, 'J');
+  sheet.getColumn(1).numFmt = 'yyyy-mm-dd';
+  sheet.getColumn(7).numFmt = '0';
+
+  const reference = workbook.addWorksheet('Referensi Defect');
+  reference.addRow(['Jenis Defect', 'Severity', '', 'Defect Area', '', 'Jam Produksi']);
+  const types = defectConfig.defectTypes || [];
+  const areas = defectConfig.defectAreas || [];
+  const maxRows = Math.max(types.length, areas.length, QC_IMPORT_HOURS.length);
+  for (let index = 0; index < maxRows; index += 1) {
+    reference.addRow([
+      types[index]?.name || '', types[index]?.severity || '', '', areas[index]?.name || '', '', QC_IMPORT_HOURS[index] || ''
+    ]);
+  }
+  [34, 14, 4, 34, 4, 22].forEach((width, index) => { reference.getColumn(index + 1).width = width; });
+  reference.getRow(1).font = { bold: true, color: { argb: 'FFFFFF' } };
+  reference.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '70AD47' } };
+
+  const typeEnd = Math.max(types.length + 1, 2);
+  const areaEnd = Math.max(areas.length + 1, 2);
+  for (let row = 2; row <= 2001; row += 1) {
+    sheet.getCell(row, 5).dataValidation = { type: 'list', allowBlank: false, formulae: [`'Referensi Defect'!$F$2:$F$${QC_IMPORT_HOURS.length + 1}`] };
+    sheet.getCell(row, 6).dataValidation = { type: 'list', allowBlank: false, formulae: ['"Good,Defect"'] };
+    sheet.getCell(row, 7).dataValidation = { type: 'whole', operator: 'greaterThanOrEqual', allowBlank: false, formulae: [1] };
+    sheet.getCell(row, 8).dataValidation = { type: 'list', allowBlank: true, formulae: [`'Referensi Defect'!$A$2:$A$${typeEnd}`] };
+    sheet.getCell(row, 9).dataValidation = { type: 'list', allowBlank: true, formulae: [`'Referensi Defect'!$D$2:$D$${areaEnd}`] };
+  }
+
+  const instructions = workbook.addWorksheet('Petunjuk');
+  instructions.addRow(['Bagian', 'Keterangan']);
+  [
+    ['Tujuan', 'Import khusus hasil QC. Data target dan output sewing tidak diubah.'],
+    ['Satu baris', 'Satu hasil QC untuk satu jam. Gunakan Qty untuk jumlah hasil dengan kategori yang sama.'],
+    ['Hasil Good', 'Pilih Good, isi Qty, lalu kosongkan Jenis Defect dan Defect Area.'],
+    ['Hasil Defect', 'Pilih Defect, isi Qty, lalu pilih Jenis Defect dan Defect Area dari dropdown.'],
+    ['Jam istirahat', 'Pilihan 11:00 - 13:00 tersedia untuk data QC historis yang memang dicatat pada jam istirahat.'],
+    ['Perhitungan', 'QC Checked, Total Defect, severity, Good, dan defect rate dihitung otomatis oleh sistem.'],
+    ['Pencocokan', 'Tanggal, Line, Label/Week, dan Model harus sama dengan data Sewing yang sudah diimport.'],
+    ['Defect Area tersedia', areas.map(area => area.name).join(', ') || 'Belum ada area defect.'],
+    ['Jenis Defect tersedia', types.map(type => `${type.name} (${type.severity})`).join(', ') || 'Belum ada jenis defect.']
+  ].forEach(row => instructions.addRow(row));
+  instructions.getColumn(1).width = 26;
+  instructions.getColumn(2).width = 105;
+  instructions.getRow(1).font = { bold: true, color: { argb: 'FFFFFF' } };
+  instructions.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '70AD47' } };
+  instructions.eachRow(row => {
+    row.alignment = { vertical: 'top', wrapText: true };
+    row.height = ['Defect Area tersedia', 'Jenis Defect tersedia'].includes(row.getCell(1).value) ? 90 : 34;
+  });
+
+  const example = workbook.addWorksheet('Contoh Riil');
+  example.addRow(headers);
+  styleImportWorksheet(example, widths, 'J');
+  buildQcImportSampleEntries(samples).forEach(entry => {
+    example.addRow([
+      entry.sample.date, entry.sample.line, entry.sample.labelWeek || '', entry.sample.model || '',
+      entry.hour, entry.result, entry.quantity, entry.type || '', entry.area || '', entry.notes || 'Contoh dari data tersimpan'
+    ]);
+  });
+  if (example.rowCount === 1) example.addRow(['Belum ada contoh data QC historis.']);
+  return workbook;
+}
+
+function productionImportTemplateWorkbook(options = {}) {
   const workbook = new ExcelJS.Workbook();
   workbook.creator = 'Production Dashboard System';
   workbook.created = new Date();
 
+  const sampleRows = Array.isArray(options.sampleRows)
+    ? options.sampleRows
+    : getProductionImportTemplateSampleRows();
+  const defectConfig = options.defectConfig || readDefectConfig();
+
   const sheet = workbook.addWorksheet('Data Produksi');
   const headers = [
-    'Tanggal', 'Line', 'Label/Week', 'Model', 'Target', 'Output', 'QC Diperiksa',
-    'Total Defect', 'Defect Critical', 'Defect Major', 'Defect Minor', 'Catatan'
+    'Tanggal', 'Line', 'Model ID', 'Label/Week', 'Model', 'Target', 'Output', 'Achievement',
+    'QC Checked', 'Good', 'Total Defect', 'Critical', 'Major', 'Minor', 'Defect Rate',
+    'Defect Area', 'Jenis Defect', 'Catatan'
   ];
+  const widths = [14, 18, 14, 18, 36, 14, 14, 14, 16, 14, 16, 12, 12, 12, 14, 42, 42, 32];
   sheet.addRow(headers);
   sheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFF' } };
   sheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '1F4E78' } };
   sheet.getRow(1).alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
   sheet.getRow(1).height = 30;
-  [14, 18, 18, 36, 14, 14, 16, 16, 18, 16, 16, 32].forEach((width, index) => {
+  widths.forEach((width, index) => {
     sheet.getColumn(index + 1).width = width;
   });
   sheet.getColumn(1).numFmt = 'yyyy-mm-dd';
-  [5, 6, 7, 8, 9, 10, 11].forEach(column => {
+  [6, 7, 9, 11, 12, 13, 14].forEach(column => {
     sheet.getColumn(column).numFmt = '0';
   });
-  sheet.autoFilter = { from: 'A1', to: 'L1' };
+  [3, 8, 10, 15].forEach(column => {
+    sheet.getCell(1, column).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '7F8C8D' } };
+  });
+  sheet.autoFilter = { from: 'A1', to: 'R1' };
   sheet.views = [{ state: 'frozen', ySplit: 1 }];
+
+  const hourlySheet = workbook.addWorksheet('Detail Per Jam');
+  const hourlyHeaders = [
+    'Tanggal', 'Line', 'Model ID', 'Label/Week', 'Model', 'Jam', 'Target Manual', 'Output',
+    'Selisih', 'QC Checked', 'Total Defect', 'Good', 'Defect Rate'
+  ];
+  const hourlyWidths = [14, 18, 14, 18, 36, 20, 16, 14, 14, 16, 16, 14, 14];
+  hourlySheet.addRow(hourlyHeaders);
+  hourlySheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFF' } };
+  hourlySheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '2F75B5' } };
+  hourlySheet.getRow(1).alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+  hourlySheet.getRow(1).height = 30;
+  hourlyWidths.forEach((width, index) => { hourlySheet.getColumn(index + 1).width = width; });
+  hourlySheet.getColumn(1).numFmt = 'yyyy-mm-dd';
+  [7, 8, 10, 11, 12].forEach(column => { hourlySheet.getColumn(column).numFmt = '0'; });
+  [3, 9, 12, 13].forEach(column => {
+    hourlySheet.getCell(1, column).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '7F8C8D' } };
+  });
+  hourlySheet.autoFilter = { from: 'A1', to: 'M1' };
+  hourlySheet.views = [{ state: 'frozen', ySplit: 1 }];
 
   const instructions = workbook.addWorksheet('Petunjuk');
   instructions.getColumn(1).width = 24;
@@ -2124,29 +2954,96 @@ function productionImportTemplateWorkbook() {
   [
     ['Tanggal', 'Wajib. Gunakan format YYYY-MM-DD dan hanya tanggal sebelum hari ini.'],
     ['Line', 'Wajib. Nama line produksi.'],
+    ['Model ID, Achievement, Good, Defect Rate', 'Boleh disalin dari report tetapi tidak dipakai saat import karena nilainya dihitung otomatis oleh sistem.'],
+    ['Detail Per Jam', 'Opsional. Isi sheet Detail Per Jam jika ingin mempertahankan hasil aktual per jam. Untuk setiap summary, isi 8 jam produksi (07:00-11:00 dan 13:00-17:00). Jam istirahat 11:00 - 13:00 boleh dikosongkan.'],
+    ['Kolom Detail Per Jam', 'Target Manual, Output, QC Checked, dan Total Defect wajib bilangan bulat tidak negatif. Total tiap kolom harus sama dengan nilai summary.'],
     ['Label/Week', 'Opsional. Isi label atau minggu produksi jika tersedia.'],
     ['Model', 'Wajib. Nama model produksi.'],
-    ['Target, Output, QC Diperiksa, Total Defect', 'Wajib, bilangan bulat tidak negatif. Total Defect tidak boleh lebih besar dari QC Diperiksa.'],
-    ['Defect Critical/Major/Minor', 'Opsional. Jika diisi, jumlah ketiganya harus sama dengan Total Defect. Jika kosong, defect otomatis dianggap Minor.'],
+    ['Target, Output, QC Checked, Total Defect', 'Wajib, bilangan bulat tidak negatif. Total Defect tidak boleh lebih besar dari QC Checked.'],
+    ['Critical/Major/Minor', 'Opsional. Jika diisi, jumlah ketiganya harus sama dengan Total Defect. Jika kosong, defect otomatis dianggap Minor.'],
+    ['Defect Area', 'Opsional. Gunakan format Nama (Qty), dipisahkan koma. Contoh: Badan (2), Kepala (1). Total Qty harus sama dengan Total Defect.'],
+    ['Jenis Defect', 'Opsional. Gunakan format Nama (Qty), dipisahkan koma. Contoh: Jahitan Terbuka (2), Kotor (1). Total Qty harus sama dengan Total Defect. Kedua kolom ini adalah rekap terpisah seperti report.'],
+    ['Referensi kategori', 'Lihat sheet Referensi Defect. Daftar tersebut diambil langsung dari master kategori aplikasi saat template diunduh.'],
+    ['Defect Area aktif saat ini', (defectConfig.defectAreas || []).filter(area => area.active !== false).map(area => area.name).join(', ') || 'Belum ada area defect aktif.'],
+    ['Contoh data', 'Sheet Contoh Data Riil diambil dari report produksi yang sudah tersimpan. Sheet contoh tidak ikut diimport.'],
     ['Catatan', 'Opsional. Keterangan sumber data lama.'],
     ['Alur import', 'Isi sheet Data Produksi, simpan sebagai .xlsx, unggah ke aplikasi, periksa hasil review, lalu ketik IMPORT untuk konfirmasi.']
   ].forEach(row => instructions.addRow(row));
   instructions.eachRow(row => {
     row.alignment = { vertical: 'top', wrapText: true };
-    row.height = 30;
+    row.height = row.getCell(1).value === 'Defect Area aktif saat ini' ? 90 : 30;
   });
 
-  const example = workbook.addWorksheet('Contoh');
-  const exampleDate = new Date(`${getToday()}T00:00:00Z`);
-  exampleDate.setUTCDate(exampleDate.getUTCDate() - 1);
+  const example = workbook.addWorksheet('Contoh Data Riil');
   example.addRow(headers);
-  example.addRow([exampleDate.toISOString().slice(0, 10), 'F1-5A', 'AP/14', 'Contoh Model', 180, 165, 40, 2, 0, 1, 1, 'Hapus sheet ini jika tidak diperlukan']);
   example.getRow(1).font = { bold: true, color: { argb: 'FFFFFF' } };
   example.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'A5A5A5' } };
-  example.columns = headers.map((header, index) => ({ header, width: [14, 18, 18, 36, 14, 14, 16, 16, 18, 16, 16, 32][index] }));
-  example.getRow(3).values = ['Jangan impor baris contoh ini', '', '', '', '', '', '', '', '', '', '', ''];
-  example.mergeCells('A3:L3');
-  example.getCell('A3').font = { italic: true, color: { argb: 'C00000' } };
+  widths.forEach((width, index) => { example.getColumn(index + 1).width = width; });
+  sampleRows.forEach(row => {
+    example.addRow([
+      row.date, row.line, row.modelId || '', row.labelWeek || '', row.model || '', row.target || 0,
+      row.output || 0, `${row.achievement || 0}%`, row.qcChecked || 0, row.good || 0,
+      row.defect || 0, row.criticalDefect || 0, row.majorDefect || 0, row.minorDefect || 0,
+      `${row.defectRate || 0}%`, row.defectAreas || '-', row.defectTypes || '-',
+      'Contoh otomatis dari data report tersimpan'
+    ]);
+  });
+  if (sampleRows.length === 0) {
+    example.addRow(['Belum ada data report historis yang dapat dijadikan contoh.']);
+    example.mergeCells('A2:R2');
+  }
+  const noticeRow = example.rowCount + 2;
+  example.getRow(noticeRow).values = ['Jangan unggah sheet ini. Salin baris yang diperlukan ke sheet Data Produksi.'];
+  example.mergeCells(`A${noticeRow}:R${noticeRow}`);
+  example.getCell(`A${noticeRow}`).font = { italic: true, color: { argb: 'C00000' } };
+  example.views = [{ state: 'frozen', ySplit: 1 }];
+  example.autoFilter = { from: 'A1', to: 'R1' };
+
+  const hourlyExample = workbook.addWorksheet('Contoh Per Jam Riil');
+  hourlyExample.addRow(hourlyHeaders);
+  hourlyExample.getRow(1).font = { bold: true, color: { argb: 'FFFFFF' } };
+  hourlyExample.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'A5A5A5' } };
+  hourlyWidths.forEach((width, index) => { hourlyExample.getColumn(index + 1).width = width; });
+  sampleRows.forEach(row => {
+    (row.hourlyData || []).forEach(hour => {
+      const qcChecked = parseInt(hour.qcChecked) || 0;
+      const defect = parseInt(hour.defect) || 0;
+      hourlyExample.addRow([
+        row.date, row.line, row.modelId || '', row.labelWeek || '', row.model || '', hour.hour || '',
+        parseInt(hour.targetManual) || 0, parseInt(hour.output) || 0,
+        (parseInt(hour.output) || 0) - (parseInt(hour.targetManual) || 0), qcChecked, defect,
+        Math.max(qcChecked - defect, 0), qcChecked > 0 ? `${((defect / qcChecked) * 100).toFixed(2)}%` : '0%'
+      ]);
+    });
+  });
+  if (hourlyExample.rowCount === 1) {
+    hourlyExample.addRow(['Belum ada detail per jam historis yang dapat dijadikan contoh.']);
+    hourlyExample.mergeCells('A2:M2');
+  }
+  const hourlyNoticeRow = hourlyExample.rowCount + 2;
+  hourlyExample.getRow(hourlyNoticeRow).values = ['Jangan unggah sheet ini. Salin baris yang diperlukan ke sheet Detail Per Jam.'];
+  hourlyExample.mergeCells(`A${hourlyNoticeRow}:M${hourlyNoticeRow}`);
+  hourlyExample.getCell(`A${hourlyNoticeRow}`).font = { italic: true, color: { argb: 'C00000' } };
+  hourlyExample.autoFilter = { from: 'A1', to: 'M1' };
+  hourlyExample.views = [{ state: 'frozen', ySplit: 1 }];
+
+  const reference = workbook.addWorksheet('Referensi Defect');
+  reference.addRow(['Jenis Defect', 'Severity', 'Status', '', 'Defect Area', 'Status']);
+  reference.getRow(1).font = { bold: true, color: { argb: 'FFFFFF' } };
+  reference.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '70AD47' } };
+  const types = defectConfig.defectTypes || [];
+  const areas = defectConfig.defectAreas || [];
+  const referenceRows = Math.max(types.length, areas.length);
+  for (let index = 0; index < referenceRows; index += 1) {
+    const type = types[index];
+    const area = areas[index];
+    reference.addRow([
+      type?.name || '', type?.severity || '', type ? (type.active !== false ? 'Aktif' : 'Nonaktif') : '', '',
+      area?.name || '', area ? (area.active !== false ? 'Aktif' : 'Nonaktif') : ''
+    ]);
+  }
+  [36, 14, 14, 4, 36, 14].forEach((width, index) => { reference.getColumn(index + 1).width = width; });
+  reference.views = [{ state: 'frozen', ySplit: 1 }];
   return workbook;
 }
 
@@ -2167,6 +3064,140 @@ app.get('/api/production-import/template', requireLogin, requireAdmin, async (re
   } catch (error) {
     logger.error('Gagal membuat template import produksi', error);
     res.status(500).json({ error: 'Gagal membuat template Excel' });
+  }
+});
+
+app.get('/api/production-import/template/:kind', requireLogin, requireAdmin, async (req, res) => {
+  const kind = String(req.params.kind || '').toLowerCase();
+  if (!['sewing', 'qc'].includes(kind)) return res.status(404).json({ error: 'Jenis template tidak dikenal' });
+  try {
+    const workbook = kind === 'sewing' ? sewingImportTemplateWorkbook() : qcImportTemplateWorkbook();
+    const filename = kind === 'sewing' ? 'Template_Import_Sewing.xlsx' : 'Template_Import_QC.xlsx';
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (error) {
+    logger.error(`Gagal membuat template import ${kind}`, error);
+    res.status(500).json({ error: 'Gagal membuat template Excel' });
+  }
+});
+
+function cacheProductionImportPreview(req, parsed, kind) {
+  const token = parsed.summary.invalid === 0 && parsed.summary.total > 0
+    ? crypto.randomBytes(24).toString('hex')
+    : '';
+  if (!token) return '';
+  const snapshotHashes = {};
+  parsed.rows.filter(row => row.errors.length === 0).forEach(row => {
+    if (Object.prototype.hasOwnProperty.call(snapshotHashes, row.date)) return;
+    snapshotHashes[row.date] = getLatestSnapshotForDate(row.date)?.contentHash || '';
+  });
+  productionImportPreviewCache.set(token, {
+    token,
+    kind,
+    userId: getAuthenticatedSessionUser(req).id,
+    createdAt: Date.now(),
+    rows: parsed.rows.filter(row => row.errors.length === 0),
+    summary: parsed.summary,
+    snapshotHashes,
+    filename: String(req.headers['x-file-name'] || 'import.xlsx').slice(0, 150)
+  });
+  return token;
+}
+
+app.post('/api/production-import/:kind/preview', requireLogin, requireAdmin,
+  express.raw({ type: ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel', 'application/octet-stream'], limit: '10mb' }),
+  async (req, res) => {
+    const kind = String(req.params.kind || '').toLowerCase();
+    if (!['sewing', 'qc'].includes(kind)) return res.status(404).json({ error: 'Jenis import tidak dikenal' });
+    cleanExpiredProductionImportPreviews();
+    if (!Buffer.isBuffer(req.body) || req.body.length === 0) return res.status(400).json({ error: 'File Excel wajib diunggah' });
+    try {
+      const parsed = kind === 'sewing' ? parseSewingImportWorkbook(req.body) : parseQcImportWorkbook(req.body);
+      if (parsed.summary.total === 0) return res.status(400).json({ error: `Sheet Data ${kind === 'sewing' ? 'Sewing' : 'QC'} belum berisi data` });
+      const token = cacheProductionImportPreview(req, parsed, kind);
+      return res.json({ token, rows: parsed.rows, summary: parsed.summary, canImport: Boolean(token), kind });
+    } catch (error) {
+      logger.warn(`File import ${kind} tidak dapat dibaca: ${error.message}`);
+      return res.status(400).json({ error: 'File Excel tidak valid atau rusak' });
+    }
+  });
+
+app.post('/api/production-import/:kind/confirm', requireLogin, requireAdmin, async (req, res) => {
+  const kind = String(req.params.kind || '').toLowerCase();
+  cleanExpiredProductionImportPreviews();
+  const token = String(req.body?.token || '');
+  const preview = productionImportPreviewCache.get(token);
+  const user = getAuthenticatedSessionUser(req);
+  if (!preview || preview.userId !== user.id || preview.kind !== kind) {
+    return res.status(400).json({ error: 'Review import sudah kedaluwarsa atau jenis import tidak sesuai' });
+  }
+  for (const [date, expectedHash] of Object.entries(preview.snapshotHashes)) {
+    const currentHash = getLatestSnapshotForDate(date)?.contentHash || '';
+    if (currentHash !== expectedHash) {
+      productionImportPreviewCache.delete(token);
+      return res.status(409).json({ error: `Data tanggal ${date} berubah setelah review. Silakan review ulang.` });
+    }
+  }
+
+  try {
+    const snapshots = new Map();
+    preview.rows.forEach(row => {
+      if (!snapshots.has(row.date)) {
+        const source = readProductionSnapshotForDate(row.date);
+        snapshots.set(row.date, source ? JSON.parse(JSON.stringify(source)) : { lines: {}, activeLine: '' });
+      }
+    });
+    const safetyFiles = [];
+    snapshots.forEach((snapshot, date) => {
+      if (getLatestSnapshotForDate(date)) {
+        const filename = `data_${date}_${Date.now()}_pre_import_${kind}_${crypto.randomBytes(4).toString('hex')}.json`;
+        storeProductionSnapshot(filename, date, 'pre_import', snapshot);
+        safetyFiles.push(filename);
+      }
+    });
+
+    let created = 0;
+    let updated = 0;
+    preview.rows.forEach(row => {
+      const snapshot = snapshots.get(row.date);
+      snapshot.lines = snapshot.lines || {};
+      const line = ensureLineActiveModels(snapshot.lines[row.line]) || { models: {}, activeModels: [], activeModel: null };
+      line.models = line.models || {};
+      if (kind === 'sewing') {
+        const modelId = row.existingModelId || generateModelId(line.models);
+        const existingModel = row.existingModelId ? line.models[row.existingModelId] : null;
+        line.models[modelId] = buildImportedSewingModel(row, modelId, existingModel);
+        line.activeModels = Array.from(new Set([...(line.activeModels || []), modelId]));
+        line.activeModel = line.activeModels[0] || modelId;
+        if (existingModel) updated += 1;
+        else created += 1;
+      } else {
+        const model = line.models[row.existingModelId];
+        if (!model) throw new Error(`Model QC tidak ditemukan: ${row.line} / ${row.model}`);
+        applyImportedQcData(model, row);
+        updated += 1;
+      }
+      snapshot.lines[row.line] = line;
+      snapshot.activeLine = snapshot.activeLine || row.line;
+    });
+    snapshots.forEach((snapshot, date) => storeProductionSnapshot(`data_${date}.json`, date, 'daily', snapshot));
+    await flushPendingDatabaseWrites();
+    productionImportPreviewCache.delete(token);
+    return res.json({
+      message: kind === 'sewing'
+        ? `Import Sewing berhasil: ${created} model baru, ${updated} model diperbarui`
+        : `Import QC berhasil: ${updated} model diperbarui`,
+      kind,
+      created,
+      updated,
+      dates: snapshots.size,
+      safetyFiles
+    });
+  } catch (error) {
+    logger.error(`Gagal mengonfirmasi import ${kind}`, error);
+    return res.status(500).json({ error: `Import ${kind === 'sewing' ? 'Sewing' : 'QC'} gagal disimpan` });
   }
 });
 
@@ -5794,8 +6825,14 @@ module.exports = {
   parseNonNegativeInteger,
   parseProductionImportRows,
   parseProductionImportWorkbook,
+  parseSewingImportWorkbook,
+  parseQcImportWorkbook,
   buildImportedProductionModel,
+  buildImportedSewingModel,
+  applyImportedQcData,
   productionImportTemplateWorkbook,
+  sewingImportTemplateWorkbook,
+  qcImportTemplateWorkbook,
   pruneDatabaseBackups,
   readProductionSnapshotForDate,
   recoverProductionSnapshotsFromDatabaseBackups,

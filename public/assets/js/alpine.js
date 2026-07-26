@@ -154,6 +154,7 @@ function dashboard() {
 	        maintenanceLoading: false,
 	        maintenanceAction: '',
 	        productionImport: {
+	            kind: '',
 	            file: null,
 	            fileName: '',
 	            loading: false,
@@ -554,10 +555,11 @@ function dashboard() {
 	            }
 	        },
 
-	        selectProductionImportFile(event) {
+	        selectProductionImportFile(event, kind) {
 	            const file = event.target.files?.[0] || null;
 	            this.productionImport = {
 	                ...this.productionImport,
+	                kind,
 	                file,
 	                fileName: file?.name || '',
 	                token: '',
@@ -570,8 +572,13 @@ function dashboard() {
 
 	        async previewProductionImport() {
 	            const file = this.productionImport.file;
+	            const kind = this.productionImport.kind;
 	            if (!file) {
 	                this.showToast('Pilih file Excel terlebih dahulu', 'error');
+	                return;
+	            }
+	            if (!['sewing', 'qc'].includes(kind)) {
+	                this.showToast('Pilih jenis import Sewing atau QC', 'error');
 	                return;
 	            }
 	            if (!/\.xlsx?$/i.test(file.name)) {
@@ -583,7 +590,7 @@ function dashboard() {
 	            this.productionImport.token = '';
 	            this.productionImport.confirmation = '';
 	            try {
-	                const response = await fetch('/api/production-import/preview', {
+	                const response = await fetch(`/api/production-import/${kind}/preview`, {
 	                    method: 'POST',
 	                    headers: {
 	                        'Content-Type': file.type || 'application/octet-stream',
@@ -598,7 +605,7 @@ function dashboard() {
 	                this.productionImport.token = result.token || '';
 	                this.productionImport.currentPage = 1;
 	                this.showToast(result.canImport
-	                    ? 'Review selesai. Periksa data sebelum konfirmasi.'
+	                    ? `Review import ${kind === 'sewing' ? 'Sewing' : 'QC'} selesai. Periksa data sebelum konfirmasi.`
 	                    : 'Review menemukan data yang harus diperbaiki.', result.canImport ? 'success' : 'error');
 	            } catch (error) {
 	                logClientError('Production import preview failed:', error);
@@ -610,9 +617,10 @@ function dashboard() {
 
 	        async confirmProductionImport() {
 	            if (!this.productionImport.token || this.productionImport.confirmation !== 'IMPORT') return;
+	            const kind = this.productionImport.kind;
 	            this.productionImport.confirming = true;
 	            try {
-	                const response = await fetch('/api/production-import/confirm', {
+	                const response = await fetch(`/api/production-import/${kind}/confirm`, {
 	                    method: 'POST',
 	                    headers: { 'Content-Type': 'application/json' },
 	                    body: JSON.stringify({ token: this.productionImport.token })
@@ -622,6 +630,7 @@ function dashboard() {
 	                this.showToast(result.message || 'Import data produksi berhasil', 'success');
 	                this.productionImport = {
 	                    ...this.productionImport,
+	                    kind: '',
 	                    file: null,
 	                    fileName: '',
 	                    token: '',
@@ -630,7 +639,8 @@ function dashboard() {
 	                    confirmation: '',
 	                    currentPage: 1
 	                };
-	                if (this.$refs.productionImportFile) this.$refs.productionImportFile.value = '';
+	                if (this.$refs.sewingImportFile) this.$refs.sewingImportFile.value = '';
+	                if (this.$refs.qcImportFile) this.$refs.qcImportFile.value = '';
 	                await this.loadDashboardData();
 	            } catch (error) {
 	                logClientError('Production import confirmation failed:', error);

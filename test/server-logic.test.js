@@ -23,12 +23,18 @@ const {
   isModelActiveInManagement,
   isValidProductionSnapshot,
   isBlankInputValue,
+  applyImportedQcData,
   buildImportedProductionModel,
+  buildImportedSewingModel,
   mergeProductionSnapshotsByDate,
+  parseQcImportWorkbook,
+  parseSewingImportWorkbook,
   parseProductionImportRows,
   parseProductionImportWorkbook,
   parseNonNegativeInteger,
   productionImportTemplateWorkbook,
+  qcImportTemplateWorkbook,
+  sewingImportTemplateWorkbook,
   summarizeProductionSnapshot,
   summarizeProductionSnapshotByLine,
   verifyPassword
@@ -202,10 +208,60 @@ test('historical production model preserves imported daily totals and severity',
   assert.equal(breakdown.minor.count, 3);
 });
 
+test('historical production import accepts report columns and validates defect category totals', () => {
+  const parsed = parseProductionImportRows([
+    ['Tanggal', 'Line', 'Model ID', 'Label/Week', 'Model', 'Target', 'Output', 'Achievement', 'QC Checked', 'Good', 'Total Defect', 'Critical', 'Major', 'Minor', 'Defect Rate', 'Defect Area', 'Jenis Defect', 'Catatan'],
+    ['2026-07-20', 'Line 1', 'model1', 'W29', 'Model A', 100, 90, '90%', 20, 17, 3, 1, 1, 1, '15%', 'Badan (2), Kepala (1)', 'Jahitan Terbuka (2), Kotor (1)', 'Salinan report']
+  ], {
+    today: '2026-07-26',
+    getSnapshot: () => null
+  });
+
+  assert.equal(parsed.summary.valid, 1);
+  assert.equal(parsed.rows[0].defectAreaSummary, 'Badan (2), Kepala (1)');
+  assert.equal(parsed.rows[0].defectTypeSummary, 'Jahitan Terbuka (2), Kotor (1)');
+
+  const invalid = parseProductionImportRows([
+    ['Tanggal', 'Line', 'Model', 'Target', 'Output', 'QC Checked', 'Total Defect', 'Defect Area', 'Jenis Defect'],
+    ['2026-07-20', 'Line 1', 'Model A', 100, 90, 20, 3, 'Badan (2)', 'Kotor (3)']
+  ], {
+    today: '2026-07-26',
+    getSnapshot: () => null
+  });
+  assert.ok(invalid.rows[0].errors.some(error => /Defect Area/.test(error)));
+});
+
+test('historical production model preserves imported defect area and type summaries', () => {
+  const model = buildImportedProductionModel({
+    date: '2026-07-20',
+    labelWeek: 'W29',
+    model: 'Model A',
+    target: 100,
+    output: 90,
+    qcChecked: 20,
+    defect: 3,
+    criticalDefect: 1,
+    majorDefect: 1,
+    minorDefect: 1,
+    defectAreas: [{ name: 'Badan', quantity: 2 }, { name: 'Kepala', quantity: 1 }],
+    defectTypes: [{ name: 'Jahitan Terbuka', quantity: 2 }, { name: 'Kotor', quantity: 1 }],
+    notes: 'Data report'
+  }, 'model2');
+  const report = buildDateReportRows({ lines: { 'Line 1': { models: { model2: model } } } }, '2026-07-20')[0];
+  const breakdown = calculateDefectSeverityBreakdown(model);
+
+  assert.equal(report.defectAreas, 'Badan (2), Kepala (1)');
+  assert.equal(report.defectTypes, 'Jahitan Terbuka (2), Kotor (1)');
+  assert.equal(breakdown.critical.count, 1);
+  assert.equal(breakdown.major.count, 1);
+  assert.equal(breakdown.minor.count, 1);
+});
+
 test('historical production Excel template is readable without phantom data rows', async () => {
-  const workbook = productionImportTemplateWorkbook();
+  const workbook = productionImportTemplateWorkbook({ sampleRows: [], defectConfig: { defectTypes: [], defectAreas: [] } });
   workbook.getWorksheet('Data Produksi').addRow([
-    '2026-07-20', 'Line 1', 'W29', 'Model A', 100, 90, 20, 2, 0, 1, 1, 'Migrasi'
+    '2026-07-20', 'Line 1', 'model1', 'W29', 'Model A', 100, 90, '90%', 20, 18, 2,
+    0, 1, 1, '10%', 'Badan (1), Kepala (1)', 'Kotor (1), Bentuk tidak sesuai (1)', 'Migrasi'
   ]);
   const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
   const parsed = parseProductionImportWorkbook(buffer, {
@@ -216,6 +272,198 @@ test('historical production Excel template is readable without phantom data rows
   assert.equal(parsed.summary.total, 1);
   assert.equal(parsed.rows[0].rowNumber, 2);
   assert.equal(parsed.rows[0].action, 'new');
+  assert.equal(workbook.getWorksheet('Contoh Data Riil').getCell('A2').value, 'Belum ada data report historis yang dapat dijadikan contoh.');
+  assert.ok(workbook.getWorksheet('Referensi Defect'));
+});
+
+test('historical production import preserves validated hourly production results', async () => {
+  const workbook = productionImportTemplateWorkbook({ sampleRows: [], defectConfig: { defectTypes: [], defectAreas: [] } });
+  workbook.getWorksheet('Data Produksi').addRow([
+    '2026-07-20', 'Line 1', 'model1', 'W29', 'Model A', 100, 90, '90%', 20, 18, 2,
+    0, 1, 1, '10%', 'Badan (1), Kepala (1)', 'Kotor (1), Bentuk tidak sesuai (1)', 'Migrasi'
+  ]);
+  const hourlyValues = [
+    ['07:00 - 08:00', 13, 12, 3, 1],
+    ['08:00 - 09:00', 13, 12, 3, 0],
+    ['09:00 - 10:00', 13, 12, 3, 0],
+    ['10:00 - 11:00', 13, 12, 3, 0],
+    ['13:00 - 14:00', 12, 11, 2, 1],
+    ['14:00 - 15:00', 12, 11, 2, 0],
+    ['15:00 - 16:00', 12, 10, 2, 0],
+    ['16:00 - 17:00', 12, 10, 2, 0]
+  ];
+  hourlyValues.forEach(([hour, target, output, qcChecked, defect]) => {
+    workbook.getWorksheet('Detail Per Jam').addRow([
+      '2026-07-20', 'Line 1', 'model1', 'W29', 'Model A', hour, target, output,
+      output - target, qcChecked, defect, qcChecked - defect, qcChecked ? `${((defect / qcChecked) * 100).toFixed(2)}%` : '0%'
+    ]);
+  });
+  const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
+  const parsed = parseProductionImportWorkbook(buffer, {
+    today: '2026-07-26',
+    getSnapshot: () => null
+  });
+
+  assert.equal(parsed.summary.invalid, 0);
+  assert.equal(parsed.rows[0].hourlyData.length, 9);
+  assert.equal(parsed.rows[0].hourlyData[0].output, 12);
+  assert.equal(parsed.rows[0].hourlyData[4].hour, '11:00 - 13:00');
+  const model = buildImportedProductionModel(parsed.rows[0], 'model1');
+  assert.deepEqual(model.hourly_data.map(hour => hour.output), [12, 12, 12, 12, 0, 11, 11, 10, 10]);
+  assert.equal(model.hourly_data[0].defectDetails.reduce((total, detail) => total + detail.quantity, 0), 1);
+  assert.equal(model.hourly_data[5].defectDetails.reduce((total, detail) => total + detail.quantity, 0), 1);
+});
+
+test('hourly import rejects incomplete hours and totals that differ from summary', async () => {
+  const workbook = productionImportTemplateWorkbook({ sampleRows: [], defectConfig: { defectTypes: [], defectAreas: [] } });
+  workbook.getWorksheet('Data Produksi').addRow([
+    '2026-07-20', 'Line 1', 'model1', 'W29', 'Model A', 100, 90, '90%', 20, 18, 2,
+    0, 1, 1, '10%', '-', '-', 'Migrasi'
+  ]);
+  workbook.getWorksheet('Detail Per Jam').addRow([
+    '2026-07-20', 'Line 1', 'model1', 'W29', 'Model A', '07:00 - 08:00', 10, 10, 0, 2, 0, 2, '0%'
+  ]);
+  const parsed = parseProductionImportWorkbook(Buffer.from(await workbook.xlsx.writeBuffer()), {
+    today: '2026-07-26',
+    getSnapshot: () => null
+  });
+
+  assert.equal(parsed.summary.invalid, 1);
+  assert.ok(parsed.rows[0].errors.some(error => /belum lengkap/.test(error)));
+});
+
+test('Excel import instructions list the active defect areas from application config', () => {
+  const workbook = productionImportTemplateWorkbook({
+    sampleRows: [],
+    defectConfig: {
+      defectTypes: [],
+      defectAreas: [
+        { id: 1, name: 'Badan', active: true },
+        { id: 2, name: 'Kepala', active: true },
+        { id: 3, name: 'Area Lama', active: false }
+      ]
+    }
+  });
+  const instructions = workbook.getWorksheet('Petunjuk');
+  const areaRow = instructions.getRows(1, instructions.rowCount)
+    .find(row => row.getCell(1).value === 'Defect Area aktif saat ini');
+
+  assert.equal(areaRow.getCell(2).value, 'Badan, Kepala');
+  assert.ok(workbook.getWorksheet('Detail Per Jam'));
+  assert.ok(workbook.getWorksheet('Contoh Per Jam Riil'));
+});
+
+test('sewing import uses a simple one-row-per-hour template', async () => {
+  const workbook = sewingImportTemplateWorkbook({ sampleRows: [] });
+  const rows = [
+    ['07:00 - 08:00', 10, 9], ['08:00 - 09:00', 10, 9], ['09:00 - 10:00', 10, 9], ['10:00 - 11:00', 10, 9],
+    ['13:00 - 14:00', 10, 9], ['14:00 - 15:00', 10, 9], ['15:00 - 16:00', 10, 9], ['16:00 - 17:00', 10, 9]
+  ];
+  rows.forEach(([hour, target, output]) => workbook.getWorksheet('Data Sewing').addRow([
+    '2026-07-20', 'Line 1', 'W29', 'Model A', hour, target, output, 'Sewing lama'
+  ]));
+  const parsed = parseSewingImportWorkbook(Buffer.from(await workbook.xlsx.writeBuffer()), {
+    today: '2026-07-26',
+    getSnapshot: () => null
+  });
+
+  assert.equal(parsed.summary.valid, 1);
+  assert.equal(parsed.rows[0].target, 80);
+  assert.equal(parsed.rows[0].output, 72);
+  assert.equal(parsed.rows[0].hourlyData.length, 9);
+  assert.equal(workbook.getWorksheet('Data Sewing').getCell('E2').dataValidation.formulae[0], "'Referensi Jam'!$A$2:$A$9");
+
+  const model = buildImportedSewingModel(parsed.rows[0], 'model1');
+  assert.equal(model.outputDay, 72);
+  assert.equal(model.hourly_data[0].output, 9);
+  assert.equal(model.qcChecking, 0);
+});
+
+test('reimporting Sewing preserves existing QC data', () => {
+  const existing = {
+    hourly_data: [
+      { hour: '07:00 - 08:00', targetManual: 10, output: 8, qcChecked: 5, defect: 1, defectDetails: [{ type: 'Kotor', area: 'Badan', quantity: 1, severity: 'minor' }] },
+      { hour: '11:00 - 13:00', targetManual: 0, output: 0, qcChecked: 0, defect: 0, defectDetails: [] }
+    ],
+    operators: []
+  };
+  const row = {
+    date: '2026-07-20', labelWeek: 'W29', model: 'Model A', target: 20, output: 18,
+    hourlyData: [
+      { hour: '07:00 - 08:00', targetManual: 20, output: 18 },
+      { hour: '11:00 - 13:00', targetManual: 0, output: 0 }
+    ]
+  };
+  const model = buildImportedSewingModel(row, 'model1', existing);
+
+  assert.equal(model.outputDay, 18);
+  assert.equal(model.qcChecking, 5);
+  assert.equal(model.actualDefect, 1);
+  assert.equal(model.hourly_data[0].defectDetails[0].type, 'Kotor');
+});
+
+test('QC import uses Good/Defect rows and defect category dropdowns', async () => {
+  const sewingModel = buildImportedSewingModel({
+    date: '2026-07-20', labelWeek: 'W29', model: 'Model A', target: 80, output: 72,
+    hourlyData: [
+      { hour: '07:00 - 08:00', targetManual: 10, output: 9, qcChecked: 0, defect: 0 },
+      { hour: '08:00 - 09:00', targetManual: 10, output: 9, qcChecked: 0, defect: 0 },
+      { hour: '09:00 - 10:00', targetManual: 10, output: 9, qcChecked: 0, defect: 0 },
+      { hour: '10:00 - 11:00', targetManual: 10, output: 9, qcChecked: 0, defect: 0 },
+      { hour: '11:00 - 13:00', targetManual: 0, output: 0, qcChecked: 0, defect: 0 },
+      { hour: '13:00 - 14:00', targetManual: 10, output: 9, qcChecked: 0, defect: 0 },
+      { hour: '14:00 - 15:00', targetManual: 10, output: 9, qcChecked: 0, defect: 0 },
+      { hour: '15:00 - 16:00', targetManual: 10, output: 9, qcChecked: 0, defect: 0 },
+      { hour: '16:00 - 17:00', targetManual: 10, output: 9, qcChecked: 0, defect: 0 }
+    ]
+  }, 'model1');
+  const snapshot = { lines: { 'Line 1': { models: { model1: sewingModel } } } };
+  const workbook = qcImportTemplateWorkbook({
+    sampleRows: [],
+    defectConfig: {
+      defectTypes: [{ id: 1, name: 'Kotor', severity: 'minor', active: true }],
+      defectAreas: [{ id: 1, name: 'Badan', active: true }]
+    }
+  });
+  const qcSheet = workbook.getWorksheet('Data QC');
+  qcSheet.addRow(['2026-07-20', 'Line 1', 'W29', 'Model A', '07:00 - 08:00', 'Good', 7, '', '', '']);
+  qcSheet.addRow(['2026-07-20', 'Line 1', 'W29', 'Model A', '07:00 - 08:00', 'Defect', 2, 'Kotor', 'Badan', '']);
+  const parsed = parseQcImportWorkbook(Buffer.from(await workbook.xlsx.writeBuffer()), {
+    today: '2026-07-26',
+    defectConfig: {
+      defectTypes: [{ id: 1, name: 'Kotor', severity: 'minor', active: true }],
+      defectAreas: [{ id: 1, name: 'Badan', active: true }]
+    },
+    getSnapshot: () => snapshot
+  });
+
+  assert.equal(parsed.summary.valid, 1);
+  assert.equal(parsed.rows[0].qcChecked, 9);
+  assert.equal(parsed.rows[0].defect, 2);
+  assert.equal(parsed.rows[0].defectTypeSummary, 'Kotor (2)');
+  assert.equal(qcSheet.getCell('F2').dataValidation.formulae[0], '"Good,Defect"');
+  assert.match(qcSheet.getCell('H2').dataValidation.formulae[0], /Referensi Defect/);
+
+  applyImportedQcData(sewingModel, parsed.rows[0]);
+  assert.equal(sewingModel.outputDay, 72);
+  assert.equal(sewingModel.hourly_data[0].qcChecked, 9);
+  assert.equal(sewingModel.hourly_data[0].defect, 2);
+  assert.equal(sewingModel.qcChecking, 9);
+  assert.equal(sewingModel.actualDefect, 2);
+});
+
+test('QC import rejects rows when sewing model has not been imported', async () => {
+  const workbook = qcImportTemplateWorkbook({ sampleRows: [], defectConfig: { defectTypes: [], defectAreas: [] } });
+  workbook.getWorksheet('Data QC').addRow([
+    '2026-07-20', 'Line 1', 'W29', 'Model A', '07:00 - 08:00', 'Good', 5, '', '', ''
+  ]);
+  const parsed = parseQcImportWorkbook(Buffer.from(await workbook.xlsx.writeBuffer()), {
+    today: '2026-07-26',
+    defectConfig: { defectTypes: [], defectAreas: [] },
+    getSnapshot: () => null
+  });
+  assert.equal(parsed.summary.invalid, 1);
+  assert.ok(parsed.rows[0].errors.some(error => /Import data sewing terlebih dahulu/.test(error)));
 });
 
 test('operator production form keeps an unsaved zero output visibly empty', () => {

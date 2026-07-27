@@ -1714,7 +1714,7 @@ function dashboard() {
 	        },
 
         isWorkScheduleLocked() {
-            if (!this.isAuthenticated || ['admin', 'ppic'].includes(this.currentUser?.role)) return false;
+            if (!this.isAuthenticated || this.currentUser?.role === 'admin') return false;
 	            if (!this.workScheduleSettings?.enabled) return false;
 
 	            // Reference the clock tick so Alpine reevaluates the lock every 30 seconds.

@@ -1195,7 +1195,7 @@
 		                            <p class="text-gray-600">Catat PO dan qty material, hubungkan ke proses produksi, lalu pantau hasil aktualnya.</p>
 		                            <small class="text-emerald-700"><i class="fa-solid fa-rotate mr-1" :class="materialOrderSyncing ? 'fa-spin' : ''"></i>Sinkron otomatis dengan data produksi setiap 10 detik<span x-show="materialOrderLastSyncedAt" x-text="` · terakhir ${materialOrderLastSyncedAt}`"></span></small>
 		                        </div>
-	                        <button x-show="canManageMaterialOrders()" @click="openMaterialOrderModal()" class="material-primary-button">
+	                        <button x-show="canManageMaterialOrders()" @click="openMaterialOrderModal()" :disabled="isWorkScheduleLocked()" class="schedule-action material-primary-button">
 	                            <i class="fa-solid fa-plus"></i>Tambah Order Material
 	                        </button>
 	                    </div>
@@ -1293,8 +1293,8 @@
 	                                            </td>
 	                                            <td x-show="canManageMaterialOrders()">
 	                                                <div class="table-actions">
-	                                                    <button @click="openMaterialOrderModal(order)" class="btn-action btn-action-primary"><i class="fa-solid fa-pen-to-square"></i>Edit</button>
-	                                                    <button @click="deleteMaterialOrder(order)" class="btn-action btn-action-danger"><i class="fa-solid fa-trash-can"></i>Hapus</button>
+	                                                    <button @click="openMaterialOrderModal(order)" :disabled="isWorkScheduleLocked()" class="schedule-action btn-action btn-action-primary"><i class="fa-solid fa-pen-to-square"></i>Edit</button>
+	                                                    <button @click="deleteMaterialOrder(order)" :disabled="isWorkScheduleLocked()" class="schedule-action btn-action btn-action-danger"><i class="fa-solid fa-trash-can"></i>Hapus</button>
 	                                                </div>
 	                                            </td>
 	                                        </tr>
@@ -2457,13 +2457,13 @@
 	                    <div class="material-allocation-section">
 	                        <div class="material-allocation-head">
 		                            <div><span>Alokasi Produksi</span><strong x-text="`${materialOrderModal.data.productions.length} model`"></strong></div>
-	                            <button type="button" @click="addMaterialOrderProduction()"><i class="fa-solid fa-plus"></i>Tambah Model</button>
+	                            <button type="button" @click="addMaterialOrderProduction()" :disabled="isWorkScheduleLocked()"><i class="fa-solid fa-plus"></i>Tambah Model</button>
 	                        </div>
 	                        <template x-for="(production, index) in materialOrderModal.data.productions" :key="index">
 	                            <div class="material-allocation-card">
 	                                <div class="material-allocation-card-head">
 		                                    <strong x-text="`Model ${index + 1}`"></strong>
-	                                    <button type="button" @click="removeMaterialOrderProduction(index)" :disabled="materialOrderModal.data.productions.length <= 1" aria-label="Hapus alokasi"><i class="fa-solid fa-trash-can"></i></button>
+	                                    <button type="button" @click="removeMaterialOrderProduction(index)" :disabled="isWorkScheduleLocked() || materialOrderModal.data.productions.length <= 1" aria-label="Hapus alokasi"><i class="fa-solid fa-trash-can"></i></button>
 	                                </div>
 	                                <div class="material-form-grid material-allocation-grid">
 		                                    <label class="material-model-select-field"><span>Model Produksi</span><select x-model="production.modelKey" @change="applyMaterialOrderModelSelection(index)" required><option value="">Pilih model produksi</option><template x-for="model in materialOrderProductionModelOptions()" :key="index + '-' + model.materialOrderKey"><option :value="model.materialOrderKey" :selected="production.modelKey === model.materialOrderKey" x-text="`${model.data.labelWeek || '-'} · ${model.data.model || model.modelId} · ${model.lineName}${model.productionActive ? ' (Aktif)' : ''}`"></option></template></select><small x-show="production.lineName" x-text="`Line tersinkron otomatis: ${production.lineName}`"></small></label>
@@ -2480,7 +2480,7 @@
 	                </div>
 	                <div class="material-modal-actions">
 	                    <button type="button" @click="closeMaterialOrderModal()" :disabled="materialOrderModal.saving" class="material-secondary-button">Batal</button>
-	                    <button type="submit" :disabled="materialOrderModal.saving" class="material-primary-button"><i class="fa-solid" :class="materialOrderModal.saving ? 'fa-spinner fa-spin' : 'fa-floppy-disk'"></i><span x-text="materialOrderModal.saving ? 'Menyimpan...' : 'Simpan Order'"></span></button>
+	                    <button type="submit" :disabled="materialOrderModal.saving || isWorkScheduleLocked()" class="schedule-action material-primary-button"><i class="fa-solid" :class="materialOrderModal.saving ? 'fa-spinner fa-spin' : 'fa-floppy-disk'"></i><span x-text="materialOrderModal.saving ? 'Menyimpan...' : 'Simpan Order'"></span></button>
 	                </div>
 	            </form>
 	        </div>

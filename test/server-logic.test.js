@@ -779,6 +779,21 @@ test('PPIC can view the dashboard and fully manage material orders and reports',
   assert.deepEqual(Array.from(dashboard.navigation, item => item.page), ['dashboard', 'material-orders', 'report']);
 });
 
+test('PPIC follows the work schedule while Admin remains exempt', () => {
+  const context = { console, Date, Intl, Map, Math, Set, parseInt };
+  const alpineSource = fs.readFileSync(path.join(__dirname, '..', 'public/assets/js/alpine.js'), 'utf8');
+  vm.runInNewContext(alpineSource, context);
+
+  const dashboard = context.dashboard();
+  dashboard.isAuthenticated = true;
+  dashboard.workScheduleSettings = { enabled: true, workDays: [], startTime: '08:00', endTime: '17:00' };
+  dashboard.currentUser = { role: 'ppic' };
+  assert.equal(dashboard.isWorkScheduleLocked(), true);
+
+  dashboard.currentUser = { role: 'admin' };
+  assert.equal(dashboard.isWorkScheduleLocked(), false);
+});
+
 test('material order filters use PO Material and pass both PO and status to the report API', () => {
   const context = { console, Date, Intl, Map, Math, Set, parseInt, URLSearchParams };
   const alpineSource = fs.readFileSync(path.join(__dirname, '..', 'public/assets/js/alpine.js'), 'utf8');

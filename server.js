@@ -2939,6 +2939,11 @@ function requireMaterialOrderViewAccess(req, res, next) {
   return res.status(403).json({ error: 'Akses lihat Order Material diperlukan' });
 }
 
+function requireMaterialOrderManageAccess(req, res, next) {
+  if (hasAnyRole(getAuthenticatedSessionUser(req), ['admin', PPIC_ROLE])) return next();
+  return res.status(403).json({ error: 'Akses kelola Order Material diperlukan' });
+}
+
 function requireAdmin(req, res, next) {
   if (hasAnyRole(getAuthenticatedSessionUser(req), ['admin'])) {
     next();
@@ -6629,7 +6634,7 @@ app.get('/api/material-orders/report/export', requireLogin, requireMaterialOrder
   }
 });
 
-app.post('/api/material-orders', requireLogin, requireAdmin, async (req, res) => {
+app.post('/api/material-orders', requireLogin, requireMaterialOrderManageAccess, async (req, res) => {
   const { order, errors } = validateMaterialOrderInput(req.body || {});
   if (errors.length) return res.status(400).json({ error: errors.join('. ') });
 
@@ -6650,7 +6655,7 @@ app.post('/api/material-orders', requireLogin, requireAdmin, async (req, res) =>
   });
 });
 
-app.put('/api/material-orders/:id', requireLogin, requireAdmin, async (req, res) => {
+app.put('/api/material-orders/:id', requireLogin, requireMaterialOrderManageAccess, async (req, res) => {
   const id = parseInt(req.params.id);
   const data = readMaterialOrders();
   const index = data.orders.findIndex(order => order.id === id);
@@ -6673,7 +6678,7 @@ app.put('/api/material-orders/:id', requireLogin, requireAdmin, async (req, res)
   });
 });
 
-app.delete('/api/material-orders/:id', requireLogin, requireAdmin, async (req, res) => {
+app.delete('/api/material-orders/:id', requireLogin, requireMaterialOrderManageAccess, async (req, res) => {
   const id = parseInt(req.params.id);
   const data = readMaterialOrders();
   const index = data.orders.findIndex(order => order.id === id);

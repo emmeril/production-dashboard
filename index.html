@@ -1275,17 +1275,20 @@
 		                                            <td>
 		                                                <div class="material-production-stack">
 		                                                    <template x-for="group in materialOrderProductionGroups(order)" :key="`${order.id}-${group.groupKey}`">
-		                                                        <div class="material-production-link material-production-group">
-		                                                            <div class="material-production-title"><span><i class="fa-solid fa-boxes-stacked"></i><b x-text="group.modelName"></b></span><small x-text="group.labelWeek"></small></div>
-		                                                            <div class="material-production-lines" :title="group.lineNames.join(', ')"><strong x-text="`${group.lineNames.length} line`"></strong><small x-text="compactMaterialOrderLines(group.lineNames)"></small></div>
-		                                                            <em x-show="group.productionActive"><i class="fa-solid fa-circle"></i> Aktif</em>
+		                                                        <div class="material-production-link material-production-row">
+		                                                            <div class="material-production-title"><span><i class="fa-solid fa-boxes-stacked"></i><b x-text="group.modelName"></b></span></div>
+		                                                            <div class="material-production-meta">
+		                                                                <small class="material-production-label" x-text="group.labelWeek"></small>
+		                                                                <div class="material-production-lines" :title="group.lineNames.join(', ')"><strong x-text="`${group.lineNames.length} line`"></strong><small x-text="compactMaterialOrderLines(group.lineNames)"></small></div>
+		                                                                <em x-show="group.productionActive"><i class="fa-solid fa-circle"></i> Aktif</em>
+		                                                            </div>
 		                                                            <em x-show="!group.linkedModelExists" class="material-production-missing"><i class="fa-solid fa-triangle-exclamation"></i> Model tidak tersedia</em>
 		                                                        </div>
 		                                                    </template>
 	                                                </div>
 	                                            </td>
 	                                            <td><span class="material-status" :class="materialOrderStatusClass(order.status)" x-text="materialOrderStatusLabel(order.status)"></span></td>
-	                                            <td x-show="canManageMaterialOrders()">
+	                                            <td>
 	                                                <strong class="material-live-output" x-text="formatDashboardNumber(order.currentProductionOutput)"></strong>
 	                                                <small class="material-live-label">total output line saat ini</small>
 	                                            </td>
@@ -1293,7 +1296,7 @@
 	                                                <div class="material-result-copy"><strong x-text="formatDashboardNumber(order.qtyResult)"></strong><span x-text="`${materialOrderProgress(order)}%`"></span></div>
 	                                                <div class="material-result-progress"><i :style="`width: ${materialOrderProgress(order)}%`"></i></div>
 	                                            </td>
-	                                            <td>
+	                                            <td x-show="canManageMaterialOrders()">
 	                                                <div class="table-actions">
 	                                                    <button @click="openMaterialOrderModal(order)" class="btn-action btn-action-primary"><i class="fa-solid fa-pen-to-square"></i>Edit</button>
 	                                                    <button @click="deleteMaterialOrder(order)" class="btn-action btn-action-danger"><i class="fa-solid fa-trash-can"></i>Hapus</button>

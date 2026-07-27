@@ -425,7 +425,7 @@ function dashboard() {
         },
 
         canManageMaterialOrders() {
-            return this.currentUser.role === 'admin';
+            return ['admin', 'ppic'].includes(this.currentUser.role);
         },
 
 	        canManageLines() {

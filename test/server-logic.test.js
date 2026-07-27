@@ -762,7 +762,7 @@ test('material order keeps saved model selections visible while rejecting a dupl
   assert.match(notifications[0][0], /sudah dipilih/);
 });
 
-test('PPIC can view the dashboard, material order, and all reports without edit access', () => {
+test('PPIC can view the dashboard and fully manage material orders and reports', () => {
   const context = { console, Date, Intl, Map, Math, Set, parseInt };
   const alpineSource = fs.readFileSync(path.join(__dirname, '..', 'public/assets/js/alpine.js'), 'utf8');
   vm.runInNewContext(alpineSource, context);
@@ -773,7 +773,7 @@ test('PPIC can view the dashboard, material order, and all reports without edit 
 
   assert.equal(dashboard.canViewDashboard(), true);
   assert.equal(dashboard.canViewMaterialOrders(), true);
-  assert.equal(dashboard.canManageMaterialOrders(), false);
+  assert.equal(dashboard.canManageMaterialOrders(), true);
   assert.equal(dashboard.canViewReport(), true);
   assert.equal(dashboard.canViewLineSummary(), false);
   assert.deepEqual(Array.from(dashboard.navigation, item => item.page), ['dashboard', 'material-orders', 'report']);

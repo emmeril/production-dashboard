@@ -107,9 +107,18 @@ const DATABASE_BACKUP_RETENTION_DAYS = Math.max(
 const DATABASE_BACKUP_CLEANUP_INTERVAL_MS = 60 * 60 * 1000;
 const PRODUCTION_IMPORT_PREVIEW_TTL_MS = 30 * 60 * 1000;
 const PRODUCTION_IMPORT_MAX_ROWS = 2000;
+const LOGIN_RATE_LIMIT_WINDOW_MS = Math.max(60 * 1000, Number(process.env.LOGIN_RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000);
+const LOGIN_RATE_LIMIT_MAX_ATTEMPTS = Math.max(1, Number(process.env.LOGIN_RATE_LIMIT_MAX_ATTEMPTS) || 10);
+const LOGIN_RATE_LIMIT_MAX_ATTEMPTS_PER_IP = Math.max(
+  LOGIN_RATE_LIMIT_MAX_ATTEMPTS,
+  Number(process.env.LOGIN_RATE_LIMIT_MAX_ATTEMPTS_PER_IP) || 50
+);
+const LOGIN_RATE_LIMIT_MAX_KEYS = 10000;
+const DUMMY_LOGIN_PASSWORD_HASH = '$2b$12$a/7OiB7tI8XcFXs7Uh/Nf.4ZTMJq1yxVox7HjwvKusghIreR7P46a';
 let lastScheduledDatabaseBackupDate = '';
 let databaseBackupCleanupRunning = false;
 let databaseRestoreInProgress = false;
+const loginRateLimitEntries = new Map();
 
 function normalizeLogMessage(message) {
   return String(message || '')
@@ -140,6 +149,152 @@ const logger = {
   }
 };
 
+function parseBooleanEnvironment(value, fallback = false) {
+  if (value === undefined || value === null || value === '') return fallback;
+  return ['1', 'true', 'yes', 'on'].includes(String(value).trim().toLowerCase());
+}
+
+function parseTrustProxySetting(value) {
+  if (value === undefined || value === null || value === '') return null;
+  const normalized = String(value).trim();
+  if (/^\d+$/.test(normalized)) return Number(normalized);
+  if (['true', 'yes', 'on'].includes(normalized.toLowerCase())) return 1;
+  return normalized;
+}
+
+function sessionExpiryTimestamp(sessionData) {
+  const expires = sessionData?.cookie?.expires;
+  if (expires) {
+    const timestamp = new Date(expires).getTime();
+    if (Number.isFinite(timestamp)) return timestamp;
+  }
+
+  const maxAge = Number(sessionData?.cookie?.maxAge);
+  return Date.now() + (Number.isFinite(maxAge) && maxAge > 0 ? maxAge : 24 * 60 * 60 * 1000);
+}
+
+// Keep sessions in the application database without restoring stale sessions from backups.
+class SQLiteSessionStore extends session.Store {
+  constructor(databaseFile) {
+    super();
+    this.databaseFile = databaseFile;
+    this.database = null;
+    this.readyPromise = null;
+    this.cleanupTimer = setInterval(() => this.pruneExpired(() => {}), 60 * 60 * 1000);
+    this.cleanupTimer.unref?.();
+  }
+
+  ensureReady() {
+    if (this.readyPromise) return this.readyPromise;
+    this.readyPromise = new Promise((resolve, reject) => {
+      fs.mkdirSync(path.dirname(this.databaseFile), { recursive: true });
+      const database = new sqlite3.Database(this.databaseFile, error => {
+        if (error) return reject(error);
+        database.configure('busyTimeout', 15000);
+        return database.run(
+          `CREATE TABLE IF NOT EXISTS sessions (
+             sid TEXT PRIMARY KEY,
+             sess TEXT NOT NULL,
+             expires INTEGER NOT NULL
+           )`,
+          createError => {
+            if (createError) return reject(createError);
+            this.database = database;
+            return database.run(
+              'CREATE INDEX IF NOT EXISTS sessions_expires_idx ON sessions (expires)',
+              indexError => indexError ? reject(indexError) : resolve(database)
+            );
+          }
+        );
+      });
+    }).catch(error => {
+      this.readyPromise = null;
+      throw error;
+    });
+    return this.readyPromise;
+  }
+
+  get(sid, callback) {
+    this.ensureReady().then(database => {
+      database.get('SELECT sess, expires FROM sessions WHERE sid = ?', [sid], (error, row) => {
+        if (error) return callback(error);
+        if (!row) return callback(null, null);
+        if (Number(row.expires) <= Date.now()) {
+          return database.run('DELETE FROM sessions WHERE sid = ?', [sid], deleteError => callback(deleteError || null, null));
+        }
+        try {
+          return callback(null, JSON.parse(row.sess));
+        } catch (parseError) {
+          return database.run('DELETE FROM sessions WHERE sid = ?', [sid], () => callback(parseError));
+        }
+      });
+    }).catch(callback);
+  }
+
+  set(sid, sessionData, callback = () => {}) {
+    let payload;
+    try {
+      payload = JSON.stringify(sessionData);
+    } catch (error) {
+      callback(error);
+      return;
+    }
+    const expires = sessionExpiryTimestamp(sessionData);
+    this.ensureReady().then(database => {
+      database.run(
+        `INSERT INTO sessions (sid, sess, expires) VALUES (?, ?, ?)
+         ON CONFLICT(sid) DO UPDATE SET sess = excluded.sess, expires = excluded.expires`,
+        [sid, payload, expires],
+        callback
+      );
+    }).catch(callback);
+  }
+
+  touch(sid, sessionData, callback = () => {}) {
+    const expires = sessionExpiryTimestamp(sessionData);
+    this.ensureReady().then(database => {
+      database.run('UPDATE sessions SET expires = ? WHERE sid = ?', [expires, sid], callback);
+    }).catch(callback);
+  }
+
+  destroy(sid, callback = () => {}) {
+    this.ensureReady().then(database => {
+      database.run('DELETE FROM sessions WHERE sid = ?', [sid], callback);
+    }).catch(callback);
+  }
+
+  clear(callback = () => {}) {
+    this.ensureReady().then(database => {
+      database.run('DELETE FROM sessions', callback);
+    }).catch(callback);
+  }
+
+  length(callback) {
+    this.ensureReady().then(database => {
+      database.get('SELECT COUNT(*) AS count FROM sessions WHERE expires > ?', [Date.now()], (error, row) => {
+        callback(error, row?.count || 0);
+      });
+    }).catch(callback);
+  }
+
+  pruneExpired(callback = () => {}) {
+    this.ensureReady().then(database => {
+      database.run('DELETE FROM sessions WHERE expires <= ?', [Date.now()], callback);
+    }).catch(callback);
+  }
+
+  close(callback = () => {}) {
+    clearInterval(this.cleanupTimer);
+    if (!this.database) {
+      callback();
+      return;
+    }
+    const database = this.database;
+    this.database = null;
+    this.readyPromise = null;
+    database.close(callback);
+  }
+}
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -158,7 +313,14 @@ if (!sessionSecret) {
   logger.warn('SESSION_SECRET is not set; using an ephemeral session secret. Set SESSION_SECRET in production.');
 }
 
-const sessionStore = new session.MemoryStore();
+const trustProxySetting = parseTrustProxySetting(process.env.TRUST_PROXY);
+if (trustProxySetting !== null) app.set('trust proxy', trustProxySetting);
+
+const sessionCookieSecure = parseBooleanEnvironment(
+  process.env.SESSION_COOKIE_SECURE,
+  process.env.NODE_ENV === 'production'
+);
+const sessionStore = new SQLiteSessionStore(databasePath);
 
 app.use(session({
   store: sessionStore,
@@ -166,7 +328,7 @@ app.use(session({
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: false,
+    secure: sessionCookieSecure,
     httpOnly: true,
     sameSite: 'lax',
     maxAge: 24 * 60 * 60 * 1000
@@ -205,6 +367,103 @@ function verifyPassword(password, hashedPassword) {
   }
 
   return false;
+}
+
+function verifyPasswordAsync(password, hashedPassword) {
+  if (typeof hashedPassword !== 'string' || !hashedPassword.startsWith('$2')) {
+    return Promise.resolve(verifyPassword(password, hashedPassword));
+  }
+
+  return new Promise((resolve, reject) => {
+    bcrypt.compare(String(password), hashedPassword, (error, matches) => {
+      if (error) return reject(error);
+      return resolve(matches);
+    });
+  });
+}
+
+function hashPasswordAsync(password) {
+  return new Promise((resolve, reject) => {
+    bcrypt.hash(String(password), 12, (error, hash) => {
+      if (error) return reject(error);
+      return resolve(hash);
+    });
+  });
+}
+
+function loginRateLimitKeys(req, username) {
+  const address = req.ip || req.socket?.remoteAddress || 'unknown';
+  return [
+    { key: `ip:${address}`, limit: LOGIN_RATE_LIMIT_MAX_ATTEMPTS_PER_IP },
+    { key: `account:${address}:${String(username || '').trim().toLowerCase()}`, limit: LOGIN_RATE_LIMIT_MAX_ATTEMPTS }
+  ];
+}
+
+function checkLoginRateLimit(req, username) {
+  const now = Date.now();
+  loginRateLimitEntries.forEach((entry, key) => {
+    if (entry.resetAt <= now) loginRateLimitEntries.delete(key);
+  });
+
+  const keys = loginRateLimitKeys(req, username);
+  const entries = keys.map(({ key, limit }) => {
+    let entry = loginRateLimitEntries.get(key);
+    if (!entry || entry.resetAt <= now) {
+      if (loginRateLimitEntries.size >= LOGIN_RATE_LIMIT_MAX_KEYS) {
+        const oldestKey = loginRateLimitEntries.keys().next().value;
+        if (oldestKey) loginRateLimitEntries.delete(oldestKey);
+      }
+      entry = { attempts: 0, resetAt: now + LOGIN_RATE_LIMIT_WINDOW_MS };
+      loginRateLimitEntries.set(key, entry);
+    }
+    return { key, limit, entry };
+  });
+
+  const blockedEntry = entries.find(({ entry, limit }) => entry.attempts >= limit);
+  if (blockedEntry) {
+    return {
+      allowed: false,
+      retryAfterSeconds: Math.max(1, Math.ceil((blockedEntry.entry.resetAt - now) / 1000))
+    };
+  }
+
+  entries.forEach(({ entry }) => { entry.attempts += 1; });
+  return { allowed: true, keys: entries.map(({ key }) => key) };
+}
+
+function clearLoginRateLimit(keys) {
+  (keys || []).forEach(key => loginRateLimitEntries.delete(key));
+}
+
+function establishAuthenticatedSession(req, user) {
+  return new Promise((resolve, reject) => {
+    req.session.regenerate(regenerateError => {
+      if (regenerateError) return reject(regenerateError);
+      req.session.user = buildSessionUser(user);
+      return req.session.save(saveError => saveError ? reject(saveError) : resolve(req.session.user));
+    });
+  });
+}
+
+function normalizeRequiredText(value, label, maxLength) {
+  if (typeof value !== 'string') return { value: '', error: `${label} wajib diisi` };
+  const normalized = value.trim();
+  if (!normalized) return { value: '', error: `${label} wajib diisi` };
+  if (normalized.length > maxLength) return { value: '', error: `${label} terlalu panjang` };
+  return { value: normalized, error: '' };
+}
+
+function normalizeLineName(value) {
+  const result = normalizeRequiredText(value, 'Nama line', 100);
+  if (result.error) return result;
+  if (/[\\/\0]/.test(result.value) || ['__proto__', 'constructor', 'prototype'].includes(result.value.toLowerCase())) {
+    return { value: '', error: 'Nama line tidak valid' };
+  }
+  return result;
+}
+
+function normalizeModelName(value) {
+  return normalizeRequiredText(value, 'Nama model', 300);
 }
 
 function isLegacySha256PasswordHash(hashedPassword) {
@@ -4857,22 +5116,33 @@ app.post('/api/login', async (req, res) => {
   if (typeof username !== 'string' || typeof password !== 'string' || !username.trim() || !password) {
     return res.status(400).json({ error: 'Username and password are required' });
   }
+  if (username.trim().length > 100 || password.length > 500) {
+    return res.status(400).json({ error: 'Username atau password terlalu panjang' });
+  }
+
+  const rateLimit = checkLoginRateLimit(req, username);
+  if (!rateLimit.allowed) {
+    res.setHeader('Retry-After', String(rateLimit.retryAfterSeconds));
+    return res.status(429).json({ error: 'Terlalu banyak percobaan login. Coba lagi nanti.' });
+  }
 
   try {
     const usersData = readUsersData();
     const user = usersData.users.find(u => u.username === username.trim());
 
-    if (user && verifyPassword(password, user.password)) {
+    const passwordMatches = await verifyPasswordAsync(password, user?.password || DUMMY_LOGIN_PASSWORD_HASH);
+    if (user && passwordMatches) {
       if (isLegacySha256PasswordHash(user.password)) {
-        user.password = hashPassword(password);
+        user.password = await hashPasswordAsync(password);
         user.sessionVersion = (Number(user.sessionVersion) || 1) + 1;
         await writeUsersData(usersData);
       }
 
-      req.session.user = buildSessionUser(user);
+      clearLoginRateLimit(rateLimit.keys);
+      const sessionUser = await establishAuthenticatedSession(req, user);
       return res.json({
         message: 'Login successful',
-        user: req.session.user
+        user: sessionUser
       });
     }
 
@@ -4884,8 +5154,10 @@ app.post('/api/login', async (req, res) => {
 });
 
 app.post('/api/logout', async (req, res) => {
-  req.session.destroy();
-  res.json({ message: 'Logout successful' });
+  req.session.destroy(error => {
+    if (error) return res.status(500).json({ error: 'Logout failed' });
+    return res.json({ message: 'Logout successful' });
+  });
 });
 
 app.get('/api/current-user', async (req, res) => {
@@ -5525,7 +5797,7 @@ app.get('/api/lines', requireLogin, autoCheckDateReset, async (req, res) => {
   const role = user.role === 'admin_operator' ? 'admin_operator_sewing' : user.role;
   const data = readProductionData();
   
-  if (role === 'admin' || ADMIN_OPERATOR_ROLES.includes(role)) {
+  if (role === 'admin' || ADMIN_OPERATOR_ROLES.includes(role) || role === PPIC_ROLE) {
     return res.json(buildLinesResponse(data.lines || {}));
   }
   
@@ -5554,8 +5826,12 @@ app.get('/api/lines/:lineName/models', requireLogin, requireLineAccess, autoChec
 app.post('/api/lines', requireLogin, requireLineManagementAccess, async (req, res) => {
   const { lineName, labelWeek, model, target, date } = req.body;
   const data = readProductionData();
+  const normalizedLine = normalizeLineName(lineName);
+  const normalizedModel = normalizeModelName(model);
+  if (normalizedLine.error) return res.status(400).json({ error: normalizedLine.error });
+  if (normalizedModel.error) return res.status(400).json({ error: normalizedModel.error });
 
-  if (data.lines[lineName]) {
+  if (data.lines[normalizedLine.value]) {
     return res.status(400).json({ error: 'Line already exists' });
   }
 
@@ -5570,12 +5846,12 @@ app.post('/api/lines', requireLogin, requireLineManagementAccess, async (req, re
   const targetPerHour = Math.round(parsedTarget / PRODUCTION_HOURS.length);
   const modelId = 'model1';
 
-  data.lines[lineName] = {
+  data.lines[normalizedLine.value] = {
     models: {
       [modelId]: {
         id: modelId,
         labelWeek,
-        model,
+        model: normalizedModel.value,
         date: lineDate,
         target: parsedTarget,
         targetPerHour: targetPerHour,
@@ -5597,8 +5873,8 @@ app.post('/api/lines', requireLogin, requireLineManagementAccess, async (req, re
   updateTodayBackup();
   
   res.json({ 
-    message: `Line ${lineName} created successfully`, 
-    data: data.lines[lineName],
+    message: `Line ${normalizedLine.value} created successfully`,
+    data: data.lines[normalizedLine.value],
     calculated: {
       targetPerHour: targetPerHour,
       message: `Target per jam: ${targetPerHour} unit (Target: ${target} ÷ 8 jam efektif)`
@@ -5610,6 +5886,8 @@ app.post('/api/lines/:lineName/models', requireLogin, requireLineManagementAcces
   const { lineName } = req.params;
   const { labelWeek, model, target, date } = req.body;
   const data = readProductionData();
+  const normalizedModel = normalizeModelName(model);
+  if (normalizedModel.error) return res.status(400).json({ error: normalizedModel.error });
 
   if (!data.lines[lineName]) {
     return res.status(404).json({ error: 'Line not found' });
@@ -5629,7 +5907,7 @@ app.post('/api/lines/:lineName/models', requireLogin, requireLineManagementAcces
   data.lines[lineName].models[modelId] = {
     id: modelId,
     labelWeek,
-    model,
+    model: normalizedModel.value,
     date: lineDate,
     target: parsedTarget,
     targetPerHour: targetPerHour,
@@ -5677,7 +5955,9 @@ app.put('/api/lines/:lineName', requireLogin, requireLineManagementAccess, autoC
 
   const targetModel = data.lines[lineName].models[targetModelId];
   const nextLabelWeek = labelWeek === undefined ? targetModel.labelWeek : String(labelWeek || '').trim();
-  const nextModelName = model === undefined ? targetModel.model : String(model || '').trim();
+  const normalizedModel = model === undefined ? { value: targetModel.model, error: '' } : normalizeModelName(model);
+  if (normalizedModel.error) return res.status(400).json({ error: normalizedModel.error });
+  const nextModelName = normalizedModel.value;
   preserveMaterialOrderProductionIdentity(lineName, targetModel, nextLabelWeek, nextModelName);
   targetModel.labelWeek = nextLabelWeek;
   targetModel.model = nextModelName;
@@ -5864,14 +6144,18 @@ app.post('/api/update-line/:lineName/:modelId', requireLogin, requireLineAccess,
 
   if (Object.prototype.hasOwnProperty.call(newData, 'labelWeek')) {
     const nextLabelWeek = String(newData.labelWeek || '').trim();
-    const nextModelName = Object.prototype.hasOwnProperty.call(newData, 'model')
-      ? String(newData.model || '').trim()
-      : model.model;
+    const normalizedModel = Object.prototype.hasOwnProperty.call(newData, 'model')
+      ? normalizeModelName(newData.model)
+      : { value: model.model, error: '' };
+    if (normalizedModel.error) return res.status(400).json({ error: normalizedModel.error });
+    const nextModelName = normalizedModel.value;
     preserveMaterialOrderProductionIdentity(lineName, model, nextLabelWeek, nextModelName);
     model.labelWeek = nextLabelWeek;
     if (Object.prototype.hasOwnProperty.call(newData, 'model')) model.model = nextModelName;
   } else if (Object.prototype.hasOwnProperty.call(newData, 'model')) {
-    const nextModelName = String(newData.model || '').trim();
+    const normalizedModel = normalizeModelName(newData.model);
+    if (normalizedModel.error) return res.status(400).json({ error: normalizedModel.error });
+    const nextModelName = normalizedModel.value;
     preserveMaterialOrderProductionIdentity(lineName, model, model.labelWeek, nextModelName);
     model.model = nextModelName;
   }
@@ -6584,8 +6868,8 @@ app.get('/api/export-date-report/:date', requireLogin, requireDateReportAccess, 
     const data = readProductionSnapshotForDate(date);
     if (!data) return res.status(404).json({ error: 'Data untuk tanggal tersebut tidak ditemukan' });
     
-    data = filterProductionDataByDate(data, date);
-    const workbook = await generateStyledDateReportExcel(data, date);
+    const filteredData = filterProductionDataByDate(data, date);
+    const workbook = await generateStyledDateReportExcel(filteredData, date);
     const downloadFilename = `Production_Report_${date}.xlsx`;
     res.setHeader('Content-Disposition', `attachment; filename="${downloadFilename}"`);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -7591,6 +7875,7 @@ app.use((error, req, res, next) => {
 
 async function startServer() {
   await initSequelizeStorage();
+  await sessionStore.ensureReady();
   initializeDataFiles();
   startDatabaseBackupCleanupWorker();
   lastScheduledDatabaseBackupDate = listDatabaseBackupFiles()
@@ -7652,6 +7937,7 @@ module.exports = {
   getToday,
   hasDateReportAccess,
   hashPassword,
+  hashPasswordAsync,
   initSequelizeStorage,
   isValidDateInput,
   isValidDateRange,
@@ -7669,6 +7955,8 @@ module.exports = {
   isValidProductionSnapshot,
   isBlankInputValue,
   parseNonNegativeInteger,
+  normalizeLineName,
+  normalizeModelName,
   resolveActiveDefectCategories,
   parseProductionImportRows,
   parseProductionImportWorkbook,
@@ -7689,5 +7977,11 @@ module.exports = {
   sequelize,
   summarizeProductionSnapshot,
   summarizeProductionSnapshotByLine,
-  verifyPassword
+  sessionStore,
+  updateTodayBackup,
+  verifyPassword,
+  verifyPasswordAsync,
+  writeProductionData,
+  writeUsersData,
+  writeWorkScheduleSettings
 };

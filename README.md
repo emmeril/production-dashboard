@@ -87,6 +87,10 @@ Untuk deployment, set juga `SESSION_SECRET` ke nilai acak yang panjang agar sesi
 $env:SESSION_SECRET='ganti-dengan-random-secret-yang-panjang'; npm start
 ```
 
+Sesi login disimpan di SQLite agar tetap tersedia setelah restart. Jika server berjalan di balik reverse proxy HTTPS, set `NODE_ENV=production`, `SESSION_COOKIE_SECURE=true`, dan `TRUST_PROXY=1`. Jangan mematikan cookie secure pada deployment HTTPS.
+
+Proteksi login membatasi percobaan gagal per akun/IP. Nilai default dapat disesuaikan melalui `LOGIN_RATE_LIMIT_MAX_ATTEMPTS`, `LOGIN_RATE_LIMIT_MAX_ATTEMPTS_PER_IP`, dan `LOGIN_RATE_LIMIT_WINDOW_MS`.
+
 ## URL Penting
 
 | URL | Keterangan |

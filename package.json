@@ -4,7 +4,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "check": "node --check server.js && node --check public/assets/js/alpine.js && node --check test/server-logic.test.js && node --check test/storage-migration.test.js",
+    "check": "node --check server.js && node --check public/assets/js/alpine.js && node --check test/server-logic.test.js && node --check test/server-routes.test.js && node --check test/storage-migration.test.js",
     "test": "npm run check && node --test --test-concurrency=1 test/*.test.js"
   },
   "keywords": [],

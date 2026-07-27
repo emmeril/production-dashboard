@@ -1024,8 +1024,12 @@ function parseQcImportWorkbook(buffer, options = {}) {
     return { rows: [row], summary: summarizeProductionImportRows([row]) };
   }
 
-  const validTypes = new Map((defectConfig.defectTypes || []).map(type => [normalizeDefectKey(type.name), type]));
-  const validAreas = new Map((defectConfig.defectAreas || []).map(area => [normalizeDefectKey(area.name), area]));
+  const validTypes = new Map((defectConfig.defectTypes || [])
+    .filter(type => type.active !== false)
+    .map(type => [normalizeDefectKey(type.name), type]));
+  const validAreas = new Map((defectConfig.defectAreas || [])
+    .filter(area => area.active !== false)
+    .map(area => [normalizeDefectKey(area.name), area]));
   const rawRows = sheetRows.slice(1)
     .map((cells, index) => ({ cells, rowNumber: index + 2 }))
     .filter(({ cells }) => cells.some(value => String(value ?? '').trim() !== ''));
@@ -1625,6 +1629,23 @@ function validateMaterialOrderInput(input = {}, productionData = readProductionD
 
 function normalizeDefectKey(value) {
   return String(value || '').trim().toLowerCase();
+}
+
+function resolveActiveDefectCategories(type, area, config = readDefectConfig()) {
+  const activeTypes = new Map((config.defectTypes || [])
+    .filter(item => item.active !== false)
+    .map(item => [normalizeDefectKey(item.name), item]));
+  const activeAreas = new Map((config.defectAreas || [])
+    .filter(item => item.active !== false)
+    .map(item => [normalizeDefectKey(item.name), item]));
+  const defectType = activeTypes.get(normalizeDefectKey(type));
+  const defectArea = activeAreas.get(normalizeDefectKey(area));
+
+  return {
+    type: defectType?.name || '',
+    area: defectArea?.name || '',
+    isValid: Boolean(defectType && defectArea)
+  };
 }
 
 function buildDefectSeverityMaps(config = readDefectConfig()) {
@@ -2743,7 +2764,7 @@ function recalculateModelTotals(model) {
       hour.defect = 0;
     });
     model.qcChecks.forEach(check => {
-      const index = parseInt(check.hourIndex);
+      const index = parseNonNegativeInteger(check.hourIndex);
       if (Number.isInteger(index) && model.hourly_data[index]) {
         model.hourly_data[index].qcChecked = (parseInt(model.hourly_data[index].qcChecked) || 0) + 1;
         if (check.result === 'defect') model.hourly_data[index].defect = (parseInt(model.hourly_data[index].defect) || 0) + 1;
@@ -4360,7 +4381,7 @@ function buildDateReportRows(data, date) {
 }
 
 function getQcCheckHourLabel(model = {}, check = {}) {
-  const index = parseInt(check.hourIndex);
+  const index = parseNonNegativeInteger(check.hourIndex);
   if (Number.isInteger(index) && model.hourly_data && model.hourly_data[index]) {
     return model.hourly_data[index].hour || check.hour || '-';
   }
@@ -4639,7 +4660,7 @@ app.post('/api/update-hourly/:lineName', requireLogin, requireLineAccess, requir
     return res.status(404).json({ error: 'Line, active model or hourly data not found' });
   }
 
-  const index = parseInt(hourIndex);
+  const index = parseNonNegativeInteger(hourIndex);
   if (!Number.isInteger(index) || index < 0 || index >= active.model.hourly_data.length) {
     return res.status(400).json({ error: 'Invalid hour index' });
   }
@@ -4700,7 +4721,7 @@ app.post('/api/update-target-manual/:lineName', requireLogin, requireLineAccess,
     return res.status(404).json({ error: 'Line, active model or hourly data not found' });
   }
 
-  const index = parseInt(hourIndex);
+  const index = parseNonNegativeInteger(hourIndex);
   if (!Number.isInteger(index) || index < 0 || index >= active.model.hourly_data.length) {
     return res.status(400).json({ error: 'Invalid hour index' });
   }
@@ -4736,7 +4757,7 @@ app.post('/api/update-hourly-direct/:lineName', requireLogin, requireLineAccess,
     return res.status(404).json({ error: 'Line, active model or hourly data not found' });
   }
 
-  const index = parseInt(hourIndex);
+  const index = parseNonNegativeInteger(hourIndex);
   if (!Number.isInteger(index) || index < 0 || index >= active.model.hourly_data.length) {
     return res.status(400).json({ error: 'Invalid hour index' });
   }
@@ -4792,7 +4813,7 @@ app.post('/api/update-hourly/:lineName/:modelId', requireLogin, requireLineAcces
     return res.status(404).json({ error: 'Line, model or hourly data not found' });
   }
 
-  const index = parseInt(hourIndex);
+  const index = parseNonNegativeInteger(hourIndex);
   if (!Number.isInteger(index) || index < 0 || index >= data.lines[lineName].models[modelId].hourly_data.length) {
     return res.status(400).json({ error: 'Invalid hour index' });
   }
@@ -4851,7 +4872,7 @@ app.post('/api/update-production/:lineName/:modelId', requireLogin, requireLineA
     return res.status(404).json({ error: 'Line, model or hourly data not found' });
   }
 
-  const index = parseInt(hourIndex);
+  const index = parseNonNegativeInteger(hourIndex);
   const model = data.lines[lineName].models[modelId];
   if (!Number.isInteger(index) || index < 0 || index >= model.hourly_data.length) {
     return res.status(400).json({ error: 'Invalid hour index' });
@@ -4919,9 +4940,16 @@ app.post('/api/qc-check/:lineName/:modelId', requireLogin, requireLineAccess, re
     return res.status(400).json({ error: 'Jenis defect dan area defect wajib dipilih' });
   }
 
+  const defectCategory = result === 'defect'
+    ? resolveActiveDefectCategories(type, area)
+    : null;
+  if (result === 'defect' && !defectCategory.isValid) {
+    return res.status(400).json({ error: 'Jenis defect dan area defect harus dipilih dari kategori aktif' });
+  }
+
 	  const model = data.lines[lineName].models[modelId];
 	  model.qcChecks = Array.isArray(model.qcChecks) ? model.qcChecks : [];
-	  const parsedHourIndex = parseInt(hourIndex);
+	  const parsedHourIndex = parseNonNegativeInteger(hourIndex);
 	  const validHourIndex = Number.isInteger(parsedHourIndex) && model.hourly_data && model.hourly_data[parsedHourIndex]
 	    ? parsedHourIndex
 	    : null;
@@ -4931,8 +4959,8 @@ app.post('/api/qc-check/:lineName/:modelId', requireLogin, requireLineAccess, re
 	    result,
 	    hourIndex: validHourIndex,
 	    hour: validHourIndex !== null ? model.hourly_data[validHourIndex].hour : '',
-	    type: result === 'defect' ? String(type).trim() : '',
-	    area: result === 'defect' ? String(area).trim() : '',
+	    type: defectCategory?.type || '',
+	    area: defectCategory?.area || '',
     notes: notes ? String(notes).trim() : '',
     checkedAt: new Date().toISOString()
   };
@@ -4964,7 +4992,7 @@ app.post('/api/update-target-manual/:lineName/:modelId', requireLogin, requireLi
 	    return res.status(404).json({ error: 'Line, model or hourly data not found' });
 	  }
 
-	  const index = parseInt(hourIndex);
+	  const index = parseNonNegativeInteger(hourIndex);
 	  const model = data.lines[lineName].models[modelId];
 	  if (!Number.isInteger(index) || index < 0 || index >= model.hourly_data.length) {
 	    return res.status(400).json({ error: 'Invalid hour index' });
@@ -5009,7 +5037,7 @@ app.post('/api/update-hourly-direct/:lineName/:modelId', requireLogin, requireLi
     return res.status(404).json({ error: 'Line, model or hourly data not found' });
   }
 
-  const index = parseInt(hourIndex);
+  const index = parseNonNegativeInteger(hourIndex);
   const model = data.lines[lineName].models[modelId];
   if (!Number.isInteger(index) || index < 0 || index >= model.hourly_data.length) {
     return res.status(400).json({ error: 'Invalid hour index' });
@@ -6536,8 +6564,13 @@ app.put('/api/qc-check/:lineName/:modelId/:checkId', requireLogin, requireLineAc
     return res.status(400).json({ error: 'Jenis defect dan area defect wajib diisi' });
   }
 
-  check.type = String(type).trim();
-  check.area = String(area).trim();
+  const defectCategory = resolveActiveDefectCategories(type, area);
+  if (!defectCategory.isValid) {
+    return res.status(400).json({ error: 'Jenis defect dan area defect harus dipilih dari kategori aktif' });
+  }
+
+  check.type = defectCategory.type;
+  check.area = defectCategory.area;
   check.notes = String(notes || '').trim();
   check.updatedAt = new Date().toISOString();
 
@@ -6653,7 +6686,7 @@ app.post('/api/material-orders', requireLogin, requireMaterialOrderManageAccess,
 });
 
 app.put('/api/material-orders/:id', requireLogin, requireMaterialOrderManageAccess, async (req, res) => {
-  const id = parseInt(req.params.id);
+  const id = parseNonNegativeInteger(req.params.id);
   const data = readMaterialOrders();
   const index = data.orders.findIndex(order => order.id === id);
   if (index === -1) return res.status(404).json({ error: 'Order material tidak ditemukan' });
@@ -6676,7 +6709,7 @@ app.put('/api/material-orders/:id', requireLogin, requireMaterialOrderManageAcce
 });
 
 app.delete('/api/material-orders/:id', requireLogin, requireMaterialOrderManageAccess, async (req, res) => {
-  const id = parseInt(req.params.id);
+  const id = parseNonNegativeInteger(req.params.id);
   const data = readMaterialOrders();
   const index = data.orders.findIndex(order => order.id === id);
   if (index === -1) return res.status(404).json({ error: 'Order material tidak ditemukan' });
@@ -6842,7 +6875,7 @@ app.post('/api/users', requireLogin, requireAdmin, async (req, res) => {
 });
 
 app.put('/api/users/:id', requireLogin, requireAdmin, async (req, res) => {
-  const userId = parseInt(req.params.id);
+  const userId = parseNonNegativeInteger(req.params.id);
   const { username, password, name, line, role } = req.body;
   const usersData = readUsersData();
   const allowedRoles = ['admin', 'admin_operator_sewing', 'admin_operator_qc', 'ppic', 'operator'];
@@ -6889,7 +6922,7 @@ app.put('/api/users/:id', requireLogin, requireAdmin, async (req, res) => {
 });
 
 app.delete('/api/users/:id', requireLogin, requireAdmin, async (req, res) => {
-  const userId = parseInt(req.params.id);
+  const userId = parseNonNegativeInteger(req.params.id);
   const usersData = readUsersData();
 
   const userIndex = usersData.users.findIndex(u => u.id === userId);
@@ -7386,6 +7419,7 @@ module.exports = {
   isValidProductionSnapshot,
   isBlankInputValue,
   parseNonNegativeInteger,
+  resolveActiveDefectCategories,
   parseProductionImportRows,
   parseProductionImportWorkbook,
   parseSewingImportWorkbook,

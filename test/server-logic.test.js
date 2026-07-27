@@ -37,6 +37,7 @@ const {
   parseProductionImportRows,
   parseProductionImportWorkbook,
   parseNonNegativeInteger,
+  resolveActiveDefectCategories,
   productionImportTemplateWorkbook,
   qcImportTemplateWorkbook,
   sewingImportTemplateWorkbook,
@@ -123,6 +124,27 @@ test('parseNonNegativeInteger preserves zero and rejects invalid production valu
   assert.equal(parseNonNegativeInteger(undefined, 7), 7);
   assert.equal(parseNonNegativeInteger(-1, 0), null);
   assert.equal(parseNonNegativeInteger(1.5, 0), null);
+  assert.equal(parseNonNegativeInteger('1invalid', 0), null);
+});
+
+test('defect selection only resolves active configured categories', () => {
+  const config = {
+    defectTypes: [
+      { name: 'Jahitan lepas', active: true },
+      { name: 'Kotor', active: false }
+    ],
+    defectAreas: [
+      { name: 'Badan', active: true },
+      { name: 'Kaki', active: false }
+    ]
+  };
+
+  assert.deepEqual(resolveActiveDefectCategories(' jahitan lepas ', 'badan', config), {
+    type: 'Jahitan lepas',
+    area: 'Badan',
+    isValid: true
+  });
+  assert.equal(resolveActiveDefectCategories('Kotor', 'Kaki', config).isValid, false);
 });
 
 test('blank production output values are distinguishable from an explicit zero', () => {

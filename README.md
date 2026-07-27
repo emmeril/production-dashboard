@@ -12,7 +12,7 @@ Dashboard produksi berbasis Express untuk memantau output line, target per jam, 
 - Lock data produksi per jam untuk operator setelah data disimpan.
 - Management line dan model produksi.
 - Management user, kategori defect, dan Backup Data untuk admin.
-- Backup Data membuat salinan SQLite lengkap yang bisa langsung diunduh dari browser.
+- Backup Data membuat salinan SQLite lengkap yang bisa diunduh dan dipulihkan kembali dengan backup pengaman otomatis.
 - Laporan berdasarkan tanggal dan export Excel.
 - Input data historis dipisahkan menjadi template Produksi per jam dan template QC dengan dropdown defect.
 - Public display monitor di `/public-display` dengan layout statik seperti display line.

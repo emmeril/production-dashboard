@@ -109,6 +109,7 @@ const PRODUCTION_IMPORT_PREVIEW_TTL_MS = 30 * 60 * 1000;
 const PRODUCTION_IMPORT_MAX_ROWS = 2000;
 let lastScheduledDatabaseBackupDate = '';
 let databaseBackupCleanupRunning = false;
+let databaseRestoreInProgress = false;
 
 function normalizeLogMessage(message) {
   return String(message || '')
@@ -157,7 +158,10 @@ if (!sessionSecret) {
   logger.warn('SESSION_SECRET is not set; using an ephemeral session secret. Set SESSION_SECRET in production.');
 }
 
+const sessionStore = new session.MemoryStore();
+
 app.use(session({
+  store: sessionStore,
   secret: sessionSecret || crypto.randomBytes(32).toString('hex'),
   resave: false,
   saveUninitialized: false,
@@ -168,6 +172,23 @@ app.use(session({
     maxAge: 24 * 60 * 60 * 1000
   }
 }));
+
+app.use('/api', (req, res, next) => {
+  if (databaseRestoreInProgress && req.method !== 'GET') {
+    return res.status(503).json({ error: 'Database sedang dipulihkan. Tunggu beberapa saat lalu coba lagi.' });
+  }
+  return next();
+});
+
+function clearSessionsAfterDatabaseRestore(req) {
+  return new Promise((resolve, reject) => {
+    sessionStore.clear(clearError => {
+      if (clearError) return reject(clearError);
+      if (!req.session) return resolve();
+      return req.session.destroy(destroyError => destroyError ? reject(destroyError) : resolve());
+    });
+  });
+}
 
 function hashPassword(password) {
   return bcrypt.hashSync(String(password), 12);
@@ -1793,6 +1814,12 @@ function parsePayload(payload, fallback) {
 }
 
 async function upsertAppData(key, data) {
+  if (databaseRestoreInProgress) {
+    const error = new Error('Database sedang dipulihkan');
+    error.code = 'DATABASE_RESTORE_IN_PROGRESS';
+    throw error;
+  }
+
   const payload = JSON.stringify(data);
   const previousWrite = appDataWriteQueues.get(key) || Promise.resolve();
 
@@ -1866,6 +1893,11 @@ function getLatestSnapshotForDate(date) {
 }
 
 function storeProductionSnapshot(filename, snapshotDate, type, data, timestamps = {}) {
+  if (databaseRestoreInProgress) {
+    logger.warn(`Snapshot dilewati selama restore database: ${filename}`);
+    return null;
+  }
+
   const existing = getSnapshotByFilename(filename);
   const record = buildSnapshotRecord(filename, snapshotDate, type, data, {
     createdAt: existing?.createdAt || timestamps.createdAt,
@@ -2048,7 +2080,7 @@ async function pruneDatabaseBackups(now = new Date()) {
 }
 
 async function runDatabaseBackupCleanup() {
-  if (databaseBackupCleanupRunning) return 0;
+  if (databaseBackupCleanupRunning || databaseRestoreInProgress) return 0;
   databaseBackupCleanupRunning = true;
 
   try {
@@ -2087,8 +2119,153 @@ async function createDatabaseBackup(label = 'manual') {
 
   await sequelize.query(`VACUUM INTO '${escapedPath}'`);
   logger.info(`Backup database dibuat: ${filename}`);
-  if (databaseInitialized) void runDatabaseBackupCleanup();
+  if (databaseInitialized && !databaseRestoreInProgress) void runDatabaseBackupCleanup();
   return backupPath;
+}
+
+function databaseBackupValidationError(message) {
+  const error = new Error(message);
+  error.code = 'INVALID_DATABASE_BACKUP';
+  return error;
+}
+
+async function validateDatabaseBackupForRestore(backupPath) {
+  let integrityRows;
+  try {
+    integrityRows = await queryReadOnlySqlite(backupPath, 'PRAGMA integrity_check');
+  } catch (error) {
+    throw databaseBackupValidationError(`File backup bukan database SQLite yang valid: ${error.message}`);
+  }
+  if (!integrityRows.length || integrityRows[0].integrity_check !== 'ok') {
+    throw databaseBackupValidationError('File backup SQLite rusak atau gagal melewati integrity check');
+  }
+
+  const tableRows = await queryReadOnlySqlite(
+    backupPath,
+    `SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('app_data', 'production_snapshots')`
+  );
+  const tableNames = new Set(tableRows.map(row => row.name));
+  if (!tableNames.has('app_data') || !tableNames.has('production_snapshots')) {
+    throw databaseBackupValidationError('File backup tidak memiliki struktur database aplikasi yang lengkap');
+  }
+
+  const requiredAppColumns = ['key', 'payload', 'createdAt', 'updatedAt'];
+  const requiredSnapshotColumns = ['filename', 'snapshotDate', 'type', 'payload', 'size', 'contentHash', 'createdAt', 'updatedAt'];
+  const appColumns = new Set((await queryReadOnlySqlite(backupPath, 'PRAGMA table_info(app_data)')).map(row => row.name));
+  const snapshotColumns = new Set((await queryReadOnlySqlite(backupPath, 'PRAGMA table_info(production_snapshots)')).map(row => row.name));
+  if (requiredAppColumns.some(column => !appColumns.has(column))
+    || requiredSnapshotColumns.some(column => !snapshotColumns.has(column))) {
+    throw databaseBackupValidationError('Versi struktur file backup tidak kompatibel dengan aplikasi');
+  }
+
+  const appRows = await queryReadOnlySqlite(backupPath, 'SELECT key, payload FROM app_data');
+  const requiredKeys = [
+    PRODUCTION_DATA_KEY,
+    USERS_DATA_KEY,
+    DEFECT_CONFIG_KEY,
+    PUBLIC_DISPLAY_SETTINGS_KEY,
+    WORK_SCHEDULE_SETTINGS_KEY,
+    MATERIAL_ORDERS_KEY
+  ];
+  const payloadsByKey = new Map(appRows.map(row => [row.key, row.payload]));
+  if (requiredKeys.some(key => !payloadsByKey.has(key))) {
+    throw databaseBackupValidationError('File backup tidak memiliki seluruh data aplikasi yang diperlukan');
+  }
+
+  requiredKeys.forEach(key => {
+    const parsed = parsePayload(payloadsByKey.get(key), null);
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      throw databaseBackupValidationError(`Payload backup tidak valid: ${key}`);
+    }
+  });
+
+  return {
+    appDataCount: appRows.length,
+    snapshotCount: (await queryReadOnlySqlite(backupPath, 'SELECT COUNT(*) AS count FROM production_snapshots'))[0]?.count || 0
+  };
+}
+
+function runSqliteStatement(database, sql) {
+  return new Promise((resolve, reject) => {
+    database.run(sql, error => error ? reject(error) : resolve());
+  });
+}
+
+function closeSqliteDatabase(database) {
+  return new Promise((resolve, reject) => {
+    database.close(error => error ? reject(error) : resolve());
+  });
+}
+
+async function replaceActiveDatabaseContentsFromBackup(backupPath) {
+  const activeDatabase = await new Promise((resolve, reject) => {
+    const database = new sqlite3.Database(databasePath, sqlite3.OPEN_READWRITE, error => {
+      if (error) reject(error);
+      else resolve(database);
+    });
+  });
+  activeDatabase.configure('busyTimeout', 15000);
+
+  const escapedBackupPath = backupPath.replace(/'/g, "''");
+  let attached = false;
+  let transactionStarted = false;
+  try {
+    await runSqliteStatement(activeDatabase, `ATTACH DATABASE '${escapedBackupPath}' AS restore_source`);
+    attached = true;
+    await runSqliteStatement(activeDatabase, 'BEGIN IMMEDIATE');
+    transactionStarted = true;
+    await runSqliteStatement(activeDatabase, 'DELETE FROM app_data');
+    await runSqliteStatement(
+      activeDatabase,
+      `INSERT INTO app_data ("key", "payload", "createdAt", "updatedAt")
+       SELECT "key", "payload", "createdAt", "updatedAt" FROM restore_source.app_data`
+    );
+    await runSqliteStatement(activeDatabase, 'DELETE FROM production_snapshots');
+    await runSqliteStatement(
+      activeDatabase,
+      `INSERT INTO production_snapshots ("filename", "snapshotDate", "type", "payload", "size", "contentHash", "createdAt", "updatedAt")
+       SELECT "filename", "snapshotDate", "type", "payload", "size", "contentHash", "createdAt", "updatedAt"
+       FROM restore_source.production_snapshots`
+    );
+    await runSqliteStatement(activeDatabase, 'COMMIT');
+    transactionStarted = false;
+    await runSqliteStatement(activeDatabase, 'DETACH DATABASE restore_source');
+    attached = false;
+  } catch (error) {
+    if (transactionStarted) {
+      try {
+        await runSqliteStatement(activeDatabase, 'ROLLBACK');
+      } catch (rollbackError) {
+        logger.error('Rollback restore database gagal', rollbackError.message);
+      }
+    }
+    if (attached) {
+      try {
+        await runSqliteStatement(activeDatabase, 'DETACH DATABASE restore_source');
+      } catch (detachError) {
+        logger.error('Detach database restore gagal', detachError.message);
+      }
+    }
+    throw error;
+  } finally {
+    await closeSqliteDatabase(activeDatabase);
+  }
+}
+
+async function restoreDatabaseBackupFile(backupPath) {
+  const validation = await validateDatabaseBackupForRestore(backupPath);
+  await flushPendingDatabaseWrites();
+  const safetyBackupPath = await createDatabaseBackup('pre_restore');
+  await replaceActiveDatabaseContentsFromBackup(backupPath);
+  await reloadApplicationCaches();
+  logger.info(`Restore database selesai dari ${path.basename(backupPath)}; pengaman ${path.basename(safetyBackupPath)}`);
+
+  return {
+    restoredFrom: path.basename(backupPath),
+    safetyBackup: path.basename(safetyBackupPath),
+    appDataCount: validation.appDataCount,
+    snapshotCount: validation.snapshotCount
+  };
 }
 
 function getLegacyHistoryJsonFiles() {
@@ -2156,6 +2333,37 @@ async function migrateLegacyHistoryToDatabase() {
   logger.info(`Migrasi file JSON lama selesai: ${legacyFiles.length} file, backup ${path.basename(migrationBackup)}`);
 }
 
+async function reloadApplicationCaches() {
+  const rows = await AppData.findAll({ raw: true });
+  const rowsByKey = new Map(rows.map(row => [row.key, row]));
+
+  productionDataCache = parsePayload(
+    rowsByKey.get(PRODUCTION_DATA_KEY)?.payload || '',
+    buildInitialProductionData()
+  );
+  usersDataCache = parsePayload(
+    rowsByKey.get(USERS_DATA_KEY)?.payload || '',
+    buildInitialUsersData()
+  );
+  defectConfigCache = normalizeDefectConfig(parsePayload(
+    rowsByKey.get(DEFECT_CONFIG_KEY)?.payload || '',
+    buildInitialDefectConfig()
+  ));
+  publicDisplaySettingsCache = normalizePublicDisplaySettings(parsePayload(
+    rowsByKey.get(PUBLIC_DISPLAY_SETTINGS_KEY)?.payload || '',
+    buildInitialPublicDisplaySettings()
+  ));
+  workScheduleSettingsCache = normalizeWorkScheduleSettings(parsePayload(
+    rowsByKey.get(WORK_SCHEDULE_SETTINGS_KEY)?.payload || '',
+    buildInitialWorkScheduleSettings()
+  ));
+  materialOrdersCache = normalizeMaterialOrders(parsePayload(
+    rowsByKey.get(MATERIAL_ORDERS_KEY)?.payload || '',
+    buildInitialMaterialOrders()
+  ));
+  await loadProductionSnapshotCache();
+}
+
 async function initSequelizeStorage() {
   try {
     await sequelize.authenticate();
@@ -2220,32 +2428,7 @@ async function initSequelizeStorage() {
       materialOrdersRow = await AppData.findByPk(MATERIAL_ORDERS_KEY);
     }
 
-    productionDataCache = parsePayload(
-      productionRow ? productionRow.payload : '',
-      buildInitialProductionData()
-    );
-    usersDataCache = parsePayload(
-      usersRow ? usersRow.payload : '',
-      buildInitialUsersData()
-    );
-	    defectConfigCache = normalizeDefectConfig(parsePayload(
-	      defectConfigRow ? defectConfigRow.payload : '',
-	      buildInitialDefectConfig()
-	    ));
-    publicDisplaySettingsCache = normalizePublicDisplaySettings(parsePayload(
-      publicDisplaySettingsRow ? publicDisplaySettingsRow.payload : '',
-      buildInitialPublicDisplaySettings()
-    ));
-    workScheduleSettingsCache = normalizeWorkScheduleSettings(parsePayload(
-      workScheduleSettingsRow ? workScheduleSettingsRow.payload : '',
-      buildInitialWorkScheduleSettings()
-    ));
-    materialOrdersCache = normalizeMaterialOrders(parsePayload(
-      materialOrdersRow ? materialOrdersRow.payload : '',
-      buildInitialMaterialOrders()
-    ));
-
-    await loadProductionSnapshotCache();
+    await reloadApplicationCaches();
     try {
       await migrateLegacyHistoryToDatabase();
     } catch (error) {
@@ -3932,6 +4115,42 @@ app.get('/api/download-database-backup/:filename', requireLogin, requireAdmin, a
   const backup = listDatabaseBackupFiles().find(item => item.filename === filename);
   if (!backup) return res.status(404).json({ error: 'Database backup not found' });
   res.download(backup.path, backup.filename);
+});
+
+app.post('/api/restore-database-backup/:filename', requireLogin, requireAdmin, async (req, res) => {
+  if (req.body?.confirmation !== 'RESTORE') {
+    return res.status(400).json({ error: 'Ketik RESTORE untuk mengonfirmasi pemulihan database' });
+  }
+  if (databaseRestoreInProgress) {
+    return res.status(409).json({ error: 'Restore database lain sedang berlangsung' });
+  }
+
+  const backup = listDatabaseBackupFiles().find(item => item.filename === req.params.filename);
+  if (!backup) return res.status(404).json({ error: 'File backup database tidak ditemukan' });
+
+  databaseRestoreInProgress = true;
+  try {
+    logger.info(`Restore database dimulai: ${backup.filename}`);
+    const result = await restoreDatabaseBackupFile(backup.path);
+    try {
+      await clearSessionsAfterDatabaseRestore(req);
+    } catch (sessionError) {
+      logger.warn(`Database pulih tetapi sesi lama gagal dibersihkan: ${sessionError.message}`);
+    }
+    return res.json({
+      message: 'Database berhasil dipulihkan',
+      ...result
+    });
+  } catch (error) {
+    logger.error(`Restore database gagal (${backup.filename})`, error);
+    return res.status(error.code === 'INVALID_DATABASE_BACKUP' ? 400 : 500).json({
+      error: error.code === 'INVALID_DATABASE_BACKUP'
+        ? error.message
+        : 'Restore database gagal. Database pengaman tetap dipertahankan.'
+    });
+  } finally {
+    databaseRestoreInProgress = false;
+  }
 });
 
 // ENDPOINT UNTUK EXPORT BACKUP KE EXCEL
@@ -7378,6 +7597,8 @@ async function startServer() {
     .find(backup => backup.label === 'daily')?.date || '';
 
   setInterval(async () => {
+    if (databaseRestoreInProgress) return;
+
     const now = new Date();
     const today = getToday();
     
@@ -7460,8 +7681,11 @@ module.exports = {
   sewingImportTemplateWorkbook,
   qcImportTemplateWorkbook,
   pruneDatabaseBackups,
+  readProductionData,
   readProductionSnapshotForDate,
   recoverProductionSnapshotsFromDatabaseBackups,
+  restoreDatabaseBackupFile,
+  validateDatabaseBackupForRestore,
   sequelize,
   summarizeProductionSnapshot,
   summarizeProductionSnapshotByLine,

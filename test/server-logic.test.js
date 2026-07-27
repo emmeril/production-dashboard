@@ -1123,7 +1123,7 @@ test('dashboard chart includes only models active in Management Line', () => {
   );
 });
 
-test('simple backup page creates, lists, and downloads database backups', async () => {
+test('backup page creates, downloads, and confirms database restore actions', async () => {
   const fetchCalls = [];
   const downloadLink = {
     href: '',
@@ -1220,6 +1220,33 @@ test('simple backup page creates, lists, and downloads database backups', async 
   assert.equal(dashboard.backupAction, '');
   assert.equal(dashboard.toast.type, 'error');
   assert.match(dashboard.toast.message, /timeout/i);
+
+  const restoreCalls = [];
+  context.fetch = async (url, options = {}) => {
+    restoreCalls.push({ url, method: options.method, body: options.body });
+    return {
+      ok: true,
+      json: async () => ({ message: 'Database berhasil dipulihkan' })
+    };
+  };
+  const restoreBackup = {
+    filename: 'production-dashboard_2026-07-23_manual_3_abcd1236.sqlite',
+    type: 'database',
+    storage: 'database'
+  };
+  dashboard.openDatabaseRestoreModal(restoreBackup);
+  assert.equal(dashboard.restoreDatabaseModal.open, true);
+  assert.equal(dashboard.restoreDatabaseModal.confirmation, '');
+  dashboard.restoreDatabaseModal.confirmation = 'RESTORE';
+  await dashboard.restoreDatabaseBackup();
+  assert.deepEqual(restoreCalls, [{
+    url: '/api/restore-database-backup/production-dashboard_2026-07-23_manual_3_abcd1236.sqlite',
+    method: 'POST',
+    body: JSON.stringify({ confirmation: 'RESTORE' })
+  }]);
+  assert.equal(dashboard.backupAction, '');
+  assert.equal(dashboard.restoreDatabaseModal.open, false);
+  assert.equal(dashboard.toast.type, 'success');
 });
 
 test('date report exposes the same complete production and QC fields for every viewer', () => {

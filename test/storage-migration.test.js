@@ -326,3 +326,92 @@ test('database backups older than seven days are deleted without touching other 
     fs.rmSync(tempDir, { recursive: true, force: true });
   }
 });
+
+test('database restore replaces active application data and creates a safety backup', () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'production-dashboard-restore-'));
+  const backupDir = path.join(tempDir, 'database-backups');
+  const databasePath = path.join(tempDir, 'dashboard.sqlite');
+  const restorePath = path.join(backupDir, 'production-dashboard_2026-07-27_manual_1_abcdef12.sqlite');
+  fs.mkdirSync(backupDir, { recursive: true });
+
+  const script = `
+    const fs = require('fs');
+    const server = require(${JSON.stringify(path.join(__dirname, '..', 'server.js'))});
+    (async () => {
+      await server.initSequelizeStorage();
+      const restoredPayload = {
+        lines: {
+          'Restored Line': {
+            models: {
+              model1: { id: 'model1', date: '2026-07-27', model: 'Restored Model', outputDay: 88 }
+            },
+            activeModels: ['model1'],
+            activeModel: 'model1'
+          }
+        },
+        activeLine: 'Restored Line'
+      };
+      await server.sequelize.query(
+        \`UPDATE app_data SET payload = :payload WHERE key = 'production_data'\`,
+        { replacements: { payload: JSON.stringify(restoredPayload) } }
+      );
+      await server.sequelize.query(\`VACUUM INTO '${restorePath.replace(/'/g, "''")}'\`);
+
+      const currentPayload = { lines: {}, activeLine: '' };
+      await server.sequelize.query(
+        \`UPDATE app_data SET payload = :payload WHERE key = 'production_data'\`,
+        { replacements: { payload: JSON.stringify(currentPayload) } }
+      );
+
+      const result = await server.restoreDatabaseBackupFile(${JSON.stringify(restorePath)});
+      const restored = server.readProductionData();
+      const safetyFiles = fs.readdirSync(${JSON.stringify(backupDir)})
+        .filter(filename => filename.includes('_pre_restore_'));
+      const invalidBackupPath = ${JSON.stringify(path.join(backupDir, 'invalid.sqlite'))};
+      fs.writeFileSync(invalidBackupPath, 'not-a-database');
+      let invalidBackupCode = '';
+      try {
+        await server.validateDatabaseBackupForRestore(invalidBackupPath);
+      } catch (error) {
+        invalidBackupCode = error.code;
+      }
+      console.log('DATABASE_RESTORE_RESULT=' + JSON.stringify({
+        activeLine: restored.activeLine,
+        output: restored.lines['Restored Line'].models.model1.outputDay,
+        restoredFrom: result.restoredFrom,
+        safetyBackupCreated: safetyFiles.includes(result.safetyBackup),
+        appDataCount: result.appDataCount,
+        invalidBackupCode
+      }));
+      await server.sequelize.close();
+    })().catch(error => {
+      console.error(error);
+      process.exitCode = 1;
+    });
+  `;
+  const childEnv = {
+    ...process.env,
+    DATABASE_PATH: databasePath,
+    DATABASE_BACKUP_DIR: backupDir,
+    LEGACY_HISTORY_DIR: path.join(tempDir, 'history'),
+    SESSION_SECRET: 'test-secret'
+  };
+  delete childEnv.NODE_TEST_CONTEXT;
+  delete childEnv.NODE_CHANNEL_FD;
+
+  const result = spawnSync(process.execPath, ['-e', script], {
+    cwd: path.join(__dirname, '..'),
+    env: childEnv,
+    encoding: 'utf8'
+  });
+
+  try {
+    assert.equal(result.status, 0, result.stderr || result.stdout);
+    assert.match(
+      result.stdout,
+      /DATABASE_RESTORE_RESULT={"activeLine":"Restored Line","output":88,"restoredFrom":"production-dashboard_2026-07-27_manual_1_abcdef12.sqlite","safetyBackupCreated":true,"appDataCount":6,"invalidBackupCode":"INVALID_DATABASE_BACKUP"}/
+    );
+  } finally {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  }
+});

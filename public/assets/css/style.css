@@ -1490,6 +1490,64 @@ button:not(.pagination-btn):not([class*="rounded-full"]):not([class*="p-1"]):not
     display: inline;
 }
 
+.backup-file-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.5rem;
+}
+
+.restore-database-icon {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    width: 2.8rem;
+    height: 2.8rem;
+    border-radius: 12px;
+    background: #fee2e2;
+    color: #b91c1c;
+    font-size: 1.1rem;
+}
+
+.restore-database-summary {
+    padding: 0.9rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    background: #f8fafc;
+}
+
+.restore-database-summary span,
+.restore-database-summary strong,
+.restore-database-summary small {
+    display: block;
+}
+
+.restore-database-summary > span {
+    color: #64748b;
+    font-size: 0.72rem;
+    font-weight: 700;
+}
+
+.restore-database-summary strong {
+    margin-top: 0.25rem;
+    overflow: hidden;
+    color: #1e293b;
+    font-size: 0.86rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.restore-database-summary small {
+    margin-top: 0.3rem;
+    color: #64748b;
+    font-size: 0.75rem;
+}
+
+.restore-database-summary small span {
+    display: inline;
+}
+
 .backup-empty-state {
     display: flex;
     align-items: center;
@@ -1735,8 +1793,13 @@ button:not(.pagination-btn):not([class*="rounded-full"]):not([class*="p-1"]):not
         padding: 0.9rem;
     }
 
-    .backup-file-row .btn-action {
+    .backup-file-actions {
         grid-column: 1 / -1;
+        width: 100%;
+    }
+
+    .backup-file-actions .btn-action {
+        flex: 1 1 0;
         width: 100%;
     }
 }

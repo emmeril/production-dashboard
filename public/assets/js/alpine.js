@@ -198,6 +198,11 @@ function dashboard() {
 	        backupHistory: [],
 	        backupLoading: false,
 	        backupAction: '',
+	        restoreDatabaseModal: {
+	            open: false,
+	            backup: null,
+	            confirmation: ''
+	        },
 	        productionImport: {
 	            kind: '',
 	            file: null,
@@ -2597,6 +2602,55 @@ function dashboard() {
             document.body.appendChild(link);
             link.click();
             link.remove();
+        },
+
+        openDatabaseRestoreModal(backup) {
+            this.restoreDatabaseModal = {
+                open: true,
+                backup,
+                confirmation: ''
+            };
+        },
+
+        closeDatabaseRestoreModal() {
+            if (this.backupAction === 'restore') return;
+            this.restoreDatabaseModal = { open: false, backup: null, confirmation: '' };
+        },
+
+        async restoreDatabaseBackup() {
+            const backup = this.restoreDatabaseModal.backup;
+            if (!backup || this.restoreDatabaseModal.confirmation !== 'RESTORE' || this.backupAction) return;
+
+            this.backupAction = 'restore';
+            try {
+                const response = await fetchWithTimeout(
+                    `/api/restore-database-backup/${encodeURIComponent(backup.filename)}`,
+                    {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ confirmation: this.restoreDatabaseModal.confirmation })
+                    },
+                    120000
+                );
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Restore database gagal');
+
+                this.restoreDatabaseModal = { open: false, backup: null, confirmation: '' };
+                this.showToast('Database berhasil dipulihkan. Halaman akan dimuat ulang.', 'success');
+                if (typeof window !== 'undefined') {
+                    setTimeout(() => window.location.reload(), 1200);
+                }
+            } catch (error) {
+                logClientError('Error restoring database:', error);
+                this.showToast(
+                    error?.name === 'AbortError'
+                        ? 'Status restore belum diketahui. Muat ulang halaman sebelum mencoba lagi.'
+                        : error.message,
+                    'error'
+                );
+            } finally {
+                this.backupAction = '';
+            }
         },
 
         displayBackupFilename(filename) {

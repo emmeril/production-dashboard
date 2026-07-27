@@ -2044,8 +2044,8 @@
 	                    <section class="backup-hero mb-6">
 	                        <div class="backup-hero-copy">
 	                            <span class="backup-kicker"><i class="fa-solid fa-shield-halved"></i> Backup database lengkap</span>
-	                            <h2>Satu klik, langsung tersimpan</h2>
-	                            <p>File <strong>.sqlite</strong> berisi data produksi, QC, user, pengaturan, dan histori aplikasi pada saat backup dibuat.</p>
+	                            <h2>Buat Backup</h2>
+	                            <p>Download salinan database terbaru.</p>
 	                            <button @click="createBackup()" :disabled="backupAction === 'backup'" class="backup-primary-action">
 	                                <i class="fa-solid" :class="backupAction === 'backup' ? 'fa-spinner fa-spin' : 'fa-download'"></i>
 	                                <span x-text="backupAction === 'backup' ? 'Sedang membuat backup...' : 'Buat & Download Backup'"></span>
@@ -2059,11 +2059,6 @@
 	                            <small x-show="!latestDatabaseBackup && !backupLoading">Belum ada file backup</small>
 	                        </div>
 	                    </section>
-
-	                    <div class="backup-note mb-6" role="note">
-	                        <i class="fa-solid fa-circle-info"></i>
-	                        <p>Setelah backup selesai, browser otomatis mengunduh file. Simpan file di drive lain agar tetap aman jika server bermasalah.</p>
-	                    </div>
 
 	                    <section class="bg-white rounded-lg shadow overflow-hidden card-shadow">
 	                        <div class="px-4 py-5 sm:px-6 border-b border-gray-200">

@@ -1439,22 +1439,6 @@ button:not(.pagination-btn):not([class*="rounded-full"]):not([class*="p-1"]):not
     font-size: 0.72rem;
 }
 
-.backup-note {
-    display: flex;
-    align-items: flex-start;
-    gap: 0.7rem;
-    padding: 0.9rem 1rem;
-    border: 1px solid #b9e6df;
-    border-radius: 10px;
-    background: #edfbf8;
-    color: #155e63;
-    font-size: 0.86rem;
-}
-
-.backup-note p {
-    margin: 0;
-}
-
 .backup-file-row {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr) auto;

@@ -1600,6 +1600,22 @@ button:not(.pagination-btn):not([class*="rounded-full"]):not([class*="p-1"]):not
         scrollbar-width: thin;
         scrollbar-color: #b7c9ce transparent;
     }
+
+    /* Keep compact data columns readable; scroll horizontally instead of squeezing status/actions. */
+    .overflow-x-auto > table {
+        width: max-content;
+        min-width: 100%;
+    }
+
+    .overflow-x-auto > table th,
+    .overflow-x-auto > table td {
+        white-space: nowrap;
+    }
+
+    .overflow-x-auto > table .table-actions {
+        flex-wrap: nowrap;
+        min-width: max-content;
+    }
 }
 
 @media (max-width: 480px) {

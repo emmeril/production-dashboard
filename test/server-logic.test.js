@@ -1140,8 +1140,10 @@ test('simple backup page creates, lists, and downloads database backups', async 
     Map,
     Math,
     Set,
+    AbortController,
     parseInt,
     setTimeout: () => 0,
+    clearTimeout: () => {},
     fetch: async (url, options = {}) => {
       fetchCalls.push({ url, method: options.method || 'GET' });
       if (url === '/api/backup/now') {
@@ -1197,6 +1199,7 @@ test('simple backup page creates, lists, and downloads database backups', async 
   downloadLink.clicked = false;
   downloadLink.removed = false;
   await dashboard.createBackup();
+  await new Promise(resolve => setImmediate(resolve));
   assert.deepEqual(fetchCalls, [
     { url: '/api/backup/now', method: 'POST' },
     { url: '/api/backup-history', method: 'GET' }
@@ -1207,6 +1210,16 @@ test('simple backup page creates, lists, and downloads database backups', async 
   assert.equal(downloadLink.clicked, true);
   assert.equal(downloadLink.removed, true);
   assert.equal(dashboard.toast.type, 'success');
+
+  context.fetch = async () => {
+    const error = new Error('Request aborted');
+    error.name = 'AbortError';
+    throw error;
+  };
+  await dashboard.createBackup();
+  assert.equal(dashboard.backupAction, '');
+  assert.equal(dashboard.toast.type, 'error');
+  assert.match(dashboard.toast.message, /timeout/i);
 });
 
 test('date report exposes the same complete production and QC fields for every viewer', () => {

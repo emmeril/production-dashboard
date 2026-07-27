@@ -2046,7 +2046,7 @@
 	                            <span class="backup-kicker"><i class="fa-solid fa-shield-halved"></i> Backup database lengkap</span>
 	                            <h2>Satu klik, langsung tersimpan</h2>
 	                            <p>File <strong>.sqlite</strong> berisi data produksi, QC, user, pengaturan, dan histori aplikasi pada saat backup dibuat.</p>
-	                            <button @click="createBackup()" :disabled="backupAction" class="backup-primary-action">
+	                            <button @click="createBackup()" :disabled="backupAction === 'backup'" class="backup-primary-action">
 	                                <i class="fa-solid" :class="backupAction === 'backup' ? 'fa-spinner fa-spin' : 'fa-download'"></i>
 	                                <span x-text="backupAction === 'backup' ? 'Sedang membuat backup...' : 'Buat & Download Backup'"></span>
 	                            </button>
@@ -2560,6 +2560,6 @@
         </div>
     </div>
 
-   <script src="./public/assets/js/alpine.js"></script>
+   <script src="./public/assets/js/alpine.js?v=20260727-backup-timeout"></script>
 </body>
 </html>

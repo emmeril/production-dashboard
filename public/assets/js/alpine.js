@@ -18,6 +18,18 @@ function logClientError(context, error) {
     console.error(`[dashboard] [ERROR] ${message}`, error);
 }
 
+async function fetchWithTimeout(url, options = {}, timeoutMs = 30000) {
+    if (typeof AbortController === 'undefined') return fetch(url, options);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+        return await fetch(url, { ...options, signal: controller.signal });
+    } finally {
+        clearTimeout(timeoutId);
+    }
+}
+
 function dashboard() {
     return {
         // Authentication state
@@ -2535,7 +2547,7 @@ function dashboard() {
 
         async loadBackupHistory() {
             try {
-                const response = await fetch('/api/backup-history');
+                const response = await fetchWithTimeout('/api/backup-history', {}, 15000);
                 if (!response.ok) throw new Error('Gagal memuat riwayat backup');
                 this.backupHistory = await response.json();
                 return this.backupHistory;
@@ -2551,22 +2563,27 @@ function dashboard() {
             if (this.backupAction) return;
             this.backupAction = 'backup';
             try {
-                const response = await fetch('/api/backup/now', {
+                const response = await fetchWithTimeout('/api/backup/now', {
                     method: 'POST'
-                });
+                }, 30000);
 
                 if (response.ok) {
                     const data = await response.json();
-                    await this.loadBackupHistory();
                     this.downloadDatabaseBackup(data.filename);
                     this.showToast('Backup berhasil dibuat dan mulai didownload', 'success');
+                    void this.loadBackupHistory();
                 } else {
                     const error = await response.json();
                     this.showToast(error.error || 'Gagal membuat backup', 'error');
                 }
             } catch (error) {
                 logClientError('Error creating backup:', error);
-                this.showToast('Gagal membuat backup. Periksa koneksi lalu coba lagi.', 'error');
+                this.showToast(
+                    error?.name === 'AbortError'
+                        ? 'Backup timeout setelah 30 detik. Tombol sudah diaktifkan kembali.'
+                        : 'Gagal membuat backup. Periksa koneksi lalu coba lagi.',
+                    'error'
+                );
             } finally {
                 this.backupAction = '';
             }

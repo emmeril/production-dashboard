@@ -2613,7 +2613,7 @@ async function generateMaterialOrderReportExcel(rows, summary, filters = {}) {
     ['Status', filters.status ? ({ planned: 'Direncanakan', in_production: 'Sedang Produksi', paused: 'Ditunda', completed: 'Selesai' }[filters.status] || filters.status) : 'Semua status'],
     ['Total PO', summary.total],
     ['Total Qty Order', summary.qtyOrder],
-    ['Total Qty Hasil', summary.qtyResult],
+    ['Total Hasil Produksi', summary.qtyResult],
     ['Sedang Produksi', summary.inProduction],
     ['Selesai', summary.completed]
   ].forEach((values, index) => {
@@ -2624,7 +2624,7 @@ async function generateMaterialOrderReportExcel(rows, summary, filters = {}) {
   summarySheet.columns = [{ width: 24 }, { width: 36 }];
 
   const sheet = workbook.addWorksheet('ORDER MATERIAL');
-  const headers = ['No', 'Tanggal Order', 'PO Material', 'Order Material', 'Qty Order', 'Label/Week', 'Model Produksi', 'Total Output Produksi', 'Total Qty Hasil', 'Status PO', 'Progress PO', 'Catatan'];
+  const headers = ['No', 'Tanggal Order', 'PO Material', 'Order Material', 'Qty Order', 'Label/Week', 'Model Produksi', 'Total Hasil Produksi', 'Status PO', 'Progress PO', 'Catatan'];
   sheet.getRow(1).values = headers;
   sheet.getRow(1).eachCell(cell => {
     cell.font = { bold: true, color: { argb: 'FFFFFF' } };
@@ -2643,7 +2643,6 @@ async function generateMaterialOrderReportExcel(rows, summary, filters = {}) {
       qtyOrder,
       order.labelWeek,
       order.modelName,
-      Number(order.currentProductionOutput) || 0,
       totalQtyResult,
       { planned: 'Direncanakan', in_production: 'Sedang Produksi', paused: 'Ditunda', completed: 'Selesai' }[order.orderStatus] || order.orderStatus || order.status,
       `${progress}%`,

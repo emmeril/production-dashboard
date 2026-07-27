@@ -1260,8 +1260,7 @@
 	                                        <th>Qty Order</th>
 	                                        <th>Produksi</th>
 	                                        <th>Status</th>
-	                                        <th>Output Produksi</th>
-	                                        <th>Qty Hasil</th>
+	                                        <th>Hasil Produksi</th>
 	                                        <th x-show="canManageMaterialOrders()">Aksi</th>
 	                                    </tr>
 	                                </thead>
@@ -1289,11 +1288,8 @@
 	                                            </td>
 	                                            <td><span class="material-status" :class="materialOrderStatusClass(order.status)" x-text="materialOrderStatusLabel(order.status)"></span></td>
 	                                            <td>
-	                                                <strong class="material-live-output" x-text="formatDashboardNumber(order.currentProductionOutput)"></strong>
-	                                                <small class="material-live-label">total output line saat ini</small>
-	                                            </td>
-	                                            <td>
 	                                                <div class="material-result-copy"><strong x-text="formatDashboardNumber(order.qtyResult)"></strong><span x-text="`${materialOrderProgress(order)}%`"></span></div>
+	                                                <small class="material-live-label">akumulasi hasil produksi</small>
 	                                                <div class="material-result-progress"><i :style="`width: ${materialOrderProgress(order)}%`"></i></div>
 	                                            </td>
 	                                            <td x-show="canManageMaterialOrders()">
@@ -1304,7 +1300,7 @@
 	                                            </td>
 	                                        </tr>
 	                                    </template>
-		                                    <tr x-show="filteredMaterialOrders.length === 0"><td colspan="9" class="material-empty-state"><i class="fa-solid fa-box-open"></i><strong>Belum ada order material</strong><span>Tambah PO material pertama atau ubah filter pencarian.</span></td></tr>
+	                                    <tr x-show="filteredMaterialOrders.length === 0"><td :colspan="canManageMaterialOrders() ? 8 : 7" class="material-empty-state"><i class="fa-solid fa-box-open"></i><strong>Belum ada order material</strong><span>Tambah PO material pertama atau ubah filter pencarian.</span></td></tr>
 	                                </tbody>
 	                            </table>
 	                        </div>
@@ -1401,8 +1397,7 @@
 		                                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Label/Week</th>
 		                                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Model Produksi</th>
 		                                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Qty Order</th>
-		                                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Output Produksi</th>
-		                                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Qty Hasil</th>
+	                                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Hasil Produksi</th>
 		                                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status PO</th>
 		                                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Progress</th>
 		                                            <th scope="col" class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Export</th>
@@ -1417,7 +1412,6 @@
 		                                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500" x-text="order.labelWeek || '-' "></td>
 	                                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500" x-text="order.modelName || '-' "></td>
 	                                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500" x-text="formatDashboardNumber(order.qtyOrder)"></td>
-	                                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500" x-text="formatDashboardNumber(order.currentProductionOutput)"></td>
 	                                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500" x-text="formatDashboardNumber(order.qtyResult)"></td>
 		                                                <td class="px-4 py-3 whitespace-nowrap text-sm" x-text="materialOrderStatusLabel(order.status)" :class="materialOrderStatusClass(order.status)"></td>
 		                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-medium" :class="materialOrderProgress(order) >= 100 ? 'text-green-600' : 'text-amber-600'" x-text="materialOrderProgress(order) + '%' "></td>

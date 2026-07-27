@@ -330,9 +330,9 @@ test('material order Excel export includes summary and report columns', async ()
   assert.equal(detail.getCell('C1').value, 'PO Material');
   assert.equal(detail.getCell('C2').value, 'PO-1');
   assert.equal(detail.getCell('F1').value, 'Label/Week');
-  assert.equal(detail.getCell('H1').value, 'Total Output Produksi');
-  assert.equal(detail.getCell('I1').value, 'Total Qty Hasil');
-  assert.equal(detail.getCell('K2').value, '80%');
+  assert.equal(detail.getCell('H1').value, 'Total Hasil Produksi');
+  assert.equal(detail.getCell('H2').value, 80);
+  assert.equal(detail.getCell('J2').value, '80%');
   assert.equal(detail.getRow(1).values.includes('Line'), false);
   assert.equal(detail.getRow(1).values.includes('Model ID'), false);
 });

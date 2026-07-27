@@ -2922,10 +2922,21 @@ function hasAnyRole(user, allowedRoles) {
 }
 
 const ADMIN_OPERATOR_ROLES = ['admin_operator_sewing', 'admin_operator_qc'];
-const REPORT_VIEWER_ROLES = ['admin', ...ADMIN_OPERATOR_ROLES];
+const PPIC_ROLE = 'ppic';
+const DASHBOARD_VIEWER_ROLES = ['admin', ...ADMIN_OPERATOR_ROLES, PPIC_ROLE];
+const REPORT_VIEWER_ROLES = [...DASHBOARD_VIEWER_ROLES];
+
+function hasDashboardAccess(user) {
+  return hasAnyRole(user, DASHBOARD_VIEWER_ROLES);
+}
 
 function hasDateReportAccess(user) {
   return hasAnyRole(user, REPORT_VIEWER_ROLES);
+}
+
+function requireMaterialOrderViewAccess(req, res, next) {
+  if (hasAnyRole(getAuthenticatedSessionUser(req), ['admin', PPIC_ROLE])) return next();
+  return res.status(403).json({ error: 'Akses lihat Order Material diperlukan' });
 }
 
 function requireAdmin(req, res, next) {
@@ -2937,10 +2948,10 @@ function requireAdmin(req, res, next) {
 }
 
 function requireAdminOrAdminOperator(req, res, next) {
-  if (hasAnyRole(getAuthenticatedSessionUser(req), ['admin', ...ADMIN_OPERATOR_ROLES])) {
+  if (hasDashboardAccess(getAuthenticatedSessionUser(req))) {
     next();
   } else {
-    res.status(403).json({ error: 'Forbidden - Admin or Admin Operator access required' });
+    res.status(403).json({ error: 'Forbidden - Dashboard access required' });
   }
 }
 
@@ -2969,7 +2980,7 @@ function requireLineAccess(req, res, next) {
     return res.status(401).json({ error: 'Unauthorized - Please login' });
   }
 
-  if (role === 'admin' || ADMIN_OPERATOR_ROLES.includes(role)) {
+  if (hasDashboardAccess(user)) {
     return next();
   }
 
@@ -6557,7 +6568,7 @@ app.put('/api/work-schedule-settings', requireLogin, requireAdmin, async (req, r
   res.json({ message: 'Pengaturan hari kerja berhasil disimpan', settings });
 });
 
-app.get('/api/material-orders', requireLogin, requireAdmin, async (req, res) => {
+app.get('/api/material-orders', requireLogin, requireMaterialOrderViewAccess, async (req, res) => {
   const productionData = readProductionData();
   const cumulativeOutputs = buildMaterialOrderCumulativeOutputs(productionData);
   const orders = readMaterialOrders().orders
@@ -6566,13 +6577,13 @@ app.get('/api/material-orders', requireLogin, requireAdmin, async (req, res) => 
   res.json(orders);
 });
 
-app.get('/api/material-orders/production-totals', requireLogin, requireAdmin, async (req, res) => {
+app.get('/api/material-orders/production-totals', requireLogin, requireMaterialOrderViewAccess, async (req, res) => {
   const productionData = readProductionData();
   const cumulativeOutputs = buildMaterialOrderCumulativeOutputs(productionData);
   res.json(buildMaterialOrderProductionTotals(productionData, cumulativeOutputs));
 });
 
-app.get('/api/material-orders/report', requireLogin, requireAdmin, async (req, res) => {
+app.get('/api/material-orders/report', requireLogin, requireMaterialOrderViewAccess, async (req, res) => {
   const { startDate = '', endDate = '', line = '', status = '', poMaterial = '' } = req.query;
   if ((startDate && !isValidDateInput(startDate)) || (endDate && !isValidDateInput(endDate))) {
     return res.status(400).json({ error: 'Tanggal report tidak valid' });
@@ -6589,7 +6600,7 @@ app.get('/api/material-orders/report', requireLogin, requireAdmin, async (req, r
   return res.json({ rows, summary: summarizeMaterialOrderReport(rows), filters });
 });
 
-app.get('/api/material-orders/report/export', requireLogin, requireAdmin, async (req, res) => {
+app.get('/api/material-orders/report/export', requireLogin, requireMaterialOrderViewAccess, async (req, res) => {
   const { startDate = '', endDate = '', line = '', status = '', poMaterial = '' } = req.query;
   if ((startDate && !isValidDateInput(startDate)) || (endDate && !isValidDateInput(endDate))) {
     return res.status(400).json({ error: 'Tanggal report tidak valid' });
@@ -6792,7 +6803,7 @@ app.delete('/api/defect-areas/:id', requireLogin, requireDefectCategoryAccess, a
 app.post('/api/users', requireLogin, requireAdmin, async (req, res) => {
   const { username, password, name, line, role } = req.body;
   const usersData = readUsersData();
-  const allowedRoles = ['admin', 'admin_operator_sewing', 'admin_operator_qc', 'operator'];
+  const allowedRoles = ['admin', 'admin_operator_sewing', 'admin_operator_qc', 'ppic', 'operator'];
 
   if (!allowedRoles.includes(role)) return res.status(400).json({ error: 'Role tidak valid' });
   if (typeof username !== 'string' || !username.trim()) return res.status(400).json({ error: 'Username is required' });
@@ -6832,7 +6843,7 @@ app.put('/api/users/:id', requireLogin, requireAdmin, async (req, res) => {
   const userId = parseInt(req.params.id);
   const { username, password, name, line, role } = req.body;
   const usersData = readUsersData();
-  const allowedRoles = ['admin', 'admin_operator_sewing', 'admin_operator_qc', 'operator'];
+  const allowedRoles = ['admin', 'admin_operator_sewing', 'admin_operator_qc', 'ppic', 'operator'];
 
   if (!allowedRoles.includes(role)) return res.status(400).json({ error: 'Role tidak valid' });
   if (typeof username !== 'string' || !username.trim()) return res.status(400).json({ error: 'Username is required' });

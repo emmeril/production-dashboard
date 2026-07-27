@@ -1188,14 +1188,14 @@
 	                </div>
 
 	                <!-- Material Orders - Hanya untuk Admin -->
-	                <div x-show="currentPage === 'material-orders' && currentUser.role === 'admin'" class="fade-in material-orders-page">
+	                <div x-show="currentPage === 'material-orders' && canViewMaterialOrders()" class="fade-in material-orders-page">
 	                    <div class="mb-6 material-orders-heading">
 		                        <div>
 		                            <h1 class="text-2xl font-bold text-gray-800 flex items-center"><i class="fa-solid fa-boxes-packing text-amber-600 mr-3"></i>Order Material</h1>
 		                            <p class="text-gray-600">Catat PO dan qty material, hubungkan ke proses produksi, lalu pantau hasil aktualnya.</p>
 		                            <small class="text-emerald-700"><i class="fa-solid fa-rotate mr-1" :class="materialOrderSyncing ? 'fa-spin' : ''"></i>Sinkron otomatis dengan data produksi setiap 10 detik<span x-show="materialOrderLastSyncedAt" x-text="` · terakhir ${materialOrderLastSyncedAt}`"></span></small>
 		                        </div>
-	                        <button @click="openMaterialOrderModal()" class="material-primary-button">
+	                        <button x-show="canManageMaterialOrders()" @click="openMaterialOrderModal()" class="material-primary-button">
 	                            <i class="fa-solid fa-plus"></i>Tambah Order Material
 	                        </button>
 	                    </div>
@@ -1262,7 +1262,7 @@
 	                                        <th>Status</th>
 	                                        <th>Output Produksi</th>
 	                                        <th>Qty Hasil</th>
-	                                        <th>Aksi</th>
+	                                        <th x-show="canManageMaterialOrders()">Aksi</th>
 	                                    </tr>
 	                                </thead>
 	                                <tbody>
@@ -1285,7 +1285,7 @@
 	                                                </div>
 	                                            </td>
 	                                            <td><span class="material-status" :class="materialOrderStatusClass(order.status)" x-text="materialOrderStatusLabel(order.status)"></span></td>
-	                                            <td>
+	                                            <td x-show="canManageMaterialOrders()">
 	                                                <strong class="material-live-output" x-text="formatDashboardNumber(order.currentProductionOutput)"></strong>
 	                                                <small class="material-live-label">total output line saat ini</small>
 	                                            </td>
@@ -1323,14 +1323,14 @@
 	                        <button @click="setReportTab('production')" class="inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold transition-colors" :class="reportTab === 'production' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-600 hover:bg-white hover:text-blue-700'">
 	                            <i class="fa-solid fa-chart-column"></i>Laporan Produksi dan QC
 	                        </button>
-	                        <button x-show="currentUser.role === 'admin'" @click="setReportTab('material')" class="inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold transition-colors" :class="reportTab === 'material' ? 'bg-teal-700 text-white shadow-sm' : 'text-gray-600 hover:bg-white hover:text-teal-700'">
+	                        <button x-show="canViewMaterialOrders()" @click="setReportTab('material')" class="inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold transition-colors" :class="reportTab === 'material' ? 'bg-teal-700 text-white shadow-sm' : 'text-gray-600 hover:bg-white hover:text-teal-700'">
 	                            <i class="fa-solid fa-file-export"></i>Report Material
 	                        </button>
 	                    </div>
 	                </div>
 
 	                <!-- Material Order Report - Hanya untuk Admin -->
-	                <div x-show="currentPage === 'report' && reportTab === 'material' && currentUser.role === 'admin'" class="bg-white rounded-lg shadow overflow-hidden card-shadow mb-6 fade-in">
+	                <div x-show="currentPage === 'report' && reportTab === 'material' && canViewMaterialOrders()" class="bg-white rounded-lg shadow overflow-hidden card-shadow mb-6 fade-in">
 	                    <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
 	                        <h3 class="text-lg leading-6 font-medium text-gray-900 flex items-center"><i class="fa-solid fa-file-export text-teal-700 mr-2"></i>Report Material</h3>
 		                        <p class="mt-1 max-w-2xl text-sm text-gray-500">Lihat total output produksi dan qty hasil untuk setiap PO Material. Data tersinkron otomatis setiap 10 detik.</p>
@@ -1649,6 +1649,7 @@
                                                               'bg-purple-100 text-purple-800': user.role === 'admin',
                                                               'bg-blue-100 text-blue-800': user.role === 'admin_operator_sewing',
                                                               'bg-cyan-100 text-cyan-800': user.role === 'admin_operator_qc',
+                                                              'bg-amber-100 text-amber-800': user.role === 'ppic',
                                                               'bg-green-100 text-green-800': user.role === 'operator'
                                                           }" 
                                                           x-text="roleLabel(user.role)"></span>
@@ -2511,6 +2512,7 @@
                                     <option value="operator">Operator</option>
                                     <option value="admin_operator_sewing">Admin Operator Sewing</option>
                                     <option value="admin_operator_qc">Admin Operator QC</option>
+                                    <option value="ppic">PPIC</option>
                                     <option value="admin">Admin</option>
                                 </select>
                             </div>

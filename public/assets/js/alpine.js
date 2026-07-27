@@ -366,23 +366,25 @@ function dashboard() {
         },
 
 	        // Navigation
-	        setupNavigation() {
-	            const lineSummaryNav = { name: 'Ringkasan Line', page: 'line-summary', iconClass: 'fa-industry' };
-	            const baseNav = this.canViewDashboard()
-	                ? [
-	                    { name: 'Dashboard', page: 'dashboard', iconClass: 'fa-house' },
-	                    lineSummaryNav
-	                ]
-	                : [lineSummaryNav];
+        setupNavigation() {
+            const lineSummaryNav = { name: 'Ringkasan Line', page: 'line-summary', iconClass: 'fa-industry' };
+            const baseNav = this.canViewDashboard()
+                ? [
+                    { name: 'Dashboard', page: 'dashboard', iconClass: 'fa-house' },
+                    ...(this.canViewLineSummary() ? [lineSummaryNav] : [])
+                ]
+                : [lineSummaryNav];
 
-	            if (this.canViewDashboard()) {
-	                this.navigation = [...baseNav];
+            if (this.canViewDashboard()) {
+                this.navigation = [...baseNav];
+                if (this.canViewMaterialOrders()) {
+                    this.navigation.push({ name: 'Order Material', page: 'material-orders', iconClass: 'fa-boxes-packing' });
+                }
                 if (this.canManageLines()) {
                     this.navigation.push({ name: 'Management Line', page: 'admin-management', iconClass: 'fa-list-check' });
                 }
                 if (this.currentUser.role === 'admin') {
                     this.navigation.push(
-                        { name: 'Order Material', page: 'material-orders', iconClass: 'fa-boxes-packing' },
                         { name: 'Import Data Lama', page: 'production-import', iconClass: 'fa-file-import' },
                         { name: 'Manajemen User', page: 'user-management', iconClass: 'fa-users-gear' },
                         { name: 'Kategori Defect', page: 'defect-categories', iconClass: 'fa-triangle-exclamation' },
@@ -402,16 +404,28 @@ function dashboard() {
                 }
 	        },
 
-	        canViewDashboard() {
-	            return this.currentUser.role === 'admin' || this.isAdminOperator();
-	        },
+        canViewDashboard() {
+            return ['admin', 'admin_operator_sewing', 'admin_operator_qc', 'ppic'].includes(this.currentUser.role);
+        },
+
+        canViewLineSummary() {
+            return this.currentUser.role !== 'ppic';
+        },
 
 	        isAdminOperator() {
 	            return ['admin_operator_sewing', 'admin_operator_qc'].includes(this.currentUser.role);
 	        },
 
-            canViewReport() {
-            return ['admin', 'admin_operator_sewing', 'admin_operator_qc'].includes(this.currentUser.role);
+        canViewReport() {
+            return ['admin', 'admin_operator_sewing', 'admin_operator_qc', 'ppic'].includes(this.currentUser.role);
+        },
+
+        canViewMaterialOrders() {
+            return ['admin', 'ppic'].includes(this.currentUser.role);
+        },
+
+        canManageMaterialOrders() {
+            return this.currentUser.role === 'admin';
         },
 
 	        canManageLines() {
@@ -452,10 +466,11 @@ function dashboard() {
 
 	        roleLabel(role) {
 	            return {
-	                admin: 'Admin',
-	                admin_operator_sewing: 'Admin Operator Sewing',
-	                admin_operator_qc: 'Admin Operator QC',
-	                operator: 'Operator'
+                admin: 'Admin',
+                admin_operator_sewing: 'Admin Operator Sewing',
+                admin_operator_qc: 'Admin Operator QC',
+                ppic: 'PPIC',
+                operator: 'Operator'
 	            }[role] || role;
 	        },
 
@@ -495,9 +510,13 @@ function dashboard() {
         },
 
 	        canUseRouteState(state) {
-	            if (state.currentPage === 'dashboard') {
-	                return this.canViewDashboard();
-	            }
+            if (state.currentPage === 'dashboard') {
+                return this.canViewDashboard();
+            }
+
+            if (state.currentPage === 'line-summary') {
+                return this.canViewLineSummary();
+            }
 
 	            if (state.currentPage === 'admin-management') {
 	                return this.canManageLines();
@@ -507,7 +526,11 @@ function dashboard() {
 	                return this.canViewReport();
 	            }
 
-	            if (state.currentPage === 'material-orders' || state.currentPage === 'production-import' || state.currentPage === 'user-management' || state.currentPage === 'defect-categories' || state.currentPage === 'work-schedule-settings' || state.currentPage === 'public-display-settings' || state.currentPage === 'system-actions') {
+            if (state.currentPage === 'material-orders') {
+                return this.canViewMaterialOrders();
+            }
+
+            if (state.currentPage === 'production-import' || state.currentPage === 'user-management' || state.currentPage === 'defect-categories' || state.currentPage === 'work-schedule-settings' || state.currentPage === 'public-display-settings' || state.currentPage === 'system-actions') {
 	                return state.currentPage === 'defect-categories'
 	                    ? this.canManageDefectCategories()
 	                    : this.currentUser.role === 'admin';
@@ -523,7 +546,7 @@ function dashboard() {
 	        applyRouteState(state) {
 	            const normalizedPage = state.currentPage === 'material-order-report' ? 'report' : state.currentPage;
 	            this.currentPage = normalizedPage || this.getDefaultPage();
-	            this.reportTab = (state.reportTab === 'material' && this.currentUser.role === 'admin') || state.currentPage === 'material-order-report'
+            this.reportTab = (state.reportTab === 'material' && this.canViewMaterialOrders()) || state.currentPage === 'material-order-report'
 	                ? 'material'
 	                : 'production';
 	            this.currentLine = state.currentLine || '';
@@ -565,7 +588,7 @@ function dashboard() {
                 await this.loadMaterialOrders();
             }
 
-            if (this.currentPage === 'report' && this.reportTab === 'material' && this.currentUser.role === 'admin') {
+            if (this.currentPage === 'report' && this.reportTab === 'material' && this.canViewMaterialOrders()) {
                 await this.loadMaterialOrderReport();
             }
 
@@ -588,7 +611,7 @@ function dashboard() {
 
 	        changePage(page) {
 	            if (page === 'material-order-report') {
-	                this.reportTab = this.currentUser.role === 'admin' ? 'material' : 'production';
+                this.reportTab = this.canViewMaterialOrders() ? 'material' : 'production';
 
                 page = 'report';
             }
@@ -611,7 +634,7 @@ function dashboard() {
             if (page === 'material-orders') {
                 this.loadMaterialOrders();
             }
-            if (page === 'report' && this.reportTab === 'material' && this.currentUser.role === 'admin') {
+            if (page === 'report' && this.reportTab === 'material' && this.canViewMaterialOrders()) {
                 this.loadMaterialOrderReport();
             }
             if (page === 'defect-categories') {
@@ -629,7 +652,7 @@ function dashboard() {
 	        },
 
 	        setReportTab(tab) {
-	            if (tab === 'material' && this.currentUser.role !== 'admin') {
+            if (tab === 'material' && !this.canViewMaterialOrders()) {
 	                this.reportTab = 'production';
 	                return;
 	            }
@@ -803,7 +826,7 @@ function dashboard() {
                         ];
 	                        if (allowedPages.includes(state.currentPage) && this.canUseRouteState(state)) {
 	                            this.currentPage = state.currentPage;
-	                            this.reportTab = state.reportTab === 'material' && this.currentUser.role === 'admin'
+                            this.reportTab = state.reportTab === 'material' && this.canViewMaterialOrders()
 	                                ? 'material'
 	                                : 'production';
 	                            this.currentLine = state.currentLine || '';
@@ -1037,7 +1060,7 @@ function dashboard() {
 
         startMaterialOrderAutoSync() {
             this.stopMaterialOrderAutoSync();
-            if (this.currentUser.role !== 'admin') return;
+            if (!this.canViewMaterialOrders()) return;
             this.materialOrderSyncTimer = setInterval(() => this.syncMaterialOrderData(), this.materialOrderSyncInterval);
         },
 
@@ -1048,7 +1071,7 @@ function dashboard() {
         },
 
         async syncMaterialOrderData() {
-            if (this.materialOrderSyncing || !this.isAuthenticated || this.currentUser.role !== 'admin') return;
+            if (this.materialOrderSyncing || !this.isAuthenticated || !this.canViewMaterialOrders()) return;
             if (typeof document !== 'undefined' && document.hidden) return;
             const onMaterialOrders = this.currentPage === 'material-orders';
             const onMaterialReport = this.currentPage === 'report' && this.reportTab === 'material';
@@ -1685,8 +1708,8 @@ function dashboard() {
 	            }
 	        },
 
-	        isWorkScheduleLocked() {
-	            if (!this.isAuthenticated || this.currentUser?.role === 'admin') return false;
+        isWorkScheduleLocked() {
+            if (!this.isAuthenticated || ['admin', 'ppic'].includes(this.currentUser?.role)) return false;
 	            if (!this.workScheduleSettings?.enabled) return false;
 
 	            // Reference the clock tick so Alpine reevaluates the lock every 30 seconds.

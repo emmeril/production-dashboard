@@ -762,6 +762,23 @@ test('material order keeps saved model selections visible while rejecting a dupl
   assert.match(notifications[0][0], /sudah dipilih/);
 });
 
+test('PPIC can view the dashboard, material order, and all reports without edit access', () => {
+  const context = { console, Date, Intl, Map, Math, Set, parseInt };
+  const alpineSource = fs.readFileSync(path.join(__dirname, '..', 'public/assets/js/alpine.js'), 'utf8');
+  vm.runInNewContext(alpineSource, context);
+
+  const dashboard = context.dashboard();
+  dashboard.currentUser = { role: 'ppic' };
+  dashboard.setupNavigation();
+
+  assert.equal(dashboard.canViewDashboard(), true);
+  assert.equal(dashboard.canViewMaterialOrders(), true);
+  assert.equal(dashboard.canManageMaterialOrders(), false);
+  assert.equal(dashboard.canViewReport(), true);
+  assert.equal(dashboard.canViewLineSummary(), false);
+  assert.deepEqual(Array.from(dashboard.navigation, item => item.page), ['dashboard', 'material-orders', 'report']);
+});
+
 test('material order auto sync refreshes production totals on the active material page', async () => {
   const context = { console, Date, Intl, Map, Math, Set, parseInt };
   const alpineSource = fs.readFileSync(path.join(__dirname, '..', 'public/assets/js/alpine.js'), 'utf8');
@@ -1203,9 +1220,10 @@ test('Excel range export keeps duplicate daily model IDs as separate rows', asyn
   assert.equal(summary.getRow(9).getCell(3).value, 'model1');
 });
 
-test('report access allows admin roles and rejects operators', () => {
+test('report access allows admin roles and PPIC while rejecting operators', () => {
   assert.equal(hasDateReportAccess({ role: 'admin' }), true);
   assert.equal(hasDateReportAccess({ role: 'admin_operator_sewing' }), true);
   assert.equal(hasDateReportAccess({ role: 'admin_operator_qc' }), true);
+  assert.equal(hasDateReportAccess({ role: 'ppic' }), true);
   assert.equal(hasDateReportAccess({ role: 'operator' }), false);
 });

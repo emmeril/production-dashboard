@@ -1401,7 +1401,7 @@ function normalizePublicDisplaySettings(settings = {}) {
   };
 }
 
-const MATERIAL_ORDER_STATUSES = ['planned', 'in_production', 'paused', 'completed'];
+const MATERIAL_ORDER_STATUSES = ['planned', 'in_production', 'completed'];
 
 function buildInitialMaterialOrders() {
   return { orders: [] };
@@ -1435,7 +1435,6 @@ function getMaterialOrderProductions(order = {}) {
 
 function deriveMaterialOrderStatus(productions = []) {
   if (productions.some(production => production.status === 'in_production')) return 'in_production';
-  if (productions.some(production => production.status === 'paused')) return 'paused';
   if (productions.length > 0 && productions.every(production => production.status === 'completed')) return 'completed';
   return 'planned';
 }
@@ -1444,7 +1443,6 @@ function deriveMaterialOrderProgressStatus(qtyOrder, qtyResult, productions = []
   const orderQty = Math.max(0, Number(qtyOrder) || 0);
   const resultQty = Math.max(0, Number(qtyResult) || 0);
   if (orderQty > 0 && resultQty >= orderQty) return 'completed';
-  if (productions.some(production => production.status === 'paused')) return 'paused';
   if (resultQty > 0) return 'in_production';
   return 'planned';
 }

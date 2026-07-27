@@ -207,10 +207,10 @@ test('material order production totals accumulate daily snapshots and current ou
   assert.deepEqual(totals, { 'Line 1::model1': 65, 'Line 2::model7': 67 });
 });
 
-test('material order status follows quantity progress while preserving a pause override', () => {
+test('material order status follows quantity progress with three automatic states', () => {
   assert.equal(deriveMaterialOrderProgressStatus(100, 0, []), 'planned');
   assert.equal(deriveMaterialOrderProgressStatus(100, 40, [{ status: 'planned' }]), 'in_production');
-  assert.equal(deriveMaterialOrderProgressStatus(100, 40, [{ status: 'paused' }]), 'paused');
+  assert.equal(deriveMaterialOrderProgressStatus(100, 40, [{ status: 'paused' }]), 'in_production');
   assert.equal(deriveMaterialOrderProgressStatus(100, 100, [{ status: 'paused' }]), 'completed');
   assert.equal(deriveMaterialOrderProgressStatus(100, 120, []), 'completed');
 });
@@ -777,6 +777,28 @@ test('PPIC can view the dashboard and fully manage material orders and reports',
   assert.equal(dashboard.canViewReport(), true);
   assert.equal(dashboard.canViewLineSummary(), false);
   assert.deepEqual(Array.from(dashboard.navigation, item => item.page), ['dashboard', 'material-orders', 'report']);
+});
+
+test('material order filters use PO Material and pass both PO and status to the report API', () => {
+  const context = { console, Date, Intl, Map, Math, Set, parseInt, URLSearchParams };
+  const alpineSource = fs.readFileSync(path.join(__dirname, '..', 'public/assets/js/alpine.js'), 'utf8');
+  vm.runInNewContext(alpineSource, context);
+
+  const dashboard = context.dashboard();
+  dashboard.materialOrders = [
+    { poMaterial: 'PO-100', orderMaterial: 'Kain', status: 'planned', productions: [] },
+    { poMaterial: 'PO-200', orderMaterial: 'Benang', status: 'in_production', productions: [] }
+  ];
+  dashboard.materialOrderPoFilter = 'PO-200';
+  dashboard.materialOrderStatusFilter = 'in_production';
+  dashboard.materialOrderReport.poMaterial = 'PO-200';
+  dashboard.materialOrderReport.status = 'in_production';
+
+  assert.deepEqual(Array.from(dashboard.materialOrderPoOptions), ['PO-100', 'PO-200']);
+  assert.deepEqual(Array.from(dashboard.filteredMaterialOrders, order => order.poMaterial), ['PO-200']);
+  const reportParams = dashboard.materialOrderReportParams();
+  assert.equal(reportParams.get('poMaterial'), 'PO-200');
+  assert.equal(reportParams.get('status'), 'in_production');
 });
 
 test('material order auto sync refreshes production totals on the active material page', async () => {

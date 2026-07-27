@@ -62,7 +62,7 @@ function dashboard() {
         materialOrderReport: {
             startDate: getJakartaDateInput(),
             endDate: getJakartaDateInput(),
-            line: '',
+            poMaterial: '',
             status: '',
             rows: [],
             summary: { total: 0, qtyOrder: 0, qtyResult: 0, inProduction: 0, completed: 0 },
@@ -244,7 +244,7 @@ function dashboard() {
         materialOrdersPerPage: 10,
         materialOrderSearchTerm: '',
         materialOrderStatusFilter: '',
-        materialOrderLineFilter: '',
+        materialOrderPoFilter: '',
         materialOrderSyncTimer: null,
         materialOrderSyncInterval: 10000,
         materialOrderSyncing: false,
@@ -589,7 +589,10 @@ function dashboard() {
             }
 
             if (this.currentPage === 'report' && this.reportTab === 'material' && this.canViewMaterialOrders()) {
-                await this.loadMaterialOrderReport();
+                await Promise.all([
+                    this.loadMaterialOrders({ silent: true }),
+                    this.loadMaterialOrderReport()
+                ]);
             }
 
 	            if (this.currentPage === 'defect-categories') {
@@ -635,6 +638,7 @@ function dashboard() {
                 this.loadMaterialOrders();
             }
             if (page === 'report' && this.reportTab === 'material' && this.canViewMaterialOrders()) {
+                this.loadMaterialOrders({ silent: true });
                 this.loadMaterialOrderReport();
             }
             if (page === 'defect-categories') {
@@ -663,8 +667,9 @@ function dashboard() {
 	            this.materialOrderReportCurrentPage = 1;
 	            this.savePageState();
 
-	            if (this.reportTab === 'material') {
-	                this.loadMaterialOrderReport();
+            if (this.reportTab === 'material') {
+                this.loadMaterialOrders({ silent: true });
+                this.loadMaterialOrderReport();
 	            }
 	        },
 
@@ -1174,7 +1179,6 @@ function dashboard() {
         },
 
         materialOrderGroupStatus(statuses = []) {
-            if (statuses.includes('paused')) return 'paused';
             return 'planned';
         },
 
@@ -1348,7 +1352,7 @@ function dashboard() {
                 if (!key || !this.selectedMaterialOrderProduction(index)) return true;
                 if (seen.has(key)) return true;
                 seen.add(key);
-                return !['planned', 'in_production', 'paused', 'completed'].includes(production.status);
+                return !['planned', 'in_production', 'completed'].includes(production.status);
             });
             if (!Array.isArray(data.productions) || data.productions.length === 0 || invalidProduction) {
                 this.showToast('Periksa alokasi line, model, dan status produksi', 'error');
@@ -1396,6 +1400,7 @@ function dashboard() {
             const params = new URLSearchParams();
             if (report.startDate) params.set('startDate', report.startDate);
             if (report.endDate) params.set('endDate', report.endDate);
+            if (report.poMaterial) params.set('poMaterial', report.poMaterial);
             if (report.status) params.set('status', report.status);
             return params;
         },
@@ -3543,8 +3548,8 @@ function dashboard() {
             return pages;
         },
 
-        get materialOrderLineOptions() {
-            return [...new Set((this.linesWithModels || []).map(line => line.lineName).filter(Boolean))]
+        get materialOrderPoOptions() {
+            return [...new Set((this.materialOrders || []).map(order => String(order.poMaterial || '').trim()).filter(Boolean))]
                 .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
         },
 
@@ -3563,7 +3568,6 @@ function dashboard() {
             return {
                 planned: 'Direncanakan',
                 in_production: 'Sedang Produksi',
-                paused: 'Ditunda',
                 completed: 'Selesai'
             }[status] || status;
         },
@@ -3572,7 +3576,6 @@ function dashboard() {
             return {
                 planned: 'material-status-planned',
                 in_production: 'material-status-running',
-                paused: 'material-status-paused',
                 completed: 'material-status-completed'
             }[status] || 'material-status-planned';
         },
@@ -3642,8 +3645,8 @@ function dashboard() {
                     ...productionValues
                 ].some(value => String(value || '').toLowerCase().includes(search));
                 const matchesStatus = !this.materialOrderStatusFilter || order.status === this.materialOrderStatusFilter;
-                const matchesLine = !this.materialOrderLineFilter || productions.some(production => production.lineName === this.materialOrderLineFilter);
-                return matchesSearch && matchesStatus && matchesLine;
+                const matchesPo = !this.materialOrderPoFilter || String(order.poMaterial || '') === this.materialOrderPoFilter;
+                return matchesSearch && matchesStatus && matchesPo;
             });
         },
 

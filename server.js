@@ -2891,8 +2891,67 @@ function isValidProductionSnapshot(snapshot) {
       && !Array.isArray(line)
       && line.models
       && typeof line.models === 'object'
-      && !Array.isArray(line.models);
+      && !Array.isArray(line.models)
+      && Object.values(line.models).every(model => model && typeof model === 'object' && !Array.isArray(model));
   });
+}
+
+function restoreProductionSnapshot(currentData, backupData, operationalDate = getToday()) {
+  if (!isValidProductionSnapshot(backupData)) {
+    throw new Error('Backup tidak memiliki struktur data produksi yang valid');
+  }
+  if (!isValidDateInput(operationalDate)) {
+    throw new Error('Tanggal operasional restore tidak valid');
+  }
+
+  const restoredData = JSON.parse(JSON.stringify(currentData || { lines: {}, activeLine: '' }));
+  restoredData.lines = restoredData.lines || {};
+
+  let restoredLines = 0;
+  let restoredModels = 0;
+  let replacedModels = 0;
+  let normalizedDateModels = 0;
+
+  Object.entries(backupData.lines).forEach(([lineName, backupLine]) => {
+    const backupLineCopy = JSON.parse(JSON.stringify(backupLine));
+    const lineExists = Boolean(restoredData.lines[lineName]);
+
+    if (!lineExists) {
+      restoredData.lines[lineName] = { ...backupLineCopy, models: {} };
+      restoredLines += 1;
+    }
+
+    const targetLine = restoredData.lines[lineName];
+    targetLine.models = targetLine.models || {};
+
+    Object.entries(backupLineCopy.models || {}).forEach(([modelId, backupModel]) => {
+      if (targetLine.models[modelId]) replacedModels += 1;
+      else restoredModels += 1;
+
+      if (backupModel.date !== operationalDate) normalizedDateModels += 1;
+      targetLine.models[modelId] = { ...backupModel, date: operationalDate };
+    });
+
+    if (Array.isArray(backupLineCopy.activeModels)) {
+      targetLine.activeModels = backupLineCopy.activeModels.filter(modelId => targetLine.models[modelId]);
+    }
+    targetLine.activeModel = backupLineCopy.activeModel && targetLine.models[backupLineCopy.activeModel]
+      ? backupLineCopy.activeModel
+      : targetLine.activeModels?.[0];
+    ensureLineActiveModels(targetLine);
+  });
+
+  if (backupData.activeLine && restoredData.lines[backupData.activeLine]) {
+    restoredData.activeLine = backupData.activeLine;
+  }
+
+  return {
+    data: restoredData,
+    restoredLines,
+    restoredModels,
+    replacedModels,
+    normalizedDateModels
+  };
 }
 
 function isSafeHistoryFilename(filename) {
@@ -3818,7 +3877,6 @@ app.post('/api/restore-backup/:filename', requireLogin, requireAdmin, async (req
       return res.status(400).json({ error: 'Backup tidak memiliki struktur data produksi yang valid' });
     }
 
-    const currentData = readProductionData();
     const safetyBackupFile = createArchiveBackup('pre_restore');
     if (!safetyBackupFile) {
       return res.status(500).json({ error: 'Gagal membuat backup pengaman sebelum restore' });
@@ -3826,52 +3884,22 @@ app.post('/api/restore-backup/:filename', requireLogin, requireAdmin, async (req
     const safetyDatabaseFile = await createDatabaseBackup('pre_restore');
     
     logger.info(`Restore backup dimulai: ${filename}`);
-    
-    // Pulihkan line/model dari snapshot, termasuk mengganti model yang sudah ada.
-    currentData.lines = currentData.lines || {};
-    let restoredLines = 0;
-    let restoredModels = 0;
-    let replacedModels = 0;
-    
-    Object.keys(backupData.lines || {}).forEach(lineName => {
-      if (!currentData.lines[lineName]) {
-        currentData.lines[lineName] = JSON.parse(JSON.stringify(backupData.lines[lineName]));
-        restoredLines++;
-      } else {
-        Object.keys(backupData.lines[lineName].models || {}).forEach(modelId => {
-          currentData.lines[lineName].models = currentData.lines[lineName].models || {};
-          if (!currentData.lines[lineName].models[modelId]) {
-            restoredModels++;
-          } else {
-            replacedModels++;
-          }
-          currentData.lines[lineName].models[modelId] = JSON.parse(JSON.stringify(backupData.lines[lineName].models[modelId]));
-        });
-        const backupLine = backupData.lines[lineName];
-        if (Array.isArray(backupLine.activeModels)) {
-          currentData.lines[lineName].activeModels = backupLine.activeModels.filter(id => currentData.lines[lineName].models[id]);
-        }
-        currentData.lines[lineName].activeModel = backupLine.activeModel && currentData.lines[lineName].models[backupLine.activeModel]
-          ? backupLine.activeModel
-          : currentData.lines[lineName].activeModels?.[0];
-        ensureLineActiveModels(currentData.lines[lineName]);
-      }
-    });
-
-    if (backupData.activeLine && currentData.lines[backupData.activeLine]) {
-      currentData.activeLine = backupData.activeLine;
-    }
+    const restoreResult = restoreProductionSnapshot(readProductionData(), backupData, getToday());
+    const currentData = restoreResult.data;
     
     await writeProductionData(currentData);
     
-    // Update backup hari ini setelah restore
+    // Keep the restored state durable before the browser reloads dashboard data.
     updateTodayBackup();
+    await flushPendingDatabaseWrites();
     
     res.json({
       message: '✅ Backup restored successfully',
-      restoredLines: restoredLines,
-      restoredModels: restoredModels,
-      replacedModels: replacedModels,
+      restoredLines: restoreResult.restoredLines,
+      restoredModels: restoreResult.restoredModels,
+      replacedModels: restoreResult.replacedModels,
+      normalizedDateModels: restoreResult.normalizedDateModels,
+      operationalDate: getToday(),
       safetyBackup: path.basename(safetyBackupFile),
       safetyDatabaseBackup: path.basename(safetyDatabaseFile),
       totalLines: Object.keys(currentData.lines).length,
@@ -7407,6 +7435,7 @@ module.exports = {
   isValidDateInput,
   isValidDateRange,
   isModelActiveInManagement,
+  restoreProductionSnapshot,
   mergeProductionSnapshotsByDate,
   filterMaterialOrderReportRows,
   buildMaterialOrderCumulativeOutputs,

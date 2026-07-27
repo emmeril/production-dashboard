@@ -2667,8 +2667,9 @@ function dashboard() {
                 }
 
                 this.restoreModal = { open: false, backup: null, confirmation: '' };
+                const restoredTotal = Number(data.restoredModels || 0) + Number(data.replacedModels || 0);
                 this.showToast(
-                    `Restore selesai. ${data.restoredModels} model ditambah, ${data.replacedModels} model diperbarui.`,
+                    `Restore selesai. ${restoredTotal} model dipulihkan ke tanggal operasional ${data.operationalDate || 'hari ini'}.`,
                     'success'
                 );
                 await this.loadLines();

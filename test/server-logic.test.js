@@ -27,6 +27,7 @@ const {
   isValidDateRange,
   isModelActiveInManagement,
   isValidProductionSnapshot,
+  restoreProductionSnapshot,
   isBlankInputValue,
   applyImportedQcData,
   buildImportedProductionModel,
@@ -941,6 +942,55 @@ test('production snapshot validation rejects malformed restore payloads', () => 
   assert.equal(isValidProductionSnapshot({}), false);
   assert.equal(isValidProductionSnapshot({ lines: [] }), false);
   assert.equal(isValidProductionSnapshot({ lines: { 'Line 1': { models: [] } } }), false);
+  assert.equal(isValidProductionSnapshot({ lines: { 'Line 1': { models: { model1: null } } } }), false);
+});
+
+test('restored historical JSON remains active after the daily date check', () => {
+  const currentData = {
+    activeLine: 'Line 1',
+    lines: {
+      'Line 1': {
+        activeModel: 'model1',
+        activeModels: ['model1'],
+        models: {
+          model1: { id: 'model1', date: '2026-07-27', model: 'Current', outputDay: 0 },
+          model2: { id: 'model2', date: '2026-07-27', model: 'Keep', outputDay: 5 }
+        }
+      }
+    }
+  };
+  const backupData = {
+    activeLine: 'Line 1',
+    lines: {
+      'Line 1': {
+        activeModel: 'model1',
+        activeModels: ['model1'],
+        models: {
+          model1: { id: 'model1', date: '2026-07-22', model: 'Restored', outputDay: 80 }
+        }
+      },
+      'Line 2': {
+        activeModel: 'model1',
+        activeModels: ['model1'],
+        models: {
+          model1: { id: 'model1', date: '2026-07-22', model: 'Added', outputDay: 40 }
+        }
+      }
+    }
+  };
+
+  const result = restoreProductionSnapshot(currentData, backupData, '2026-07-27');
+
+  assert.equal(result.data.lines['Line 1'].models.model1.outputDay, 80);
+  assert.equal(result.data.lines['Line 1'].models.model1.date, '2026-07-27');
+  assert.equal(result.data.lines['Line 1'].models.model2.outputDay, 5);
+  assert.equal(result.data.lines['Line 2'].models.model1.date, '2026-07-27');
+  assert.equal(result.restoredLines, 1);
+  assert.equal(result.restoredModels, 1);
+  assert.equal(result.replacedModels, 1);
+  assert.equal(result.normalizedDateModels, 2);
+  assert.equal(currentData.lines['Line 1'].models.model1.outputDay, 0);
+  assert.equal(backupData.lines['Line 1'].models.model1.date, '2026-07-22');
 });
 
 test('daily line summary separates critical, major, and minor defects', () => {

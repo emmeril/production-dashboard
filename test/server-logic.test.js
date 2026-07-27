@@ -1123,30 +1123,90 @@ test('dashboard chart includes only models active in Management Line', () => {
   );
 });
 
-test('maintenance backup history supports type filtering and pagination', () => {
-  const context = { console, Date, Intl, Map, Math, Set, parseInt };
+test('simple backup page creates, lists, and downloads database backups', async () => {
+  const fetchCalls = [];
+  const downloadLink = {
+    href: '',
+    download: '',
+    clicked: false,
+    removed: false,
+    click() { this.clicked = true; },
+    remove() { this.removed = true; }
+  };
+  const context = {
+    console,
+    Date,
+    Intl,
+    Map,
+    Math,
+    Set,
+    parseInt,
+    setTimeout: () => 0,
+    fetch: async (url, options = {}) => {
+      fetchCalls.push({ url, method: options.method || 'GET' });
+      if (url === '/api/backup/now') {
+        return {
+          ok: true,
+          json: async () => ({ filename: 'production-dashboard_2026-07-23_manual_3_abcd1236.sqlite' })
+        };
+      }
+      return {
+        ok: true,
+        json: async () => [{
+          filename: 'production-dashboard_2026-07-23_manual_3_abcd1236.sqlite',
+          type: 'database',
+          storage: 'database'
+        }]
+      };
+    },
+    document: {
+      createElement: () => downloadLink,
+      body: { appendChild() {} }
+    }
+  };
   const alpineSource = fs.readFileSync(path.join(__dirname, '..', 'public/assets/js/alpine.js'), 'utf8');
   vm.runInNewContext(alpineSource, context);
 
   const dashboard = context.dashboard();
-  dashboard.backupsPerPage = 1;
   dashboard.backupHistory = [
     { filename: 'data_2026-07-22_1.json', date: '2026-07-22', type: 'daily' },
-    { filename: 'data_2026-07-22_2_pre_restore_a.json', date: '2026-07-22', type: 'pre_restore' },
-    { filename: 'production-dashboard_2026-07-22_manual_1_abcd1234.sqlite', date: '2026-07-22', type: 'database' }
+    { filename: 'production-dashboard_2026-07-23_manual_2_abcd1235.sqlite', date: '2026-07-23', type: 'database', storage: 'database' },
+    { filename: 'production-dashboard_2026-07-22_manual_1_abcd1234.sqlite', date: '2026-07-22', type: 'database', storage: 'database' }
   ];
-  dashboard.backupTypeFilter = 'pre_restore';
 
-  assert.deepEqual(Array.from(dashboard.filteredBackupHistory, item => item.type), ['pre_restore']);
-  assert.equal(dashboard.totalBackupPages, 1);
-  assert.equal(dashboard.paginatedBackupHistory[0].filename, 'data_2026-07-22_2_pre_restore_a.json');
+  assert.deepEqual(
+    Array.from(dashboard.databaseBackupHistory, item => item.filename),
+    [
+      'production-dashboard_2026-07-23_manual_2_abcd1235.sqlite',
+      'production-dashboard_2026-07-22_manual_1_abcd1234.sqlite'
+    ]
+  );
+  assert.equal(dashboard.latestDatabaseBackup.filename, 'production-dashboard_2026-07-23_manual_2_abcd1235.sqlite');
   assert.equal(dashboard.formatFileSize(2048), '2.0 KB');
-  assert.equal(dashboard.backupTypeLabel('database'), 'Backup Database');
   assert.equal(
     dashboard.displayBackupFilename('production-dashboard_2026-07-22_manual_1_abcd1234.sqlite'),
     'production-dashboard_2026-07-22_manual_1_abcd1234'
   );
-  assert.equal(dashboard.displayBackupFilename('data_2026-07-22_1.json'), 'data_2026-07-22_1.json');
+
+  dashboard.downloadDatabaseBackup('production dashboard.sqlite');
+  assert.equal(downloadLink.href, '/api/download-database-backup/production%20dashboard.sqlite');
+  assert.equal(downloadLink.download, 'production dashboard.sqlite');
+  assert.equal(downloadLink.clicked, true);
+  assert.equal(downloadLink.removed, true);
+
+  downloadLink.clicked = false;
+  downloadLink.removed = false;
+  await dashboard.createBackup();
+  assert.deepEqual(fetchCalls, [
+    { url: '/api/backup/now', method: 'POST' },
+    { url: '/api/backup-history', method: 'GET' }
+  ]);
+  assert.equal(dashboard.backupAction, '');
+  assert.equal(dashboard.databaseBackupHistory.length, 1);
+  assert.equal(downloadLink.download, 'production-dashboard_2026-07-23_manual_3_abcd1236.sqlite');
+  assert.equal(downloadLink.clicked, true);
+  assert.equal(downloadLink.removed, true);
+  assert.equal(dashboard.toast.type, 'success');
 });
 
 test('date report exposes the same complete production and QC fields for every viewer', () => {

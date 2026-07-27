@@ -11,8 +11,8 @@ Dashboard produksi berbasis Express untuk memantau output line, target per jam, 
 - QC check `Good` dan `Defect` dengan kategori `Jenis Defect` dan `Defect Area`.
 - Lock data produksi per jam untuk operator setelah data disimpan.
 - Management line dan model produksi.
-- Management user, kategori defect, dan Maintenance Center untuk admin.
-- Maintenance Center menampilkan kesehatan sistem, snapshot database, backup SQLite, export Excel, dan restore dengan backup pengaman otomatis.
+- Management user, kategori defect, dan Backup Data untuk admin.
+- Backup Data membuat salinan SQLite lengkap yang bisa langsung diunduh dari browser.
 - Laporan berdasarkan tanggal dan export Excel.
 - Input data historis dipisahkan menjadi template Produksi per jam dan template QC dengan dropdown defect.
 - Public display monitor di `/public-display` dengan layout statik seperti display line.

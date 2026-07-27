@@ -183,10 +183,9 @@ function dashboard() {
 	            startTime: '07:00',
 	            endTime: '17:00'
 	        },
-	        maintenanceStatus: null,
 	        backupHistory: [],
-	        maintenanceLoading: false,
-	        maintenanceAction: '',
+	        backupLoading: false,
+	        backupAction: '',
 	        productionImport: {
 	            kind: '',
 	            file: null,
@@ -199,15 +198,6 @@ function dashboard() {
 	            confirmation: '',
 	            currentPage: 1,
 	            perPage: 20
-	        },
-	        backupSearchTerm: '',
-	        backupTypeFilter: '',
-	        backupCurrentPage: 1,
-	        backupsPerPage: 10,
-	        restoreModal: {
-	            open: false,
-	            backup: null,
-	            confirmation: ''
 	        },
 
         // Toast notification
@@ -390,7 +380,7 @@ function dashboard() {
                         { name: 'Kategori Defect', page: 'defect-categories', iconClass: 'fa-triangle-exclamation' },
                         { name: 'Hari Kerja', page: 'work-schedule-settings', iconClass: 'fa-calendar-days' },
                         { name: 'Public Display', page: 'public-display-settings', iconClass: 'fa-tv' },
-                        { name: 'Maintenance', page: 'system-actions', iconClass: 'fa-screwdriver-wrench' }
+                        { name: 'Backup Data', page: 'backup', iconClass: 'fa-cloud-arrow-down' }
                     );
                 } else if (this.canManageDefectCategories()) {
                     this.navigation.push({ name: 'Kategori Defect', page: 'defect-categories', iconClass: 'fa-triangle-exclamation' });
@@ -530,7 +520,7 @@ function dashboard() {
                 return this.canViewMaterialOrders();
             }
 
-            if (state.currentPage === 'production-import' || state.currentPage === 'user-management' || state.currentPage === 'defect-categories' || state.currentPage === 'work-schedule-settings' || state.currentPage === 'public-display-settings' || state.currentPage === 'system-actions') {
+            if (state.currentPage === 'production-import' || state.currentPage === 'user-management' || state.currentPage === 'defect-categories' || state.currentPage === 'work-schedule-settings' || state.currentPage === 'public-display-settings' || state.currentPage === 'backup' || state.currentPage === 'system-actions') {
 	                return state.currentPage === 'defect-categories'
 	                    ? this.canManageDefectCategories()
 	                    : this.currentUser.role === 'admin';
@@ -544,7 +534,9 @@ function dashboard() {
 	        },
 
 	        applyRouteState(state) {
-	            const normalizedPage = state.currentPage === 'material-order-report' ? 'report' : state.currentPage;
+	            const normalizedPage = state.currentPage === 'material-order-report'
+	                ? 'report'
+	                : state.currentPage === 'system-actions' ? 'backup' : state.currentPage;
 	            this.currentPage = normalizedPage || this.getDefaultPage();
             this.reportTab = (state.reportTab === 'material' && this.canViewMaterialOrders()) || state.currentPage === 'material-order-report'
 	                ? 'material'
@@ -607,8 +599,8 @@ function dashboard() {
 	                await this.loadWorkScheduleSettings();
 	            }
 
-	            if (this.currentPage === 'system-actions') {
-	                await this.loadMaintenanceData();
+	            if (this.currentPage === 'backup') {
+	                await this.loadBackupData();
 	            }
 	        },
 
@@ -650,8 +642,8 @@ function dashboard() {
 	            if (page === 'work-schedule-settings') {
 	                this.loadWorkScheduleSettings();
 	            }
-	            if (page === 'system-actions') {
-	                this.loadMaintenanceData();
+	            if (page === 'backup') {
+	                this.loadBackupData();
 	            }
 	        },
 
@@ -821,7 +813,9 @@ function dashboard() {
 	                        const parsedState = JSON.parse(savedState);
 	                        const state = parsedState.currentPage === 'material-order-report'
 	                            ? { ...parsedState, currentPage: 'report', reportTab: 'material' }
-	                            : parsedState;
+	                            : parsedState.currentPage === 'system-actions'
+	                                ? { ...parsedState, currentPage: 'backup' }
+	                                : parsedState;
 
                         // Check if the saved page is allowed for current user
                         const allowedPages = [
@@ -2527,32 +2521,15 @@ function dashboard() {
             }
         },
 
-        // Maintenance center
-        async loadMaintenanceData() {
+        // Simple database backup
+        async loadBackupData() {
             if (this.currentUser.role !== 'admin') return;
 
-            this.maintenanceLoading = true;
+            this.backupLoading = true;
             try {
-                await Promise.all([
-                    this.loadSystemStatus(),
-                    this.loadBackupHistory()
-                ]);
+                await this.loadBackupHistory();
             } finally {
-                this.maintenanceLoading = false;
-            }
-        },
-
-        async loadSystemStatus() {
-            try {
-                const response = await fetch('/api/system-status');
-                if (!response.ok) throw new Error('Gagal memuat status sistem');
-                this.maintenanceStatus = await response.json();
-                return this.maintenanceStatus;
-            } catch (error) {
-                logClientError('Error loading system status:', error);
-                this.maintenanceStatus = null;
-                this.showToast(error.message, 'error');
-                return null;
+                this.backupLoading = false;
             }
         },
 
@@ -2561,7 +2538,6 @@ function dashboard() {
                 const response = await fetch('/api/backup-history');
                 if (!response.ok) throw new Error('Gagal memuat riwayat backup');
                 this.backupHistory = await response.json();
-                this.backupCurrentPage = Math.min(this.backupCurrentPage, Math.max(1, this.totalBackupPages));
                 return this.backupHistory;
             } catch (error) {
                 logClientError('Error loading backup history:', error);
@@ -2572,8 +2548,8 @@ function dashboard() {
         },
 
         async createBackup() {
-            if (this.maintenanceAction) return;
-            this.maintenanceAction = 'backup';
+            if (this.backupAction) return;
+            this.backupAction = 'backup';
             try {
                 const response = await fetch('/api/backup/now', {
                     method: 'POST'
@@ -2581,117 +2557,29 @@ function dashboard() {
 
                 if (response.ok) {
                     const data = await response.json();
-                    this.showToast(`Backup berhasil dibuat: ${data.filename || '-'}`, 'success');
-                    await this.loadMaintenanceData();
+                    await this.loadBackupHistory();
+                    this.downloadDatabaseBackup(data.filename);
+                    this.showToast('Backup berhasil dibuat dan mulai didownload', 'success');
                 } else {
                     const error = await response.json();
-                    this.showToast(error.error || 'Failed to create backup', 'error');
+                    this.showToast(error.error || 'Gagal membuat backup', 'error');
                 }
             } catch (error) {
                 logClientError('Error creating backup:', error);
-                this.showToast('Error creating backup', 'error');
+                this.showToast('Gagal membuat backup. Periksa koneksi lalu coba lagi.', 'error');
             } finally {
-                this.maintenanceAction = '';
+                this.backupAction = '';
             }
         },
 
-        async syncDates() {
-            if (this.maintenanceAction) return;
-            if (!confirm('Sinkronisasi akan mereset model bertanggal lama ke tanggal operasional hari ini. Backup data lama dibuat otomatis. Lanjutkan?')) return;
-
-            this.maintenanceAction = 'sync';
-            try {
-                const response = await fetch('/api/sync-dates', {
-                    method: 'POST'
-                });
-
-                if (response.ok) {
-                    const data = await response.json();
-                    this.showToast(data.message, data.resetCount > 0 ? 'success' : 'info');
-                    await this.loadLines();
-                    await this.loadDashboardData();
-                    await this.loadMaintenanceData();
-                } else {
-                    const error = await response.json();
-                    this.showToast(error.error || 'Failed to sync dates', 'error');
-                }
-            } catch (error) {
-                logClientError('Error syncing dates:', error);
-                this.showToast('Error syncing dates', 'error');
-            } finally {
-                this.maintenanceAction = '';
-            }
-        },
-
-        async checkSystemStatus() {
-            if (this.maintenanceAction) return;
-            this.maintenanceAction = 'status';
-            const status = await this.loadSystemStatus();
-            this.maintenanceAction = '';
-            if (!status) return;
-
-            this.showToast(
-                status.needsSync
-                    ? `${status.otherDateModelCount} model masih menggunakan tanggal lama`
-                    : 'Status sistem sehat dan seluruh model menggunakan tanggal hari ini',
-                status.needsSync ? 'error' : 'success'
-            );
-        },
-
-        openRestoreModal(backup) {
-            this.restoreModal = {
-                open: true,
-                backup: backup,
-                confirmation: ''
-            };
-        },
-
-        closeRestoreModal() {
-            if (this.maintenanceAction === 'restore') return;
-            this.restoreModal = { open: false, backup: null, confirmation: '' };
-        },
-
-        async restoreBackup() {
-            const backup = this.restoreModal.backup;
-            if (!backup || this.restoreModal.confirmation !== 'RESTORE' || this.maintenanceAction) return;
-
-            this.maintenanceAction = 'restore';
-            try {
-                const response = await fetch(`/api/restore-backup/${encodeURIComponent(backup.filename)}`, {
-                    method: 'POST'
-                });
-                const data = await response.json();
-
-                if (!response.ok) {
-                    throw new Error(data.error || 'Gagal memulihkan backup');
-                }
-
-                this.restoreModal = { open: false, backup: null, confirmation: '' };
-                const restoredTotal = Number(data.restoredModels || 0) + Number(data.replacedModels || 0);
-                this.showToast(
-                    `Restore selesai. ${restoredTotal} model dipulihkan ke tanggal operasional ${data.operationalDate || 'hari ini'}.`,
-                    'success'
-                );
-                await this.loadLines();
-                await this.loadDashboardData();
-                await this.loadMaintenanceData();
-            } catch (error) {
-                logClientError('Error restoring backup:', error);
-                this.showToast(error.message, 'error');
-            } finally {
-                this.maintenanceAction = '';
-            }
-        },
-
-        backupTypeLabel(type) {
-            return {
-                daily: 'Snapshot harian',
-                manual: 'Snapshot manual',
-                archive: 'Snapshot arsip',
-                pre_reset: 'Sebelum reset',
-                pre_restore: 'Pengaman restore',
-                database: 'Backup Database'
-            }[type] || type || '-';
+        downloadDatabaseBackup(filename) {
+            if (!filename || typeof document === 'undefined') return;
+            const link = document.createElement('a');
+            link.href = `/api/download-database-backup/${encodeURIComponent(filename)}`;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
         },
 
         displayBackupFilename(filename) {
@@ -2976,27 +2864,12 @@ function dashboard() {
 	            return row.action === 'replace' ? 'Akan diperbarui' : 'Data baru';
 	        },
 
-	        get filteredBackupHistory() {
-	            const search = this.backupSearchTerm.trim().toLowerCase();
-	            return (this.backupHistory || []).filter(backup => {
-	                const matchesSearch = !search || [backup.filename, backup.date, this.backupTypeLabel(backup.type)]
-	                    .some(value => String(value || '').toLowerCase().includes(search));
-	                return matchesSearch && (!this.backupTypeFilter || backup.type === this.backupTypeFilter);
-	            });
+	        get databaseBackupHistory() {
+	            return (this.backupHistory || []).filter(backup => backup.storage === 'database' || backup.type === 'database');
 	        },
 
-	        get paginatedBackupHistory() {
-	            const perPage = Number(this.backupsPerPage);
-	            const start = (this.backupCurrentPage - 1) * perPage;
-	            return this.filteredBackupHistory.slice(start, start + perPage);
-	        },
-
-	        get totalBackupPages() {
-	            return Math.ceil(this.filteredBackupHistory.length / Number(this.backupsPerPage));
-	        },
-
-	        get backupPages() {
-	            return this.paginationPages(this.backupCurrentPage, this.totalBackupPages);
+	        get latestDatabaseBackup() {
+	            return this.databaseBackupHistory[0] || null;
 	        },
 
         get activeDefectTypes() {

@@ -5267,12 +5267,12 @@ app.get('/api/history/:filename/export', requireLogin, requireAdmin, async (req,
 
 app.post('/api/backup/now', requireLogin, requireAdmin, async (req, res) => {
   try {
-    const snapshotFilename = createArchiveBackup('manual');
     const databaseFile = await createDatabaseBackup('manual');
     res.json({
       message: '✅ Backup database berhasil dibuat',
       filename: path.basename(databaseFile),
-      snapshot: snapshotFilename
+      size: fs.statSync(databaseFile).size,
+      created: new Date().toISOString()
     });
   } catch (error) {
     logger.error('Gagal membuat backup', error);

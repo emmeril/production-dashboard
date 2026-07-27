@@ -1875,3 +1875,128 @@ button:not(.pagination-btn):not([class*="rounded-full"]):not([class*="p-1"]):not
         transition-duration: 0.01ms !important;
     }
 }
+
+/* Shared dashboard surface: keep specialized workspaces in the main app language. */
+:root {
+    --radius-panel: 14px;
+    --accent: #087f8c;
+    --accent-strong: #066b76;
+    --panel-border: rgba(190, 207, 212, 0.82);
+    --panel-shadow: 0 8px 24px rgba(26, 58, 66, 0.055);
+}
+
+/* The KPI cards above already contain the complete dashboard summary. */
+.legacy-dashboard-kpis {
+    display: none !important;
+}
+
+.dashboard-kpi-card,
+.maintenance-health-card,
+.material-summary-card,
+.material-orders-panel,
+.material-report-filter,
+.material-report-summary section {
+    border-color: var(--panel-border);
+    border-radius: var(--radius-panel);
+    box-shadow: var(--panel-shadow);
+}
+
+.dashboard-kpi-card {
+    border-top-color: var(--accent);
+}
+
+.material-primary-button,
+.material-export-button,
+.material-report-load-button {
+    background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+    box-shadow: 0 9px 22px rgba(8, 127, 140, 0.2);
+}
+
+.material-primary-button:hover,
+.material-export-button:hover {
+    box-shadow: 0 12px 26px rgba(8, 127, 140, 0.28);
+}
+
+.material-secondary-button,
+.material-production-preview button {
+    border-color: #b9d9dc;
+    color: var(--accent-strong);
+}
+
+.material-summary-card.is-total,
+.material-summary-card.is-result,
+.material-name,
+.material-result-copy span,
+.material-empty-state i {
+    color: var(--accent-strong);
+}
+
+.material-summary-card.is-running,
+.material-production-link span i,
+.material-production-label,
+.material-report-filter-title {
+    color: #0f6074 !important;
+}
+
+.material-summary-card.is-order,
+.material-production-link em {
+    color: #16734d;
+}
+
+.material-orders-toolbar,
+.material-report-results-head,
+.material-modal-actions {
+    border-color: var(--panel-border);
+    background: var(--surface-muted);
+}
+
+.material-report-filter {
+    background: var(--surface-muted);
+}
+
+.bg-teal-700 {
+    background-color: var(--accent-strong) !important;
+}
+
+.material-orders-table th {
+    color: #526970;
+    background: #f2f7f8;
+}
+
+.material-orders-table td,
+.material-production-row {
+    border-color: #e3edef;
+}
+
+.material-orders-table tbody tr:hover {
+    background: rgba(8, 127, 140, 0.045);
+}
+
+.material-result-progress i {
+    background: linear-gradient(90deg, var(--accent), #23a28d);
+}
+
+.material-order-modal {
+    border: 1px solid var(--panel-border);
+    border-radius: 16px;
+    box-shadow: 0 28px 70px rgba(7, 34, 41, 0.22);
+}
+
+.material-modal-header {
+    background: linear-gradient(125deg, var(--sidebar), var(--accent-strong));
+}
+
+.material-allocation-card,
+.material-production-preview {
+    border-color: #c9e2e4;
+    background: #f6fbfb;
+}
+
+.material-form-grid input:focus,
+.material-form-grid select:focus,
+.material-notes-field textarea:focus,
+.material-report-filter-grid input:focus,
+.material-report-filter-grid select:focus {
+    border-color: var(--accent);
+    outline-color: rgba(8, 127, 140, 0.16);
+}

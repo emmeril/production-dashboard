@@ -56,6 +56,20 @@ function dashboard() {
         dashboardChartAutoPlayInterval: 6000,
         dashboardChartAutoPlayTimer: null,
         users: [],
+        materialOrders: [],
+        materialOrderProductionTotals: {},
+        materialOrderExportingPo: '',
+        materialOrderReport: {
+            startDate: getJakartaDateInput(),
+            endDate: getJakartaDateInput(),
+            line: '',
+            status: '',
+            rows: [],
+            summary: { total: 0, qtyOrder: 0, qtyResult: 0, inProduction: 0, completed: 0 },
+            loading: false,
+            exporting: false
+        },
+        reportTab: 'production',
         dateReport: [],
         reportStartDate: getJakartaDateInput(),
         reportEndDate: getJakartaDateInput(),
@@ -123,6 +137,26 @@ function dashboard() {
                 name: '',
                 role: 'operator',
                 line: ''
+            }
+        },
+
+        materialOrderModal: {
+            open: false,
+            isEdit: false,
+            saving: false,
+            data: {
+                id: null,
+                poMaterial: '',
+                orderMaterial: '',
+                qtyOrder: 0,
+                productions: [{
+                    lineName: '',
+                    modelId: '',
+                    status: 'planned',
+                    qtyResult: 0
+                }],
+                orderDate: getJakartaDateInput(),
+                notes: ''
             }
         },
 	        defectCategoryModal: {
@@ -205,6 +239,19 @@ function dashboard() {
         usersPerPage: 10,
         userSearchTerm: '',
 
+        // Material order pagination and filters
+        materialOrderCurrentPage: 1,
+        materialOrdersPerPage: 10,
+        materialOrderSearchTerm: '',
+        materialOrderStatusFilter: '',
+        materialOrderLineFilter: '',
+        materialOrderSyncTimer: null,
+        materialOrderSyncInterval: 10000,
+        materialOrderSyncing: false,
+        materialOrderLastSyncedAt: '',
+        materialOrderReportCurrentPage: 1,
+        materialOrderReportPerPage: 10,
+
         // Date report pagination
         currentReportPage: 1,
 	        reportPerPage: 10,
@@ -244,6 +291,7 @@ function dashboard() {
             await this.loadLines();
             await this.loadCurrentPageData();
             await this.loadDashboardData();
+            this.startMaterialOrderAutoSync();
         },
 
         // Authentication methods
@@ -288,6 +336,7 @@ function dashboard() {
                     await this.loadLines();
                     await this.loadCurrentPageData();
                     await this.loadDashboardData();
+                    this.startMaterialOrderAutoSync();
                 } else {
                     const error = await response.json();
                     this.loginError = error.error || 'Login failed';
@@ -307,6 +356,7 @@ function dashboard() {
                 logClientError('Logout error:', error);
             } finally {
                 this.stopDashboardChartAutoplay();
+                this.stopMaterialOrderAutoSync();
                 this.isAuthenticated = false;
                 this.currentUser = {};
                 this.currentPage = 'dashboard';
@@ -327,16 +377,17 @@ function dashboard() {
 
 	            if (this.canViewDashboard()) {
 	                this.navigation = [...baseNav];
-	                if (this.canManageLines()) {
-	                    this.navigation.push({ name: 'Management Line', page: 'admin-management', iconClass: 'fa-list-check' });
-	                }
+                if (this.canManageLines()) {
+                    this.navigation.push({ name: 'Management Line', page: 'admin-management', iconClass: 'fa-list-check' });
+                }
                 if (this.currentUser.role === 'admin') {
-	                    this.navigation.push(
-	                        { name: 'Import Data Lama', page: 'production-import', iconClass: 'fa-file-import' },
-	                        { name: 'Manajemen User', page: 'user-management', iconClass: 'fa-users-gear' },
-	                        { name: 'Kategori Defect', page: 'defect-categories', iconClass: 'fa-triangle-exclamation' },
-	                        { name: 'Hari Kerja', page: 'work-schedule-settings', iconClass: 'fa-calendar-days' },
-	                        { name: 'Public Display', page: 'public-display-settings', iconClass: 'fa-tv' },
+                    this.navigation.push(
+                        { name: 'Order Material', page: 'material-orders', iconClass: 'fa-boxes-packing' },
+                        { name: 'Import Data Lama', page: 'production-import', iconClass: 'fa-file-import' },
+                        { name: 'Manajemen User', page: 'user-management', iconClass: 'fa-users-gear' },
+                        { name: 'Kategori Defect', page: 'defect-categories', iconClass: 'fa-triangle-exclamation' },
+                        { name: 'Hari Kerja', page: 'work-schedule-settings', iconClass: 'fa-calendar-days' },
+                        { name: 'Public Display', page: 'public-display-settings', iconClass: 'fa-tv' },
                         { name: 'Maintenance', page: 'system-actions', iconClass: 'fa-screwdriver-wrench' }
                     );
                 } else if (this.canManageDefectCategories()) {
@@ -360,8 +411,8 @@ function dashboard() {
 	        },
 
             canViewReport() {
-                return ['admin', 'admin_operator_sewing', 'admin_operator_qc'].includes(this.currentUser.role);
-            },
+            return ['admin', 'admin_operator_sewing', 'admin_operator_qc'].includes(this.currentUser.role);
+        },
 
 	        canManageLines() {
 	            return ['admin', 'admin_operator_sewing'].includes(this.currentUser.role);
@@ -408,10 +459,10 @@ function dashboard() {
 	            }[role] || role;
 	        },
 
-	        getDefaultPage() {
-	            if (this.isAdminOperator()) return 'report';
-	            return this.canViewDashboard() ? 'dashboard' : 'line-summary';
-	        },
+        getDefaultPage() {
+            if (this.isAdminOperator()) return 'report';
+            return this.canViewDashboard() ? 'dashboard' : 'line-summary';
+        },
 
         getInitialRouteState() {
             const path = window.location.pathname.replace(/\/$/, '');
@@ -452,25 +503,29 @@ function dashboard() {
 	                return this.canManageLines();
 	            }
 
-            if (state.currentPage === 'report') {
-                return this.canViewReport();
-            }
+	            if (state.currentPage === 'report') {
+	                return this.canViewReport();
+	            }
 
-	            if (state.currentPage === 'production-import' || state.currentPage === 'user-management' || state.currentPage === 'defect-categories' || state.currentPage === 'work-schedule-settings' || state.currentPage === 'public-display-settings' || state.currentPage === 'system-actions') {
+	            if (state.currentPage === 'material-orders' || state.currentPage === 'production-import' || state.currentPage === 'user-management' || state.currentPage === 'defect-categories' || state.currentPage === 'work-schedule-settings' || state.currentPage === 'public-display-settings' || state.currentPage === 'system-actions') {
 	                return state.currentPage === 'defect-categories'
 	                    ? this.canManageDefectCategories()
 	                    : this.currentUser.role === 'admin';
 	            }
 
-            if (state.currentPage === 'input-data') {
-                return this.canManageProduction() || this.canManageQc();
-            }
+	            if (state.currentPage === 'input-data') {
+	                return this.canManageProduction() || this.canManageQc();
+	            }
 
-            return true;
-        },
+	            return true;
+	        },
 
 	        applyRouteState(state) {
-	            this.currentPage = state.currentPage || this.getDefaultPage();
+	            const normalizedPage = state.currentPage === 'material-order-report' ? 'report' : state.currentPage;
+	            this.currentPage = normalizedPage || this.getDefaultPage();
+	            this.reportTab = (state.reportTab === 'material' && this.currentUser.role === 'admin') || state.currentPage === 'material-order-report'
+	                ? 'material'
+	                : 'production';
 	            this.currentLine = state.currentLine || '';
 	            this.currentModelId = state.currentModelId || '';
 	            this.savePageState();
@@ -506,6 +561,14 @@ function dashboard() {
                 await this.loadUsers();
             }
 
+            if (this.currentPage === 'material-orders') {
+                await this.loadMaterialOrders();
+            }
+
+            if (this.currentPage === 'report' && this.reportTab === 'material' && this.currentUser.role === 'admin') {
+                await this.loadMaterialOrderReport();
+            }
+
 	            if (this.currentPage === 'defect-categories') {
 	                await this.loadDefectConfig();
 	            }
@@ -524,13 +587,17 @@ function dashboard() {
 	        },
 
 	        changePage(page) {
+	            if (page === 'material-order-report') {
+	                this.reportTab = this.currentUser.role === 'admin' ? 'material' : 'production';
+
+                page = 'report';
+            }
 	            if (page === 'dashboard' && !this.canViewDashboard()) {
 	                this.currentPage = this.getDefaultPage();
 	                this.savePageState();
 	                return;
 	            }
-
-	            this.currentPage = page;
+            this.currentPage = page;
             this.savePageState();
             if (page !== 'dashboard') {
                 this.stopDashboardChartAutoplay();
@@ -541,9 +608,15 @@ function dashboard() {
             if (page === 'user-management') {
                 this.loadUsers();
             }
-	            if (page === 'defect-categories') {
-	                this.loadDefectConfig();
-	            }
+            if (page === 'material-orders') {
+                this.loadMaterialOrders();
+            }
+            if (page === 'report' && this.reportTab === 'material' && this.currentUser.role === 'admin') {
+                this.loadMaterialOrderReport();
+            }
+            if (page === 'defect-categories') {
+                this.loadDefectConfig();
+            }
 	            if (page === 'public-display-settings') {
 	                this.loadPublicDisplaySettings();
 	            }
@@ -552,6 +625,23 @@ function dashboard() {
 	            }
 	            if (page === 'system-actions') {
 	                this.loadMaintenanceData();
+	            }
+	        },
+
+	        setReportTab(tab) {
+	            if (tab === 'material' && this.currentUser.role !== 'admin') {
+	                this.reportTab = 'production';
+	                return;
+	            }
+
+	            this.reportTab = tab === 'material' ? 'material' : 'production';
+	            this.currentPage = 'report';
+	            this.currentReportPage = 1;
+	            this.materialOrderReportCurrentPage = 1;
+	            this.savePageState();
+
+	            if (this.reportTab === 'material') {
+	                this.loadMaterialOrderReport();
 	            }
 	        },
 
@@ -687,7 +777,8 @@ function dashboard() {
                 const pageState = {
                     currentPage: this.currentPage,
                     currentLine: this.currentLine,
-                    currentModelId: this.currentModelId
+                    currentModelId: this.currentModelId,
+                    reportTab: this.reportTab
                 };
                 localStorage.setItem('dashboardPageState', JSON.stringify(pageState));
             }
@@ -699,7 +790,10 @@ function dashboard() {
 	                let restored = false;
 	                if (savedState) {
 	                    try {
-	                        const state = JSON.parse(savedState);
+	                        const parsedState = JSON.parse(savedState);
+	                        const state = parsedState.currentPage === 'material-order-report'
+	                            ? { ...parsedState, currentPage: 'report', reportTab: 'material' }
+	                            : parsedState;
 
                         // Check if the saved page is allowed for current user
                         const allowedPages = [
@@ -709,6 +803,9 @@ function dashboard() {
                         ];
 	                        if (allowedPages.includes(state.currentPage) && this.canUseRouteState(state)) {
 	                            this.currentPage = state.currentPage;
+	                            this.reportTab = state.reportTab === 'material' && this.currentUser.role === 'admin'
+	                                ? 'material'
+	                                : 'production';
 	                            this.currentLine = state.currentLine || '';
 	                            this.currentModelId = state.currentModelId || '';
 	                            restored = true;
@@ -733,10 +830,10 @@ function dashboard() {
                                 this.loadUsers();
                             }
 
-                            if (this.currentPage === 'defect-categories') {
-                                this.loadDefectConfig();
-                            }
-                        }
+	                            if (this.currentPage === 'defect-categories') {
+	                                this.loadDefectConfig();
+	                            }
+	                        }
 	                    } catch (error) {
 	                        logClientError('Error restoring page state:', error);
 	                    }
@@ -908,6 +1005,473 @@ function dashboard() {
             } catch (error) {
                 logClientError('Error loading users:', error);
                 this.showToast('Error loading users', 'error');
+            }
+        },
+
+        async loadMaterialOrders(options = {}) {
+            const silent = options.silent === true;
+            try {
+                const [response, totalsResponse] = await Promise.all([
+                    fetch('/api/material-orders'),
+                    fetch('/api/material-orders/production-totals')
+                ]);
+                const [result, totalsResult] = await Promise.all([
+                    response.json(),
+                    totalsResponse.json()
+                ]);
+                if (!response.ok) throw new Error(result.error || 'Gagal memuat order material');
+                if (!totalsResponse.ok) throw new Error(totalsResult.error || 'Gagal memuat akumulasi produksi');
+                this.materialOrders = Array.isArray(result) ? result : [];
+                this.materialOrderProductionTotals = totalsResult && typeof totalsResult === 'object' ? totalsResult : {};
+                if (this.materialOrderModal.open) this.syncMaterialOrderActualQty();
+                this.materialOrderLastSyncedAt = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                this.materialOrderCurrentPage = Math.max(1, Math.min(
+                    this.materialOrderCurrentPage,
+                    this.totalMaterialOrderPages
+                ));
+            } catch (error) {
+                logClientError('Error loading material orders:', error);
+                if (!silent) this.showToast(error.message || 'Gagal memuat order material', 'error');
+            }
+        },
+
+        startMaterialOrderAutoSync() {
+            this.stopMaterialOrderAutoSync();
+            if (this.currentUser.role !== 'admin') return;
+            this.materialOrderSyncTimer = setInterval(() => this.syncMaterialOrderData(), this.materialOrderSyncInterval);
+        },
+
+        stopMaterialOrderAutoSync() {
+            if (this.materialOrderSyncTimer) clearInterval(this.materialOrderSyncTimer);
+            this.materialOrderSyncTimer = null;
+            this.materialOrderSyncing = false;
+        },
+
+        async syncMaterialOrderData() {
+            if (this.materialOrderSyncing || !this.isAuthenticated || this.currentUser.role !== 'admin') return;
+            if (typeof document !== 'undefined' && document.hidden) return;
+            const onMaterialOrders = this.currentPage === 'material-orders';
+            const onMaterialReport = this.currentPage === 'report' && this.reportTab === 'material';
+            if (!onMaterialOrders && !onMaterialReport) return;
+
+            this.materialOrderSyncing = true;
+            try {
+                if (onMaterialOrders) {
+                    await this.loadLines();
+                    await this.loadMaterialOrders({ silent: true });
+                } else {
+                    await this.loadMaterialOrderReport(true);
+                }
+            } finally {
+                this.materialOrderSyncing = false;
+            }
+        },
+
+        emptyMaterialOrderData() {
+            return {
+                id: null,
+                poMaterial: '',
+                orderMaterial: '',
+                qtyOrder: 0,
+                productions: [this.emptyMaterialOrderProduction()],
+                orderDate: getJakartaDateInput(),
+                notes: ''
+            };
+        },
+
+        emptyMaterialOrderProduction() {
+            return {
+                modelKey: '',
+                syncGroupKey: '',
+                lineName: '',
+                modelId: '',
+                status: 'planned',
+                qtyResult: 0
+            };
+        },
+
+        normalizeMaterialOrderProductions(productions = []) {
+            const list = Array.isArray(productions) && productions.length > 0 ? productions : [this.emptyMaterialOrderProduction()];
+            const options = this.materialOrderProductionModelOptions();
+            const groupedProductions = new Map();
+
+            list.forEach(production => {
+                const selectedLine = (this.linesWithModels || []).find(line =>
+                    line.lineName === production.lineName && line.modelId === production.modelId
+                );
+                const groupKey = production.syncGroupKey
+                    || (selectedLine ? this.materialOrderProductionGroupKey(selectedLine) : production.modelKey)
+                    || this.materialOrderProductionKey(production.lineName, production.modelId);
+                const option = options.find(item => item.materialOrderKey === groupKey);
+                const current = groupedProductions.get(groupKey);
+
+                if (current) {
+                    current.statuses.push(production.status);
+                    if (!option) current.qtyResult += Number(production.qtyResult) || 0;
+                    return;
+                }
+
+                groupedProductions.set(groupKey, {
+                    ...this.emptyMaterialOrderProduction(),
+                    modelKey: groupKey,
+                    syncGroupKey: groupKey,
+                    lineName: option?.lineName || production.lineName || '',
+                    modelId: option?.modelId || production.modelId || '',
+                    status: production.status || 'planned',
+                    statuses: [production.status || 'planned'],
+                    qtyResult: option ? option.totalOutput : (Number(production.qtyResult) || 0)
+                });
+            });
+
+            const normalized = [...groupedProductions.values()].map(production => {
+                production.status = this.materialOrderGroupStatus(production.statuses);
+                delete production.statuses;
+                return production;
+            });
+            return normalized.length > 0 ? normalized : [this.emptyMaterialOrderProduction()];
+        },
+
+        materialOrderProductionKey(lineName, modelId) {
+            return lineName && modelId ? `${lineName}::${modelId}` : '';
+        },
+
+        materialOrderLineCumulativeOutput(line) {
+            const key = this.materialOrderProductionKey(line?.lineName, line?.modelId);
+            return Object.prototype.hasOwnProperty.call(this.materialOrderProductionTotals || {}, key)
+                ? Number(this.materialOrderProductionTotals[key]) || 0
+                : Number(line?.data?.outputDay) || 0;
+        },
+
+        materialOrderProductionGroupKey(line) {
+            const labelWeek = String(line?.data?.labelWeek || '').trim().toLowerCase();
+            const modelName = String(line?.data?.model || '').trim().toLowerCase();
+            return labelWeek && modelName
+                ? `${labelWeek}::${modelName}`
+                : this.materialOrderProductionKey(line?.lineName, line?.modelId);
+        },
+
+        materialOrderGroupStatus(statuses = []) {
+            if (statuses.includes('paused')) return 'paused';
+            return 'planned';
+        },
+
+        materialOrderFormData(order = null) {
+            const base = this.emptyMaterialOrderData();
+            if (!order) return base;
+
+            return {
+                ...base,
+                ...order,
+                productions: this.normalizeMaterialOrderProductions(order.productions || (order.lineName || order.modelId ? [{
+                    lineName: order.lineName,
+                    modelId: order.modelId,
+                    status: order.status,
+                    qtyResult: order.qtyResult
+                }] : []))
+            };
+        },
+
+        async openMaterialOrderModal(order = null) {
+            await Promise.all([
+                this.loadLines(),
+                this.loadMaterialOrders({ silent: true })
+            ]);
+            const latestOrder = order
+                ? (this.materialOrders || []).find(item => String(item.id) === String(order.id)) || order
+                : null;
+            this.materialOrderModal = {
+                open: true,
+                isEdit: Boolean(latestOrder),
+                saving: false,
+                data: this.materialOrderFormData(latestOrder)
+            };
+        },
+
+        closeMaterialOrderModal() {
+            if (this.materialOrderModal.saving) return;
+            this.materialOrderModal.open = false;
+        },
+
+        materialOrderProductionModelOptions() {
+            const groups = new Map();
+            (this.linesWithModels || []).forEach(line => {
+                const materialOrderKey = this.materialOrderProductionGroupKey(line);
+                if (!groups.has(materialOrderKey)) {
+                    groups.set(materialOrderKey, {
+                        materialOrderKey,
+                        lineName: '',
+                        lineNames: [],
+                        modelId: '',
+                        models: [],
+                        totalOutput: 0,
+                        productionActive: false,
+                        data: { ...line.data, outputDay: 0 }
+                    });
+                }
+
+                const group = groups.get(materialOrderKey);
+                group.models.push(line);
+                if (!group.lineNames.includes(line.lineName)) group.lineNames.push(line.lineName);
+                group.totalOutput += this.materialOrderLineCumulativeOutput(line);
+                group.productionActive = group.productionActive
+                    || (line.data?.lineActiveModels || []).includes(line.modelId);
+            });
+
+            return [...groups.values()]
+                .map(group => ({
+                    ...group,
+                    lineName: group.lineNames.join(', '),
+                    modelId: group.models.length === 1 ? group.models[0].modelId : '',
+                    data: { ...group.data, outputDay: group.totalOutput }
+                }))
+                .sort((a, b) => (a.data?.model || a.modelId || '').localeCompare(b.data?.model || b.modelId || '', undefined, { numeric: true })
+                    || (a.data?.labelWeek || '').localeCompare(b.data?.labelWeek || '', undefined, { numeric: true })
+                    || a.lineName.localeCompare(b.lineName, undefined, { numeric: true }));
+        },
+
+        selectedMaterialOrderProduction(index) {
+            const production = this.materialOrderModal.data.productions?.[index];
+            if (!production) return null;
+            return this.materialOrderProductionModelOptions().find(option =>
+                option.materialOrderKey === production.modelKey
+            ) || null;
+        },
+
+        isMaterialOrderModelSelected(materialOrderKey, currentIndex) {
+            return (this.materialOrderModal.data.productions || []).some((production, index) =>
+                index !== currentIndex && production.modelKey === materialOrderKey
+            );
+        },
+
+        applyMaterialOrderModelSelection(index) {
+            if (!this.materialOrderModal.data.productions?.[index]) return;
+            const production = this.materialOrderModal.data.productions[index];
+            const alreadySelected = (this.materialOrderModal.data.productions || []).some((item, itemIndex) =>
+                itemIndex !== index && item.modelKey === production.modelKey
+            );
+
+            if (production.modelKey && alreadySelected) {
+                production.modelKey = '';
+                production.lineName = '';
+                production.modelId = '';
+                production.qtyResult = 0;
+                production.syncGroupKey = '';
+                this.showToast('Model produksi tersebut sudah dipilih pada alokasi lain', 'error');
+                return;
+            }
+            const selected = this.materialOrderProductionModelOptions().find(option =>
+                option.materialOrderKey === production.modelKey
+            );
+
+            if (!selected) {
+                production.lineName = '';
+                production.modelId = '';
+                production.qtyResult = 0;
+                production.syncGroupKey = '';
+                return;
+            }
+
+            production.syncGroupKey = selected.materialOrderKey;
+            production.lineName = selected.lineName;
+            production.modelId = selected.modelId;
+            production.qtyResult = selected.totalOutput;
+        },
+
+        addMaterialOrderProduction() {
+            this.materialOrderModal.data.productions.push(this.emptyMaterialOrderProduction());
+        },
+
+        removeMaterialOrderProduction(index) {
+            if ((this.materialOrderModal.data.productions || []).length <= 1) return;
+            this.materialOrderModal.data.productions.splice(index, 1);
+        },
+
+        syncMaterialOrderActualQty() {
+            (this.materialOrderModal.data.productions || []).forEach((production, index) => {
+                const selected = this.selectedMaterialOrderProduction(index);
+                production.qtyResult = Number(selected?.data?.outputDay) || 0;
+            });
+        },
+
+        expandMaterialOrderProductions(productions = []) {
+            return productions.flatMap(production => {
+                const selected = this.materialOrderProductionModelOptions().find(option =>
+                    option.materialOrderKey === production.modelKey
+                );
+                if (!selected) return [];
+                return selected.models.map(line => ({
+                    lineName: line.lineName,
+                    modelId: line.modelId,
+                    status: production.status,
+                    qtyResult: this.materialOrderLineCumulativeOutput(line)
+                }));
+            });
+        },
+
+        async saveMaterialOrder() {
+            const data = this.materialOrderModal.data;
+            this.syncMaterialOrderActualQty();
+            if (!data.poMaterial.trim() || !data.orderMaterial.trim()) {
+                this.showToast('PO Material dan Order Material wajib diisi', 'error');
+                return;
+            }
+            if (Number(data.qtyOrder) <= 0) {
+                this.showToast('Qty Order harus lebih dari 0', 'error');
+                return;
+            }
+            const seen = new Set();
+            const invalidProduction = (data.productions || []).some((production, index) => {
+                const key = production.modelKey || '';
+                if (!key || !this.selectedMaterialOrderProduction(index)) return true;
+                if (seen.has(key)) return true;
+                seen.add(key);
+                return !['planned', 'in_production', 'paused', 'completed'].includes(production.status);
+            });
+            if (!Array.isArray(data.productions) || data.productions.length === 0 || invalidProduction) {
+                this.showToast('Periksa alokasi line, model, dan status produksi', 'error');
+                return;
+            }
+
+            this.materialOrderModal.saving = true;
+            try {
+                const isEdit = this.materialOrderModal.isEdit;
+                const url = isEdit ? `/api/material-orders/${data.id}` : '/api/material-orders';
+                const response = await fetch(url, {
+                    method: isEdit ? 'PUT' : 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ...data, productions: this.expandMaterialOrderProductions(data.productions) })
+                });
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.error || 'Gagal menyimpan order material');
+                this.materialOrderModal.open = false;
+                await this.loadMaterialOrders();
+                this.showToast(result.message || 'Order material berhasil disimpan', 'success');
+            } catch (error) {
+                logClientError('Error saving material order:', error);
+                this.showToast(error.message || 'Gagal menyimpan order material', 'error');
+            } finally {
+                this.materialOrderModal.saving = false;
+            }
+        },
+
+        async deleteMaterialOrder(order) {
+            if (!confirm(`Hapus order material ${order.poMaterial}?`)) return;
+            try {
+                const response = await fetch(`/api/material-orders/${order.id}`, { method: 'DELETE' });
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.error || 'Gagal menghapus order material');
+                await this.loadMaterialOrders();
+                this.showToast(result.message || 'Order material berhasil dihapus', 'success');
+            } catch (error) {
+                logClientError('Error deleting material order:', error);
+                this.showToast(error.message || 'Gagal menghapus order material', 'error');
+            }
+        },
+
+        materialOrderReportParams() {
+            const report = this.materialOrderReport;
+            const params = new URLSearchParams();
+            if (report.startDate) params.set('startDate', report.startDate);
+            if (report.endDate) params.set('endDate', report.endDate);
+            if (report.status) params.set('status', report.status);
+            return params;
+        },
+
+        validateMaterialOrderReportPeriod() {
+            const report = this.materialOrderReport;
+            if (!report.startDate || !report.endDate) {
+                this.showToast('Pilih tanggal mulai dan tanggal selesai', 'error');
+                return false;
+            }
+            if (report.startDate > report.endDate) {
+                this.showToast('Tanggal mulai tidak boleh lebih besar dari tanggal selesai', 'error');
+                return false;
+            }
+            return true;
+        },
+
+        async loadMaterialOrderReport(silent = false) {
+            if (silent) {
+                const report = this.materialOrderReport;
+                if (!report.startDate || !report.endDate || report.startDate > report.endDate) return;
+            } else if (!this.validateMaterialOrderReportPeriod()) {
+                return;
+            }
+            if (!silent) this.materialOrderReport.loading = true;
+            try {
+                const response = await fetch(`/api/material-orders/report?${this.materialOrderReportParams().toString()}`);
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.error || 'Gagal memuat report material');
+                this.materialOrderReport.rows = result.rows || [];
+                this.materialOrderReport.summary = result.summary || { total: 0, qtyOrder: 0, qtyResult: 0, inProduction: 0, completed: 0 };
+                this.materialOrderReportCurrentPage = silent
+                    ? Math.max(1, Math.min(this.materialOrderReportCurrentPage, this.totalMaterialOrderReportPages))
+                    : 1;
+                this.materialOrderLastSyncedAt = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                if (!silent) this.showToast(result.rows?.length ? 'Report material berhasil dimuat' : 'Tidak ada data pada filter tersebut', result.rows?.length ? 'success' : 'info');
+            } catch (error) {
+                logClientError('Error loading material order report:', error);
+                if (!silent) this.showToast(error.message || 'Gagal memuat report material', 'error');
+            } finally {
+                if (!silent) this.materialOrderReport.loading = false;
+            }
+        },
+
+        async exportMaterialOrderReport() {
+            if (!this.validateMaterialOrderReportPeriod()) return;
+            this.materialOrderReport.exporting = true;
+            try {
+                const response = await fetch(`/api/material-orders/report/export?${this.materialOrderReportParams().toString()}`);
+                if (!response.ok) {
+                    const result = await response.json();
+                    throw new Error(result.error || 'Gagal export report material');
+                }
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `Report_Order_Material_${this.materialOrderReport.startDate}_to_${this.materialOrderReport.endDate}.xlsx`;
+                document.body.appendChild(link);
+                link.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(link);
+                this.showToast('Report material berhasil diexport ke Excel', 'success');
+            } catch (error) {
+                logClientError('Error exporting material order report:', error);
+                this.showToast(error.message || 'Gagal export report material', 'error');
+            } finally {
+                this.materialOrderReport.exporting = false;
+            }
+        },
+
+        async exportMaterialOrderPo(order) {
+            const poMaterial = String(order?.poMaterial || '').trim();
+            if (!poMaterial || this.materialOrderExportingPo) return;
+            this.materialOrderExportingPo = poMaterial;
+            try {
+                const params = this.materialOrderReportParams();
+                params.set('poMaterial', poMaterial);
+                const response = await fetch(`/api/material-orders/report/export?${params.toString()}`);
+                if (!response.ok) {
+                    const result = await response.json();
+                    throw new Error(result.error || 'Gagal export PO Material');
+                }
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                const safePo = poMaterial.replace(/[^a-zA-Z0-9_-]+/g, '_');
+                link.href = url;
+                link.download = `Report_Order_Material_${safePo}_${this.materialOrderReport.startDate}_to_${this.materialOrderReport.endDate}.xlsx`;
+                document.body.appendChild(link);
+                link.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(link);
+                this.showToast(`PO Material ${poMaterial} berhasil diexport`, 'success');
+            } catch (error) {
+                logClientError('Error exporting material order PO:', error);
+                this.showToast(error.message || 'Gagal export PO Material', 'error');
+            } finally {
+                this.materialOrderExportingPo = '';
             }
         },
 
@@ -2954,6 +3518,136 @@ function dashboard() {
             }
 
             return pages;
+        },
+
+        get materialOrderLineOptions() {
+            return [...new Set((this.linesWithModels || []).map(line => line.lineName).filter(Boolean))]
+                .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+        },
+
+        get materialOrderSummary() {
+            return (this.materialOrders || []).reduce((summary, order) => {
+                summary.total += 1;
+                summary.qtyOrder += Number(order.qtyOrder) || 0;
+                summary.qtyResult += Number(order.qtyResult) || 0;
+                if (order.status === 'in_production') summary.inProduction += 1;
+                if (order.status === 'completed') summary.completed += 1;
+                return summary;
+            }, { total: 0, inProduction: 0, completed: 0, qtyOrder: 0, qtyResult: 0 });
+        },
+
+        materialOrderStatusLabel(status) {
+            return {
+                planned: 'Direncanakan',
+                in_production: 'Sedang Produksi',
+                paused: 'Ditunda',
+                completed: 'Selesai'
+            }[status] || status;
+        },
+
+        materialOrderStatusClass(status) {
+            return {
+                planned: 'material-status-planned',
+                in_production: 'material-status-running',
+                paused: 'material-status-paused',
+                completed: 'material-status-completed'
+            }[status] || 'material-status-planned';
+        },
+
+        materialOrderProgress(order) {
+            const qtyOrder = Number(order.qtyOrder) || 0;
+            const qtyResult = Number(order.orderQtyResult ?? order.qtyResult) || 0;
+            return qtyOrder > 0 ? Math.min(100, Math.round((qtyResult / qtyOrder) * 100)) : 0;
+        },
+
+        materialOrderProductionGroups(order = {}) {
+            const groups = new Map();
+            (Array.isArray(order.productions) ? order.productions : []).forEach(production => {
+                const labelWeek = String(production.labelWeek || '').trim();
+                const modelName = String(production.modelName || production.modelId || '').trim();
+                const groupKey = labelWeek && modelName
+                    ? `${labelWeek.toLowerCase()}::${modelName.toLowerCase()}`
+                    : `${production.lineName || ''}::${production.modelId || production.allocationIndex || ''}`;
+                if (!groups.has(groupKey)) {
+                    groups.set(groupKey, {
+                        groupKey,
+                        labelWeek: labelWeek || '-',
+                        modelName: modelName || 'Model tidak tersedia',
+                        lineNames: [],
+                        productionActive: false,
+                        linkedModelExists: true
+                    });
+                }
+
+                const group = groups.get(groupKey);
+                if (production.lineName && !group.lineNames.includes(production.lineName)) {
+                    group.lineNames.push(production.lineName);
+                }
+                group.productionActive = group.productionActive || Boolean(production.productionActive);
+                group.linkedModelExists = group.linkedModelExists && production.linkedModelExists !== false;
+            });
+
+            return [...groups.values()].map(group => ({
+                ...group,
+                lineNames: group.lineNames.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+            }));
+        },
+
+        compactMaterialOrderLines(lineNames = []) {
+            const visibleLines = lineNames.slice(0, 3);
+            const remaining = lineNames.length - visibleLines.length;
+            return `${visibleLines.join(', ')}${remaining > 0 ? ` +${remaining} lainnya` : ''}` || '-';
+        },
+
+        get filteredMaterialOrders() {
+            const search = this.materialOrderSearchTerm.trim().toLowerCase();
+            return (this.materialOrders || []).filter(order => {
+                const productions = Array.isArray(order.productions) ? order.productions : [];
+                const productionValues = productions.flatMap(production => [
+                    production.lineName,
+                    production.modelId,
+                    production.modelName,
+                    production.labelWeek,
+                    this.materialOrderStatusLabel(production.status)
+                ]);
+                const matchesSearch = !search || [
+                    order.poMaterial,
+                    order.orderMaterial,
+                    order.lineName,
+                    order.modelName,
+                    order.labelWeek,
+                    ...productionValues
+                ].some(value => String(value || '').toLowerCase().includes(search));
+                const matchesStatus = !this.materialOrderStatusFilter || order.status === this.materialOrderStatusFilter;
+                const matchesLine = !this.materialOrderLineFilter || productions.some(production => production.lineName === this.materialOrderLineFilter);
+                return matchesSearch && matchesStatus && matchesLine;
+            });
+        },
+
+        get paginatedMaterialOrders() {
+            const start = (this.materialOrderCurrentPage - 1) * Number(this.materialOrdersPerPage);
+            return this.filteredMaterialOrders.slice(start, start + Number(this.materialOrdersPerPage));
+        },
+
+        get totalMaterialOrderPages() {
+            return Math.max(1, Math.ceil(this.filteredMaterialOrders.length / Number(this.materialOrdersPerPage)));
+        },
+
+        get materialOrderPages() {
+            return this.paginationPages(this.materialOrderCurrentPage, this.totalMaterialOrderPages);
+        },
+
+        get paginatedMaterialOrderReportRows() {
+            const start = (this.materialOrderReportCurrentPage - 1) * Number(this.materialOrderReportPerPage);
+            return (this.materialOrderReport.rows || []).slice(start, start + Number(this.materialOrderReportPerPage));
+        },
+
+        get totalMaterialOrderReportPages() {
+            return Math.max(1, Math.ceil((this.materialOrderReport.rows || []).length / Number(this.materialOrderReportPerPage)));
+        },
+
+        get materialOrderReportPages() {
+            return this.paginationPages(this.materialOrderReportCurrentPage, this.totalMaterialOrderReportPages);
         },
 
         // Date report pagination

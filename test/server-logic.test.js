@@ -8,13 +8,18 @@ const crypto = require('node:crypto');
 const {
   app,
   buildPublicModelResponse,
+  buildMaterialOrderCumulativeOutputs,
+  buildMaterialOrderProductionTotals,
   buildDateReportRows,
   calculateDefectSeverityBreakdown,
   classifyLegacySnapshot,
   extractHistoryDate,
   filterProductionDataByDate,
   filterProductionDataByLine,
+  filterMaterialOrderReportRows,
+  deriveMaterialOrderProgressStatus,
   generateModelId,
+  generateMaterialOrderReportExcel,
   generateStyledDateReportExcel,
   hasDateReportAccess,
   hashPassword,
@@ -37,6 +42,8 @@ const {
   sewingImportTemplateWorkbook,
   summarizeProductionSnapshot,
   summarizeProductionSnapshotByLine,
+  summarizeMaterialOrderReport,
+  validateMaterialOrderInput,
   verifyPassword
 } = require('../server');
 
@@ -125,6 +132,209 @@ test('blank production output values are distinguishable from an explicit zero',
   assert.equal(isBlankInputValue('   '), true);
   assert.equal(isBlankInputValue(0), false);
   assert.equal(isBlankInputValue('0'), false);
+});
+
+test('material order input must link to an existing production model', () => {
+  const productionData = {
+    lines: {
+      'Line 1': {
+        models: {
+          model1: { model: 'Model A', outputDay: 120 }
+        }
+      },
+      'Line 2': {
+        models: {
+          model2: { model: 'Model B', outputDay: 80 }
+        }
+      }
+    }
+  };
+  const valid = validateMaterialOrderInput({
+    poMaterial: 'PO-MAT-001',
+    orderMaterial: 'Kain Cotton',
+    qtyOrder: 500,
+    productions: [
+      { lineName: 'Line 1', modelId: 'model1', status: 'in_production' },
+      { lineName: 'Line 2', modelId: 'model2', status: 'completed' }
+    ],
+    orderDate: '2026-07-26'
+  }, productionData);
+  const invalid = validateMaterialOrderInput({
+    poMaterial: 'PO-MAT-002',
+    orderMaterial: 'Benang',
+    qtyOrder: 0,
+    productions: [
+      { lineName: 'Line 1', modelId: 'model99', status: 'running', qtyResult: -1 },
+      { lineName: 'Line 1', modelId: 'model99', status: 'planned', qtyResult: 0 }
+    ],
+    orderDate: '26-07-2026'
+  }, productionData);
+
+  assert.deepEqual(valid.errors, []);
+  assert.equal(valid.order.productions.length, 2);
+  assert.equal(valid.order.qtyResult, 200);
+  assert.equal(valid.order.status, 'in_production');
+  assert.ok(invalid.errors.some(error => /Qty Order/.test(error)));
+  assert.ok(invalid.errors.some(error => /Status produksi/.test(error)));
+  assert.ok(invalid.errors.some(error => /tidak ditemukan/.test(error)));
+  assert.ok(invalid.errors.some(error => /duplikat/.test(error)));
+});
+
+test('material order production totals accumulate daily snapshots and current output', () => {
+  const current = {
+    lines: {
+      'Line 1': { models: { model1: { labelWeek: 'W30', model: 'Model A', outputDay: 5 } } },
+      'Line 2': { models: { model7: { labelWeek: 'W30', model: 'Model A', outputDay: 7 } } }
+    }
+  };
+  const history = [
+    {
+      lines: {
+        'Line 1': { models: { old1: { labelWeek: 'W30', model: 'Model A', outputDay: 40 } } },
+        'Line 2': { models: { old7: { labelWeek: 'W30', model: 'Model A', outputDay: 60 } } }
+      }
+    },
+    {
+      lines: {
+        'Line 1': { models: { archived1: { labelWeek: 'W30', model: 'Model A', outputDay: 20 } } }
+      }
+    }
+  ];
+
+  const cumulative = buildMaterialOrderCumulativeOutputs(current, history);
+  const totals = buildMaterialOrderProductionTotals(current, cumulative);
+
+  assert.deepEqual(totals, { 'Line 1::model1': 65, 'Line 2::model7': 67 });
+});
+
+test('material order status follows quantity progress while preserving a pause override', () => {
+  assert.equal(deriveMaterialOrderProgressStatus(100, 0, []), 'planned');
+  assert.equal(deriveMaterialOrderProgressStatus(100, 40, [{ status: 'planned' }]), 'in_production');
+  assert.equal(deriveMaterialOrderProgressStatus(100, 40, [{ status: 'paused' }]), 'paused');
+  assert.equal(deriveMaterialOrderProgressStatus(100, 100, [{ status: 'paused' }]), 'completed');
+  assert.equal(deriveMaterialOrderProgressStatus(100, 120, []), 'completed');
+});
+
+test('material order totals retain production history after label/week and model renames', () => {
+  const oldIdentity = 'line 1::w29::model lama';
+  const current = {
+    lines: {
+      'Line 1': {
+        models: {
+          model1: {
+            labelWeek: 'W30',
+            model: 'Model Baru',
+            outputDay: 5,
+            materialOrderIdentityAliases: [oldIdentity]
+          }
+        }
+      }
+    }
+  };
+  const history = [{
+    lines: {
+      'Line 1': { models: { model1: { labelWeek: 'W29', model: 'Model Lama', outputDay: 40 } } }
+    }
+  }];
+
+  const cumulative = buildMaterialOrderCumulativeOutputs(current, history);
+  const totals = buildMaterialOrderProductionTotals(current, cumulative);
+
+  assert.equal(totals['Line 1::model1'], 45);
+});
+
+test('material order report returns one row per PO and completes it automatically when output reaches the order quantity', () => {
+  const productionData = {
+    lines: {
+      'Line 1': {
+        activeModel: 'model1',
+        activeModels: ['model1'],
+        models: { model1: { model: 'Model A', labelWeek: 'W30', outputDay: 80 } }
+      },
+      'Line 2': {
+        activeModel: 'model2',
+        activeModels: ['model2'],
+        models: { model2: { model: 'Model B', labelWeek: 'W31', outputDay: 40 } }
+      }
+    }
+  };
+  const orders = [
+    {
+      id: 1,
+      orderDate: '2026-07-25',
+      poMaterial: 'PO-1',
+      orderMaterial: 'Kain',
+      qtyOrder: 100,
+      productions: [
+        { lineName: 'Line 1', modelId: 'model1', status: 'in_production', qtyResult: 80 },
+        { lineName: 'Line 2', modelId: 'model2', status: 'completed', qtyResult: 20 }
+      ]
+    },
+    { id: 2, orderDate: '2026-07-20', poMaterial: 'PO-2', orderMaterial: 'Benang', qtyOrder: 50, qtyResult: 50, lineName: 'Line 2', modelId: 'model2', status: 'completed' }
+  ];
+  const rows = filterMaterialOrderReportRows(orders, {
+    startDate: '2026-07-24',
+    endDate: '2026-07-26',
+    status: 'completed'
+  }, productionData);
+  const summary = summarizeMaterialOrderReport(rows);
+
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].rowId, '1');
+  assert.equal(rows[0].currentProductionOutput, 120);
+  assert.equal(rows[0].qtyResult, 120);
+  assert.equal(rows[0].labelWeek, 'W30, W31');
+  assert.equal(rows[0].modelName, 'Model A, Model B');
+  assert.equal(rows[0].productionActive, true);
+  assert.equal(rows[0].status, 'completed');
+  assert.deepEqual(summary, { total: 1, qtyOrder: 100, qtyResult: 120, inProduction: 0, completed: 1 });
+
+  const allRows = filterMaterialOrderReportRows(orders, {
+    startDate: '2026-07-24',
+    endDate: '2026-07-26'
+  }, productionData);
+  assert.equal(allRows.length, 1);
+  assert.deepEqual(allRows.map(row => row.qtyResult), [120]);
+  assert.deepEqual(summarizeMaterialOrderReport(allRows), { total: 1, qtyOrder: 100, qtyResult: 120, inProduction: 0, completed: 1 });
+
+  const selectedPoRows = filterMaterialOrderReportRows(orders, { poMaterial: 'po-1' }, productionData);
+  assert.equal(selectedPoRows.length, 1);
+  assert.equal(selectedPoRows[0].poMaterial, 'PO-1');
+});
+
+test('material order Excel export includes summary and report columns', async () => {
+  const rows = [{
+    id: 1,
+    orderDate: '2026-07-25',
+    poMaterial: 'PO-1',
+    orderMaterial: 'Kain',
+    qtyOrder: 100,
+    qtyResult: 80,
+    orderQtyResult: 80,
+    rowId: '1',
+    labelWeek: 'W30',
+    modelName: 'Model A',
+    status: 'in_production',
+    orderStatus: 'in_production',
+    currentProductionOutput: 85,
+    notes: 'Prioritas'
+  }];
+  const summary = summarizeMaterialOrderReport(rows);
+  const workbook = await generateMaterialOrderReportExcel(rows, summary, {
+    startDate: '2026-07-24', endDate: '2026-07-26', poMaterial: 'PO-1', status: 'in_production'
+  });
+  const detail = workbook.getWorksheet('ORDER MATERIAL');
+
+  assert.equal(workbook.getWorksheet('SUMMARY').getCell('A1').value, 'REPORT ORDER MATERIAL');
+  assert.equal(workbook.getWorksheet('SUMMARY').getCell('B4').value, 'PO-1');
+  assert.equal(detail.getCell('C1').value, 'PO Material');
+  assert.equal(detail.getCell('C2').value, 'PO-1');
+  assert.equal(detail.getCell('F1').value, 'Label/Week');
+  assert.equal(detail.getCell('H1').value, 'Total Output Produksi');
+  assert.equal(detail.getCell('I1').value, 'Total Qty Hasil');
+  assert.equal(detail.getCell('K2').value, '80%');
+  assert.equal(detail.getRow(1).values.includes('Line'), false);
+  assert.equal(detail.getRow(1).values.includes('Model ID'), false);
 });
 
 test('historical production import validates rows before creating a review token', () => {
@@ -484,6 +694,141 @@ test('operator production form keeps an unsaved zero output visibly empty', () =
   dashboard.syncInputFormFromSelectedHour();
   assert.equal(dashboard.inputForm.output, 0);
   assert.equal(dashboard.isProductionOutputBlank(), false);
+});
+
+test('material order model selection synchronizes lines sharing the same label/week and model', () => {
+  const context = { console, Date, Intl, Map, Math, Set, parseInt };
+  const alpineSource = fs.readFileSync(path.join(__dirname, '..', 'public/assets/js/alpine.js'), 'utf8');
+  vm.runInNewContext(alpineSource, context);
+
+  const dashboard = context.dashboard();
+  dashboard.linesWithModels = [
+    { lineName: 'Line 1', modelId: 'model1', data: { labelWeek: 'W30', model: 'Model A', outputDay: 40 } },
+    { lineName: 'Line 2', modelId: 'model7', data: { labelWeek: 'W30', model: 'Model A', outputDay: 60 } },
+    { lineName: 'Line 3', modelId: 'model2', data: { labelWeek: 'W30', model: 'Model B', outputDay: 25 } }
+  ];
+  dashboard.materialOrderProductionTotals = {
+    'Line 1::model1': 140,
+    'Line 2::model7': 160,
+    'Line 3::model2': 25
+  };
+  dashboard.materialOrderModal.data = dashboard.emptyMaterialOrderData();
+  const groupedModel = dashboard.materialOrderProductionModelOptions().find(option => option.data.model === 'Model A');
+  dashboard.materialOrderModal.data.productions[0].modelKey = groupedModel.materialOrderKey;
+
+  dashboard.applyMaterialOrderModelSelection(0);
+
+  assert.equal(dashboard.materialOrderModal.data.productions.length, 1);
+  assert.equal(dashboard.materialOrderModal.data.productions[0].lineName, 'Line 1, Line 2');
+  assert.equal(dashboard.materialOrderModal.data.productions[0].qtyResult, 300);
+
+  dashboard.materialOrderModal.data.productions[0].status = 'in_production';
+  const expanded = dashboard.expandMaterialOrderProductions(dashboard.materialOrderModal.data.productions);
+  assert.deepEqual(Array.from(expanded, item => item.lineName), ['Line 1', 'Line 2']);
+  assert.deepEqual(Array.from(expanded, item => item.modelId), ['model1', 'model7']);
+  assert.deepEqual(Array.from(expanded, item => item.qtyResult), [140, 160]);
+  assert.deepEqual(Array.from(expanded, item => item.status), ['in_production', 'in_production']);
+});
+
+test('material order keeps saved model selections visible while rejecting a duplicate replacement', () => {
+  const context = { console, Date, Intl, Map, Math, Set, parseInt };
+  const alpineSource = fs.readFileSync(path.join(__dirname, '..', 'public/assets/js/alpine.js'), 'utf8');
+  vm.runInNewContext(alpineSource, context);
+
+  const dashboard = context.dashboard();
+  dashboard.linesWithModels = [
+    { lineName: 'Line 1', modelId: 'model1', data: { labelWeek: 'W30', model: 'Model A', outputDay: 10 } },
+    { lineName: 'Line 1', modelId: 'model2', data: { labelWeek: 'W31', model: 'Model B', outputDay: 20 } }
+  ];
+  dashboard.materialOrderModal.data = dashboard.materialOrderFormData({
+    productions: [
+      { lineName: 'Line 1', modelId: 'model1', qtyResult: 10 },
+      { lineName: 'Line 1', modelId: 'model2', qtyResult: 20 }
+    ]
+  });
+
+  assert.deepEqual(
+    Array.from(dashboard.materialOrderModal.data.productions, production => production.modelKey),
+    ['w30::model a', 'w31::model b']
+  );
+
+  const notifications = [];
+  dashboard.showToast = (...args) => notifications.push(args);
+  dashboard.materialOrderModal.data.productions[1].modelKey = 'w30::model a';
+  dashboard.applyMaterialOrderModelSelection(1);
+
+  assert.equal(dashboard.materialOrderModal.data.productions[1].modelKey, '');
+  assert.equal(dashboard.materialOrderModal.data.productions[1].qtyResult, 0);
+  assert.match(notifications[0][0], /sudah dipilih/);
+});
+
+test('material order auto sync refreshes production totals on the active material page', async () => {
+  const context = { console, Date, Intl, Map, Math, Set, parseInt };
+  const alpineSource = fs.readFileSync(path.join(__dirname, '..', 'public/assets/js/alpine.js'), 'utf8');
+  vm.runInNewContext(alpineSource, context);
+
+  const dashboard = context.dashboard();
+  const calls = [];
+  dashboard.isAuthenticated = true;
+  dashboard.currentUser.role = 'admin';
+  dashboard.currentPage = 'material-orders';
+  dashboard.loadLines = async () => calls.push('lines');
+  dashboard.loadMaterialOrders = async options => calls.push(options?.silent ? 'orders-silent' : 'orders');
+
+  await dashboard.syncMaterialOrderData();
+
+  assert.deepEqual(calls, ['lines', 'orders-silent']);
+  assert.equal(dashboard.materialOrderSyncing, false);
+});
+
+test('material order table groups the same label/week and model across multiple lines', () => {
+  const context = { console, Date, Intl, Map, Math, Set, parseInt };
+  const alpineSource = fs.readFileSync(path.join(__dirname, '..', 'public/assets/js/alpine.js'), 'utf8');
+  vm.runInNewContext(alpineSource, context);
+
+  const dashboard = context.dashboard();
+  const groups = dashboard.materialOrderProductionGroups({
+    productions: [
+      { lineName: 'Line 1', modelId: 'model1', labelWeek: 'W30', modelName: 'Model A', productionActive: true },
+      { lineName: 'Line 2', modelId: 'model7', labelWeek: 'W30', modelName: 'Model A' },
+      { lineName: 'Line 4', modelId: 'model3', labelWeek: 'W30', modelName: 'Model A' },
+      { lineName: 'Line 5', modelId: 'model8', labelWeek: 'W30', modelName: 'Model A' },
+      { lineName: 'Line 3', modelId: 'model2', labelWeek: 'W31', modelName: 'Model B' }
+    ]
+  });
+
+  assert.equal(groups.length, 2);
+  assert.equal(groups[0].modelName, 'Model A');
+  assert.equal(groups[0].lineNames.length, 4);
+  assert.equal(groups[0].productionActive, true);
+  assert.equal(dashboard.compactMaterialOrderLines(groups[0].lineNames), 'Line 1, Line 2, Line 4 +1 lainnya');
+});
+
+test('opening a material order edit form refreshes models before resolving its selected groups', async () => {
+  const context = { console, Date, Intl, Map, Math, Set, parseInt };
+  const alpineSource = fs.readFileSync(path.join(__dirname, '..', 'public/assets/js/alpine.js'), 'utf8');
+  vm.runInNewContext(alpineSource, context);
+
+  const dashboard = context.dashboard();
+  const calls = [];
+  dashboard.loadLines = async () => {
+    calls.push('lines');
+    dashboard.linesWithModels = [
+      { lineName: 'Line 1', modelId: 'model2', data: { labelWeek: 'W30', model: 'Model A', outputDay: 10 } }
+    ];
+  };
+  dashboard.loadMaterialOrders = async options => {
+    calls.push(options?.silent ? 'orders-silent' : 'orders');
+    dashboard.materialOrders = [{
+      id: 1,
+      productions: [{ lineName: 'Line 1', modelId: 'model2', status: 'planned', qtyResult: 0 }]
+    }];
+  };
+
+  await dashboard.openMaterialOrderModal({ id: 1 });
+
+  assert.deepEqual(calls, ['lines', 'orders-silent']);
+  assert.equal(dashboard.materialOrderModal.data.productions[0].modelKey, 'w30::model a');
 });
 
 test('history dates are recognized for canonical and archived backup names', () => {

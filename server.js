@@ -88,11 +88,13 @@ const USERS_DATA_KEY = 'users_data';
 const DEFECT_CONFIG_KEY = 'defect_config';
 const PUBLIC_DISPLAY_SETTINGS_KEY = 'public_display_settings';
 const WORK_SCHEDULE_SETTINGS_KEY = 'work_schedule_settings';
+const MATERIAL_ORDERS_KEY = 'material_orders';
 let productionDataCache = { lines: {}, activeLine: '' };
 let usersDataCache = { users: [] };
 let defectConfigCache = { defectTypes: [], defectAreas: [] };
 let publicDisplaySettingsCache = {};
 let workScheduleSettingsCache = {};
+let materialOrdersCache = { orders: [] };
 const productionSnapshotCache = new Map();
 const productionImportPreviewCache = new Map();
 let databaseInitialized = false;
@@ -1399,6 +1401,230 @@ function normalizePublicDisplaySettings(settings = {}) {
   };
 }
 
+const MATERIAL_ORDER_STATUSES = ['planned', 'in_production', 'paused', 'completed'];
+
+function buildInitialMaterialOrders() {
+  return { orders: [] };
+}
+
+function normalizeMaterialOrderProduction(production = {}) {
+  return {
+    lineName: String(production.lineName || '').trim(),
+    modelId: String(production.modelId || '').trim(),
+    status: MATERIAL_ORDER_STATUSES.includes(production.status) ? production.status : 'planned',
+    qtyResult: Math.max(0, parseInt(production.qtyResult) || 0)
+  };
+}
+
+function getMaterialOrderProductions(order = {}) {
+  const productions = Array.isArray(order.productions) && order.productions.length > 0
+    ? order.productions
+    : (order.lineName || order.modelId
+      ? [{
+          lineName: order.lineName,
+          modelId: order.modelId,
+          status: order.status,
+          qtyResult: order.qtyResult
+        }]
+      : []);
+
+  return productions
+    .map(normalizeMaterialOrderProduction)
+    .filter(production => production.lineName || production.modelId || production.qtyResult > 0);
+}
+
+function deriveMaterialOrderStatus(productions = []) {
+  if (productions.some(production => production.status === 'in_production')) return 'in_production';
+  if (productions.some(production => production.status === 'paused')) return 'paused';
+  if (productions.length > 0 && productions.every(production => production.status === 'completed')) return 'completed';
+  return 'planned';
+}
+
+function deriveMaterialOrderProgressStatus(qtyOrder, qtyResult, productions = []) {
+  const orderQty = Math.max(0, Number(qtyOrder) || 0);
+  const resultQty = Math.max(0, Number(qtyResult) || 0);
+  if (orderQty > 0 && resultQty >= orderQty) return 'completed';
+  if (productions.some(production => production.status === 'paused')) return 'paused';
+  if (resultQty > 0) return 'in_production';
+  return 'planned';
+}
+
+function summarizeMaterialOrderProductionFields(productions = []) {
+  const normalizedProductions = productions.map(normalizeMaterialOrderProduction);
+  const uniqueLines = [...new Set(normalizedProductions.map(production => production.lineName).filter(Boolean))];
+  const qtyResult = normalizedProductions.reduce((total, production) => total + (Number(production.qtyResult) || 0), 0);
+
+  return {
+    lineName: uniqueLines.join(', '),
+    modelId: normalizedProductions.length === 1 ? normalizedProductions[0].modelId : '',
+    status: deriveMaterialOrderStatus(normalizedProductions),
+    qtyResult
+  };
+}
+
+function normalizeMaterialOrderRecord(order = {}) {
+  const productions = getMaterialOrderProductions(order);
+  const productionSummary = summarizeMaterialOrderProductionFields(productions);
+
+  return {
+    id: parseInt(order.id) || 0,
+    poMaterial: String(order.poMaterial || '').trim(),
+    orderMaterial: String(order.orderMaterial || '').trim(),
+    qtyOrder: Math.max(0, parseInt(order.qtyOrder) || 0),
+    productions,
+    lineName: productionSummary.lineName,
+    modelId: productionSummary.modelId,
+    status: productionSummary.status,
+    qtyResult: productionSummary.qtyResult,
+    orderDate: isValidDateInput(order.orderDate) ? order.orderDate : getToday(),
+    notes: String(order.notes || '').trim(),
+    createdBy: String(order.createdBy || '').trim(),
+    createdAt: String(order.createdAt || ''),
+    updatedAt: String(order.updatedAt || '')
+  };
+}
+
+function normalizeMaterialOrders(data = {}) {
+  return {
+    orders: Array.isArray(data.orders)
+      ? data.orders.map(normalizeMaterialOrderRecord).filter(order => order.id > 0)
+      : []
+  };
+}
+
+function getMaterialOrderActualQty(model, fallback = 0) {
+  const value = model ? model.outputDay : fallback;
+  return Math.max(0, parseInt(value) || 0);
+}
+
+function materialOrderProductionIdentity(lineName, model = {}) {
+  const normalize = value => String(value || '').trim().toLowerCase();
+  return `${normalize(lineName)}::${normalize(model.labelWeek)}::${normalize(model.model)}`;
+}
+
+function preserveMaterialOrderProductionIdentity(lineName, model, nextLabelWeek, nextModelName) {
+  if (!model) return;
+  const currentIdentity = materialOrderProductionIdentity(lineName, model);
+  const nextIdentity = materialOrderProductionIdentity(lineName, {
+    labelWeek: nextLabelWeek,
+    model: nextModelName
+  });
+  if (currentIdentity === nextIdentity) return;
+
+  const aliases = Array.isArray(model.materialOrderIdentityAliases)
+    ? model.materialOrderIdentityAliases.map(String).filter(Boolean)
+    : [];
+  model.materialOrderIdentityAliases = [...new Set([...aliases, currentIdentity])];
+}
+
+function getMaterialOrderHistoricalProductionData() {
+  const today = getToday();
+  const dates = new Set();
+  productionSnapshotCache.forEach(snapshot => {
+    if (snapshot.type === 'daily' && snapshot.snapshotDate !== today) dates.add(snapshot.snapshotDate);
+  });
+
+  return [...dates]
+    .sort((a, b) => a.localeCompare(b))
+    .map(date => readProductionSnapshotForDate(date))
+    .filter(Boolean);
+}
+
+function buildMaterialOrderCumulativeOutputs(productionData = readProductionData(), historicalData = null) {
+  const totals = {};
+  const sources = [
+    ...(Array.isArray(historicalData) ? historicalData : getMaterialOrderHistoricalProductionData()),
+    productionData
+  ];
+
+  sources.forEach(data => {
+    Object.entries(data?.lines || {}).forEach(([lineName, line]) => {
+      Object.values(line.models || {}).forEach(model => {
+        const identity = materialOrderProductionIdentity(lineName, model);
+        totals[identity] = (totals[identity] || 0) + getMaterialOrderActualQty(model);
+      });
+    });
+  });
+
+  return totals;
+}
+
+function getMaterialOrderCumulativeOutput(lineName, model, cumulativeOutputs = {}) {
+  if (!model) return 0;
+  const identities = [...new Set([
+    materialOrderProductionIdentity(lineName, model),
+    ...(Array.isArray(model.materialOrderIdentityAliases) ? model.materialOrderIdentityAliases : [])
+  ].map(String).filter(Boolean))];
+  const matchedOutputs = identities.filter(identity =>
+    Object.prototype.hasOwnProperty.call(cumulativeOutputs, identity)
+  );
+  return matchedOutputs.length > 0
+    ? matchedOutputs.reduce((total, identity) => total + getMaterialOrderActualQty(null, cumulativeOutputs[identity]), 0)
+    : getMaterialOrderActualQty(model);
+}
+
+function buildMaterialOrderProductionTotals(productionData = readProductionData(), cumulativeOutputs = buildMaterialOrderCumulativeOutputs(productionData)) {
+  const totals = {};
+  Object.entries(productionData.lines || {}).forEach(([lineName, line]) => {
+    Object.entries(line.models || {}).forEach(([modelId, model]) => {
+      totals[`${lineName}::${modelId}`] = getMaterialOrderCumulativeOutput(lineName, model, cumulativeOutputs);
+    });
+  });
+  return totals;
+}
+
+function validateMaterialOrderInput(input = {}, productionData = readProductionData()) {
+  const order = normalizeMaterialOrderRecord(input);
+  const errors = [];
+  const seenProductions = new Set();
+
+  if (!order.poMaterial) errors.push('PO Material wajib diisi');
+  if (!order.orderMaterial) errors.push('Order Material wajib diisi');
+  if (!Number.isInteger(Number(input.qtyOrder)) || Number(input.qtyOrder) <= 0) {
+    errors.push('Qty Order harus berupa angka lebih dari 0');
+  }
+  if (!isValidDateInput(input.orderDate)) errors.push('Tanggal order tidak valid');
+
+  if (order.productions.length === 0) {
+    errors.push('Minimal satu line dan model produksi wajib dipilih');
+  }
+
+  order.productions.forEach((production, index) => {
+    const rowLabel = `Alokasi produksi ${index + 1}`;
+    const rawProduction = Array.isArray(input.productions) && input.productions.length > 0
+      ? input.productions[index] || {}
+      : input;
+
+    if (!production.lineName || !production.modelId) {
+      errors.push(`${rowLabel}: line dan model produksi wajib dipilih`);
+      return;
+    }
+    const model = productionData.lines?.[production.lineName]?.models?.[production.modelId];
+    if (!model) {
+      errors.push(`${rowLabel}: line atau model produksi tidak ditemukan`);
+    } else {
+      production.qtyResult = getMaterialOrderActualQty(model);
+    }
+    if (!MATERIAL_ORDER_STATUSES.includes(rawProduction.status)) {
+      errors.push(`${rowLabel}: Status produksi tidak valid`);
+    }
+
+    const productionKey = `${production.lineName}::${production.modelId}`;
+    if (seenProductions.has(productionKey)) {
+      errors.push(`${rowLabel}: line dan model produksi tidak boleh duplikat`);
+    }
+    seenProductions.add(productionKey);
+  });
+
+  const productionSummary = summarizeMaterialOrderProductionFields(order.productions);
+  order.lineName = productionSummary.lineName;
+  order.modelId = productionSummary.modelId;
+  order.status = deriveMaterialOrderProgressStatus(order.qtyOrder, productionSummary.qtyResult, order.productions);
+  order.qtyResult = productionSummary.qtyResult;
+
+  return { order, errors };
+}
+
 function normalizeDefectKey(value) {
   return String(value || '').trim().toLowerCase();
 }
@@ -1925,6 +2151,7 @@ async function initSequelizeStorage() {
     let defectConfigRow = await AppData.findByPk(DEFECT_CONFIG_KEY);
     let publicDisplaySettingsRow = await AppData.findByPk(PUBLIC_DISPLAY_SETTINGS_KEY);
     let workScheduleSettingsRow = await AppData.findByPk(WORK_SCHEDULE_SETTINGS_KEY);
+    let materialOrdersRow = await AppData.findByPk(MATERIAL_ORDERS_KEY);
 
     if (!productionRow) {
       let initialProductionData = buildInitialProductionData();
@@ -1969,6 +2196,11 @@ async function initSequelizeStorage() {
       workScheduleSettingsRow = await AppData.findByPk(WORK_SCHEDULE_SETTINGS_KEY);
     }
 
+    if (!materialOrdersRow) {
+      await upsertAppData(MATERIAL_ORDERS_KEY, buildInitialMaterialOrders());
+      materialOrdersRow = await AppData.findByPk(MATERIAL_ORDERS_KEY);
+    }
+
     productionDataCache = parsePayload(
       productionRow ? productionRow.payload : '',
       buildInitialProductionData()
@@ -1988,6 +2220,10 @@ async function initSequelizeStorage() {
     workScheduleSettingsCache = normalizeWorkScheduleSettings(parsePayload(
       workScheduleSettingsRow ? workScheduleSettingsRow.payload : '',
       buildInitialWorkScheduleSettings()
+    ));
+    materialOrdersCache = normalizeMaterialOrders(parsePayload(
+      materialOrdersRow ? materialOrdersRow.payload : '',
+      buildInitialMaterialOrders()
     ));
 
     await loadProductionSnapshotCache();
@@ -2145,6 +2381,7 @@ function initializeDataFiles() {
     defectConfigCache = buildInitialDefectConfig();
     publicDisplaySettingsCache = buildInitialPublicDisplaySettings();
     workScheduleSettingsCache = buildInitialWorkScheduleSettings();
+    materialOrdersCache = buildInitialMaterialOrders();
   }
 
   fs.mkdirSync(databaseBackupDir, { recursive: true });
@@ -2251,6 +2488,183 @@ function writeWorkScheduleSettings(data) {
   workScheduleSettingsCache = normalizeWorkScheduleSettings(data);
   return upsertAppData(WORK_SCHEDULE_SETTINGS_KEY, workScheduleSettingsCache)
     .then(() => workScheduleSettingsCache);
+}
+
+function readMaterialOrders() {
+  materialOrdersCache = normalizeMaterialOrders(materialOrdersCache);
+  return materialOrdersCache;
+}
+
+function writeMaterialOrders(data) {
+  materialOrdersCache = normalizeMaterialOrders(data);
+  return upsertAppData(MATERIAL_ORDERS_KEY, materialOrdersCache)
+    .then(() => materialOrdersCache);
+}
+
+function buildMaterialOrderResponse(order, productionData = readProductionData(), cumulativeOutputs = buildMaterialOrderCumulativeOutputs(productionData)) {
+  const normalizedOrder = normalizeMaterialOrderRecord(order);
+  const productions = normalizedOrder.productions.map((production, index) => {
+    const model = productionData.lines?.[production.lineName]?.models?.[production.modelId];
+    const activeModels = productionData.lines?.[production.lineName]?.activeModels || [];
+    const currentProductionOutput = model
+      ? getMaterialOrderCumulativeOutput(production.lineName, model, cumulativeOutputs)
+      : getMaterialOrderActualQty(null, production.qtyResult);
+
+    return {
+      ...production,
+      qtyResult: currentProductionOutput,
+      allocationIndex: index + 1,
+      modelName: model?.model || '',
+      labelWeek: model?.labelWeek || '',
+      currentProductionOutput,
+      productionActive: activeModels.includes(production.modelId)
+        || productionData.lines?.[production.lineName]?.activeModel === production.modelId,
+      linkedModelExists: Boolean(model)
+    };
+  });
+
+  const qtyResult = productions.reduce((total, production) => total + (Number(production.qtyResult) || 0), 0);
+  const currentProductionOutput = productions.reduce((total, production) => total + (Number(production.currentProductionOutput) || 0), 0);
+  const uniqueLines = [...new Set(productions.map(production => production.lineName).filter(Boolean))];
+  const firstProduction = productions[0] || {};
+
+  return {
+    ...normalizedOrder,
+    productions,
+    lineName: uniqueLines.join(', '),
+    modelId: productions.length === 1 ? firstProduction.modelId : '',
+    modelName: productions.length === 1 ? firstProduction.modelName : '',
+    labelWeek: productions.length === 1 ? firstProduction.labelWeek : '',
+    status: deriveMaterialOrderProgressStatus(normalizedOrder.qtyOrder, qtyResult, productions),
+    qtyResult,
+    currentProductionOutput,
+    productionActive: productions.some(production => production.productionActive),
+    linkedModelExists: productions.length > 0 && productions.every(production => production.linkedModelExists),
+    productionCount: productions.length
+  };
+}
+
+function flattenMaterialOrderReportRows(orders, productionData = readProductionData(), cumulativeOutputs = buildMaterialOrderCumulativeOutputs(productionData)) {
+  return (orders || []).map(order => {
+    const response = buildMaterialOrderResponse(order, productionData, cumulativeOutputs);
+    const labelWeeks = [...new Set(response.productions.map(production => production.labelWeek).filter(Boolean))];
+    const modelNames = [...new Set(response.productions.map(production => production.modelName).filter(Boolean))];
+
+    return {
+      ...response,
+      orderId: response.id,
+      rowId: String(response.id),
+      labelWeek: labelWeeks.join(', '),
+      modelName: modelNames.join(', '),
+      orderStatus: response.status,
+      orderQtyResult: response.qtyResult,
+      productionLines: response.productions.map(production => production.lineName)
+    };
+  });
+}
+
+function filterMaterialOrderReportRows(orders, filters = {}, productionData = readProductionData(), cumulativeOutputs = buildMaterialOrderCumulativeOutputs(productionData)) {
+  const startDate = filters.startDate || '';
+  const endDate = filters.endDate || '';
+  const lineName = String(filters.line || '').trim();
+  const status = String(filters.status || '').trim();
+  const poMaterial = String(filters.poMaterial || '').trim().toLowerCase();
+
+  return flattenMaterialOrderReportRows(orders, productionData, cumulativeOutputs)
+    .filter(order => (!startDate || order.orderDate >= startDate)
+      && (!endDate || order.orderDate <= endDate)
+      && (!lineName || order.productionLines.includes(lineName))
+      && (!status || order.status === status)
+      && (!poMaterial || String(order.poMaterial || '').trim().toLowerCase() === poMaterial))
+    .sort((a, b) => String(b.orderDate).localeCompare(String(a.orderDate))
+      || (Number(b.orderId) || 0) - (Number(a.orderId) || 0));
+}
+
+function summarizeMaterialOrderReport(rows = []) {
+  const countedOrders = new Map();
+
+  return rows.reduce((summary, row) => {
+    const orderKey = Number(row.orderId || row.id) || row.poMaterial;
+    if (!countedOrders.has(orderKey)) {
+      countedOrders.set(orderKey, true);
+      summary.total += 1;
+      summary.qtyOrder += Number(row.qtyOrder) || 0;
+      if (row.orderStatus === 'in_production') summary.inProduction += 1;
+      if (row.orderStatus === 'completed') summary.completed += 1;
+    }
+    summary.qtyResult += Number(row.qtyResult) || 0;
+    return summary;
+  }, { total: 0, qtyOrder: 0, qtyResult: 0, inProduction: 0, completed: 0 });
+}
+
+async function generateMaterialOrderReportExcel(rows, summary, filters = {}) {
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = 'Production Dashboard System';
+
+  const summarySheet = workbook.addWorksheet('SUMMARY');
+  summarySheet.mergeCells('A1:B1');
+  summarySheet.getCell('A1').value = 'REPORT ORDER MATERIAL';
+  summarySheet.getCell('A1').font = { bold: true, size: 16, color: { argb: 'FFFFFF' } };
+  summarySheet.getCell('A1').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '0F766E' } };
+  summarySheet.getCell('A1').alignment = { horizontal: 'center' };
+  [
+    ['Periode', filters.startDate && filters.endDate ? `${filters.startDate} s/d ${filters.endDate}` : 'Semua tanggal'],
+    ['PO Material', filters.poMaterial || 'Semua PO'],
+    ['Status', filters.status ? ({ planned: 'Direncanakan', in_production: 'Sedang Produksi', paused: 'Ditunda', completed: 'Selesai' }[filters.status] || filters.status) : 'Semua status'],
+    ['Total PO', summary.total],
+    ['Total Qty Order', summary.qtyOrder],
+    ['Total Qty Hasil', summary.qtyResult],
+    ['Sedang Produksi', summary.inProduction],
+    ['Selesai', summary.completed]
+  ].forEach((values, index) => {
+    const row = summarySheet.getRow(index + 3);
+    row.values = values;
+    row.getCell(1).font = { bold: true, color: { argb: '334155' } };
+  });
+  summarySheet.columns = [{ width: 24 }, { width: 36 }];
+
+  const sheet = workbook.addWorksheet('ORDER MATERIAL');
+  const headers = ['No', 'Tanggal Order', 'PO Material', 'Order Material', 'Qty Order', 'Label/Week', 'Model Produksi', 'Total Output Produksi', 'Total Qty Hasil', 'Status PO', 'Progress PO', 'Catatan'];
+  sheet.getRow(1).values = headers;
+  sheet.getRow(1).eachCell(cell => {
+    cell.font = { bold: true, color: { argb: 'FFFFFF' } };
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'D97706' } };
+    cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+  });
+  rows.forEach((order, index) => {
+    const qtyOrder = Number(order.qtyOrder) || 0;
+    const totalQtyResult = Number(order.orderQtyResult ?? order.qtyResult) || 0;
+    const progress = qtyOrder > 0 ? Math.min(100, Math.round((totalQtyResult / qtyOrder) * 100)) : 0;
+    const row = sheet.addRow([
+      index + 1,
+      order.orderDate,
+      order.poMaterial,
+      order.orderMaterial,
+      qtyOrder,
+      order.labelWeek,
+      order.modelName,
+      Number(order.currentProductionOutput) || 0,
+      totalQtyResult,
+      { planned: 'Direncanakan', in_production: 'Sedang Produksi', paused: 'Ditunda', completed: 'Selesai' }[order.orderStatus] || order.orderStatus || order.status,
+      `${progress}%`,
+      order.notes || ''
+    ]);
+    row.eachCell(cell => {
+      cell.border = {
+        top: { style: 'thin', color: { argb: 'E2E8F0' } },
+        left: { style: 'thin', color: { argb: 'E2E8F0' } },
+        bottom: { style: 'thin', color: { argb: 'E2E8F0' } },
+        right: { style: 'thin', color: { argb: 'E2E8F0' } }
+      };
+      cell.alignment = { vertical: 'top', wrapText: true };
+    });
+  });
+  sheet.columns = headers.map(header => ({
+    width: ['Order Material', 'Model Produksi', 'Catatan'].includes(header) ? 28 : (header === 'PO Material' ? 22 : 16)
+  }));
+  sheet.views = [{ state: 'frozen', ySplit: 1 }];
+  sheet.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: headers.length } };
+  return workbook;
 }
 
 function generateUserId(users) {
@@ -4973,20 +5387,24 @@ app.put('/api/lines/:lineName', requireLogin, requireLineManagementAccess, autoC
     return res.status(400).json({ error: 'Tanggal line/model harus menggunakan tanggal operasional hari ini' });
   }
 
-  data.lines[lineName].models[targetModelId].labelWeek = labelWeek;
-  data.lines[lineName].models[targetModelId].model = model;
-  data.lines[lineName].models[targetModelId].target = newTarget;
-  applyDailyTarget(data.lines[lineName].models[targetModelId], newTarget);
+  const targetModel = data.lines[lineName].models[targetModelId];
+  const nextLabelWeek = labelWeek === undefined ? targetModel.labelWeek : String(labelWeek || '').trim();
+  const nextModelName = model === undefined ? targetModel.model : String(model || '').trim();
+  preserveMaterialOrderProductionIdentity(lineName, targetModel, nextLabelWeek, nextModelName);
+  targetModel.labelWeek = nextLabelWeek;
+  targetModel.model = nextModelName;
+  targetModel.target = newTarget;
+  applyDailyTarget(targetModel, newTarget);
   
   if (date) {
-    data.lines[lineName].models[targetModelId].date = date;
+    targetModel.date = date;
   }
 
   let totalTarget = 0;
-  data.lines[lineName].models[targetModelId].hourly_data.forEach(hour => {
+  targetModel.hourly_data.forEach(hour => {
     totalTarget += hour.targetManual || 0;
   });
-  data.lines[lineName].models[targetModelId].target = totalTarget;
+  targetModel.target = totalTarget;
 
   await writeProductionData(data);
   
@@ -4995,7 +5413,7 @@ app.put('/api/lines/:lineName', requireLogin, requireLineManagementAccess, autoC
   
   res.json({ 
     message: `Model ${targetModelId} in line ${lineName} updated successfully`, 
-    data: data.lines[lineName].models[targetModelId]
+    data: targetModel
   });
 });
 
@@ -5157,10 +5575,17 @@ app.post('/api/update-line/:lineName/:modelId', requireLogin, requireLineAccess,
   }
 
   if (Object.prototype.hasOwnProperty.call(newData, 'labelWeek')) {
-    model.labelWeek = String(newData.labelWeek || '').trim();
-  }
-  if (Object.prototype.hasOwnProperty.call(newData, 'model')) {
-    model.model = String(newData.model || '').trim();
+    const nextLabelWeek = String(newData.labelWeek || '').trim();
+    const nextModelName = Object.prototype.hasOwnProperty.call(newData, 'model')
+      ? String(newData.model || '').trim()
+      : model.model;
+    preserveMaterialOrderProductionIdentity(lineName, model, nextLabelWeek, nextModelName);
+    model.labelWeek = nextLabelWeek;
+    if (Object.prototype.hasOwnProperty.call(newData, 'model')) model.model = nextModelName;
+  } else if (Object.prototype.hasOwnProperty.call(newData, 'model')) {
+    const nextModelName = String(newData.model || '').trim();
+    preserveMaterialOrderProductionIdentity(lineName, model, model.labelWeek, nextModelName);
+    model.model = nextModelName;
   }
   if (hasDate) {
     model.date = nextDate;
@@ -6132,6 +6557,122 @@ app.put('/api/work-schedule-settings', requireLogin, requireAdmin, async (req, r
   res.json({ message: 'Pengaturan hari kerja berhasil disimpan', settings });
 });
 
+app.get('/api/material-orders', requireLogin, requireAdmin, async (req, res) => {
+  const productionData = readProductionData();
+  const cumulativeOutputs = buildMaterialOrderCumulativeOutputs(productionData);
+  const orders = readMaterialOrders().orders
+    .map(order => buildMaterialOrderResponse(order, productionData, cumulativeOutputs))
+    .sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0));
+  res.json(orders);
+});
+
+app.get('/api/material-orders/production-totals', requireLogin, requireAdmin, async (req, res) => {
+  const productionData = readProductionData();
+  const cumulativeOutputs = buildMaterialOrderCumulativeOutputs(productionData);
+  res.json(buildMaterialOrderProductionTotals(productionData, cumulativeOutputs));
+});
+
+app.get('/api/material-orders/report', requireLogin, requireAdmin, async (req, res) => {
+  const { startDate = '', endDate = '', line = '', status = '', poMaterial = '' } = req.query;
+  if ((startDate && !isValidDateInput(startDate)) || (endDate && !isValidDateInput(endDate))) {
+    return res.status(400).json({ error: 'Tanggal report tidak valid' });
+  }
+  if (startDate && endDate && startDate > endDate) {
+    return res.status(400).json({ error: 'Tanggal mulai tidak boleh lebih besar dari tanggal selesai' });
+  }
+  if (status && !MATERIAL_ORDER_STATUSES.includes(status)) {
+    return res.status(400).json({ error: 'Status report tidak valid' });
+  }
+
+  const filters = { startDate, endDate, line, status, poMaterial };
+  const rows = filterMaterialOrderReportRows(readMaterialOrders().orders, filters);
+  return res.json({ rows, summary: summarizeMaterialOrderReport(rows), filters });
+});
+
+app.get('/api/material-orders/report/export', requireLogin, requireAdmin, async (req, res) => {
+  const { startDate = '', endDate = '', line = '', status = '', poMaterial = '' } = req.query;
+  if ((startDate && !isValidDateInput(startDate)) || (endDate && !isValidDateInput(endDate))) {
+    return res.status(400).json({ error: 'Tanggal report tidak valid' });
+  }
+  if (startDate && endDate && startDate > endDate) {
+    return res.status(400).json({ error: 'Tanggal mulai tidak boleh lebih besar dari tanggal selesai' });
+  }
+  if (status && !MATERIAL_ORDER_STATUSES.includes(status)) {
+    return res.status(400).json({ error: 'Status report tidak valid' });
+  }
+
+  try {
+    const filters = { startDate, endDate, line, status, poMaterial };
+    const rows = filterMaterialOrderReportRows(readMaterialOrders().orders, filters);
+    const workbook = await generateMaterialOrderReportExcel(rows, summarizeMaterialOrderReport(rows), filters);
+    const buffer = await workbook.xlsx.writeBuffer();
+    const dateSuffix = startDate && endDate ? `${startDate}_to_${endDate}` : getToday();
+    const lineSuffix = line ? `_${line.replace(/[^a-zA-Z0-9_-]+/g, '_')}` : '';
+    const poSuffix = poMaterial ? `_${poMaterial.replace(/[^a-zA-Z0-9_-]+/g, '_')}` : '';
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="Report_Order_Material${poSuffix}${lineSuffix}_${dateSuffix}.xlsx"`);
+    return res.send(buffer);
+  } catch (error) {
+    logger.error('Gagal export report order material:', error);
+    return res.status(500).json({ error: 'Gagal membuat export report order material' });
+  }
+});
+
+app.post('/api/material-orders', requireLogin, requireAdmin, async (req, res) => {
+  const { order, errors } = validateMaterialOrderInput(req.body || {});
+  if (errors.length) return res.status(400).json({ error: errors.join('. ') });
+
+  const data = readMaterialOrders();
+  const now = new Date().toISOString();
+  const savedOrder = {
+    ...order,
+    id: generateNumericId(data.orders),
+    createdBy: req.session.user.name || req.session.user.username,
+    createdAt: now,
+    updatedAt: now
+  };
+  data.orders.push(savedOrder);
+  await writeMaterialOrders(data);
+  return res.status(201).json({
+    message: 'Order material berhasil ditambahkan',
+    order: buildMaterialOrderResponse(savedOrder)
+  });
+});
+
+app.put('/api/material-orders/:id', requireLogin, requireAdmin, async (req, res) => {
+  const id = parseInt(req.params.id);
+  const data = readMaterialOrders();
+  const index = data.orders.findIndex(order => order.id === id);
+  if (index === -1) return res.status(404).json({ error: 'Order material tidak ditemukan' });
+
+  const { order, errors } = validateMaterialOrderInput(req.body || {});
+  if (errors.length) return res.status(400).json({ error: errors.join('. ') });
+
+  const savedOrder = {
+    ...data.orders[index],
+    ...order,
+    id,
+    updatedAt: new Date().toISOString()
+  };
+  data.orders[index] = savedOrder;
+  await writeMaterialOrders(data);
+  return res.json({
+    message: 'Order material berhasil diperbarui',
+    order: buildMaterialOrderResponse(savedOrder)
+  });
+});
+
+app.delete('/api/material-orders/:id', requireLogin, requireAdmin, async (req, res) => {
+  const id = parseInt(req.params.id);
+  const data = readMaterialOrders();
+  const index = data.orders.findIndex(order => order.id === id);
+  if (index === -1) return res.status(404).json({ error: 'Order material tidak ditemukan' });
+
+  data.orders.splice(index, 1);
+  await writeMaterialOrders(data);
+  return res.json({ message: 'Order material berhasil dihapus' });
+});
+
 app.get('/api/defect-types', requireLogin, async (req, res) => {
   const config = readDefectConfig();
   res.json((config.defectTypes || []).filter(type => type.active !== false));
@@ -6821,6 +7362,14 @@ module.exports = {
   isValidDateRange,
   isModelActiveInManagement,
   mergeProductionSnapshotsByDate,
+  filterMaterialOrderReportRows,
+  buildMaterialOrderCumulativeOutputs,
+  buildMaterialOrderProductionTotals,
+  deriveMaterialOrderProgressStatus,
+  summarizeMaterialOrderReport,
+  generateMaterialOrderReportExcel,
+  normalizeMaterialOrderRecord,
+  validateMaterialOrderInput,
   isValidProductionSnapshot,
   isBlankInputValue,
   parseNonNegativeInteger,

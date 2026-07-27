@@ -452,7 +452,7 @@
 	                        </div>
 	                    </div>
 
-		                </div>
+	                </div>
 
 	                <!-- Line Summary Page -->
 	                <div x-show="currentPage === 'line-summary'" class="fade-in">
@@ -918,14 +918,14 @@
 	                                        <div>
 	                                            <label for="target-manual" class="block text-sm font-medium text-gray-700 mb-2">Target Manual</label>
 	                                            <input type="number" id="target-manual" x-model="inputForm.targetManual" min="0"
-	                                                   :placeholder="lineDetail.hourly_data[inputForm.hourIndex]?.targetManual"
+	                                                   :placeholder="lineDetail.hourly_data?.[inputForm.hourIndex]?.targetManual"
 	                                                   :disabled="isSelectedProductionHourLocked()"
 	                                                   class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" required>
 	                                        </div>
 
 	                                        <div>
 	                                            <label class="block text-sm font-medium text-gray-700 mb-2">Target Saat Ini</label>
-	                                            <p class="text-lg font-semibold text-gray-900" x-text="lineDetail.hourly_data[inputForm.hourIndex]?.targetManual || 0"></p>
+	                                            <p class="text-lg font-semibold text-gray-900" x-text="lineDetail.hourly_data?.[inputForm.hourIndex]?.targetManual || 0"></p>
 	                                            <p class="text-xs text-gray-500">Target harian ikut total target manual</p>
 	                                        </div>
 	                                    </div>
@@ -1187,6 +1187,268 @@
 	                    </div>
 	                </div>
 
+	                <!-- Material Orders - Hanya untuk Admin -->
+	                <div x-show="currentPage === 'material-orders' && currentUser.role === 'admin'" class="fade-in material-orders-page">
+	                    <div class="mb-6 material-orders-heading">
+		                        <div>
+		                            <h1 class="text-2xl font-bold text-gray-800 flex items-center"><i class="fa-solid fa-boxes-packing text-amber-600 mr-3"></i>Order Material</h1>
+		                            <p class="text-gray-600">Catat PO dan qty material, hubungkan ke proses produksi, lalu pantau hasil aktualnya.</p>
+		                            <small class="text-emerald-700"><i class="fa-solid fa-rotate mr-1" :class="materialOrderSyncing ? 'fa-spin' : ''"></i>Sinkron otomatis dengan data produksi setiap 10 detik<span x-show="materialOrderLastSyncedAt" x-text="` · terakhir ${materialOrderLastSyncedAt}`"></span></small>
+		                        </div>
+	                        <button @click="openMaterialOrderModal()" class="material-primary-button">
+	                            <i class="fa-solid fa-plus"></i>Tambah Order Material
+	                        </button>
+	                    </div>
+
+	                    <div class="material-summary-grid mb-6">
+	                        <section class="material-summary-card is-total">
+	                            <span class="material-summary-icon"><i class="fa-solid fa-file-invoice"></i></span>
+	                            <div><small>Total PO</small><strong x-text="materialOrderSummary.total"></strong><p>order tercatat</p></div>
+	                        </section>
+	                        <section class="material-summary-card is-running">
+	                            <span class="material-summary-icon"><i class="fa-solid fa-gears"></i></span>
+	                            <div><small>Sedang Jalan</small><strong x-text="materialOrderSummary.inProduction"></strong><p>order di produksi</p></div>
+	                        </section>
+	                        <section class="material-summary-card is-order">
+	                            <span class="material-summary-icon"><i class="fa-solid fa-layer-group"></i></span>
+	                            <div><small>Total Qty Order</small><strong x-text="formatDashboardNumber(materialOrderSummary.qtyOrder)"></strong><p>unit material</p></div>
+	                        </section>
+	                        <section class="material-summary-card is-result">
+	                            <span class="material-summary-icon"><i class="fa-solid fa-box-open"></i></span>
+	                            <div><small>Total Qty Hasil</small><strong x-text="formatDashboardNumber(materialOrderSummary.qtyResult)"></strong><p>unit hasil aktual</p></div>
+	                        </section>
+	                    </div>
+
+	                    <section class="material-orders-panel">
+	                        <div class="material-orders-toolbar">
+	                            <div class="filter-control filter-control-search has-icon">
+	                                <i class="fa-solid fa-magnifying-glass filter-control-icon"></i>
+	                                <input type="text" x-model="materialOrderSearchTerm" @input="materialOrderCurrentPage = 1" placeholder="Cari PO, material, line, model..." class="px-3 py-2 border border-gray-300 rounded-md">
+	                            </div>
+	                            <div class="filter-control filter-control-select has-icon">
+	                                <i class="fa-solid fa-industry filter-control-icon"></i>
+	                                <select x-model="materialOrderLineFilter" @change="materialOrderCurrentPage = 1" class="px-3 py-2 border border-gray-300 rounded-md">
+	                                    <option value="">Semua Line</option>
+	                                    <template x-for="lineName in materialOrderLineOptions" :key="lineName"><option :value="lineName" x-text="lineName"></option></template>
+	                                </select>
+	                            </div>
+	                            <div class="filter-control filter-control-select has-icon">
+	                                <i class="fa-solid fa-filter filter-control-icon"></i>
+	                                <select x-model="materialOrderStatusFilter" @change="materialOrderCurrentPage = 1" class="px-3 py-2 border border-gray-300 rounded-md">
+	                                    <option value="">Semua Status</option>
+	                                    <option value="planned">Direncanakan</option>
+	                                    <option value="in_production">Sedang Produksi</option>
+	                                    <option value="paused">Ditunda</option>
+	                                    <option value="completed">Selesai</option>
+	                                </select>
+	                            </div>
+	                            <div class="material-page-size">
+	                                <span>Tampilkan</span>
+	                                <select x-model="materialOrdersPerPage" @change="materialOrderCurrentPage = 1" class="px-3 py-2 border border-gray-300 rounded-md">
+	                                    <option value="5">5</option><option value="10">10</option><option value="20">20</option><option value="50">50</option>
+	                                </select>
+	                            </div>
+	                        </div>
+
+	                        <div class="overflow-x-auto">
+	                            <table class="min-w-full material-orders-table">
+	                                <thead>
+	                                    <tr>
+		                                        <th>Tanggal</th>
+		                                        <th>PO Material</th>
+		                                        <th>Order Material</th>
+	                                        <th>Qty Order</th>
+	                                        <th>Produksi</th>
+	                                        <th>Status</th>
+	                                        <th>Output Produksi</th>
+	                                        <th>Qty Hasil</th>
+	                                        <th>Aksi</th>
+	                                    </tr>
+	                                </thead>
+	                                <tbody>
+	                                    <template x-for="order in paginatedMaterialOrders" :key="order.id">
+	                                        <tr>
+		                                            <td class="whitespace-nowrap"><span x-text="formatDashboardDate(order.orderDate)"></span></td>
+		                                            <td><strong class="material-po-number" x-text="order.poMaterial"></strong></td>
+		                                            <td><span class="material-name" x-text="order.orderMaterial"></span></td>
+	                                            <td><strong class="material-qty" x-text="formatDashboardNumber(order.qtyOrder)"></strong><span class="material-unit"> unit</span></td>
+		                                            <td>
+		                                                <div class="material-production-stack">
+		                                                    <template x-for="group in materialOrderProductionGroups(order)" :key="`${order.id}-${group.groupKey}`">
+		                                                        <div class="material-production-link material-production-group">
+		                                                            <div class="material-production-title"><span><i class="fa-solid fa-boxes-stacked"></i><b x-text="group.modelName"></b></span><small x-text="group.labelWeek"></small></div>
+		                                                            <div class="material-production-lines" :title="group.lineNames.join(', ')"><strong x-text="`${group.lineNames.length} line`"></strong><small x-text="compactMaterialOrderLines(group.lineNames)"></small></div>
+		                                                            <em x-show="group.productionActive"><i class="fa-solid fa-circle"></i> Aktif</em>
+		                                                            <em x-show="!group.linkedModelExists" class="material-production-missing"><i class="fa-solid fa-triangle-exclamation"></i> Model tidak tersedia</em>
+		                                                        </div>
+		                                                    </template>
+	                                                </div>
+	                                            </td>
+	                                            <td><span class="material-status" :class="materialOrderStatusClass(order.status)" x-text="materialOrderStatusLabel(order.status)"></span></td>
+	                                            <td>
+	                                                <strong class="material-live-output" x-text="formatDashboardNumber(order.currentProductionOutput)"></strong>
+	                                                <small class="material-live-label">total output line saat ini</small>
+	                                            </td>
+	                                            <td>
+	                                                <div class="material-result-copy"><strong x-text="formatDashboardNumber(order.qtyResult)"></strong><span x-text="`${materialOrderProgress(order)}%`"></span></div>
+	                                                <div class="material-result-progress"><i :style="`width: ${materialOrderProgress(order)}%`"></i></div>
+	                                            </td>
+	                                            <td>
+	                                                <div class="table-actions">
+	                                                    <button @click="openMaterialOrderModal(order)" class="btn-action btn-action-primary"><i class="fa-solid fa-pen-to-square"></i>Edit</button>
+	                                                    <button @click="deleteMaterialOrder(order)" class="btn-action btn-action-danger"><i class="fa-solid fa-trash-can"></i>Hapus</button>
+	                                                </div>
+	                                            </td>
+	                                        </tr>
+	                                    </template>
+		                                    <tr x-show="filteredMaterialOrders.length === 0"><td colspan="9" class="material-empty-state"><i class="fa-solid fa-box-open"></i><strong>Belum ada order material</strong><span>Tambah PO material pertama atau ubah filter pencarian.</span></td></tr>
+	                                </tbody>
+	                            </table>
+	                        </div>
+
+	                        <div class="material-pagination">
+	                            <span><b x-text="filteredMaterialOrders.length === 0 ? 0 : ((materialOrderCurrentPage - 1) * materialOrdersPerPage) + 1"></b> - <b x-text="Math.min(materialOrderCurrentPage * materialOrdersPerPage, filteredMaterialOrders.length)"></b> dari <b x-text="filteredMaterialOrders.length"></b></span>
+	                            <div>
+	                                <button @click="materialOrderCurrentPage--" :disabled="materialOrderCurrentPage <= 1" class="pagination-btn">&lsaquo;</button>
+	                                <template x-for="page in materialOrderPages" :key="page"><button @click="materialOrderCurrentPage = page" class="pagination-btn" :class="{ active: page === materialOrderCurrentPage }" x-text="page"></button></template>
+	                                <button @click="materialOrderCurrentPage++" :disabled="materialOrderCurrentPage >= totalMaterialOrderPages" class="pagination-btn">&rsaquo;</button>
+	                            </div>
+	                        </div>
+	                    </section>
+	                </div>
+
+	                <!-- Report Tabs -->
+	                <div x-show="currentPage === 'report' && canViewReport()" class="bg-white rounded-lg shadow overflow-hidden card-shadow mb-6 fade-in">
+	                    <div class="flex flex-wrap gap-2 p-2 border-b border-gray-200 bg-gray-50">
+	                        <button @click="setReportTab('production')" class="inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold transition-colors" :class="reportTab === 'production' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-600 hover:bg-white hover:text-blue-700'">
+	                            <i class="fa-solid fa-chart-column"></i>Laporan Produksi dan QC
+	                        </button>
+	                        <button x-show="currentUser.role === 'admin'" @click="setReportTab('material')" class="inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold transition-colors" :class="reportTab === 'material' ? 'bg-teal-700 text-white shadow-sm' : 'text-gray-600 hover:bg-white hover:text-teal-700'">
+	                            <i class="fa-solid fa-file-export"></i>Report Material
+	                        </button>
+	                    </div>
+	                </div>
+
+	                <!-- Material Order Report - Hanya untuk Admin -->
+	                <div x-show="currentPage === 'report' && reportTab === 'material' && currentUser.role === 'admin'" class="bg-white rounded-lg shadow overflow-hidden card-shadow mb-6 fade-in">
+	                    <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+	                        <h3 class="text-lg leading-6 font-medium text-gray-900 flex items-center"><i class="fa-solid fa-file-export text-teal-700 mr-2"></i>Report Material</h3>
+		                        <p class="mt-1 max-w-2xl text-sm text-gray-500">Lihat total output produksi dan qty hasil untuk setiap PO Material. Data tersinkron otomatis setiap 10 detik.</p>
+	                    </div>
+	                    <div class="p-4">
+	                        <div class="filter-toolbar line-management-toolbar">
+	                            <div class="filter-group">
+	                                <span class="filter-caption"><i class="fa-solid fa-calendar-days"></i>Dari tanggal</span>
+	                                <div class="filter-control filter-control-select">
+	                                    <input type="date" id="material-report-start-date" x-model="materialOrderReport.startDate" class="focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
+	                                </div>
+	                            </div>
+	                            <div class="filter-group">
+	                                <span class="filter-caption"><i class="fa-solid fa-calendar-days"></i>Sampai tanggal</span>
+	                                <div class="filter-control filter-control-select">
+	                                    <input type="date" id="material-report-end-date" x-model="materialOrderReport.endDate" class="focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
+	                                </div>
+	                            </div>
+	                            <div class="filter-group">
+	                                <span class="filter-caption"><i class="fa-solid fa-filter"></i>Status</span>
+	                                <div class="filter-control filter-control-select has-icon">
+	                                    <i class="fa-solid fa-filter filter-control-icon"></i>
+	                                    <select x-model="materialOrderReport.status" @change="materialOrderReportCurrentPage = 1" aria-label="Filter report material berdasarkan status" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+	                                        <option value="">Semua Status</option>
+	                                        <option value="planned">Direncanakan</option>
+	                                        <option value="in_production">Sedang Produksi</option>
+	                                        <option value="paused">Ditunda</option>
+	                                        <option value="completed">Selesai</option>
+	                                    </select>
+	                                </div>
+	                            </div>
+	                            <div class="filter-group">
+	                                <button @click="loadMaterialOrderReport()" :disabled="materialOrderReport.loading" class="btn-compact inline-flex items-center border border-transparent font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+	                                    <i class="fa-solid mr-2" :class="materialOrderReport.loading ? 'fa-spinner fa-spin' : 'fa-magnifying-glass-chart'"></i><span x-text="materialOrderReport.loading ? 'Memuat...' : 'Lihat Laporan'"></span>
+	                                </button>
+	                                <button @click="exportMaterialOrderReport()" :disabled="materialOrderReport.exporting" class="btn-compact inline-flex items-center border border-transparent font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+	                                    <i class="fa-solid fa-file-excel mr-2" :class="materialOrderReport.exporting ? 'fa-spinner fa-spin' : 'fa-file-excel'"></i><span x-text="materialOrderReport.exporting ? 'Menyiapkan...' : 'Export Excel'"></span>
+	                                </button>
+	                            </div>
+	                        </div>
+
+	                        <div x-show="materialOrderReport.rows && materialOrderReport.rows.length > 0" class="report-results mt-4">
+	                            <div class="report-results-header flex justify-between items-center mb-4">
+		                                <h4 class="text-lg font-medium text-gray-900 flex items-center"><i class="fa-solid fa-table-list text-teal-700 mr-2"></i>Hasil Laporan: <span class="ml-1" x-text="materialOrderReport.startDate === materialOrderReport.endDate ? materialOrderReport.startDate : materialOrderReport.startDate + ' s.d. ' + materialOrderReport.endDate"></span></h4>
+	                                <div class="filter-group">
+	                                    <span class="filter-caption"><i class="fa-solid fa-table-list"></i>Tampilkan</span>
+	                                    <div class="filter-control filter-control-page-size">
+	                                        <select x-model="materialOrderReportPerPage" @change="materialOrderReportCurrentPage = 1" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+	                                            <option value="5">5</option>
+	                                            <option value="10">10</option>
+	                                            <option value="20">20</option>
+	                                            <option value="50">50</option>
+	                                        </select>
+	                                    </div>
+	                                </div>
+	                            </div>
+
+	                            <div class="overflow-x-auto">
+	                                <table class="min-w-full divide-y divide-gray-200">
+	                                    <thead class="bg-gray-50">
+	                                        <tr>
+	                                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal</th>
+	                                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PO Material</th>
+	                                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order Material</th>
+		                                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Label/Week</th>
+		                                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Model Produksi</th>
+		                                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Qty Order</th>
+		                                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Output Produksi</th>
+		                                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Qty Hasil</th>
+		                                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status PO</th>
+		                                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Progress</th>
+		                                            <th scope="col" class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Export</th>
+	                                        </tr>
+	                                    </thead>
+	                                    <tbody class="bg-white divide-y divide-gray-200">
+	                                        <template x-for="order in paginatedMaterialOrderReportRows" :key="order.rowId || `${order.id}-${order.allocationIndex || 0}`">
+	                                            <tr>
+	                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900" x-text="formatShortDate(order.orderDate)"></td>
+	                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900" x-text="order.poMaterial"></td>
+	                                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500" x-text="order.orderMaterial"></td>
+		                                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500" x-text="order.labelWeek || '-' "></td>
+	                                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500" x-text="order.modelName || '-' "></td>
+	                                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500" x-text="formatDashboardNumber(order.qtyOrder)"></td>
+	                                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500" x-text="formatDashboardNumber(order.currentProductionOutput)"></td>
+	                                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500" x-text="formatDashboardNumber(order.qtyResult)"></td>
+		                                                <td class="px-4 py-3 whitespace-nowrap text-sm" x-text="materialOrderStatusLabel(order.status)" :class="materialOrderStatusClass(order.status)"></td>
+		                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-medium" :class="materialOrderProgress(order) >= 100 ? 'text-green-600' : 'text-amber-600'" x-text="materialOrderProgress(order) + '%' "></td>
+		                                                <td class="px-4 py-3 whitespace-nowrap text-center"><button type="button" @click="exportMaterialOrderPo(order)" :disabled="Boolean(materialOrderExportingPo)" class="btn-compact inline-flex items-center border border-transparent font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50"><i class="fa-solid mr-2" :class="materialOrderExportingPo === order.poMaterial ? 'fa-spinner fa-spin' : 'fa-file-excel'"></i><span x-text="materialOrderExportingPo === order.poMaterial ? 'Export...' : 'Export PO'"></span></button></td>
+	                                            </tr>
+	                                        </template>
+	                                    </tbody>
+	                                </table>
+	                            </div>
+
+	                            <div class="flex items-center justify-between mt-4">
+	                                <div class="text-sm font-medium text-gray-700">
+	                                    <span x-text="(materialOrderReportCurrentPage - 1) * materialOrderReportPerPage + 1"></span>
+	                                    <span class="mx-1">-</span>
+	                                    <span x-text="Math.min(materialOrderReportCurrentPage * materialOrderReportPerPage, materialOrderReport.rows.length)"></span>
+	                                </div>
+	                                <div class="flex space-x-1">
+	                                    <button @click="materialOrderReportCurrentPage = 1" :disabled="materialOrderReportCurrentPage === 1" :class="{'pagination-btn disabled': materialOrderReportCurrentPage === 1, 'pagination-btn': materialOrderReportCurrentPage !== 1}">&laquo;</button>
+	                                    <button @click="materialOrderReportCurrentPage--" :disabled="materialOrderReportCurrentPage === 1" :class="{'pagination-btn disabled': materialOrderReportCurrentPage === 1, 'pagination-btn': materialOrderReportCurrentPage !== 1}">&lsaquo;</button>
+	                                    <template x-for="page in materialOrderReportPages" :key="page">
+	                                        <button @click="materialOrderReportCurrentPage = page" :class="{'pagination-btn active': page === materialOrderReportCurrentPage, 'pagination-btn': page !== materialOrderReportCurrentPage}" x-text="page"></button>
+	                                    </template>
+	                                    <button @click="materialOrderReportCurrentPage++" :disabled="materialOrderReportCurrentPage >= totalMaterialOrderReportPages" :class="{'pagination-btn disabled': materialOrderReportCurrentPage >= totalMaterialOrderReportPages, 'pagination-btn': materialOrderReportCurrentPage < totalMaterialOrderReportPages}">&rsaquo;</button>
+	                                    <button @click="materialOrderReportCurrentPage = totalMaterialOrderReportPages" :disabled="materialOrderReportCurrentPage >= totalMaterialOrderReportPages" :class="{'pagination-btn disabled': materialOrderReportCurrentPage >= totalMaterialOrderReportPages, 'pagination-btn': materialOrderReportCurrentPage < totalMaterialOrderReportPages}">&raquo;</button>
+	                                </div>
+	                            </div>
+	                        </div>
+
+	                        <div x-show="!materialOrderReport.loading && materialOrderReport.rows && materialOrderReport.rows.length === 0" class="px-4 py-8 text-center text-sm text-gray-500">
+	                            Belum ada data material pada filter yang dipilih. Tekan <strong>Lihat Laporan</strong> untuk memuat ulang.
+	                        </div>
+	                    </div>
+	                </div>
+
 	                <!-- Historical Production Import - Hanya untuk Admin -->
 	                <div x-show="currentPage === 'production-import' && currentUser.role === 'admin'" class="fade-in">
 	                    <div class="mb-6">
@@ -1442,7 +1704,7 @@
                     </div>
 
                 <!-- Date-based Reports - Untuk admin dan admin operator -->
-                <div x-show="currentPage === 'report' && canViewReport()" class="bg-white rounded-lg shadow overflow-hidden card-shadow mb-6 fade-in">
+                <div x-show="currentPage === 'report' && reportTab === 'production' && canViewReport()" class="bg-white rounded-lg shadow overflow-hidden card-shadow mb-6 fade-in">
                         <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
 	                            <h3 class="text-lg leading-6 font-medium text-gray-900 flex items-center"><i class="fa-solid fa-chart-column text-blue-600 mr-2"></i>Laporan Produksi dan QC</h3>
                             <p class="mt-1 max-w-2xl text-sm text-gray-500">Lihat rekap lengkap produksi dan QC berdasarkan rentang tanggal</p>
@@ -1590,13 +1852,13 @@
                                                 :class="{'pagination-btn disabled': currentReportPage >= totalReportPages, 'pagination-btn': currentReportPage < totalReportPages}">
                                             &raquo;
                                         </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+	                                    </div>
+	                                </div>
+	                            </div>
+	                        </div>
+	                    </div>
 
-		                <!-- Work Schedule Settings - Hanya untuk Admin -->
+	                <!-- Work Schedule Settings - Hanya untuk Admin -->
 		                <div x-show="currentPage === 'work-schedule-settings' && currentUser.role === 'admin'" class="fade-in">
 		                    <div class="mb-6">
 		                        <h1 class="text-2xl font-bold text-gray-800 flex items-center"><i class="fa-solid fa-calendar-days text-blue-600 mr-3"></i>Hari Kerja</h1>
@@ -2166,6 +2428,58 @@
             </div>
         </div>
     </div>
+
+	<!-- Material Order Modal -->
+	<div x-show="materialOrderModal.open" class="fixed inset-0 overflow-y-auto z-50" x-cloak>
+	    <div class="material-modal-shell">
+	        <div class="fixed inset-0 bg-gray-900 opacity-70" @click="closeMaterialOrderModal()"></div>
+	        <div class="material-order-modal">
+	            <form @submit.prevent="saveMaterialOrder()">
+	                <div class="material-modal-header">
+	                    <div class="material-modal-mark"><i class="fa-solid fa-boxes-packing"></i></div>
+	                    <div><small>ADMIN MATERIAL</small><h3 x-text="materialOrderModal.isEdit ? 'Edit Order Material' : 'Tambah Order Material'"></h3><p>Hubungkan order material dengan satu atau beberapa line/model produksi.</p></div>
+	                    <button type="button" @click="closeMaterialOrderModal()" aria-label="Tutup"><i class="fa-solid fa-xmark"></i></button>
+	                </div>
+	                <div class="material-modal-body">
+	                    <div class="material-form-grid">
+	                        <label><span>PO Material</span><input type="text" x-model="materialOrderModal.data.poMaterial" placeholder="Contoh: PO-MAT-2026-018" required></label>
+	                        <label><span>Order Material</span><input type="text" x-model="materialOrderModal.data.orderMaterial" placeholder="Nama atau kode material" required></label>
+	                        <label><span>Qty Order</span><input type="number" x-model.number="materialOrderModal.data.qtyOrder" min="1" placeholder="0" required></label>
+	                        <label><span>Tanggal Order</span><input type="date" x-model="materialOrderModal.data.orderDate" required></label>
+	                    </div>
+
+	                    <div class="material-allocation-section">
+	                        <div class="material-allocation-head">
+		                            <div><span>Alokasi Produksi</span><strong x-text="`${materialOrderModal.data.productions.length} model`"></strong></div>
+	                            <button type="button" @click="addMaterialOrderProduction()"><i class="fa-solid fa-plus"></i>Tambah Model</button>
+	                        </div>
+	                        <template x-for="(production, index) in materialOrderModal.data.productions" :key="index">
+	                            <div class="material-allocation-card">
+	                                <div class="material-allocation-card-head">
+		                                    <strong x-text="`Model ${index + 1}`"></strong>
+	                                    <button type="button" @click="removeMaterialOrderProduction(index)" :disabled="materialOrderModal.data.productions.length <= 1" aria-label="Hapus alokasi"><i class="fa-solid fa-trash-can"></i></button>
+	                                </div>
+	                                <div class="material-form-grid material-allocation-grid">
+		                                    <label class="material-model-select-field"><span>Model Produksi</span><select x-model="production.modelKey" @change="applyMaterialOrderModelSelection(index)" required><option value="">Pilih model produksi</option><template x-for="model in materialOrderProductionModelOptions()" :key="index + '-' + model.materialOrderKey"><option :value="model.materialOrderKey" :selected="production.modelKey === model.materialOrderKey" x-text="`${model.data.labelWeek || '-'} · ${model.data.model || model.modelId} · ${model.lineName}${model.productionActive ? ' (Aktif)' : ''}`"></option></template></select><small x-show="production.lineName" x-text="`Line tersinkron otomatis: ${production.lineName}`"></small></label>
+		                                    <label><span>Qty Actual </span><input type="number" :value="production.qtyResult" min="0" readonly></label>
+	                                </div>
+	                                <div x-show="selectedMaterialOrderProduction(index)" class="material-production-preview">
+	                                    <div><span><i class="fa-solid fa-wave-square"></i> Output produksi saat ini</span><strong x-text="formatDashboardNumber(selectedMaterialOrderProduction(index)?.data?.outputDay || 0)"></strong><small x-text="`${selectedMaterialOrderProduction(index)?.lineName || ''} · ${selectedMaterialOrderProduction(index)?.data?.model || ''}`"></small></div>
+	                                </div>
+	                            </div>
+	                        </template>
+	                    </div>
+
+	                    <label class="material-notes-field"><span>Catatan</span><textarea x-model="materialOrderModal.data.notes" rows="3" placeholder="Keterangan material, kendala, atau informasi tambahan"></textarea></label>
+	                </div>
+	                <div class="material-modal-actions">
+	                    <button type="button" @click="closeMaterialOrderModal()" :disabled="materialOrderModal.saving" class="material-secondary-button">Batal</button>
+	                    <button type="submit" :disabled="materialOrderModal.saving" class="material-primary-button"><i class="fa-solid" :class="materialOrderModal.saving ? 'fa-spinner fa-spin' : 'fa-floppy-disk'"></i><span x-text="materialOrderModal.saving ? 'Menyimpan...' : 'Simpan Order'"></span></button>
+	                </div>
+	            </form>
+	        </div>
+	    </div>
+	</div>
 
 	    <!-- User Modal -->
 	    <div x-show="userModal.open" class="fixed inset-0 overflow-y-auto z-50" x-cloak>

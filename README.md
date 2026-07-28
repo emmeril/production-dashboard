@@ -57,6 +57,8 @@ pnpm install
 
 Konfigurasi lokal dibaca otomatis dari file `.env`. Environment variable yang sudah diberikan oleh server, PM2, Docker, atau shell tetap memiliki prioritas dan tidak akan ditimpa oleh file tersebut.
 
+Gunakan `.env.example` sebagai referensi untuk environment baru. File `.env` lokal tidak masuk Git dan harus memiliki `SESSION_SECRET` yang unik untuk setiap deployment.
+
 Jalankan server dengan package script:
 
 ```bash
@@ -170,6 +172,7 @@ Retensi backup SQLite dapat diatur dalam satuan hari melalui `DATABASE_BACKUP_RE
 ## Development Notes
 
 - Entry point proses ada di `server.js`; implementasi Express berada di `src/app.js`.
+- Logic import, report, backup, material order, dan produksi dipisahkan per domain di `src/features/`.
 - Konfigurasi, security, session store, dan helper bersama dipisahkan di dalam `src/`.
 - Frontend utama ada di `src/views/index.html` dan `public/assets/js/alpine.js`.
 - Style dashboard ada di `public/assets/css/style.css`.

@@ -12,6 +12,12 @@ production-dashboard/
 |   |   `-- paths.js                  # Seluruh path absolut aplikasi
 |   |-- infrastructure/
 |   |   `-- sqlite-session-store.js   # Adapter session Express untuk SQLite
+|   |-- features/
+|   |   |-- backups/                   # Route backup, restore, dan histori
+|   |   |-- imports/                   # Parser, template, dan route import
+|   |   |-- material-orders/           # Logic, export, dan route material
+|   |   |-- production/                # Route line, model, produksi, dan QC
+|   |   `-- reports/                   # Kalkulasi laporan dan generator Excel
 |   |-- security/
 |   |   |-- passwords.js              # Hash dan verifikasi password
 |   |   `-- roles.js                  # Normalisasi role dan aturan role umum
@@ -39,14 +45,18 @@ production-dashboard/
 - Simpan HTML yang dikirim server di `src/views`, sedangkan file yang boleh diakses langsung browser berada di `public/assets`.
 - Tambahkan test ke `test` dengan nama domain yang diuji, lalu masukkan JavaScript baru ke pemeriksaan sintaks di `package.json`.
 
+## Komposisi Feature
+
+`src/app.js` bertanggung jawab atas komposisi Express, cache aplikasi, lifecycle database, dan dependency wiring. Logic domain dan route yang sudah stabil berada di `src/features`:
+
+- `imports` menangani parsing Excel, pembuatan template, preview, dan konfirmasi import.
+- `material-orders` menangani normalisasi, progress produksi, report Excel, dan endpoint material.
+- `reports` menangani filter data, ringkasan produksi/QC, dan seluruh workbook laporan.
+- `backups` menangani endpoint snapshot, backup database, restore, dan histori.
+- `production` menangani endpoint line, model, input produksi, QC, dan public display data.
+
+Export kompatibilitas tetap diteruskan dari `src/app.js` karena test dan integrasi lama masih mengimpor fungsi tersebut melalui `server.js`.
+
 ## Arah Refactor Berikutnya
 
-`src/app.js` masih memuat route dan logic domain lama dalam satu file agar restrukturisasi ini tidak mengubah kontrak API. Pemecahan berikutnya sebaiknya dilakukan per domain, bukan per jenis teknis:
-
-1. `src/features/production` untuk line, model, hourly output, dan QC.
-2. `src/features/reports` untuk summary dan generator Excel.
-3. `src/features/imports` untuk parser/template Sewing dan QC.
-4. `src/features/backups` untuk snapshot, restore, retention, dan migrasi legacy.
-5. `src/features/material-orders` untuk validasi, kalkulasi progress, route, dan export.
-
-Setiap domain idealnya mengekspor router atau service melalui satu `index.js`. Pindahkan satu domain per perubahan dan pertahankan export kompatibilitas dari `src/app.js` sampai semua test tidak lagi mengimpor fungsi internal secara langsung.
+Bagian terbesar yang masih berada di `src/app.js` adalah lifecycle storage dan cache. Jika perlu dipisahkan lagi, pindahkan sebagai satu service stateful ke `src/infrastructure/storage`, bukan sebagai kumpulan helper global, agar antrean write dan status restore tetap konsisten.

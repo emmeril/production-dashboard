@@ -6,11 +6,13 @@ Struktur proyek memisahkan entry point, implementasi server, view, aset statis, 
 production-dashboard/
 |-- server.js                         # Entry point proses Node.js
 |-- src/
-|   |-- app.js                        # Komposisi Express, API, storage, dan lifecycle
+|   |-- app.js                        # Komposisi Express, dependency wiring, dan lifecycle proses
 |   |-- config/
 |   |   |-- environment.js            # Pembacaan .env dan parser konfigurasi
 |   |   `-- paths.js                  # Seluruh path absolut aplikasi
 |   |-- infrastructure/
+|   |   |-- storage/
+|   |   |   `-- service.js            # Model Sequelize, cache, write queue, backup, dan restore
 |   |   `-- sqlite-session-store.js   # Adapter session Express untuk SQLite
 |   |-- features/
 |   |   |-- backups/                   # Route backup, restore, dan histori
@@ -47,7 +49,7 @@ production-dashboard/
 
 ## Komposisi Feature
 
-`src/app.js` bertanggung jawab atas komposisi Express, cache aplikasi, lifecycle database, dan dependency wiring. Logic domain dan route yang sudah stabil berada di `src/features`:
+`src/app.js` bertanggung jawab atas komposisi Express, lifecycle proses, dan dependency wiring. Lifecycle storage yang stateful berada di `src/infrastructure/storage/service.js`, sehingga cache, antrean write, status restore, model Sequelize, dan operasi backup database tetap memiliki satu pemilik. Logic domain dan route yang sudah stabil berada di `src/features`:
 
 - `imports` menangani parsing Excel, pembuatan template, preview, dan konfirmasi import.
 - `material-orders` menangani normalisasi, progress produksi, report Excel, dan endpoint material.
@@ -59,4 +61,4 @@ Export kompatibilitas tetap diteruskan dari `src/app.js` karena test dan integra
 
 ## Arah Refactor Berikutnya
 
-Bagian terbesar yang masih berada di `src/app.js` adalah lifecycle storage dan cache. Jika perlu dipisahkan lagi, pindahkan sebagai satu service stateful ke `src/infrastructure/storage`, bukan sebagai kumpulan helper global, agar antrean write dan status restore tetap konsisten.
+Bagian terbesar yang masih berada di `src/app.js` adalah autentikasi, pengelolaan user, konfigurasi dashboard, dan komposisi lifecycle server. Tahap berikutnya dapat memindahkan route autentikasi/user dan route konfigurasi ke feature masing-masing sambil mempertahankan `src/app.js` sebagai composition root.

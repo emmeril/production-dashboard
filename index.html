@@ -2065,12 +2065,27 @@
 	                            <h3 class="text-lg leading-6 font-medium text-gray-900 flex items-center"><i class="fa-solid fa-clock-rotate-left text-blue-600 mr-2"></i>File Backup</h3>
 	                            <p class="mt-1 text-sm text-gray-500">Unduh ulang salinan database yang masih tersimpan di server.</p>
 	                        </div>
+	                        <div x-show="!backupLoading && databaseBackupHistory.length" class="p-4 border-b border-gray-200">
+	                            <div class="filter-toolbar line-management-toolbar mb-0">
+	                                <div class="filter-group">
+	                                    <span class="filter-caption"><i class="fa-solid fa-table-list"></i>Tampilkan</span>
+	                                    <div class="filter-control filter-control-page-size">
+	                                        <select x-model="backupItemsPerPage" @change="backupCurrentPage = 1" aria-label="Jumlah file backup per halaman" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+	                                            <option value="5">5</option>
+	                                            <option value="10">10</option>
+	                                            <option value="20">20</option>
+	                                            <option value="50">50</option>
+	                                        </select>
+	                                    </div>
+	                                </div>
+	                            </div>
+	                        </div>
 	                        <div x-show="backupLoading" class="backup-empty-state">
 	                            <i class="fa-solid fa-spinner fa-spin"></i>
 	                            <span>Memuat daftar backup...</span>
 	                        </div>
 	                        <div x-show="!backupLoading && databaseBackupHistory.length" class="divide-y divide-gray-200">
-	                            <template x-for="backup in databaseBackupHistory" :key="backup.filename">
+	                            <template x-for="backup in paginatedDatabaseBackupHistory" :key="backup.filename">
 	                                <article class="backup-file-row">
 	                                    <div class="backup-file-icon"><i class="fa-solid fa-file-shield"></i></div>
 	                                    <div class="backup-file-info">
@@ -2087,6 +2102,22 @@
 	                                    </div>
 	                                </article>
 	                            </template>
+	                        </div>
+	                        <div x-show="!backupLoading && databaseBackupHistory.length" class="bg-white px-4 py-3 flex flex-wrap gap-3 items-center justify-between border-t border-gray-200 sm:px-6">
+	                            <div class="text-sm font-medium text-gray-700">
+	                                <span x-text="(backupCurrentPage - 1) * Number(backupItemsPerPage) + 1"></span>
+	                                <span class="mx-1">-</span>
+	                                <span x-text="Math.min(backupCurrentPage * Number(backupItemsPerPage), databaseBackupHistory.length)"></span>
+	                            </div>
+	                            <div class="flex space-x-1">
+	                                <button @click="backupCurrentPage = 1" :disabled="backupCurrentPage === 1" :class="{'pagination-btn disabled': backupCurrentPage === 1, 'pagination-btn': backupCurrentPage !== 1}">&laquo;</button>
+	                                <button @click="backupCurrentPage--" :disabled="backupCurrentPage === 1" :class="{'pagination-btn disabled': backupCurrentPage === 1, 'pagination-btn': backupCurrentPage !== 1}">&lsaquo;</button>
+	                                <template x-for="page in databaseBackupPages" :key="page">
+	                                    <button @click="backupCurrentPage = page" :class="{'pagination-btn active': page === backupCurrentPage, 'pagination-btn': page !== backupCurrentPage}" x-text="page"></button>
+	                                </template>
+	                                <button @click="backupCurrentPage++" :disabled="backupCurrentPage >= totalDatabaseBackupPages" :class="{'pagination-btn disabled': backupCurrentPage >= totalDatabaseBackupPages, 'pagination-btn': backupCurrentPage < totalDatabaseBackupPages}">&rsaquo;</button>
+	                                <button @click="backupCurrentPage = totalDatabaseBackupPages" :disabled="backupCurrentPage >= totalDatabaseBackupPages" :class="{'pagination-btn disabled': backupCurrentPage >= totalDatabaseBackupPages, 'pagination-btn': backupCurrentPage < totalDatabaseBackupPages}">&raquo;</button>
+	                            </div>
 	                        </div>
 	                        <div x-show="!backupLoading && !databaseBackupHistory.length" class="backup-empty-state">
 	                            <i class="fa-solid fa-box-archive"></i>

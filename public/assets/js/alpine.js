@@ -198,6 +198,8 @@ function dashboard() {
 	        backupHistory: [],
 	        backupLoading: false,
 	        backupAction: '',
+	        backupCurrentPage: 1,
+	        backupItemsPerPage: 10,
 	        restoreDatabaseModal: {
 	            open: false,
 	            backup: null,
@@ -2555,10 +2557,12 @@ function dashboard() {
                 const response = await fetchWithTimeout('/api/backup-history', {}, 15000);
                 if (!response.ok) throw new Error('Gagal memuat riwayat backup');
                 this.backupHistory = await response.json();
+	            this.backupCurrentPage = Math.max(1, Math.min(this.backupCurrentPage, this.totalDatabaseBackupPages));
                 return this.backupHistory;
             } catch (error) {
                 logClientError('Error loading backup history:', error);
                 this.backupHistory = [];
+	            this.backupCurrentPage = 1;
                 this.showToast(error.message, 'error');
                 return [];
             }
@@ -2937,6 +2941,21 @@ function dashboard() {
 
 	        get databaseBackupHistory() {
 	            return (this.backupHistory || []).filter(backup => backup.storage === 'database' || backup.type === 'database');
+	        },
+
+	        get paginatedDatabaseBackupHistory() {
+	            const perPage = Number(this.backupItemsPerPage) || 10;
+	            const start = (this.backupCurrentPage - 1) * perPage;
+	            return this.databaseBackupHistory.slice(start, start + perPage);
+	        },
+
+	        get totalDatabaseBackupPages() {
+	            const perPage = Number(this.backupItemsPerPage) || 10;
+	            return Math.max(1, Math.ceil(this.databaseBackupHistory.length / perPage));
+	        },
+
+	        get databaseBackupPages() {
+	            return this.paginationPages(this.backupCurrentPage, this.totalDatabaseBackupPages);
 	        },
 
 	        get latestDatabaseBackup() {

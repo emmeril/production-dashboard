@@ -1184,6 +1184,22 @@ test('backup page creates, downloads, and confirms database restore actions', as
     ]
   );
   assert.equal(dashboard.latestDatabaseBackup.filename, 'production-dashboard_2026-07-23_manual_2_abcd1235.sqlite');
+
+  dashboard.backupHistory = Array.from({ length: 12 }, (_, index) => ({
+    filename: `production-dashboard_2026-07-${String(23 - index).padStart(2, '0')}_manual_${index}.sqlite`,
+    type: 'database',
+    storage: 'database'
+  }));
+  assert.equal(dashboard.totalDatabaseBackupPages, 2);
+  assert.equal(dashboard.paginatedDatabaseBackupHistory.length, 10);
+  assert.deepEqual(Array.from(dashboard.databaseBackupPages), [1, 2]);
+  dashboard.backupCurrentPage = 2;
+  assert.equal(dashboard.paginatedDatabaseBackupHistory.length, 2);
+  dashboard.backupItemsPerPage = 5;
+  dashboard.backupCurrentPage = 1;
+  assert.equal(dashboard.totalDatabaseBackupPages, 3);
+  assert.equal(dashboard.paginatedDatabaseBackupHistory.length, 5);
+
   assert.equal(dashboard.formatFileSize(2048), '2.0 KB');
   assert.equal(
     dashboard.displayBackupFilename('production-dashboard_2026-07-22_manual_1_abcd1234.sqlite'),

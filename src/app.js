@@ -2045,6 +2045,8 @@ registerMaterialOrderRoutes(app, {
   filterMaterialOrderReportRows,
   generateMaterialOrderReportExcel,
   generateNumericId,
+  getToday,
+  isValidDateInput,
   logger,
   parseNonNegativeInteger,
   readMaterialOrders,

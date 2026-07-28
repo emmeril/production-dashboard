@@ -7,6 +7,8 @@ function registerMaterialOrderRoutes(app, dependencies) {
     filterMaterialOrderReportRows,
     generateMaterialOrderReportExcel,
     generateNumericId,
+    getToday,
+    isValidDateInput,
     logger,
     parseNonNegativeInteger,
     readMaterialOrders,

@@ -143,6 +143,35 @@ test('PPIC can load production models required by material orders', async () => 
   assert.equal(data['Line 1'].models.model1.model, 'Model A');
 });
 
+test('material report accepts date filters and exports without a date filter', async () => {
+  const { cookie } = await login('ppic', 'ppic-password');
+  const today = getToday();
+  const reportResponse = await fetch(
+    `${baseUrl}/api/material-orders/report?startDate=${today}&endDate=${today}`,
+    { headers: { Cookie: cookie } }
+  );
+  const report = await reportResponse.json();
+
+  assert.equal(reportResponse.status, 200);
+  assert.deepEqual(report.filters, {
+    startDate: today,
+    endDate: today,
+    line: '',
+    status: '',
+    poMaterial: ''
+  });
+  assert.ok(Array.isArray(report.rows));
+
+  const exportResponse = await fetch(`${baseUrl}/api/material-orders/report/export`, {
+    headers: { Cookie: cookie }
+  });
+  const workbook = await exportResponse.arrayBuffer();
+
+  assert.equal(exportResponse.status, 200);
+  assert.match(exportResponse.headers.get('content-type') || '', /spreadsheetml/);
+  assert.ok(workbook.byteLength > 1000);
+});
+
 test('single-date Excel export returns a workbook', async () => {
   const { cookie } = await login('ppic', 'ppic-password');
   const response = await fetch(`${baseUrl}/api/export-date-report/${getToday()}`, {

@@ -18,6 +18,7 @@ const {
   getToday,
   hashPassword,
   initSequelizeStorage,
+  productionImportTemplateWorkbook,
   sequelize,
   sessionStore,
   updateTodayBackup,
@@ -182,6 +183,89 @@ test('single-date Excel export returns a workbook', async () => {
   assert.equal(response.status, 200);
   assert.match(response.headers.get('content-type') || '', /spreadsheetml/);
   assert.ok(workbook.byteLength > 1000);
+});
+
+test('historical Excel import completes preview, confirmation, and date report flow', async () => {
+  const { cookie } = await login('admin', 'admin-password');
+  const importDate = '2024-01-15';
+  const workbook = productionImportTemplateWorkbook({
+    sampleRows: [],
+    defectConfig: { defectTypes: [], defectAreas: [] }
+  });
+  workbook.getWorksheet('Data Produksi').addRow([
+    importDate,
+    'Line Import',
+    'model-old',
+    'W03',
+    'Model Historis',
+    100,
+    90,
+    '90%',
+    20,
+    18,
+    2,
+    0,
+    1,
+    1,
+    '10%',
+    '-',
+    '-',
+    'Integration test'
+  ]);
+  const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
+
+  const previewResponse = await fetch(`${baseUrl}/api/production-import/preview`, {
+    method: 'POST',
+    headers: {
+      Cookie: cookie,
+      'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'X-File-Name': 'historical-import.xlsx'
+    },
+    body: buffer
+  });
+  const preview = await previewResponse.json();
+
+  assert.equal(previewResponse.status, 200);
+  assert.equal(preview.canImport, true);
+  assert.equal(preview.summary.invalid, 0);
+  assert.ok(preview.token);
+
+  const confirmResponse = await fetch(`${baseUrl}/api/production-import/confirm`, {
+    method: 'POST',
+    headers: { Cookie: cookie, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token: preview.token })
+  });
+  const confirmation = await confirmResponse.json();
+
+  assert.equal(confirmResponse.status, 200);
+  assert.equal(confirmation.created, 1);
+  assert.equal(confirmation.dates, 1);
+
+  const reportResponse = await fetch(`${baseUrl}/api/date-report/${importDate}`, {
+    headers: { Cookie: cookie }
+  });
+  const report = await reportResponse.json();
+
+  assert.equal(reportResponse.status, 200);
+  assert.equal(report.length, 1);
+  assert.equal(report[0].date, importDate);
+  assert.equal(report[0].line, 'Line Import');
+  assert.equal(report[0].model, 'Model Historis');
+  assert.equal(report[0].output, 90);
+});
+
+test('admin can organize legacy backups without an internal server error', async () => {
+  const { cookie } = await login('admin', 'admin-password');
+  const response = await fetch(`${baseUrl}/api/organize-backups`, {
+    method: 'POST',
+    headers: { Cookie: cookie }
+  });
+  const result = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(result.movedCount, 0);
+  assert.equal(result.recoveredCount, 0);
+  assert.equal(result.backupDir, process.env.DATABASE_BACKUP_DIR);
 });
 
 test('line and model creation reject blank names', async () => {

@@ -1483,6 +1483,7 @@ registerBackupRoutes(app, {
   clearSessionsAfterDatabaseRestore,
   createArchiveBackup,
   createDatabaseBackup,
+  databaseBackupDir,
   databasePath,
   databaseRestoreState: {
     get value() { return isDatabaseRestoreInProgress(); },

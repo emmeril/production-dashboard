@@ -4,6 +4,7 @@ function registerBackupRoutes(app, dependencies) {
     clearSessionsAfterDatabaseRestore,
     createArchiveBackup,
     createDatabaseBackup,
+    databaseBackupDir,
     databasePath,
     databaseRestoreState,
     flushPendingDatabaseWrites,

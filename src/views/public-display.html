@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DISPLAY LINE</title>
+    <link rel="stylesheet" href="/public/assets/css/public-display.css">
+</head>
+<body x-data="publicDisplay()" :style="displayCssVars()" x-cloak>
+    <div class="tg" x-show="scheduleLoaded && isWithinWorkSchedule">
+        <table class="main-table" border="0">
+            <tbody>
+                <tr>
+                    <td style="text-align: center;vertical-align: middle;font-weight:bold;font-size:24px;" x-text="'LINE: ' + (lineData.name || 'Loading...')"></td>
+                    <td colspan="2" rowspan="2" style="text-align:center;vertical-align:middle;font-weight:bold;font-size:24px;white-space:normal;word-break:break-word;overflow-wrap:break-word;" x-text="lineData.data.model || 'Loading...'"></td>
+                    <td rowspan="7" valign="top" style="width:20%; padding:1px; vertical-align:top;">
+                        <table class="histor">
+                            <thead>
+                                <tr><td colspan="3"><div class="date" id="current-date">Loading...</div></td></tr>
+                                <tr><td colspan="3"><div class="clock" id="current-clock">--:--:--</div></td></tr>
+                                <tr><td colspan="3" style="font-size:14px;color:#fff" x-text="'TARGET : ' + formatNumber(getCurrentHourTarget())"></td></tr>
+                                <tr>
+                                    <th>JAM</th>
+                                    <th>GOOD</th>
+                                    <th>DEFECT</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <template x-for="hour in displayHours" :key="hour.hour">
+                                    <tr>
+                                        <td class="hour-cell" :class="{'hour-active': isActiveHour(hour)}" x-text="compactHour(hour.hour)"></td>
+                                        <td :class="hourlyQcGoodClass(hour)" x-text="formatNumber(hourlyQcGoodCount(hour))"></td>
+                                        <td :class="hourlyDefectClass(hour)" x-text="formatNumber(hour.defect || 0)"></td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                        <table class="table-defect" style="margin-top:5px;color:white;font-weight:bold;">
+                            <thead>
+                                <tr><th colspan="3" class="top-defect-title">TOP 3 DEFECT</th></tr>
+                            </thead>
+                            <tbody>
+                                <template x-for="(item, index) in topDefects" :key="index">
+                                    <tr>
+                                        <td style="width:20%;" x-text="index + 1"></td>
+                                        <td style="text-align:left;white-space:nowrap;" x-text="item.name"></td>
+                                        <td style="width:20%;" x-text="item.count"></td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="text-align: center;vertical-align: middle;font-weight:bold;font-size:20px;" x-text="'WEEK : ' + (lineData.data.labelWeek || '-')"></td>
+                </tr>
+                <tr>
+                    <td class="bawah">TARGET</td>
+                    <td class="bawah">BALANCE</td>
+                    <td class="bawah">PRODUCTIVITY</td>
+                </tr>
+                <tr>
+                    <td class="isin" x-text="formatNumber(getCurrentHourTarget())"></td>
+                    <td class="isie" :class="calculateCumulativeBalance() < 0 ? 'metric-red' : 'metric-green'" :style="Math.abs(calculateCumulativeBalance()).toString().length >= 3 ? 'font-size: 3.8em;' : ''" x-text="formatNumber(calculateCumulativeBalance())"></td>
+                    <td class="isi" x-text="formatNumber(lineData.data.outputDay || 0)"></td>
+                </tr>
+                <tr>
+                    <td class="perday" x-text="calculateTargetProgressPercentage() + '%'"></td>
+                    <td class="perday" x-text="calculateCumulativeBalancePercentage() + '%'"></td>
+                    <td class="perday" x-text="calculateOutputPercentage() + '%'"></td>
+                </tr>
+	                <tr>
+	                    <td colspan="2" class="bawah" x-text="defectTitle()"></td>
+	                    <td class="bawah">DEFECT %</td>
+	                </tr>
+	                <tr>
+	                    <td colspan="2" class="outday1" :class="selectedDefectRate() > 3 ? 'metric-red' : 'metric-green'" x-text="formatNumber(selectedDefectCount())"></td>
+	                    <td class="outday1" :class="selectedDefectRate() > 3 ? 'metric-red' : 'metric-green'" x-text="formatPercent(selectedDefectRate())"></td>
+	                </tr>
+            </tbody>
+        </table>
+
+	        <div class="footer-control">
+	            <span>Defect</span>
+	            <select x-model="defectMode" @change="changeDefectMode">
+	                <option value="all">Semua</option>
+	                <option value="critical">Critical</option>
+	                <option value="major">Major</option>
+	                <option value="minor">Minor</option>
+	            </select>
+	            <span>Auto Refresh</span>
+	            <select x-model="refreshInterval" @change="changeRefreshInterval">
+                <option value="0">Mati</option>
+                <option value="5000">5 Detik</option>
+                <option value="10000">10 Detik</option>
+                <option value="30000">30 Detik</option>
+                <option value="60000">1 Menit</option>
+            </select>
+        </div>
+    </div>
+
+    <template x-if="scheduleLoaded && !isWithinWorkSchedule">
+        <div class="error-overlay schedule-overlay">
+            <div class="error-content">
+                <h2 class="error-title">DI LUAR JAM KERJA</h2>
+                <p class="error-message">Data produksi akan ditampilkan kembali pada hari dan jam kerja yang telah diatur oleh admin.</p>
+                <p class="error-message" x-text="workScheduleDescription()"></p>
+            </div>
+        </div>
+    </template>
+
+    <!-- Error Overlay -->
+    <template x-if="errorMessage && isWithinWorkSchedule">
+        <div class="error-overlay">
+            <div class="error-content">
+                <h2 class="error-title">Error</h2>
+                <p class="error-message" x-text="errorMessage"></p>
+                <button class="error-button" @click="errorMessage = ''">Tutup</button>
+            </div>
+        </div>
+    </template>
+
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <script src="/public/assets/js/public-display.js"></script>
+</body>
+</html>

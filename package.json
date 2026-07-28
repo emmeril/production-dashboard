@@ -4,7 +4,10 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "check": "node --check server.js && node --check public/assets/js/alpine.js && node --check test/server-logic.test.js && node --check test/server-routes.test.js && node --check test/storage-migration.test.js",
+    "check": "npm run check:server && npm run check:client && npm run check:test",
+    "check:server": "node --check server.js && node --check src/app.js && node --check src/config/environment.js && node --check src/config/paths.js && node --check src/infrastructure/sqlite-session-store.js && node --check src/security/passwords.js && node --check src/security/roles.js && node --check src/shared/logger.js && node --check src/shared/validation.js",
+    "check:client": "node --check public/assets/js/alpine.js && node --check public/assets/js/public-display.js",
+    "check:test": "node --check test/server-logic.test.js && node --check test/server-routes.test.js && node --check test/storage-migration.test.js",
     "test": "npm run check && node --test --test-concurrency=1 test/*.test.js"
   },
   "keywords": [],

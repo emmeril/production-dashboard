@@ -108,9 +108,17 @@ test('static middleware does not expose project root files', async t => {
 
   const sourceResponse = await fetch(baseUrl + '/server.js');
   const assetResponse = await fetch(baseUrl + '/public/assets/js/alpine.js');
+  const dashboardResponse = await fetch(baseUrl + '/');
+  const publicDisplayResponse = await fetch(baseUrl + '/public-display');
+  const publicDisplayAssetResponse = await fetch(baseUrl + '/public/assets/js/public-display.js');
 
   assert.equal(sourceResponse.status, 404);
   assert.equal(assetResponse.status, 200);
+  assert.equal(dashboardResponse.status, 200);
+  assert.match(await dashboardResponse.text(), /\/public\/assets\/js\/alpine\.js/);
+  assert.equal(publicDisplayResponse.status, 200);
+  assert.match(await publicDisplayResponse.text(), /\/public\/assets\/css\/public-display\.css/);
+  assert.equal(publicDisplayAssetResponse.status, 200);
 });
 
 test('generateModelId fills a gap without overwriting a later model', () => {

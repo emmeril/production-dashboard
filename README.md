@@ -157,7 +157,7 @@ File dan folder penting:
 | --- | --- |
 | `production-dashboard.sqlite` | Database SQLite lokal. |
 | `database-backups/` | Backup SQLite konsisten dari `VACUUM INTO`, dengan retensi default 7 hari. |
-| `public-display.html` | Tampilan public display monitor. |
+| `src/views/public-display.html` | Tampilan public display monitor. |
 
 Histori harian dan snapshot restore tersimpan di database. Instalasi lama akan mengimpor file JSON dari `history/` satu kali, membuat backup database pengaman, kemudian membersihkan file JSON tersebut. Sistem tidak lagi membuat arsip pada setiap startup.
 
@@ -169,10 +169,12 @@ Retensi backup SQLite dapat diatur dalam satuan hari melalui `DATABASE_BACKUP_RE
 
 ## Development Notes
 
-- Frontend utama ada di `index.html` dan `public/assets/js/alpine.js`.
+- Entry point proses ada di `server.js`; implementasi Express berada di `src/app.js`.
+- Konfigurasi, security, session store, dan helper bersama dipisahkan di dalam `src/`.
+- Frontend utama ada di `src/views/index.html` dan `public/assets/js/alpine.js`.
 - Style dashboard ada di `public/assets/css/style.css`.
-- Backend dan endpoint API ada di `server.js`.
-- Public display memakai `public-display.html` dan mengambil data dari `/api/public/line/:lineName/:modelId`.
+- Public display memakai `src/views/public-display.html`, `public/assets/css/public-display.css`, dan `public/assets/js/public-display.js`.
+- Pedoman struktur dan arah refactor lanjutan ada di `docs/ARCHITECTURE.md`.
 
 ## Validasi Cepat
 
@@ -187,13 +189,13 @@ Atau periksa file secara terpisah:
 Cek sintaks server:
 
 ```bash
-node --check server.js
+npm run check:server
 ```
 
-Cek sintaks Alpine app:
+Cek sintaks frontend:
 
 ```bash
-node --check public/assets/js/alpine.js
+npm run check:client
 ```
 
 ## Catatan Keamanan

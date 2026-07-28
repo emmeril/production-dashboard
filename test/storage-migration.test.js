@@ -355,7 +355,7 @@ test('database restore replaces active application data and creates a safety bac
         \`UPDATE app_data SET payload = :payload WHERE key = 'production_data'\`,
         { replacements: { payload: JSON.stringify(restoredPayload) } }
       );
-      await server.sequelize.query(\`VACUUM INTO '${restorePath.replace(/'/g, "''")}'\`);
+      await server.sequelize.query(\`VACUUM INTO '${restorePath.replace(/\\/g, '/').replace(/'/g, "''")}'\`);
 
       const currentPayload = { lines: {}, activeLine: '' };
       await server.sequelize.query(

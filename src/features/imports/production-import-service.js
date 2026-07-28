@@ -425,7 +425,8 @@ function createProductionImportService(dependencies) {
   }
 
   function parseProductionImportWorkbook(buffer, options = {}) {
-    const workbook = XLSX.read(buffer, { type: 'buffer', cellDates: true });
+    // Keep Excel dates as serial numbers so calendar dates are not shifted by timezone conversion.
+    const workbook = XLSX.read(buffer, { type: 'buffer', cellDates: false });
     const sheetName = workbook.SheetNames.find(name => normalizeProductionImportHeader(name) === 'dataproduksi')
       || workbook.SheetNames[0];
     if (!sheetName) throw new Error('Workbook tidak memiliki worksheet');
@@ -568,7 +569,8 @@ function createProductionImportService(dependencies) {
   }
 
   function readImportSheetRows(buffer, normalizedSheetNames) {
-    const workbook = XLSX.read(buffer, { type: 'buffer', cellDates: true });
+    // Keep Excel dates as serial numbers so calendar dates are not shifted by timezone conversion.
+    const workbook = XLSX.read(buffer, { type: 'buffer', cellDates: false });
     const acceptedNames = Array.isArray(normalizedSheetNames) ? normalizedSheetNames : [normalizedSheetNames];
     const sheetName = workbook.SheetNames.find(name => acceptedNames.includes(normalizeProductionImportHeader(name)))
       || workbook.SheetNames[0];

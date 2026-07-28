@@ -517,6 +517,24 @@ test('historical production Excel template is readable without phantom data rows
   assert.ok(workbook.getWorksheet('Referensi Defect'));
 });
 
+test('historical production import preserves calendar dates from Excel date cells', async () => {
+  const workbook = productionImportTemplateWorkbook({ sampleRows: [], defectConfig: { defectTypes: [], defectAreas: [] } });
+  const sheet = workbook.getWorksheet('Data Produksi');
+  sheet.addRow([
+    46230, 'Line 1', 'model1', 'W31', 'Model A', 100, 90, '90%', 20, 18, 2,
+    0, 1, 1, '10%', '-', '-', 'Tanggal Excel asli'
+  ]);
+  sheet.getCell('A2').numFmt = 'yyyy-mm-dd';
+
+  const parsed = parseProductionImportWorkbook(Buffer.from(await workbook.xlsx.writeBuffer()), {
+    today: '2026-07-28',
+    getSnapshot: () => null
+  });
+
+  assert.equal(parsed.summary.invalid, 0);
+  assert.equal(parsed.rows[0].date, '2026-07-27');
+});
+
 test('historical production import preserves validated hourly production results', async () => {
   const workbook = productionImportTemplateWorkbook({ sampleRows: [], defectConfig: { defectTypes: [], defectAreas: [] } });
   workbook.getWorksheet('Data Produksi').addRow([
@@ -601,14 +619,18 @@ test('sewing import uses a simple one-row-per-hour template', async () => {
     ['13:00 - 14:00', 10, 9], ['14:00 - 15:00', 10, 9], ['15:00 - 16:00', 10, 9], ['16:00 - 17:00', 10, 9]
   ];
   rows.forEach(([hour, target, output]) => workbook.getWorksheet('Data Produksi').addRow([
-    '2026-07-20', 'Line 1', 'W29', 'Model A', hour, target, output, 'Sewing lama'
+    46223, 'Line 1', 'W29', 'Model A', hour, target, output, 'Sewing lama'
   ]));
+  for (let rowNumber = 2; rowNumber <= 9; rowNumber += 1) {
+    workbook.getWorksheet('Data Produksi').getCell(`A${rowNumber}`).numFmt = 'yyyy-mm-dd';
+  }
   const parsed = parseSewingImportWorkbook(Buffer.from(await workbook.xlsx.writeBuffer()), {
     today: '2026-07-26',
     getSnapshot: () => null
   });
 
   assert.equal(parsed.summary.valid, 1);
+  assert.equal(parsed.rows[0].date, '2026-07-20');
   assert.equal(parsed.rows[0].target, 80);
   assert.equal(parsed.rows[0].output, 72);
   assert.equal(parsed.rows[0].hourlyData.length, 9);

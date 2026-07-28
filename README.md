@@ -71,6 +71,22 @@ Default server berjalan di:
 http://localhost:3000
 ```
 
+Untuk deployment dengan PM2:
+
+```bash
+pm2 start ecosystem.config.js --env production
+pm2 save
+pm2 status
+```
+
+Setelah update kode, reload aplikasi tanpa mengubah konfigurasi environment:
+
+```bash
+pm2 reload production-dashboard --update-env
+```
+
+Gunakan satu instance PM2 karena aplikasi menggunakan SQLite dan worker backup terjadwal.
+
 Port bisa diubah dengan environment variable `PORT`:
 
 ```bash

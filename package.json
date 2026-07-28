@@ -5,7 +5,7 @@
   "scripts": {
     "start": "node server.js",
     "check": "npm run check:server && npm run check:client && npm run check:test",
-    "check:server": "node scripts/check-syntax.js server.js src scripts",
+    "check:server": "node scripts/check-syntax.js server.js ecosystem.config.js src scripts",
     "check:client": "node scripts/check-syntax.js public/assets/js",
     "check:test": "node scripts/check-syntax.js test",
     "test": "npm run check && node --test --test-concurrency=1 test/*.test.js"

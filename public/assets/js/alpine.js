@@ -11,6 +11,7 @@ function getJakartaDateInput() {
 function normalizeLabelWeek(value) {
     return String(value || '')
         .trim()
+        .replace(/\s*\|\s*/g, '/')
         .replace(/\s*\/\s*/g, '/')
         .replace(/\s*-\s*/g, '-')
         .replace(/\s+/g, '/')

@@ -409,7 +409,11 @@ test('historical production import validates rows before creating a review token
 test('label/week uses one canonical separator format', () => {
   assert.equal(normalizeLabelWeek(' EU 2628 - 1 '), 'EU/2628-1');
   assert.equal(normalizeLabelWeek('EU / 2628-1'), 'EU/2628-1');
+  assert.equal(normalizeLabelWeek('EU | 2628-1'), 'EU/2628-1');
+  assert.equal(normalizeLabelWeek('EU|2628'), 'EU/2628');
+  assert.notEqual(normalizeLabelWeek('EU|2628'), normalizeLabelWeek('EU|2628-1'));
   assert.equal(normalizeLabelWeek('ACC/N/W'), 'ACC/N/W');
+  assert.equal(normalizeLabelWeek('ACC|N|W'), 'ACC/N/W');
   assert.equal(normalizeLabelWeek('ACC N W'), 'ACC/N/W');
   assert.equal(normalizeLabelWeek('N/L/N/W'), 'N/L/N/W');
   assert.equal(normalizeLabelWeek('N / L / N / W'), 'N/L/N/W');

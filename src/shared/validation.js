@@ -22,6 +22,7 @@ function normalizeModelName(value) {
 function normalizeLabelWeek(value) {
   return String(value || '')
     .trim()
+    .replace(/\s*\|\s*/g, '/')
     .replace(/\s*\/\s*/g, '/')
     .replace(/\s*-\s*/g, '-')
     .replace(/\s+/g, '/')

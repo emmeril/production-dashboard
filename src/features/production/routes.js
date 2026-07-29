@@ -16,6 +16,7 @@ function registerProductionRoutes(app, dependencies) {
     hasAnyRole,
     isValidDateInput,
     isWithinWorkSchedule,
+    normalizeLabelWeek,
     normalizeLineName,
     normalizeModelName,
     parseNonNegativeInteger,
@@ -533,7 +534,7 @@ function registerProductionRoutes(app, dependencies) {
       models: {
         [modelId]: {
           id: modelId,
-          labelWeek,
+          labelWeek: normalizeLabelWeek(labelWeek),
           model: normalizedModel.value,
           date: lineDate,
           target: parsedTarget,
@@ -589,7 +590,7 @@ function registerProductionRoutes(app, dependencies) {
 
     data.lines[lineName].models[modelId] = {
       id: modelId,
-      labelWeek,
+      labelWeek: normalizeLabelWeek(labelWeek),
       model: normalizedModel.value,
       date: lineDate,
       target: parsedTarget,
@@ -647,7 +648,7 @@ function registerProductionRoutes(app, dependencies) {
 
     const targetModel = data.lines[lineName].models[targetModelId];
     if (!isSewingAdmin) {
-      const nextLabelWeek = labelWeek === undefined ? targetModel.labelWeek : String(labelWeek || '').trim();
+      const nextLabelWeek = labelWeek === undefined ? targetModel.labelWeek : normalizeLabelWeek(labelWeek);
       const normalizedModel = model === undefined ? { value: targetModel.model, error: '' } : normalizeModelName(model);
       if (normalizedModel.error) return res.status(400).json({ error: normalizedModel.error });
       const nextModelName = normalizedModel.value;
@@ -837,7 +838,7 @@ function registerProductionRoutes(app, dependencies) {
     }
 
     if (Object.prototype.hasOwnProperty.call(newData, 'labelWeek')) {
-      const nextLabelWeek = String(newData.labelWeek || '').trim();
+      const nextLabelWeek = normalizeLabelWeek(newData.labelWeek);
       const normalizedModel = Object.prototype.hasOwnProperty.call(newData, 'model')
         ? normalizeModelName(newData.model)
         : { value: model.model, error: '' };

@@ -5,6 +5,8 @@ function createMaterialOrderService(dependencies) {
     ExcelJS,
     getToday,
     isValidDateInput,
+    normalizeLabelWeek,
+    normalizeLabelWeekKey,
     productionSnapshotCache,
     readProductionData,
     readProductionSnapshotForDate
@@ -106,7 +108,17 @@ function createMaterialOrderService(dependencies) {
 
   function materialOrderProductionIdentity(lineName, model = {}) {
     const normalize = value => String(value || '').trim().toLowerCase();
-    return `${normalize(lineName)}::${normalize(model.labelWeek)}::${normalize(model.model)}`;
+    return `${normalize(lineName)}::${normalizeLabelWeekKey(model.labelWeek)}::${normalize(model.model)}`;
+  }
+
+  function normalizeMaterialOrderIdentity(identity) {
+    const parts = String(identity || '').split('::');
+    if (parts.length !== 3) return String(identity || '').trim().toLowerCase();
+    return [
+      String(parts[0] || '').trim().toLowerCase(),
+      normalizeLabelWeekKey(parts[1]),
+      String(parts[2] || '').trim().toLowerCase()
+    ].join('::');
   }
 
   function preserveMaterialOrderProductionIdentity(lineName, model, nextLabelWeek, nextModelName) {
@@ -119,7 +131,7 @@ function createMaterialOrderService(dependencies) {
     if (currentIdentity === nextIdentity) return;
 
     const aliases = Array.isArray(model.materialOrderIdentityAliases)
-      ? model.materialOrderIdentityAliases.map(String).filter(Boolean)
+      ? model.materialOrderIdentityAliases.map(normalizeMaterialOrderIdentity).filter(Boolean)
       : [];
     model.materialOrderIdentityAliases = [...new Set([...aliases, currentIdentity])];
   }
@@ -161,7 +173,7 @@ function createMaterialOrderService(dependencies) {
     const identities = [...new Set([
       materialOrderProductionIdentity(lineName, model),
       ...(Array.isArray(model.materialOrderIdentityAliases) ? model.materialOrderIdentityAliases : [])
-    ].map(String).filter(Boolean))];
+    ].map(normalizeMaterialOrderIdentity).filter(Boolean))];
     const matchedOutputs = identities.filter(identity =>
       Object.prototype.hasOwnProperty.call(cumulativeOutputs, identity)
     );
@@ -337,10 +349,10 @@ function createMaterialOrderService(dependencies) {
     const productions = Array.isArray(order.productions) ? order.productions : [];
 
     productions.forEach(production => {
-      const labelWeek = String(production.labelWeek || '').trim();
+      const labelWeek = normalizeLabelWeek(production.labelWeek);
       const modelName = String(production.modelName || production.modelId || '').trim();
       const key = labelWeek && modelName
-        ? `${labelWeek.toLowerCase()}::${modelName.toLowerCase()}`
+        ? `${normalizeLabelWeekKey(labelWeek)}::${modelName.toLowerCase()}`
         : `${production.lineName || ''}::${production.modelId || ''}`;
       if (!groups.has(key)) groups.set(key, { labelWeek, modelName, lineNames: [], qtyResult: 0 });
       const group = groups.get(key);

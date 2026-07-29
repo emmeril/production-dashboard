@@ -7,6 +7,8 @@ function createProductionImportService(dependencies) {
     createHourlyData,
     getDefectSeverity,
     getToday,
+    normalizeLabelWeek,
+    normalizeLabelWeekKey,
     normalizeDefectKey,
     readDefectConfig,
     readProductionSnapshotForDate,
@@ -151,18 +153,21 @@ function createProductionImportService(dependencies) {
   }
 
   function productionImportIdentity(row) {
-    return [row.date, row.line, row.labelWeek, row.model]
-      .map(value => String(value || '').trim().toLowerCase())
-      .join('|');
+    return [
+      String(row.date || '').trim().toLowerCase(),
+      String(row.line || '').trim().toLowerCase(),
+      normalizeLabelWeekKey(row.labelWeek),
+      String(row.model || '').trim().toLowerCase()
+    ].join('|');
   }
 
   function findExistingProductionImportModel(snapshot, row) {
     const models = snapshot?.lines?.[row.line]?.models || {};
-    const rowLabel = String(row.labelWeek || '').trim().toLowerCase();
+    const rowLabel = normalizeLabelWeekKey(row.labelWeek);
     const rowModel = String(row.model || '').trim().toLowerCase();
     return Object.entries(models).filter(([, model]) => {
       const modelName = String(model?.model || '').trim().toLowerCase();
-      const modelLabel = String(model?.labelWeek || '').trim().toLowerCase();
+      const modelLabel = normalizeLabelWeekKey(model?.labelWeek);
       return modelName === rowModel && modelLabel === rowLabel;
     });
   }
@@ -212,7 +217,7 @@ function createProductionImportService(dependencies) {
         rowNumber,
         date,
         line: normalizeProductionImportText(value('line'), 'Line', errors, { required: true, maxLength: 100 }),
-        labelWeek: normalizeProductionImportText(value('labelWeek'), 'Label/Week', errors, { maxLength: 150 }),
+        labelWeek: normalizeLabelWeek(normalizeProductionImportText(value('labelWeek'), 'Label/Week', errors, { maxLength: 150 })),
         model: normalizeProductionImportText(value('model'), 'Model', errors, { required: true, maxLength: 300 }),
         target: parseProductionImportInteger(value('target'), 'Target', errors),
         output: parseProductionImportInteger(value('output'), 'Output', errors),
@@ -347,7 +352,7 @@ function createProductionImportService(dependencies) {
         rowNumber,
         date,
         line: normalizeProductionImportText(value('line'), 'Line', errors, { required: true, maxLength: 100 }),
-        labelWeek: normalizeProductionImportText(value('labelWeek'), 'Label/Week', errors, { maxLength: 150 }),
+        labelWeek: normalizeLabelWeek(normalizeProductionImportText(value('labelWeek'), 'Label/Week', errors, { maxLength: 150 })),
         model: normalizeProductionImportText(value('model'), 'Model', errors, { required: true, maxLength: 300 }),
         hour: normalizeProductionImportText(value('hour'), 'Jam', errors, { required: true, maxLength: 50 }),
         targetManual: parseProductionImportInteger(value('targetManual'), 'Target Manual', errors),
@@ -618,7 +623,7 @@ function createProductionImportService(dependencies) {
         rowNumber,
         date,
         line: normalizeProductionImportText(value('line'), 'Line', errors, { required: true, maxLength: 100 }),
-        labelWeek: normalizeProductionImportText(value('labelWeek'), 'Label/Week', errors, { maxLength: 150 }),
+        labelWeek: normalizeLabelWeek(normalizeProductionImportText(value('labelWeek'), 'Label/Week', errors, { maxLength: 150 })),
         model: normalizeProductionImportText(value('model'), 'Model', errors, { required: true, maxLength: 300 }),
         hour: normalizeProductionImportText(value('hour'), 'Jam', errors, { required: true, maxLength: 50 }),
         targetManual: parseProductionImportInteger(value('targetManual'), 'Target Manual', errors),
@@ -753,7 +758,7 @@ function createProductionImportService(dependencies) {
         rowNumber,
         date,
         line: normalizeProductionImportText(value('line'), 'Line', errors, { required: true, maxLength: 100 }),
-        labelWeek: normalizeProductionImportText(value('labelWeek'), 'Label/Week', errors, { maxLength: 150 }),
+        labelWeek: normalizeLabelWeek(normalizeProductionImportText(value('labelWeek'), 'Label/Week', errors, { maxLength: 150 })),
         model: normalizeProductionImportText(value('model'), 'Model', errors, { required: true, maxLength: 300 }),
         hour: normalizeProductionImportText(value('hour'), 'Jam', errors, { required: true, maxLength: 50 }),
         result,

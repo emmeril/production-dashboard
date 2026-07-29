@@ -19,6 +19,28 @@ function normalizeModelName(value) {
   return normalizeRequiredText(value, 'Nama model', 300);
 }
 
+function normalizeLabelWeek(value) {
+  return String(value || '')
+    .trim()
+    .replace(/\s*\/\s*/g, '/')
+    .replace(/\s*-\s*/g, '-')
+    .replace(/\s+/g, '/')
+    .replace(/\/{2,}/g, '/');
+}
+
+function normalizeLabelWeekKey(value) {
+  return normalizeLabelWeek(value).toLowerCase();
+}
+
+function normalizeProductionLabelWeeks(data = {}) {
+  Object.values(data.lines || {}).forEach(line => {
+    Object.values(line?.models || {}).forEach(model => {
+      if (model) model.labelWeek = normalizeLabelWeek(model.labelWeek);
+    });
+  });
+  return data;
+}
+
 function parseNonNegativeInteger(value, fallback = null) {
   if (value === undefined || value === null || value === '') return fallback;
   const number = Number(value);
@@ -36,8 +58,11 @@ function isValidDateInput(value) {
 module.exports = {
   isBlankInputValue,
   isValidDateInput,
+  normalizeLabelWeek,
+  normalizeLabelWeekKey,
   normalizeLineName,
   normalizeModelName,
+  normalizeProductionLabelWeeks,
   normalizeRequiredText,
   parseNonNegativeInteger
 };

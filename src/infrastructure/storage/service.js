@@ -22,6 +22,7 @@ function createStorageService(dependencies) {
     logger,
     normalizeDefectConfig,
     normalizeMaterialOrders,
+    normalizeProductionLabelWeeks,
     normalizePublicDisplaySettings,
     normalizeUserRecord,
     normalizeWorkScheduleSettings,
@@ -171,7 +172,8 @@ function createStorageService(dependencies) {
 
   function readSnapshotData(snapshot) {
     if (!snapshot) return null;
-    return parsePayload(snapshot.payload, null);
+    const data = parsePayload(snapshot.payload, null);
+    return data ? normalizeProductionLabelWeeks(data) : null;
   }
 
   function getSnapshotByFilename(filename) {
@@ -632,10 +634,10 @@ function createStorageService(dependencies) {
     const rows = await AppData.findAll({ raw: true });
     const rowsByKey = new Map(rows.map(row => [row.key, row]));
 
-    productionDataCache = parsePayload(
+    productionDataCache = normalizeProductionLabelWeeks(parsePayload(
       rowsByKey.get(PRODUCTION_DATA_KEY)?.payload || '',
       buildInitialProductionData()
-    );
+    ));
     usersDataCache = parsePayload(
       rowsByKey.get(USERS_DATA_KEY)?.payload || '',
       buildInitialUsersData()
@@ -756,7 +758,7 @@ function createStorageService(dependencies) {
 
   function readProductionData() {
     try {
-      return productionDataCache;
+      return normalizeProductionLabelWeeks(productionDataCache);
     } catch (error) {
       logger.error('Gagal membaca production data cache', error.message);
       return { lines: {}, activeLine: '' };
@@ -764,8 +766,8 @@ function createStorageService(dependencies) {
   }
 
   function writeProductionData(data) {
-    productionDataCache = data;
-    return upsertAppData(PRODUCTION_DATA_KEY, data);
+    productionDataCache = normalizeProductionLabelWeeks(data);
+    return upsertAppData(PRODUCTION_DATA_KEY, productionDataCache);
   }
 
   function readUsersData() {

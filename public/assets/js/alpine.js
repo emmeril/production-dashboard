@@ -8,6 +8,19 @@ function getJakartaDateInput() {
     }).format(new Date());
 }
 
+function normalizeLabelWeek(value) {
+    return String(value || '')
+        .trim()
+        .replace(/\s*\/\s*/g, '/')
+        .replace(/\s*-\s*/g, '-')
+        .replace(/\s+/g, '/')
+        .replace(/\/{2,}/g, '/');
+}
+
+function normalizeLabelWeekKey(value) {
+    return normalizeLabelWeek(value).toLowerCase();
+}
+
 function logClientError(context, error) {
     const message = String(context || 'Client error').replace(/:\s*$/, '');
     if (typeof error === 'undefined') {
@@ -1181,7 +1194,7 @@ function dashboard() {
         },
 
         materialOrderProductionGroupKey(line) {
-            const labelWeek = String(line?.data?.labelWeek || '').trim().toLowerCase();
+            const labelWeek = normalizeLabelWeekKey(line?.data?.labelWeek);
             const modelName = String(line?.data?.model || '').trim().toLowerCase();
             return labelWeek && modelName
                 ? `${labelWeek}::${modelName}`
@@ -1242,7 +1255,7 @@ function dashboard() {
                         models: [],
                         totalOutput: 0,
                         productionActive: false,
-                        data: { ...line.data, outputDay: 0 }
+                        data: { ...line.data, labelWeek: normalizeLabelWeek(line.data?.labelWeek), outputDay: 0 }
                     });
                 }
 
@@ -3534,10 +3547,10 @@ function dashboard() {
         materialOrderProductionGroups(order = {}) {
             const groups = new Map();
             (Array.isArray(order.productions) ? order.productions : []).forEach(production => {
-                const labelWeek = String(production.labelWeek || '').trim();
+                const labelWeek = normalizeLabelWeek(production.labelWeek);
                 const modelName = String(production.modelName || production.modelId || '').trim();
                 const groupKey = labelWeek && modelName
-                    ? `${labelWeek.toLowerCase()}::${modelName.toLowerCase()}`
+                    ? `${normalizeLabelWeekKey(labelWeek)}::${modelName.toLowerCase()}`
                     : `${production.lineName || ''}::${production.modelId || production.allocationIndex || ''}`;
                 if (!groups.has(groupKey)) {
                     groups.set(groupKey, {

@@ -38,6 +38,7 @@ const {
   parseProductionImportRows,
   parseProductionImportWorkbook,
   parseNonNegativeInteger,
+  normalizeLabelWeek,
   resolveActiveDefectCategories,
   productionImportTemplateWorkbook,
   qcImportTemplateWorkbook,
@@ -247,7 +248,7 @@ test('material order status follows quantity progress with three automatic state
 });
 
 test('material order totals retain production history after label/week and model renames', () => {
-  const oldIdentity = 'line 1::w29::model lama';
+  const oldIdentity = 'line 1::EU 2628-1::model lama';
   const current = {
     lines: {
       'Line 1': {
@@ -264,7 +265,7 @@ test('material order totals retain production history after label/week and model
   };
   const history = [{
     lines: {
-      'Line 1': { models: { model1: { labelWeek: 'W29', model: 'Model Lama', outputDay: 40 } } }
+      'Line 1': { models: { model1: { labelWeek: 'EU/2628-1', model: 'Model Lama', outputDay: 40 } } }
     }
   }];
 
@@ -403,6 +404,30 @@ test('historical production import validates rows before creating a review token
   assert.equal(parsed.summary.newRecords, 1);
   assert.equal(parsed.rows[0].minorDefect, 2);
   assert.match(parsed.rows[0].warnings[0], /Minor/);
+});
+
+test('label/week uses one canonical separator format', () => {
+  assert.equal(normalizeLabelWeek(' EU 2628 - 1 '), 'EU/2628-1');
+  assert.equal(normalizeLabelWeek('EU / 2628-1'), 'EU/2628-1');
+  assert.equal(normalizeLabelWeek('ACC/N/W'), 'ACC/N/W');
+  assert.equal(normalizeLabelWeek('ACC N W'), 'ACC/N/W');
+  assert.equal(normalizeLabelWeek('N/L/N/W'), 'N/L/N/W');
+  assert.equal(normalizeLabelWeek('N / L / N / W'), 'N/L/N/W');
+});
+
+test('historical production import treats label/week separator variants as duplicates', () => {
+  const parsed = parseProductionImportRows([
+    ['Tanggal', 'Line', 'Label/Week', 'Model', 'Target', 'Output', 'QC Diperiksa', 'Total Defect'],
+    ['2026-07-20', 'Line 1', 'EU/2628-1', 'Model A', 100, 90, 10, 1],
+    ['2026-07-20', 'Line 1', 'EU 2628-1', 'Model A', 100, 90, 10, 1]
+  ], {
+    today: '2026-07-26',
+    getSnapshot: () => null
+  });
+
+  assert.equal(parsed.summary.invalid, 2);
+  assert.equal(parsed.rows[1].labelWeek, 'EU/2628-1');
+  assert.ok(parsed.rows.every(row => row.errors.some(error => /terduplikasi/.test(error))));
 });
 
 test('historical production import rejects duplicate rows and invalid QC totals', () => {
@@ -776,8 +801,8 @@ test('material order model selection synchronizes lines sharing the same label/w
 
   const dashboard = context.dashboard();
   dashboard.linesWithModels = [
-    { lineName: 'Line 1', modelId: 'model1', data: { labelWeek: 'W30', model: 'Model A', outputDay: 40 } },
-    { lineName: 'Line 2', modelId: 'model7', data: { labelWeek: 'W30', model: 'Model A', outputDay: 60 } },
+    { lineName: 'Line 1', modelId: 'model1', data: { labelWeek: 'EU/2628-1', model: 'Model A', outputDay: 40 } },
+    { lineName: 'Line 2', modelId: 'model7', data: { labelWeek: 'EU 2628-1', model: 'Model A', outputDay: 60 } },
     { lineName: 'Line 3', modelId: 'model2', data: { labelWeek: 'W30', model: 'Model B', outputDay: 25 } }
   ];
   dashboard.materialOrderProductionTotals = {
@@ -791,6 +816,8 @@ test('material order model selection synchronizes lines sharing the same label/w
 
   dashboard.applyMaterialOrderModelSelection(0);
 
+  assert.equal(groupedModel.materialOrderKey, 'eu/2628-1::model a');
+  assert.equal(groupedModel.data.labelWeek, 'EU/2628-1');
   assert.equal(dashboard.materialOrderModal.data.productions.length, 1);
   assert.equal(dashboard.materialOrderModal.data.productions[0].lineName, 'Line 1, Line 2');
   assert.equal(dashboard.materialOrderModal.data.productions[0].qtyResult, 300);
@@ -915,16 +942,17 @@ test('material order table groups the same label/week and model across multiple 
   const dashboard = context.dashboard();
   const groups = dashboard.materialOrderProductionGroups({
     productions: [
-      { lineName: 'Line 1', modelId: 'model1', labelWeek: 'W30', modelName: 'Model A', qtyResult: 12, productionActive: true },
-      { lineName: 'Line 2', modelId: 'model7', labelWeek: 'W30', modelName: 'Model A', qtyResult: 8 },
-      { lineName: 'Line 4', modelId: 'model3', labelWeek: 'W30', modelName: 'Model A', qtyResult: 10 },
-      { lineName: 'Line 5', modelId: 'model8', labelWeek: 'W30', modelName: 'Model A', qtyResult: 5 },
+      { lineName: 'Line 1', modelId: 'model1', labelWeek: 'EU/2628-1', modelName: 'Model A', qtyResult: 12, productionActive: true },
+      { lineName: 'Line 2', modelId: 'model7', labelWeek: 'EU 2628-1', modelName: 'Model A', qtyResult: 8 },
+      { lineName: 'Line 4', modelId: 'model3', labelWeek: 'EU / 2628-1', modelName: 'Model A', qtyResult: 10 },
+      { lineName: 'Line 5', modelId: 'model8', labelWeek: 'EU/2628 - 1', modelName: 'Model A', qtyResult: 5 },
       { lineName: 'Line 3', modelId: 'model2', labelWeek: 'W31', modelName: 'Model B', qtyResult: 14 }
     ]
   });
 
   assert.equal(groups.length, 2);
   assert.equal(groups[0].modelName, 'Model A');
+  assert.equal(groups[0].labelWeek, 'EU/2628-1');
   assert.equal(groups[0].allocationIndex, 1);
   assert.equal(groups[0].qtyResult, 35);
   assert.equal(groups[0].lineNames.length, 4);

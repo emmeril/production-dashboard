@@ -32,8 +32,11 @@ const { logger } = require('./shared/logger');
 const {
   isBlankInputValue,
   isValidDateInput,
+  normalizeLabelWeek,
+  normalizeLabelWeekKey,
   normalizeLineName,
   normalizeModelName,
+  normalizeProductionLabelWeeks,
   parseNonNegativeInteger
 } = require('./shared/validation');
 
@@ -357,6 +360,7 @@ const {
   logger,
   normalizeDefectConfig,
   normalizeMaterialOrders: (...args) => normalizeMaterialOrders(...args),
+  normalizeProductionLabelWeeks,
   normalizePublicDisplaySettings,
   normalizeUserRecord,
   normalizeWorkScheduleSettings,
@@ -419,6 +423,8 @@ const {
   createHourlyData,
   getDefectSeverity,
   getToday,
+  normalizeLabelWeek,
+  normalizeLabelWeekKey,
   normalizeDefectKey,
   readDefectConfig,
   readProductionSnapshotForDate,
@@ -642,6 +648,8 @@ const {
   ExcelJS,
   getToday,
   isValidDateInput,
+  normalizeLabelWeek,
+  normalizeLabelWeekKey,
   productionSnapshotCache,
   readProductionData,
   readProductionSnapshotForDate
@@ -1662,6 +1670,7 @@ registerProductionRoutes(app, {
   hasAnyRole,
   isValidDateInput,
   isWithinWorkSchedule,
+  normalizeLabelWeek,
   normalizeLineName,
   normalizeModelName,
   parseNonNegativeInteger,
@@ -2403,6 +2412,8 @@ module.exports = {
   isBlankInputValue,
   parseNonNegativeInteger,
   normalizeLineName,
+  normalizeLabelWeek,
+  normalizeLabelWeekKey,
   normalizeModelName,
   resolveActiveDefectCategories,
   parseProductionImportRows,

@@ -1413,7 +1413,7 @@
 		                                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Label/Week</th>
 		                                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Model Produksi</th>
 		                                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Qty Order</th>
-	                                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hasil Produksi per Alokasi</th>
+	                                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Hasil Produksi</th>
 		                                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status PO</th>
 		                                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Progress</th>
 		                                            <th scope="col" class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Export</th>
@@ -1428,17 +1428,7 @@
 		                                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500" x-text="order.labelWeek || '-' "></td>
 	                                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500" x-text="order.modelName || '-' "></td>
 	                                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500" x-text="formatDashboardNumber(order.qtyOrder)"></td>
-	                                                <td class="px-4 py-3 text-sm text-gray-500">
-	                                                    <div class="material-result-allocation material-report-result-allocation">
-	                                                        <template x-for="group in materialOrderProductionGroups(order)" :key="`report-result-${order.rowId}-${group.groupKey}`">
-	                                                            <div class="material-result-allocation-row">
-	                                                                <span><b x-text="`Model ${group.allocationIndex}`"></b><small x-text="`${group.labelWeek} - ${group.modelName}`"></small></span>
-	                                                                <strong x-text="formatDashboardNumber(group.qtyResult)"></strong>
-	                                                            </div>
-	                                                        </template>
-	                                                    </div>
-	                                                    <div class="material-result-total"><span>Total Hasil</span><strong x-text="formatDashboardNumber(order.qtyResult)"></strong></div>
-	                                                </td>
+	                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-semibold text-gray-700" x-text="formatDashboardNumber(order.qtyResult)"></td>
 		                                                <td class="px-4 py-3 whitespace-nowrap text-sm" x-text="materialOrderStatusLabel(order.status)" :class="materialOrderStatusClass(order.status)"></td>
 		                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-medium" :class="materialOrderProgress(order) >= 100 ? 'text-green-600' : 'text-amber-600'" x-text="materialOrderProgress(order) + '%' "></td>
 		                                                <td class="px-4 py-3 whitespace-nowrap text-center"><button type="button" @click="exportMaterialOrderPo(order)" :disabled="Boolean(materialOrderExportingPo)" class="btn-compact inline-flex items-center border border-transparent font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50"><i class="fa-solid mr-2" :class="materialOrderExportingPo === order.poMaterial ? 'fa-spinner fa-spin' : 'fa-file-excel'"></i><span x-text="materialOrderExportingPo === order.poMaterial ? 'Export...' : 'Export PO'"></span></button></td>

@@ -359,17 +359,28 @@ test('material order Excel export includes summary and report columns', async ()
     startDate: '2026-07-24', endDate: '2026-07-26', poMaterial: 'PO-1', status: 'in_production'
   });
   const detail = workbook.getWorksheet('ORDER MATERIAL');
+  const allocations = workbook.getWorksheet('DETAIL ALOKASI');
 
   assert.equal(workbook.getWorksheet('SUMMARY').getCell('A1').value, 'REPORT ORDER MATERIAL');
   assert.equal(workbook.getWorksheet('SUMMARY').getCell('B4').value, 'PO-1');
   assert.equal(detail.getCell('C1').value, 'PO Material');
   assert.equal(detail.getCell('C2').value, 'PO-1');
-  assert.equal(detail.getCell('F1').value, 'Label/Week');
-  assert.equal(detail.getCell('G1').value, 'Detail Alokasi Produksi');
-  assert.equal(detail.getCell('G2').value, 'Model 1 | W30 - Model A | Hasil: 50\nModel 2 | W31 - Model B | Hasil: 30');
-  assert.equal(detail.getCell('H1').value, 'Total Hasil Produksi');
-  assert.equal(detail.getCell('H2').value, 80);
-  assert.equal(detail.getCell('J2').value, '80%');
+  assert.equal(detail.getCell('F1').value, 'Total Hasil Produksi');
+  assert.equal(detail.getCell('F2').value, 80);
+  assert.equal(detail.getCell('H2').value, 0.8);
+  assert.equal(detail.getCell('H2').numFmt, '0%');
+  assert.equal(detail.rowCount, 2);
+  assert.equal(allocations.getCell('B1').value, 'PO Material');
+  assert.equal(allocations.getCell('B2').value, 'PO-1');
+  assert.equal(allocations.getCell('D1').value, 'Alokasi Produksi');
+  assert.equal(allocations.getCell('D2').value, 'Model 1');
+  assert.equal(allocations.getCell('D3').value, 'Model 2');
+  assert.equal(allocations.getCell('F2').value, 'Model A');
+  assert.equal(allocations.getCell('F3').value, 'Model B');
+  assert.equal(allocations.getCell('H1').value, 'Hasil Produksi');
+  assert.equal(allocations.getCell('H2').value, 50);
+  assert.equal(allocations.getCell('H3').value, 30);
+  assert.equal(allocations.rowCount, 3);
   assert.equal(detail.getRow(1).values.includes('Line'), false);
   assert.equal(detail.getRow(1).values.includes('Model ID'), false);
 });

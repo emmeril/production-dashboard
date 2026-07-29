@@ -326,7 +326,7 @@ function createMaterialOrderService(dependencies) {
     }, { total: 0, qtyOrder: 0, qtyResult: 0, inProduction: 0, completed: 0 });
   }
 
-  function formatMaterialOrderAllocationDetails(order = {}) {
+  function buildMaterialOrderAllocationRows(order = {}) {
     const groups = new Map();
     const productions = Array.isArray(order.productions) ? order.productions : [];
 
@@ -336,8 +336,12 @@ function createMaterialOrderService(dependencies) {
       const key = labelWeek && modelName
         ? `${labelWeek.toLowerCase()}::${modelName.toLowerCase()}`
         : `${production.lineName || ''}::${production.modelId || ''}`;
-      if (!groups.has(key)) groups.set(key, { labelWeek, modelName, qtyResult: 0 });
-      groups.get(key).qtyResult += Number(production.qtyResult) || 0;
+      if (!groups.has(key)) groups.set(key, { labelWeek, modelName, lineNames: [], qtyResult: 0 });
+      const group = groups.get(key);
+      if (production.lineName && !group.lineNames.includes(production.lineName)) {
+        group.lineNames.push(production.lineName);
+      }
+      group.qtyResult += Number(production.qtyResult) || 0;
     });
 
     const allocationGroups = groups.size > 0
@@ -345,13 +349,17 @@ function createMaterialOrderService(dependencies) {
       : [{
           labelWeek: String(order.labelWeek || '').trim(),
           modelName: String(order.modelName || '').trim(),
+          lineNames: String(order.lineName || '').split(',').map(value => value.trim()).filter(Boolean),
           qtyResult: Number(order.orderQtyResult ?? order.qtyResult) || 0
         }];
 
-    return allocationGroups.map((group, index) => {
-      const identity = [group.labelWeek, group.modelName].filter(Boolean).join(' - ') || 'Model tidak tersedia';
-      return `Model ${index + 1} | ${identity} | Hasil: ${group.qtyResult}`;
-    }).join('\n');
+    return allocationGroups.map((group, index) => ({
+      allocationIndex: index + 1,
+      labelWeek: group.labelWeek || '-',
+      modelName: group.modelName || 'Model tidak tersedia',
+      lineNames: group.lineNames.sort((a, b) => a.localeCompare(b, undefined, { numeric: true })),
+      qtyResult: group.qtyResult
+    }));
   }
 
   async function generateMaterialOrderReportExcel(rows, summary, filters = {}) {
@@ -380,46 +388,103 @@ function createMaterialOrderService(dependencies) {
     });
     summarySheet.columns = [{ width: 24 }, { width: 36 }];
 
-    const sheet = workbook.addWorksheet('ORDER MATERIAL');
-    const headers = ['No', 'Tanggal Order', 'PO Material', 'Order Material', 'Qty Order', 'Label/Week', 'Detail Alokasi Produksi', 'Total Hasil Produksi', 'Status PO', 'Progress PO', 'Catatan'];
-    sheet.getRow(1).values = headers;
-    sheet.getRow(1).eachCell(cell => {
-      cell.font = { bold: true, color: { argb: 'FFFFFF' } };
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'D97706' } };
-      cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
-    });
-    rows.forEach((order, index) => {
-      const qtyOrder = Number(order.qtyOrder) || 0;
-      const totalQtyResult = Number(order.orderQtyResult ?? order.qtyResult) || 0;
-      const progress = qtyOrder > 0 ? Math.min(100, Math.round((totalQtyResult / qtyOrder) * 100)) : 0;
-      const row = sheet.addRow([
-        index + 1,
-        order.orderDate,
-        order.poMaterial,
-        order.orderMaterial,
-        qtyOrder,
-        order.labelWeek,
-        formatMaterialOrderAllocationDetails(order),
-        totalQtyResult,
-        { planned: 'Direncanakan', in_production: 'Sedang Produksi', paused: 'Ditunda', completed: 'Selesai' }[order.orderStatus] || order.orderStatus || order.status,
-        `${progress}%`,
-        order.notes || ''
-      ]);
-      row.eachCell(cell => {
+    const styleHeader = (sheet, headers, color) => {
+      sheet.getRow(1).values = headers;
+      sheet.getRow(1).height = 30;
+      sheet.getRow(1).eachCell(cell => {
+        cell.font = { bold: true, color: { argb: 'FFFFFF' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: color } };
+        cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+      });
+    };
+    const styleDataRow = (row, fillColor, centeredColumns = []) => {
+      row.height = 24;
+      row.eachCell((cell, columnNumber) => {
         cell.border = {
           top: { style: 'thin', color: { argb: 'E2E8F0' } },
           left: { style: 'thin', color: { argb: 'E2E8F0' } },
           bottom: { style: 'thin', color: { argb: 'E2E8F0' } },
           right: { style: 'thin', color: { argb: 'E2E8F0' } }
         };
-        cell.alignment = { vertical: 'top', wrapText: true };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: fillColor } };
+        cell.alignment = {
+          horizontal: centeredColumns.includes(columnNumber) ? 'center' : 'left',
+          vertical: 'middle',
+          wrapText: true
+        };
+      });
+    };
+
+    const orderSheet = workbook.addWorksheet('ORDER MATERIAL', { properties: { tabColor: { argb: '0F766E' } } });
+    const orderHeaders = ['No', 'Tanggal Order', 'PO Material', 'Order Material', 'Qty Order', 'Total Hasil Produksi', 'Status PO', 'Progress PO', 'Catatan'];
+    styleHeader(orderSheet, orderHeaders, '0F766E');
+    rows.forEach((order, index) => {
+      const qtyOrder = Number(order.qtyOrder) || 0;
+      const totalQtyResult = Number(order.orderQtyResult ?? order.qtyResult) || 0;
+      const progress = qtyOrder > 0 ? Math.min(100, Math.round((totalQtyResult / qtyOrder) * 100)) : 0;
+      const status = { planned: 'Direncanakan', in_production: 'Sedang Produksi', paused: 'Ditunda', completed: 'Selesai' }[order.orderStatus] || order.orderStatus || order.status;
+      const row = orderSheet.addRow([
+        index + 1,
+        order.orderDate,
+        order.poMaterial,
+        order.orderMaterial,
+        qtyOrder,
+        totalQtyResult,
+        status,
+        progress / 100,
+        order.notes || ''
+      ]);
+      styleDataRow(row, index % 2 === 0 ? 'FFFFFF' : 'F8FAFC', [1, 2, 5, 6, 7, 8]);
+      row.getCell(3).font = { bold: true, color: { argb: '0F172A' } };
+      row.getCell(5).numFmt = '#,##0';
+      row.getCell(6).numFmt = '#,##0';
+      row.getCell(6).font = { bold: true, color: { argb: '166534' } };
+      row.getCell(8).numFmt = '0%';
+    });
+    orderSheet.columns = [
+      { width: 7 }, { width: 15 }, { width: 20 }, { width: 28 }, { width: 15 },
+      { width: 21 }, { width: 18 }, { width: 15 }, { width: 32 }
+    ];
+    orderSheet.views = [{ state: 'frozen', ySplit: 1 }];
+    orderSheet.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: orderHeaders.length } };
+    orderSheet.pageSetup = { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 };
+
+    const allocationSheet = workbook.addWorksheet('DETAIL ALOKASI', { properties: { tabColor: { argb: 'D97706' } } });
+    const allocationHeaders = ['No', 'PO Material', 'Order Material', 'Alokasi Produksi', 'Label/Week', 'Model Produksi', 'Line Produksi', 'Hasil Produksi'];
+    styleHeader(allocationSheet, allocationHeaders, 'D97706');
+    let allocationNumber = 1;
+    rows.forEach((order, orderIndex) => {
+      buildMaterialOrderAllocationRows(order).forEach(allocation => {
+        const row = allocationSheet.addRow([
+          allocationNumber,
+          order.poMaterial,
+          order.orderMaterial,
+          `Model ${allocation.allocationIndex}`,
+          allocation.labelWeek,
+          allocation.modelName,
+          allocation.lineNames.join(', ') || '-',
+          allocation.qtyResult
+        ]);
+        styleDataRow(row, orderIndex % 2 === 0 ? 'FFFBEB' : 'FFFFFF', [1, 4, 5, 8]);
+        row.getCell(2).font = { bold: true, color: { argb: '0F172A' } };
+        row.getCell(4).font = { bold: true, color: { argb: 'B45309' } };
+        row.getCell(8).numFmt = '#,##0';
+        row.getCell(8).font = { bold: true, color: { argb: '166534' } };
+        allocationNumber += 1;
       });
     });
-    sheet.columns = headers.map(header => ({
-      width: ['Order Material', 'Detail Alokasi Produksi', 'Catatan'].includes(header) ? 32 : (header === 'PO Material' ? 22 : 16)
-    }));
-    sheet.views = [{ state: 'frozen', ySplit: 1 }];
-    sheet.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: headers.length } };
+    allocationSheet.columns = [
+      { width: 7 }, { width: 20 }, { width: 28 }, { width: 18 },
+      { width: 15 }, { width: 26 }, { width: 32 }, { width: 18 }
+    ];
+    allocationSheet.views = [{ state: 'frozen', ySplit: 1 }];
+    allocationSheet.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: allocationHeaders.length } };
+    allocationSheet.pageSetup = { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 };
+
+    summarySheet.properties.tabColor = { argb: '334155' };
+    [summarySheet, orderSheet, allocationSheet].forEach(sheet => {
+      sheet.headerFooter.oddFooter = 'Production Dashboard - Report Order Material';
+    });
     return workbook;
   }
 

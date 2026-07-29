@@ -9,6 +9,8 @@ function createProductionImportService(dependencies) {
     getToday,
     normalizeLabelWeek,
     normalizeLabelWeekKey,
+    normalizeProductionLineName,
+    normalizeProductionModel,
     normalizeDefectKey,
     readDefectConfig,
     readProductionSnapshotForDate,
@@ -155,14 +157,17 @@ function createProductionImportService(dependencies) {
   function productionImportIdentity(row) {
     return [
       String(row.date || '').trim().toLowerCase(),
-      String(row.line || '').trim().toLowerCase(),
+      normalizeProductionLineName(row.line).toLowerCase(),
       normalizeLabelWeekKey(row.labelWeek),
       String(row.model || '').trim().toLowerCase()
     ].join('|');
   }
 
   function findExistingProductionImportModel(snapshot, row) {
-    const models = snapshot?.lines?.[row.line]?.models || {};
+    const matchingLineName = Object.keys(snapshot?.lines || {}).find(lineName =>
+      normalizeProductionLineName(lineName) === normalizeProductionLineName(row.line)
+    );
+    const models = snapshot?.lines?.[matchingLineName]?.models || {};
     const rowLabel = normalizeLabelWeekKey(row.labelWeek);
     const rowModel = String(row.model || '').trim().toLowerCase();
     return Object.entries(models).filter(([, model]) => {
@@ -216,9 +221,9 @@ function createProductionImportService(dependencies) {
       const row = {
         rowNumber,
         date,
-        line: normalizeProductionImportText(value('line'), 'Line', errors, { required: true, maxLength: 100 }),
+        line: normalizeProductionLineName(normalizeProductionImportText(value('line'), 'Line', errors, { required: true, maxLength: 100 })),
         labelWeek: normalizeLabelWeek(normalizeProductionImportText(value('labelWeek'), 'Label/Week', errors, { maxLength: 150 })),
-        model: normalizeProductionImportText(value('model'), 'Model', errors, { required: true, maxLength: 300 }),
+        model: normalizeProductionModel(normalizeProductionImportText(value('model'), 'Model', errors, { required: true, maxLength: 300 })),
         target: parseProductionImportInteger(value('target'), 'Target', errors),
         output: parseProductionImportInteger(value('output'), 'Output', errors),
         qcChecked: parseProductionImportInteger(value('qcChecked'), 'QC Diperiksa', errors),
@@ -351,9 +356,9 @@ function createProductionImportService(dependencies) {
       const row = {
         rowNumber,
         date,
-        line: normalizeProductionImportText(value('line'), 'Line', errors, { required: true, maxLength: 100 }),
+        line: normalizeProductionLineName(normalizeProductionImportText(value('line'), 'Line', errors, { required: true, maxLength: 100 })),
         labelWeek: normalizeLabelWeek(normalizeProductionImportText(value('labelWeek'), 'Label/Week', errors, { maxLength: 150 })),
-        model: normalizeProductionImportText(value('model'), 'Model', errors, { required: true, maxLength: 300 }),
+        model: normalizeProductionModel(normalizeProductionImportText(value('model'), 'Model', errors, { required: true, maxLength: 300 })),
         hour: normalizeProductionImportText(value('hour'), 'Jam', errors, { required: true, maxLength: 50 }),
         targetManual: parseProductionImportInteger(value('targetManual'), 'Target Manual', errors),
         output: parseProductionImportInteger(value('output'), 'Output', errors),
@@ -622,9 +627,9 @@ function createProductionImportService(dependencies) {
       const row = {
         rowNumber,
         date,
-        line: normalizeProductionImportText(value('line'), 'Line', errors, { required: true, maxLength: 100 }),
+        line: normalizeProductionLineName(normalizeProductionImportText(value('line'), 'Line', errors, { required: true, maxLength: 100 })),
         labelWeek: normalizeLabelWeek(normalizeProductionImportText(value('labelWeek'), 'Label/Week', errors, { maxLength: 150 })),
-        model: normalizeProductionImportText(value('model'), 'Model', errors, { required: true, maxLength: 300 }),
+        model: normalizeProductionModel(normalizeProductionImportText(value('model'), 'Model', errors, { required: true, maxLength: 300 })),
         hour: normalizeProductionImportText(value('hour'), 'Jam', errors, { required: true, maxLength: 50 }),
         targetManual: parseProductionImportInteger(value('targetManual'), 'Target Manual', errors),
         output: parseProductionImportInteger(value('output'), 'Output', errors),
@@ -757,9 +762,9 @@ function createProductionImportService(dependencies) {
       const entry = {
         rowNumber,
         date,
-        line: normalizeProductionImportText(value('line'), 'Line', errors, { required: true, maxLength: 100 }),
+        line: normalizeProductionLineName(normalizeProductionImportText(value('line'), 'Line', errors, { required: true, maxLength: 100 })),
         labelWeek: normalizeLabelWeek(normalizeProductionImportText(value('labelWeek'), 'Label/Week', errors, { maxLength: 150 })),
-        model: normalizeProductionImportText(value('model'), 'Model', errors, { required: true, maxLength: 300 }),
+        model: normalizeProductionModel(normalizeProductionImportText(value('model'), 'Model', errors, { required: true, maxLength: 300 })),
         hour: normalizeProductionImportText(value('hour'), 'Jam', errors, { required: true, maxLength: 50 }),
         result,
         quantity: parseProductionImportInteger(value('quantity'), 'Qty', errors),

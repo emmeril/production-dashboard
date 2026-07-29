@@ -7,6 +7,7 @@ function createMaterialOrderService(dependencies) {
     isValidDateInput,
     normalizeLabelWeek,
     normalizeLabelWeekKey,
+    normalizeProductionLineName,
     productionSnapshotCache,
     readProductionData,
     readProductionSnapshotForDate
@@ -20,7 +21,7 @@ function createMaterialOrderService(dependencies) {
 
   function normalizeMaterialOrderProduction(production = {}) {
     return {
-      lineName: String(production.lineName || '').trim(),
+      lineName: normalizeProductionLineName(production.lineName),
       modelId: String(production.modelId || '').trim(),
       status: MATERIAL_ORDER_STATUSES.includes(production.status) ? production.status : 'planned',
       qtyResult: Math.max(0, parseInt(production.qtyResult) || 0)
@@ -42,6 +43,14 @@ function createMaterialOrderService(dependencies) {
     return productions
       .map(normalizeMaterialOrderProduction)
       .filter(production => production.lineName || production.modelId || production.qtyResult > 0);
+  }
+
+  function getProductionLine(productionData, lineName) {
+    const normalizedLineName = normalizeProductionLineName(lineName);
+    const matchingLineName = Object.keys(productionData?.lines || {}).find(candidate =>
+      normalizeProductionLineName(candidate) === normalizedLineName
+    );
+    return productionData?.lines?.[matchingLineName] || null;
   }
 
   function deriveMaterialOrderStatus(productions = []) {
@@ -218,7 +227,8 @@ function createMaterialOrderService(dependencies) {
         errors.push(`${rowLabel}: line dan model produksi wajib dipilih`);
         return;
       }
-      const model = productionData.lines?.[production.lineName]?.models?.[production.modelId];
+      const productionLine = getProductionLine(productionData, production.lineName);
+      const model = productionLine?.models?.[production.modelId];
       if (!model) {
         errors.push(`${rowLabel}: line atau model produksi tidak ditemukan`);
       } else {
@@ -247,8 +257,9 @@ function createMaterialOrderService(dependencies) {
   function buildMaterialOrderResponse(order, productionData = readProductionData(), cumulativeOutputs = buildMaterialOrderCumulativeOutputs(productionData)) {
     const normalizedOrder = normalizeMaterialOrderRecord(order);
     const productions = normalizedOrder.productions.map((production, index) => {
-      const model = productionData.lines?.[production.lineName]?.models?.[production.modelId];
-      const activeModels = productionData.lines?.[production.lineName]?.activeModels || [];
+      const productionLine = getProductionLine(productionData, production.lineName);
+      const model = productionLine?.models?.[production.modelId];
+      const activeModels = productionLine?.activeModels || [];
       const currentProductionOutput = model
         ? getMaterialOrderCumulativeOutput(production.lineName, model, cumulativeOutputs)
         : getMaterialOrderActualQty(null, production.qtyResult);
@@ -261,7 +272,7 @@ function createMaterialOrderService(dependencies) {
         labelWeek: model?.labelWeek || '',
         currentProductionOutput,
         productionActive: activeModels.includes(production.modelId)
-          || productionData.lines?.[production.lineName]?.activeModel === production.modelId,
+          || productionLine?.activeModel === production.modelId,
         linkedModelExists: Boolean(model)
       };
     });

@@ -36,7 +36,9 @@ const {
   normalizeLabelWeekKey,
   normalizeLineName,
   normalizeModelName,
-  normalizeProductionLabelWeeks,
+  normalizeProductionDataIdentities,
+  normalizeProductionLineName,
+  normalizeProductionModel,
   parseNonNegativeInteger
 } = require('./shared/validation');
 
@@ -360,7 +362,7 @@ const {
   logger,
   normalizeDefectConfig,
   normalizeMaterialOrders: (...args) => normalizeMaterialOrders(...args),
-  normalizeProductionLabelWeeks,
+  normalizeProductionDataIdentities,
   normalizePublicDisplaySettings,
   normalizeUserRecord,
   normalizeWorkScheduleSettings,
@@ -425,6 +427,8 @@ const {
   getToday,
   normalizeLabelWeek,
   normalizeLabelWeekKey,
+  normalizeProductionLineName,
+  normalizeProductionModel,
   normalizeDefectKey,
   readDefectConfig,
   readProductionSnapshotForDate,
@@ -650,6 +654,7 @@ const {
   isValidDateInput,
   normalizeLabelWeek,
   normalizeLabelWeekKey,
+  normalizeProductionLineName,
   productionSnapshotCache,
   readProductionData,
   readProductionSnapshotForDate
@@ -2415,6 +2420,8 @@ module.exports = {
   normalizeLabelWeek,
   normalizeLabelWeekKey,
   normalizeModelName,
+  normalizeProductionLineName,
+  normalizeProductionModel,
   resolveActiveDefectCategories,
   parseProductionImportRows,
   parseProductionImportWorkbook,

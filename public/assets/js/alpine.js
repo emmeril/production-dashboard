@@ -15,7 +15,16 @@ function normalizeLabelWeek(value) {
         .replace(/\s*\/\s*/g, '/')
         .replace(/\s*-\s*/g, '-')
         .replace(/\s+/g, '/')
-        .replace(/\/{2,}/g, '/');
+        .replace(/\/{2,}/g, '/')
+        .toUpperCase();
+}
+
+function normalizeProductionLineName(value) {
+    return String(value || '').trim().toUpperCase();
+}
+
+function normalizeProductionModel(value) {
+    return String(value || '').trim().toUpperCase();
 }
 
 function normalizeLabelWeekKey(value) {
@@ -1149,7 +1158,8 @@ function dashboard() {
 
             list.forEach(production => {
                 const selectedLine = (this.linesWithModels || []).find(line =>
-                    line.lineName === production.lineName && line.modelId === production.modelId
+                    normalizeProductionLineName(line.lineName) === normalizeProductionLineName(production.lineName)
+                    && line.modelId === production.modelId
                 );
                 const groupKey = production.syncGroupKey
                     || (selectedLine ? this.materialOrderProductionGroupKey(selectedLine) : production.modelKey)
@@ -1167,7 +1177,7 @@ function dashboard() {
                     ...this.emptyMaterialOrderProduction(),
                     modelKey: groupKey,
                     syncGroupKey: groupKey,
-                    lineName: option?.lineName || production.lineName || '',
+                    lineName: option?.lineName || normalizeProductionLineName(production.lineName),
                     modelId: option?.modelId || production.modelId || '',
                     status: production.status || 'planned',
                     statuses: [production.status || 'planned'],
@@ -1184,7 +1194,7 @@ function dashboard() {
         },
 
         materialOrderProductionKey(lineName, modelId) {
-            return lineName && modelId ? `${lineName}::${modelId}` : '';
+            return lineName && modelId ? `${normalizeProductionLineName(lineName)}::${modelId}` : '';
         },
 
         materialOrderLineCumulativeOutput(line) {
@@ -1256,13 +1266,19 @@ function dashboard() {
                         models: [],
                         totalOutput: 0,
                         productionActive: false,
-                        data: { ...line.data, labelWeek: normalizeLabelWeek(line.data?.labelWeek), outputDay: 0 }
+                        data: {
+                            ...line.data,
+                            labelWeek: normalizeLabelWeek(line.data?.labelWeek),
+                            model: normalizeProductionModel(line.data?.model),
+                            outputDay: 0
+                        }
                     });
                 }
 
                 const group = groups.get(materialOrderKey);
                 group.models.push(line);
-                if (!group.lineNames.includes(line.lineName)) group.lineNames.push(line.lineName);
+                const normalizedLineName = normalizeProductionLineName(line.lineName);
+                if (!group.lineNames.includes(normalizedLineName)) group.lineNames.push(normalizedLineName);
                 group.totalOutput += this.materialOrderLineCumulativeOutput(line);
                 group.productionActive = group.productionActive
                     || (line.data?.lineActiveModels || []).includes(line.modelId);
@@ -1351,7 +1367,7 @@ function dashboard() {
                 );
                 if (!selected) return [];
                 return selected.models.map(line => ({
-                    lineName: line.lineName,
+                    lineName: normalizeProductionLineName(line.lineName),
                     modelId: line.modelId,
                     status: production.status,
                     qtyResult: this.materialOrderLineCumulativeOutput(line)
@@ -3549,7 +3565,7 @@ function dashboard() {
             const groups = new Map();
             (Array.isArray(order.productions) ? order.productions : []).forEach(production => {
                 const labelWeek = normalizeLabelWeek(production.labelWeek);
-                const modelName = String(production.modelName || production.modelId || '').trim();
+                const modelName = normalizeProductionModel(production.modelName || production.modelId);
                 const groupKey = labelWeek && modelName
                     ? `${normalizeLabelWeekKey(labelWeek)}::${modelName.toLowerCase()}`
                     : `${production.lineName || ''}::${production.modelId || production.allocationIndex || ''}`;
@@ -3566,8 +3582,9 @@ function dashboard() {
                 }
 
                 const group = groups.get(groupKey);
-                if (production.lineName && !group.lineNames.includes(production.lineName)) {
-                    group.lineNames.push(production.lineName);
+                const normalizedLineName = normalizeProductionLineName(production.lineName);
+                if (normalizedLineName && !group.lineNames.includes(normalizedLineName)) {
+                    group.lineNames.push(normalizedLineName);
                 }
                 group.qtyResult += Number(production.qtyResult) || 0;
                 group.productionActive = group.productionActive || Boolean(production.productionActive);

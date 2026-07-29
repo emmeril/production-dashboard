@@ -39,6 +39,10 @@ const {
   parseProductionImportWorkbook,
   parseNonNegativeInteger,
   normalizeLabelWeek,
+  normalizeLineName,
+  normalizeModelName,
+  normalizeProductionLineName,
+  normalizeProductionModel,
   resolveActiveDefectCategories,
   productionImportTemplateWorkbook,
   qcImportTemplateWorkbook,
@@ -417,6 +421,14 @@ test('label/week uses one canonical separator format', () => {
   assert.equal(normalizeLabelWeek('ACC N W'), 'ACC/N/W');
   assert.equal(normalizeLabelWeek('N/L/N/W'), 'N/L/N/W');
   assert.equal(normalizeLabelWeek('N / L / N / W'), 'N/L/N/W');
+});
+
+test('line, label/week, and model use uppercase canonical formatting', () => {
+  assert.equal(normalizeProductionLineName(' Line-1 '), 'LINE-1');
+  assert.equal(normalizeLabelWeek('eu|2628-1'), 'EU/2628-1');
+  assert.equal(normalizeProductionModel('Alptall 27 asiatic black bear'), 'ALPTALL 27 ASIATIC BLACK BEAR');
+  assert.deepEqual(normalizeLineName(' line-1 '), { value: 'LINE-1', error: '' });
+  assert.deepEqual(normalizeModelName(' Model A '), { value: 'MODEL A', error: '' });
 });
 
 test('historical production import treats label/week separator variants as duplicates', () => {
@@ -810,12 +822,12 @@ test('material order model selection synchronizes lines sharing the same label/w
     { lineName: 'Line 3', modelId: 'model2', data: { labelWeek: 'W30', model: 'Model B', outputDay: 25 } }
   ];
   dashboard.materialOrderProductionTotals = {
-    'Line 1::model1': 140,
-    'Line 2::model7': 160,
-    'Line 3::model2': 25
+    'LINE 1::model1': 140,
+    'LINE 2::model7': 160,
+    'LINE 3::model2': 25
   };
   dashboard.materialOrderModal.data = dashboard.emptyMaterialOrderData();
-  const groupedModel = dashboard.materialOrderProductionModelOptions().find(option => option.data.model === 'Model A');
+  const groupedModel = dashboard.materialOrderProductionModelOptions().find(option => option.data.model === 'MODEL A');
   dashboard.materialOrderModal.data.productions[0].modelKey = groupedModel.materialOrderKey;
 
   dashboard.applyMaterialOrderModelSelection(0);
@@ -823,12 +835,12 @@ test('material order model selection synchronizes lines sharing the same label/w
   assert.equal(groupedModel.materialOrderKey, 'eu/2628-1::model a');
   assert.equal(groupedModel.data.labelWeek, 'EU/2628-1');
   assert.equal(dashboard.materialOrderModal.data.productions.length, 1);
-  assert.equal(dashboard.materialOrderModal.data.productions[0].lineName, 'Line 1, Line 2');
+  assert.equal(dashboard.materialOrderModal.data.productions[0].lineName, 'LINE 1, LINE 2');
   assert.equal(dashboard.materialOrderModal.data.productions[0].qtyResult, 300);
 
   dashboard.materialOrderModal.data.productions[0].status = 'in_production';
   const expanded = dashboard.expandMaterialOrderProductions(dashboard.materialOrderModal.data.productions);
-  assert.deepEqual(Array.from(expanded, item => item.lineName), ['Line 1', 'Line 2']);
+  assert.deepEqual(Array.from(expanded, item => item.lineName), ['LINE 1', 'LINE 2']);
   assert.deepEqual(Array.from(expanded, item => item.modelId), ['model1', 'model7']);
   assert.deepEqual(Array.from(expanded, item => item.qtyResult), [140, 160]);
   assert.deepEqual(Array.from(expanded, item => item.status), ['in_production', 'in_production']);
@@ -955,7 +967,7 @@ test('material order table groups the same label/week and model across multiple 
   });
 
   assert.equal(groups.length, 2);
-  assert.equal(groups[0].modelName, 'Model A');
+  assert.equal(groups[0].modelName, 'MODEL A');
   assert.equal(groups[0].labelWeek, 'EU/2628-1');
   assert.equal(groups[0].allocationIndex, 1);
   assert.equal(groups[0].qtyResult, 35);
@@ -963,7 +975,7 @@ test('material order table groups the same label/week and model across multiple 
   assert.equal(groups[0].productionActive, true);
   assert.equal(groups[1].allocationIndex, 2);
   assert.equal(groups[1].qtyResult, 14);
-  assert.equal(dashboard.compactMaterialOrderLines(groups[0].lineNames), 'Line 1, Line 2, Line 4 +1 lainnya');
+  assert.equal(dashboard.compactMaterialOrderLines(groups[0].lineNames), 'LINE 1, LINE 2, LINE 4 +1 lainnya');
 });
 
 test('opening a material order edit form refreshes models before resolving its selected groups', async () => {

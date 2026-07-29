@@ -12,11 +12,21 @@ function normalizeLineName(value) {
   if (/[\\/\0]/.test(result.value) || ['__proto__', 'constructor', 'prototype'].includes(result.value.toLowerCase())) {
     return { value: '', error: 'Nama line tidak valid' };
   }
-  return result;
+  return { value: normalizeProductionLineName(result.value), error: '' };
 }
 
 function normalizeModelName(value) {
-  return normalizeRequiredText(value, 'Nama model', 300);
+  const result = normalizeRequiredText(value, 'Nama model', 300);
+  if (result.error) return result;
+  return { value: normalizeProductionModel(result.value), error: '' };
+}
+
+function normalizeProductionLineName(value) {
+  return String(value || '').trim().toUpperCase();
+}
+
+function normalizeProductionModel(value) {
+  return String(value || '').trim().toUpperCase();
 }
 
 function normalizeLabelWeek(value) {
@@ -26,19 +36,38 @@ function normalizeLabelWeek(value) {
     .replace(/\s*\/\s*/g, '/')
     .replace(/\s*-\s*/g, '-')
     .replace(/\s+/g, '/')
-    .replace(/\/{2,}/g, '/');
+    .replace(/\/{2,}/g, '/')
+    .toUpperCase();
 }
 
 function normalizeLabelWeekKey(value) {
   return normalizeLabelWeek(value).toLowerCase();
 }
 
-function normalizeProductionLabelWeeks(data = {}) {
-  Object.values(data.lines || {}).forEach(line => {
+function normalizeProductionDataIdentities(data = {}) {
+  const normalizedLines = {};
+  Object.entries(data.lines || {}).forEach(([lineName, line]) => {
+    const normalizedLineName = normalizeProductionLineName(lineName);
     Object.values(line?.models || {}).forEach(model => {
-      if (model) model.labelWeek = normalizeLabelWeek(model.labelWeek);
+      if (!model) return;
+      model.labelWeek = normalizeLabelWeek(model.labelWeek);
+      model.model = normalizeProductionModel(model.model);
     });
+    if (!normalizedLines[normalizedLineName]) {
+      normalizedLines[normalizedLineName] = line;
+      return;
+    }
+
+    const existing = normalizedLines[normalizedLineName];
+    existing.models = { ...(line?.models || {}), ...(existing.models || {}) };
+    existing.activeModels = [...new Set([
+      ...(existing.activeModels || []),
+      ...(line?.activeModels || [])
+    ])];
+    existing.activeModel = existing.activeModel || line?.activeModel || existing.activeModels[0] || null;
   });
+  data.lines = normalizedLines;
+  data.activeLine = normalizeProductionLineName(data.activeLine);
   return data;
 }
 
@@ -63,7 +92,9 @@ module.exports = {
   normalizeLabelWeekKey,
   normalizeLineName,
   normalizeModelName,
-  normalizeProductionLabelWeeks,
+  normalizeProductionDataIdentities,
+  normalizeProductionLineName,
+  normalizeProductionModel,
   normalizeRequiredText,
   parseNonNegativeInteger
 };

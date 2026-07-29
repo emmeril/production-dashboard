@@ -345,6 +345,10 @@ test('material order Excel export includes summary and report columns', async ()
     rowId: '1',
     labelWeek: 'W30',
     modelName: 'Model A',
+    productions: [
+      { lineName: 'Line 1', modelId: 'model1', labelWeek: 'W30', modelName: 'Model A', qtyResult: 50 },
+      { lineName: 'Line 2', modelId: 'model2', labelWeek: 'W31', modelName: 'Model B', qtyResult: 30 }
+    ],
     status: 'in_production',
     orderStatus: 'in_production',
     currentProductionOutput: 85,
@@ -361,6 +365,8 @@ test('material order Excel export includes summary and report columns', async ()
   assert.equal(detail.getCell('C1').value, 'PO Material');
   assert.equal(detail.getCell('C2').value, 'PO-1');
   assert.equal(detail.getCell('F1').value, 'Label/Week');
+  assert.equal(detail.getCell('G1').value, 'Detail Alokasi Produksi');
+  assert.equal(detail.getCell('G2').value, 'Model 1 | W30 - Model A | Hasil: 50\nModel 2 | W31 - Model B | Hasil: 30');
   assert.equal(detail.getCell('H1').value, 'Total Hasil Produksi');
   assert.equal(detail.getCell('H2').value, 80);
   assert.equal(detail.getCell('J2').value, '80%');

@@ -326,6 +326,34 @@ function createMaterialOrderService(dependencies) {
     }, { total: 0, qtyOrder: 0, qtyResult: 0, inProduction: 0, completed: 0 });
   }
 
+  function formatMaterialOrderAllocationDetails(order = {}) {
+    const groups = new Map();
+    const productions = Array.isArray(order.productions) ? order.productions : [];
+
+    productions.forEach(production => {
+      const labelWeek = String(production.labelWeek || '').trim();
+      const modelName = String(production.modelName || production.modelId || '').trim();
+      const key = labelWeek && modelName
+        ? `${labelWeek.toLowerCase()}::${modelName.toLowerCase()}`
+        : `${production.lineName || ''}::${production.modelId || ''}`;
+      if (!groups.has(key)) groups.set(key, { labelWeek, modelName, qtyResult: 0 });
+      groups.get(key).qtyResult += Number(production.qtyResult) || 0;
+    });
+
+    const allocationGroups = groups.size > 0
+      ? [...groups.values()]
+      : [{
+          labelWeek: String(order.labelWeek || '').trim(),
+          modelName: String(order.modelName || '').trim(),
+          qtyResult: Number(order.orderQtyResult ?? order.qtyResult) || 0
+        }];
+
+    return allocationGroups.map((group, index) => {
+      const identity = [group.labelWeek, group.modelName].filter(Boolean).join(' - ') || 'Model tidak tersedia';
+      return `Model ${index + 1} | ${identity} | Hasil: ${group.qtyResult}`;
+    }).join('\n');
+  }
+
   async function generateMaterialOrderReportExcel(rows, summary, filters = {}) {
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'Production Dashboard System';
@@ -353,7 +381,7 @@ function createMaterialOrderService(dependencies) {
     summarySheet.columns = [{ width: 24 }, { width: 36 }];
 
     const sheet = workbook.addWorksheet('ORDER MATERIAL');
-    const headers = ['No', 'Tanggal Order', 'PO Material', 'Order Material', 'Qty Order', 'Label/Week', 'Model Produksi', 'Total Hasil Produksi', 'Status PO', 'Progress PO', 'Catatan'];
+    const headers = ['No', 'Tanggal Order', 'PO Material', 'Order Material', 'Qty Order', 'Label/Week', 'Detail Alokasi Produksi', 'Total Hasil Produksi', 'Status PO', 'Progress PO', 'Catatan'];
     sheet.getRow(1).values = headers;
     sheet.getRow(1).eachCell(cell => {
       cell.font = { bold: true, color: { argb: 'FFFFFF' } };
@@ -371,7 +399,7 @@ function createMaterialOrderService(dependencies) {
         order.orderMaterial,
         qtyOrder,
         order.labelWeek,
-        order.modelName,
+        formatMaterialOrderAllocationDetails(order),
         totalQtyResult,
         { planned: 'Direncanakan', in_production: 'Sedang Produksi', paused: 'Ditunda', completed: 'Selesai' }[order.orderStatus] || order.orderStatus || order.status,
         `${progress}%`,
@@ -388,7 +416,7 @@ function createMaterialOrderService(dependencies) {
       });
     });
     sheet.columns = headers.map(header => ({
-      width: ['Order Material', 'Model Produksi', 'Catatan'].includes(header) ? 28 : (header === 'PO Material' ? 22 : 16)
+      width: ['Order Material', 'Detail Alokasi Produksi', 'Catatan'].includes(header) ? 32 : (header === 'PO Material' ? 22 : 16)
     }));
     sheet.views = [{ state: 'frozen', ySplit: 1 }];
     sheet.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: headers.length } };

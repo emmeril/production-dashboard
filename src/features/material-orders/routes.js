@@ -1,14 +1,11 @@
 function registerMaterialOrderRoutes(app, dependencies) {
   const {
-    MATERIAL_ORDER_STATUSES,
     buildMaterialOrderCumulativeOutputs,
     buildMaterialOrderProductionTotals,
     buildMaterialOrderResponse,
     filterMaterialOrderReportRows,
     generateMaterialOrderReportExcel,
     generateNumericId,
-    getToday,
-    isValidDateInput,
     logger,
     parseNonNegativeInteger,
     readMaterialOrders,
@@ -37,44 +34,22 @@ function registerMaterialOrderRoutes(app, dependencies) {
   });
 
   app.get('/api/material-orders/report', requireLogin, requireMaterialOrderViewAccess, async (req, res) => {
-    const { startDate = '', endDate = '', line = '', status = '', poMaterial = '' } = req.query;
-    if ((startDate && !isValidDateInput(startDate)) || (endDate && !isValidDateInput(endDate))) {
-      return res.status(400).json({ error: 'Tanggal report tidak valid' });
-    }
-    if (startDate && endDate && startDate > endDate) {
-      return res.status(400).json({ error: 'Tanggal mulai tidak boleh lebih besar dari tanggal selesai' });
-    }
-    if (status && !MATERIAL_ORDER_STATUSES.includes(status)) {
-      return res.status(400).json({ error: 'Status report tidak valid' });
-    }
-
-    const filters = { startDate, endDate, line, status, poMaterial };
+    const { poMaterial = '' } = req.query;
+    const filters = { poMaterial };
     const rows = filterMaterialOrderReportRows(readMaterialOrders().orders, filters);
     return res.json({ rows, summary: summarizeMaterialOrderReport(rows), filters });
   });
 
   app.get('/api/material-orders/report/export', requireLogin, requireMaterialOrderViewAccess, async (req, res) => {
-    const { startDate = '', endDate = '', line = '', status = '', poMaterial = '' } = req.query;
-    if ((startDate && !isValidDateInput(startDate)) || (endDate && !isValidDateInput(endDate))) {
-      return res.status(400).json({ error: 'Tanggal report tidak valid' });
-    }
-    if (startDate && endDate && startDate > endDate) {
-      return res.status(400).json({ error: 'Tanggal mulai tidak boleh lebih besar dari tanggal selesai' });
-    }
-    if (status && !MATERIAL_ORDER_STATUSES.includes(status)) {
-      return res.status(400).json({ error: 'Status report tidak valid' });
-    }
-
+    const { poMaterial = '' } = req.query;
     try {
-      const filters = { startDate, endDate, line, status, poMaterial };
+      const filters = { poMaterial };
       const rows = filterMaterialOrderReportRows(readMaterialOrders().orders, filters);
       const workbook = await generateMaterialOrderReportExcel(rows, summarizeMaterialOrderReport(rows), filters);
       const buffer = await workbook.xlsx.writeBuffer();
-      const dateSuffix = startDate && endDate ? `${startDate}_to_${endDate}` : getToday();
-      const lineSuffix = line ? `_${line.replace(/[^a-zA-Z0-9_-]+/g, '_')}` : '';
       const poSuffix = poMaterial ? `_${poMaterial.replace(/[^a-zA-Z0-9_-]+/g, '_')}` : '';
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-      res.setHeader('Content-Disposition', `attachment; filename="Report_Order_Material${poSuffix}${lineSuffix}_${dateSuffix}.xlsx"`);
+      res.setHeader('Content-Disposition', `attachment; filename="Report_Order_Material${poSuffix}.xlsx"`);
       return res.send(buffer);
     } catch (error) {
       logger.error('Gagal export report order material:', error);

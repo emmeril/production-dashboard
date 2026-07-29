@@ -356,7 +356,7 @@ test('material order Excel export includes summary and report columns', async ()
   }];
   const summary = summarizeMaterialOrderReport(rows);
   const workbook = await generateMaterialOrderReportExcel(rows, summary, {
-    startDate: '2026-07-24', endDate: '2026-07-26', poMaterial: 'PO-1', status: 'in_production'
+    poMaterial: 'PO-1'
   });
   const detail = workbook.getWorksheet('ORDER MATERIAL');
   const allocations = workbook.getWorksheet('DETAIL ALOKASI');
@@ -864,7 +864,7 @@ test('PPIC follows the work schedule while Admin remains exempt', () => {
   assert.equal(dashboard.isWorkScheduleLocked(), false);
 });
 
-test('material order filters use PO Material and pass both PO and status to the report API', () => {
+test('material order report uses PO Material as its only filter', () => {
   const context = { console, Date, Intl, Map, Math, Set, parseInt, URLSearchParams };
   const alpineSource = fs.readFileSync(path.join(__dirname, '..', 'public/assets/js/alpine.js'), 'utf8');
   vm.runInNewContext(alpineSource, context);
@@ -877,13 +877,12 @@ test('material order filters use PO Material and pass both PO and status to the 
   dashboard.materialOrderPoFilter = 'PO-200';
   dashboard.materialOrderStatusFilter = 'in_production';
   dashboard.materialOrderReport.poMaterial = 'PO-200';
-  dashboard.materialOrderReport.status = 'in_production';
 
   assert.deepEqual(Array.from(dashboard.materialOrderPoOptions), ['PO-100', 'PO-200']);
   assert.deepEqual(Array.from(dashboard.filteredMaterialOrders, order => order.poMaterial), ['PO-200']);
   const reportParams = dashboard.materialOrderReportParams();
   assert.equal(reportParams.get('poMaterial'), 'PO-200');
-  assert.equal(reportParams.get('status'), 'in_production');
+  assert.equal([...reportParams.keys()].length, 1);
 });
 
 test('material order auto sync refreshes production totals on the active material page', async () => {

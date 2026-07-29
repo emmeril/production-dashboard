@@ -144,22 +144,17 @@ test('PPIC can load production models required by material orders', async () => 
   assert.equal(data['Line 1'].models.model1.model, 'Model A');
 });
 
-test('material report accepts date filters and exports without a date filter', async () => {
+test('material report filters by PO Material only and exports without a PO filter', async () => {
   const { cookie } = await login('ppic', 'ppic-password');
-  const today = getToday();
   const reportResponse = await fetch(
-    `${baseUrl}/api/material-orders/report?startDate=${today}&endDate=${today}`,
+    `${baseUrl}/api/material-orders/report?poMaterial=PO-ROUTE-TEST`,
     { headers: { Cookie: cookie } }
   );
   const report = await reportResponse.json();
 
   assert.equal(reportResponse.status, 200);
   assert.deepEqual(report.filters, {
-    startDate: today,
-    endDate: today,
-    line: '',
-    status: '',
-    poMaterial: ''
+    poMaterial: 'PO-ROUTE-TEST'
   });
   assert.ok(Array.isArray(report.rows));
 

@@ -1344,36 +1344,12 @@
 	                    <div class="p-4">
 	                        <div class="filter-toolbar line-management-toolbar">
 	                            <div class="filter-group">
-	                                <span class="filter-caption"><i class="fa-solid fa-calendar-days"></i>Dari tanggal</span>
-	                                <div class="filter-control filter-control-select">
-	                                    <input type="date" id="material-report-start-date" x-model="materialOrderReport.startDate" class="focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
-	                                </div>
-	                            </div>
-	                            <div class="filter-group">
-	                                <span class="filter-caption"><i class="fa-solid fa-calendar-days"></i>Sampai tanggal</span>
-	                                <div class="filter-control filter-control-select">
-	                                    <input type="date" id="material-report-end-date" x-model="materialOrderReport.endDate" class="focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
-	                                </div>
-	                            </div>
-	                            <div class="filter-group">
 	                                <span class="filter-caption"><i class="fa-solid fa-file-invoice"></i>PO Material</span>
 	                                <div class="filter-control filter-control-select has-icon">
 	                                    <i class="fa-solid fa-file-invoice filter-control-icon"></i>
 	                                    <select x-model="materialOrderReport.poMaterial" @change="loadMaterialOrderReport()" aria-label="Filter report material berdasarkan PO Material" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
 	                                        <option value="">Semua PO Material</option>
 	                                        <template x-for="poMaterial in materialOrderPoOptions" :key="`report-${poMaterial}`"><option :value="poMaterial" x-text="poMaterial"></option></template>
-	                                    </select>
-	                                </div>
-	                            </div>
-	                            <div class="filter-group">
-	                                <span class="filter-caption"><i class="fa-solid fa-filter"></i>Status</span>
-	                                <div class="filter-control filter-control-select has-icon">
-	                                    <i class="fa-solid fa-filter filter-control-icon"></i>
-	                                    <select x-model="materialOrderReport.status" @change="loadMaterialOrderReport()" aria-label="Filter report material berdasarkan status" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-	                                        <option value="">Semua Status</option>
-	                                        <option value="planned">Direncanakan</option>
-	                                        <option value="in_production">Sedang Produksi</option>
-	                                        <option value="completed">Selesai</option>
 	                                    </select>
 	                                </div>
 	                            </div>
@@ -1389,7 +1365,7 @@
 
 	                        <div x-show="materialOrderReport.rows && materialOrderReport.rows.length > 0" class="report-results mt-4">
 	                            <div class="report-results-header flex justify-between items-center mb-4">
-		                                <h4 class="text-lg font-medium text-gray-900 flex items-center"><i class="fa-solid fa-table-list text-teal-700 mr-2"></i>Hasil Laporan: <span class="ml-1" x-text="materialOrderReport.startDate === materialOrderReport.endDate ? materialOrderReport.startDate : materialOrderReport.startDate + ' s.d. ' + materialOrderReport.endDate"></span></h4>
+	                                <h4 class="text-lg font-medium text-gray-900 flex items-center"><i class="fa-solid fa-table-list text-teal-700 mr-2"></i>Hasil Laporan: <span class="ml-1" x-text="materialOrderReport.poMaterial || 'Semua PO Material'"></span></h4>
 	                                <div class="filter-group">
 	                                    <span class="filter-caption"><i class="fa-solid fa-table-list"></i>Tampilkan</span>
 	                                    <div class="filter-control filter-control-page-size">

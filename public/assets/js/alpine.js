@@ -72,10 +72,7 @@ function dashboard() {
         materialOrderProductionTotals: {},
         materialOrderExportingPo: '',
         materialOrderReport: {
-            startDate: getJakartaDateInput(),
-            endDate: getJakartaDateInput(),
             poMaterial: '',
-            status: '',
             rows: [],
             summary: { total: 0, qtyOrder: 0, qtyResult: 0, inProduction: 0, completed: 0 },
             loading: false,
@@ -1411,33 +1408,11 @@ function dashboard() {
         materialOrderReportParams() {
             const report = this.materialOrderReport;
             const params = new URLSearchParams();
-            if (report.startDate) params.set('startDate', report.startDate);
-            if (report.endDate) params.set('endDate', report.endDate);
             if (report.poMaterial) params.set('poMaterial', report.poMaterial);
-            if (report.status) params.set('status', report.status);
             return params;
         },
 
-        validateMaterialOrderReportPeriod() {
-            const report = this.materialOrderReport;
-            if (!report.startDate || !report.endDate) {
-                this.showToast('Pilih tanggal mulai dan tanggal selesai', 'error');
-                return false;
-            }
-            if (report.startDate > report.endDate) {
-                this.showToast('Tanggal mulai tidak boleh lebih besar dari tanggal selesai', 'error');
-                return false;
-            }
-            return true;
-        },
-
         async loadMaterialOrderReport(silent = false) {
-            if (silent) {
-                const report = this.materialOrderReport;
-                if (!report.startDate || !report.endDate || report.startDate > report.endDate) return;
-            } else if (!this.validateMaterialOrderReportPeriod()) {
-                return;
-            }
             if (!silent) this.materialOrderReport.loading = true;
             try {
                 const response = await fetch(`/api/material-orders/report?${this.materialOrderReportParams().toString()}`);
@@ -1459,7 +1434,6 @@ function dashboard() {
         },
 
         async exportMaterialOrderReport() {
-            if (!this.validateMaterialOrderReportPeriod()) return;
             this.materialOrderReport.exporting = true;
             try {
                 const response = await fetch(`/api/material-orders/report/export?${this.materialOrderReportParams().toString()}`);
@@ -1471,7 +1445,8 @@ function dashboard() {
                 const url = window.URL.createObjectURL(blob);
                 const link = document.createElement('a');
                 link.href = url;
-                link.download = `Report_Order_Material_${this.materialOrderReport.startDate}_to_${this.materialOrderReport.endDate}.xlsx`;
+                const selectedPo = String(this.materialOrderReport.poMaterial || 'Semua_PO').replace(/[^a-zA-Z0-9_-]+/g, '_');
+                link.download = `Report_Order_Material_${selectedPo}.xlsx`;
                 document.body.appendChild(link);
                 link.click();
                 window.URL.revokeObjectURL(url);
@@ -1502,7 +1477,7 @@ function dashboard() {
                 const link = document.createElement('a');
                 const safePo = poMaterial.replace(/[^a-zA-Z0-9_-]+/g, '_');
                 link.href = url;
-                link.download = `Report_Order_Material_${safePo}_${this.materialOrderReport.startDate}_to_${this.materialOrderReport.endDate}.xlsx`;
+                link.download = `Report_Order_Material_${safePo}.xlsx`;
                 document.body.appendChild(link);
                 link.click();
                 window.URL.revokeObjectURL(url);

@@ -1046,7 +1046,7 @@
                 <div x-show="currentPage === 'admin-management' && canManageLines()" class="fade-in">
                     <div class="mb-6">
 	                        <h1 class="text-2xl font-bold text-gray-800 flex items-center"><i class="fa-solid fa-list-check text-blue-600 mr-3"></i>Management Line</h1>
-	                        <p class="text-gray-600" x-text="currentUser.role === 'admin_operator_sewing' ? 'Tambah, edit, dan lihat line produksi tanpa akses hapus' : 'Kelola lines, model, dan konfigurasi sistem'"></p>
+	                        <p class="text-gray-600" x-text="currentUser.role === 'admin_operator_sewing' ? 'Tambah dan kelola line produksi; pada form Edit hanya Target Harian yang dapat diubah' : 'Kelola lines, model, dan konfigurasi sistem'"></p>
                     </div>
 
                     <!-- Line Management - Untuk admin dan admin_operator -->
@@ -2299,11 +2299,11 @@
                             </div>
                             <div>
                                 <label for="label-week" class="block text-sm font-medium text-gray-700">Label/Week</label>
-                                <input type="text" id="label-week" x-model="lineModal.data.labelWeek" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" required>
+                                <input type="text" id="label-week" x-model="lineModal.data.labelWeek" :readonly="currentUser.role === 'admin_operator_sewing' && lineModal.isEdit" :class="currentUser.role === 'admin_operator_sewing' && lineModal.isEdit ? 'bg-gray-100' : ''" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" required>
                             </div>
                             <div>
                                 <label for="model" class="block text-sm font-medium text-gray-700">Model</label>
-                                <input type="text" id="model" x-model="lineModal.data.model" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" required>
+                                <input type="text" id="model" x-model="lineModal.data.model" :readonly="currentUser.role === 'admin_operator_sewing' && lineModal.isEdit" :class="currentUser.role === 'admin_operator_sewing' && lineModal.isEdit ? 'bg-gray-100' : ''" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" required>
                             </div>
                             <div>
                                 <label for="target" class="block text-sm font-medium text-gray-700">Target Harian</label>

@@ -23,7 +23,7 @@ Dashboard produksi berbasis Express untuk memantau output line, target per jam, 
 | Role | Akses |
 | --- | --- |
 | `admin` | Semua fitur, termasuk user, kategori defect, backup, delete line/model, input dan koreksi data. |
-| `admin_operator_sewing` | Dashboard, ringkasan line, management line/model, serta report produksi dan QC lengkap. |
+| `admin_operator_sewing` | Dashboard, ringkasan line, management line/model, serta report produksi dan QC lengkap. Pada form Edit Management Line hanya Target Harian yang dapat diubah. |
 | `admin_operator_qc` | Dashboard, ringkasan line, report produksi dan QC lengkap, koreksi hasil QC, dan pengelolaan kategori defect. |
 | `operator` | Ringkasan line dan input line miliknya. Tidak bisa melihat dashboard utama. Data produksi per jam terkunci setelah disimpan. |
 

@@ -617,7 +617,16 @@ function registerProductionRoutes(app, dependencies) {
   app.put('/api/lines/:lineName', requireLogin, requireLineManagementAccess, autoCheckDateReset, async (req, res) => {
     const lineName = req.params.lineName;
     const { labelWeek, model, target, modelId, date } = req.body;
+    const isSewingAdmin = hasAnyRole(req.session.user, ['admin_operator_sewing']);
     const data = readProductionData();
+
+    if (isSewingAdmin) {
+      const allowedFields = new Set(['lineName', 'modelId', 'target']);
+      const unsupportedFields = Object.keys(req.body).filter(field => !allowedFields.has(field));
+      if (unsupportedFields.length > 0) {
+        return res.status(403).json({ error: 'Admin Operator Sewing hanya dapat mengubah Target Harian' });
+      }
+    }
 
     if (!data.lines[lineName]) {
       return res.status(404).json({ error: 'Line not found' });
@@ -637,17 +646,19 @@ function registerProductionRoutes(app, dependencies) {
     }
 
     const targetModel = data.lines[lineName].models[targetModelId];
-    const nextLabelWeek = labelWeek === undefined ? targetModel.labelWeek : String(labelWeek || '').trim();
-    const normalizedModel = model === undefined ? { value: targetModel.model, error: '' } : normalizeModelName(model);
-    if (normalizedModel.error) return res.status(400).json({ error: normalizedModel.error });
-    const nextModelName = normalizedModel.value;
-    preserveMaterialOrderProductionIdentity(lineName, targetModel, nextLabelWeek, nextModelName);
-    targetModel.labelWeek = nextLabelWeek;
-    targetModel.model = nextModelName;
+    if (!isSewingAdmin) {
+      const nextLabelWeek = labelWeek === undefined ? targetModel.labelWeek : String(labelWeek || '').trim();
+      const normalizedModel = model === undefined ? { value: targetModel.model, error: '' } : normalizeModelName(model);
+      if (normalizedModel.error) return res.status(400).json({ error: normalizedModel.error });
+      const nextModelName = normalizedModel.value;
+      preserveMaterialOrderProductionIdentity(lineName, targetModel, nextLabelWeek, nextModelName);
+      targetModel.labelWeek = nextLabelWeek;
+      targetModel.model = nextModelName;
+    }
     targetModel.target = newTarget;
     applyDailyTarget(targetModel, newTarget);
     
-    if (date) {
+    if (!isSewingAdmin && date) {
       targetModel.date = date;
     }
 

@@ -2298,10 +2298,16 @@ function dashboard() {
                 if (this.lineModal.isEdit) {
                     url = `/api/lines/${this.lineModal.data.lineName}`;
                     method = 'PUT';
-                    bodyData = {
-                        ...this.lineModal.data,
-                        modelId: this.lineModal.data.modelId
-                    };
+                    bodyData = this.currentUser.role === 'admin_operator_sewing'
+                        ? {
+                            lineName: this.lineModal.data.lineName,
+                            modelId: this.lineModal.data.modelId,
+                            target: this.lineModal.data.target
+                        }
+                        : {
+                            ...this.lineModal.data,
+                            modelId: this.lineModal.data.modelId
+                        };
                 } else {
                     url = '/api/lines';
                     method = 'POST';

@@ -3564,6 +3564,7 @@ function dashboard() {
                         labelWeek: labelWeek || '-',
                         modelName: modelName || 'Model tidak tersedia',
                         lineNames: [],
+                        qtyResult: 0,
                         productionActive: false,
                         linkedModelExists: true
                     });
@@ -3573,12 +3574,14 @@ function dashboard() {
                 if (production.lineName && !group.lineNames.includes(production.lineName)) {
                     group.lineNames.push(production.lineName);
                 }
+                group.qtyResult += Number(production.qtyResult) || 0;
                 group.productionActive = group.productionActive || Boolean(production.productionActive);
                 group.linkedModelExists = group.linkedModelExists && production.linkedModelExists !== false;
             });
 
-            return [...groups.values()].map(group => ({
+            return [...groups.values()].map((group, index) => ({
                 ...group,
+                allocationIndex: index + 1,
                 lineNames: group.lineNames.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
             }));
         },

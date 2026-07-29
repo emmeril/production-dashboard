@@ -896,18 +896,22 @@ test('material order table groups the same label/week and model across multiple 
   const dashboard = context.dashboard();
   const groups = dashboard.materialOrderProductionGroups({
     productions: [
-      { lineName: 'Line 1', modelId: 'model1', labelWeek: 'W30', modelName: 'Model A', productionActive: true },
-      { lineName: 'Line 2', modelId: 'model7', labelWeek: 'W30', modelName: 'Model A' },
-      { lineName: 'Line 4', modelId: 'model3', labelWeek: 'W30', modelName: 'Model A' },
-      { lineName: 'Line 5', modelId: 'model8', labelWeek: 'W30', modelName: 'Model A' },
-      { lineName: 'Line 3', modelId: 'model2', labelWeek: 'W31', modelName: 'Model B' }
+      { lineName: 'Line 1', modelId: 'model1', labelWeek: 'W30', modelName: 'Model A', qtyResult: 12, productionActive: true },
+      { lineName: 'Line 2', modelId: 'model7', labelWeek: 'W30', modelName: 'Model A', qtyResult: 8 },
+      { lineName: 'Line 4', modelId: 'model3', labelWeek: 'W30', modelName: 'Model A', qtyResult: 10 },
+      { lineName: 'Line 5', modelId: 'model8', labelWeek: 'W30', modelName: 'Model A', qtyResult: 5 },
+      { lineName: 'Line 3', modelId: 'model2', labelWeek: 'W31', modelName: 'Model B', qtyResult: 14 }
     ]
   });
 
   assert.equal(groups.length, 2);
   assert.equal(groups[0].modelName, 'Model A');
+  assert.equal(groups[0].allocationIndex, 1);
+  assert.equal(groups[0].qtyResult, 35);
   assert.equal(groups[0].lineNames.length, 4);
   assert.equal(groups[0].productionActive, true);
+  assert.equal(groups[1].allocationIndex, 2);
+  assert.equal(groups[1].qtyResult, 14);
   assert.equal(dashboard.compactMaterialOrderLines(groups[0].lineNames), 'Line 1, Line 2, Line 4 +1 lainnya');
 });
 

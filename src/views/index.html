@@ -1287,8 +1287,16 @@
 	                                            </td>
 	                                            <td><span class="material-status" :class="materialOrderStatusClass(order.status)" x-text="materialOrderStatusLabel(order.status)"></span></td>
 	                                            <td>
-	                                                <div class="material-result-copy"><strong x-text="formatDashboardNumber(order.qtyResult)"></strong><span x-text="`${materialOrderProgress(order)}%`"></span></div>
-	                                                <small class="material-live-label">akumulasi hasil produksi</small>
+	                                                <div class="material-result-allocation">
+	                                                    <small class="material-result-heading">Alokasi Produksi</small>
+	                                                    <template x-for="group in materialOrderProductionGroups(order)" :key="`result-${order.id}-${group.groupKey}`">
+	                                                        <div class="material-result-allocation-row">
+	                                                            <span><b x-text="`Model ${group.allocationIndex}`"></b><small x-text="group.modelName"></small></span>
+	                                                            <strong x-text="formatDashboardNumber(group.qtyResult)"></strong>
+	                                                        </div>
+	                                                    </template>
+	                                                </div>
+	                                                <div class="material-result-total"><span>Total Hasil</span><strong x-text="formatDashboardNumber(order.qtyResult)"></strong><em x-text="`${materialOrderProgress(order)}%`"></em></div>
 	                                                <div class="material-result-progress"><i :style="`width: ${materialOrderProgress(order)}%`"></i></div>
 	                                            </td>
 	                                            <td x-show="canManageMaterialOrders()">

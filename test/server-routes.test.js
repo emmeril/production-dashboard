@@ -161,23 +161,25 @@ test('material report filters by PO Material only and exports without a PO filte
   const exportResponse = await fetch(`${baseUrl}/api/material-orders/report/export`, {
     headers: { Cookie: cookie }
   });
-  const workbook = await exportResponse.arrayBuffer();
+  const pdf = Buffer.from(await exportResponse.arrayBuffer());
 
   assert.equal(exportResponse.status, 200);
-  assert.match(exportResponse.headers.get('content-type') || '', /spreadsheetml/);
-  assert.ok(workbook.byteLength > 1000);
+  assert.match(exportResponse.headers.get('content-type') || '', /application\/pdf/);
+  assert.equal(pdf.subarray(0, 8).toString(), '%PDF-1.4');
+  assert.ok(pdf.byteLength > 1000);
 });
 
-test('single-date Excel export returns a workbook', async () => {
+test('single-date report export returns a PDF document', async () => {
   const { cookie } = await login('ppic', 'ppic-password');
   const response = await fetch(`${baseUrl}/api/export-date-report/${getToday()}`, {
     headers: { Cookie: cookie }
   });
-  const workbook = await response.arrayBuffer();
+  const pdf = Buffer.from(await response.arrayBuffer());
 
   assert.equal(response.status, 200);
-  assert.match(response.headers.get('content-type') || '', /spreadsheetml/);
-  assert.ok(workbook.byteLength > 1000);
+  assert.match(response.headers.get('content-type') || '', /application\/pdf/);
+  assert.equal(pdf.subarray(0, 8).toString(), '%PDF-1.4');
+  assert.ok(pdf.byteLength > 1000);
 });
 
 test('historical Excel import completes preview, confirmation, and date report flow', async () => {

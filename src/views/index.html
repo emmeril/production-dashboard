@@ -1358,7 +1358,7 @@
 	                                    <i class="fa-solid mr-2" :class="materialOrderReport.loading ? 'fa-spinner fa-spin' : 'fa-magnifying-glass-chart'"></i><span x-text="materialOrderReport.loading ? 'Memuat...' : 'Lihat Laporan'"></span>
 	                                </button>
 	                                <button @click="exportMaterialOrderReport()" :disabled="materialOrderReport.exporting" class="btn-compact inline-flex items-center border border-transparent font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
-	                                    <i class="fa-solid fa-file-excel mr-2" :class="materialOrderReport.exporting ? 'fa-spinner fa-spin' : 'fa-file-excel'"></i><span x-text="materialOrderReport.exporting ? 'Menyiapkan...' : 'Export Excel'"></span>
+	                                    <i class="fa-solid fa-file-pdf mr-2" :class="materialOrderReport.exporting ? 'fa-spinner fa-spin' : 'fa-file-pdf'"></i><span x-text="materialOrderReport.exporting ? 'Menyiapkan...' : 'Export PDF'"></span>
 	                                </button>
 	                            </div>
 	                        </div>
@@ -1407,7 +1407,7 @@
 	                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-semibold text-gray-700" x-text="formatDashboardNumber(order.qtyResult)"></td>
 		                                                <td class="px-4 py-3 whitespace-nowrap text-sm" x-text="materialOrderStatusLabel(order.status)" :class="materialOrderStatusClass(order.status)"></td>
 		                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-medium" :class="materialOrderProgress(order) >= 100 ? 'text-green-600' : 'text-amber-600'" x-text="materialOrderProgress(order) + '%' "></td>
-		                                                <td class="px-4 py-3 whitespace-nowrap text-center"><button type="button" @click="exportMaterialOrderPo(order)" :disabled="Boolean(materialOrderExportingPo)" class="btn-compact inline-flex items-center border border-transparent font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50"><i class="fa-solid mr-2" :class="materialOrderExportingPo === order.poMaterial ? 'fa-spinner fa-spin' : 'fa-file-excel'"></i><span x-text="materialOrderExportingPo === order.poMaterial ? 'Export...' : 'Export PO'"></span></button></td>
+		                                                <td class="px-4 py-3 whitespace-nowrap text-center"><button type="button" @click="exportMaterialOrderPo(order)" :disabled="Boolean(materialOrderExportingPo)" class="btn-compact inline-flex items-center border border-transparent font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50"><i class="fa-solid mr-2" :class="materialOrderExportingPo === order.poMaterial ? 'fa-spinner fa-spin' : 'fa-file-pdf'"></i><span x-text="materialOrderExportingPo === order.poMaterial ? 'Export...' : 'PDF PO'"></span></button></td>
 	                                            </tr>
 	                                        </template>
 	                                    </tbody>
@@ -1730,7 +1730,7 @@
 		                                        <i class="fa-solid fa-magnifying-glass-chart mr-2"></i>Lihat Laporan
 		                                    </button>
 		                                    <button @click="exportDateReport()" class="btn-compact inline-flex items-center border border-transparent font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
-		                                        <i class="fa-solid fa-file-excel mr-2"></i>Export Excel
+		                                        <i class="fa-solid fa-file-pdf mr-2"></i>Export PDF
 		                                    </button>
 	                                </div>
 	                            </div>
@@ -1801,7 +1801,7 @@
 	                                                    <td class="px-4 py-3 min-w-48 whitespace-nowrap text-sm text-gray-500" :title="line.defectTypes || '-'" x-text="line.defectTypes || '-'"></td>
 	                                                    <td class="px-4 py-3 whitespace-nowrap text-sm">
 	                                                        <button type="button" @click="exportDateReportLine(line)" class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500" :title="'Export detail ' + line.line + ' - ' + line.modelId">
-	                                                            <i class="fa-solid fa-file-excel mr-1.5"></i>Excel
+		                                                            <i class="fa-solid fa-file-pdf mr-1.5"></i>PDF
 	                                                        </button>
 	                                                    </td>
                                                 </tr>

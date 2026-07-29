@@ -1,3 +1,5 @@
+const { createPdfReport } = require('../../shared/pdf');
+
 function createMaterialOrderService(dependencies) {
   const {
     ExcelJS,
@@ -488,6 +490,21 @@ function createMaterialOrderService(dependencies) {
     return workbook;
   }
 
+  function generateMaterialOrderReportPdf(rows, summary, filters = {}) {
+    const statusLabel = status => ({ planned: 'Direncanakan', in_production: 'Sedang Produksi', paused: 'Ditunda', completed: 'Selesai' }[status] || status || '-');
+    return createPdfReport({
+      title: 'LAPORAN ORDER MATERIAL', subtitle: 'Material planning and production fulfillment control',
+      meta: [['PO Material', filters.poMaterial || 'Semua PO'], ['Dicetak', new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })], ['Klasifikasi', 'Internal - Controlled Copy']],
+      summary: [['Total PO', summary.total], ['Qty Order', Number(summary.qtyOrder || 0).toLocaleString('id-ID')], ['Hasil Produksi', Number(summary.qtyResult || 0).toLocaleString('id-ID')], ['Sedang Produksi', summary.inProduction], ['Selesai', summary.completed]],
+      columns: [{ key: 'no', label: 'No', width: 30 }, { key: 'orderDate', label: 'Tanggal', width: 65 }, { key: 'poMaterial', label: 'PO Material', width: 90 }, { key: 'orderMaterial', label: 'Order Material', width: 145 }, { key: 'qtyOrder', label: 'Qty Order', width: 65 }, { key: 'qtyResult', label: 'Hasil', width: 65 }, { key: 'progress', label: 'Progress', width: 60 }, { key: 'statusText', label: 'Status', width: 90 }, { key: 'allocation', label: 'Alokasi Produksi', width: 170 }],
+      rows: rows.map((order, index) => {
+        const qtyOrder = Number(order.qtyOrder) || 0; const qtyResult = Number(order.orderQtyResult ?? order.qtyResult) || 0;
+        const allocations = buildMaterialOrderAllocationRows(order).map(item => `${item.labelWeek}/${item.modelName}/${item.lineNames.join(',') || '-'}`).join('; ');
+        return { no: index + 1, orderDate: order.orderDate, poMaterial: order.poMaterial, orderMaterial: String(order.orderMaterial || ''), qtyOrder: qtyOrder.toLocaleString('id-ID'), qtyResult: qtyResult.toLocaleString('id-ID'), progress: `${qtyOrder ? Math.min(100, Math.round((qtyResult / qtyOrder) * 100)) : 0}%`, statusText: statusLabel(order.orderStatus || order.status), allocation: allocations || '-' };
+      })
+    });
+  }
+
   return {
     MATERIAL_ORDER_STATUSES,
     buildInitialMaterialOrders,
@@ -497,6 +514,7 @@ function createMaterialOrderService(dependencies) {
     deriveMaterialOrderProgressStatus,
     filterMaterialOrderReportRows,
     generateMaterialOrderReportExcel,
+    generateMaterialOrderReportPdf,
     normalizeMaterialOrderRecord,
     normalizeMaterialOrders,
     preserveMaterialOrderProductionIdentity,

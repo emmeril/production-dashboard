@@ -1,3 +1,5 @@
+const { createPdfReport } = require('../../shared/pdf');
+
 function createReportService(dependencies) {
   const {
     ExcelJS,
@@ -192,6 +194,63 @@ function createReportService(dependencies) {
   function buildDateReportRows(data, date) {
     const filteredData = filterProductionDataByDate(data, date);
     return buildProductionReportRows(filteredData);
+  }
+
+  function generateDateReportPdf(data, period, lineFilter = '') {
+    const rows = buildProductionReportRows(data);
+    const totals = rows.reduce((sum, row) => ({
+      target: sum.target + row.target, output: sum.output + row.output,
+      qc: sum.qc + row.qcChecked, defect: sum.defect + row.defect
+    }), { target: 0, output: 0, qc: 0, defect: 0 });
+    return createPdfReport({
+      title: 'LAPORAN PRODUKSI & QUALITY CONTROL',
+      subtitle: 'Industrial performance report - fixed document format',
+      meta: [['Periode', period], ['Line', lineFilter || 'Semua Line'], ['Dicetak', new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })]],
+      summary: [['Target', totals.target.toLocaleString('id-ID')], ['Output', totals.output.toLocaleString('id-ID')], ['Pencapaian', totals.target ? `${((totals.output / totals.target) * 100).toFixed(1)}%` : '0%'], ['QC Checked', totals.qc.toLocaleString('id-ID')], ['Defect', `${totals.defect.toLocaleString('id-ID')} (${totals.qc ? ((totals.defect / totals.qc) * 100).toFixed(2) : '0.00'}%)`]],
+      columns: [
+        { key: 'date', label: 'Tanggal', width: 58 }, { key: 'line', label: 'Line', width: 50 }, { key: 'labelWeek', label: 'Week', width: 45 },
+        { key: 'model', label: 'Model', width: 105 }, { key: 'target', label: 'Target', width: 48 }, { key: 'output', label: 'Output', width: 48 },
+        { key: 'achievementText', label: 'Ach.', width: 43 }, { key: 'qcChecked', label: 'QC', width: 42 }, { key: 'good', label: 'Good', width: 42 },
+        { key: 'defect', label: 'Defect', width: 44 }, { key: 'defectRateText', label: 'Rate', width: 43 }, { key: 'severity', label: 'C/M/Mi', width: 58 },
+        { key: 'defectTypes', label: 'Top Defect', width: 125 }
+      ],
+      rows: rows.map(row => ({ ...row, achievementText: `${row.achievement}%`, defectRateText: `${row.defectRate}%`, severity: `${row.criticalDefect}/${row.majorDefect}/${row.minorDefect}`, defectTypes: String(row.defectTypes || '-') }))
+    });
+  }
+
+  function generateLineDetailPdf(modelData, lineName, modelId) {
+    const qcDefectsByHour = {};
+    (modelData.qcChecks || []).filter(check => check.result === 'defect').forEach(check => {
+      const hourIndex = Number.isInteger(parseNonNegativeInteger(check.hourIndex)) ? parseNonNegativeInteger(check.hourIndex) : -1;
+      const key = `${check.type || 'Tanpa jenis'} - ${check.area || 'Tanpa area'}`;
+      qcDefectsByHour[hourIndex] = qcDefectsByHour[hourIndex] || {};
+      qcDefectsByHour[hourIndex][key] = (qcDefectsByHour[hourIndex][key] || 0) + 1;
+    });
+    const hourlyRows = (modelData.hourly_data || []).map((hour, hourIndex) => {
+      const importedDetails = (hour.defectDetails || []).map(detail => ({
+        label: `${detail.type || 'Tanpa jenis'} - ${detail.area || 'Tanpa area'}`,
+        count: parseInt(detail.quantity) || 1
+      }));
+      const checkedDetails = Object.entries(qcDefectsByHour[hourIndex] || {}).map(([label, count]) => ({ label, count }));
+      const detailCounts = [...importedDetails, ...checkedDetails].reduce((counts, detail) => {
+        counts[detail.label] = (counts[detail.label] || 0) + detail.count;
+        return counts;
+      }, {});
+      return {
+      hour: hour.hour || '-', target: hour.targetManual || 0, output: hour.output || 0,
+      variance: (hour.output || 0) - (hour.targetManual || 0), defect: hour.defect || 0,
+      qc: hour.qcChecked || 0, good: Math.max((hour.qcChecked || 0) - (hour.defect || 0), 0),
+      rate: `${hour.qcChecked ? (((hour.defect || 0) / hour.qcChecked) * 100).toFixed(2) : '0.00'}%`,
+      defectInfo: Object.entries(detailCounts).map(([label, count]) => `${label} (${count})`).join('; ') || '-'
+      };
+    });
+    return createPdfReport({
+      title: 'DETAIL PRODUKSI & QUALITY CONTROL', subtitle: 'Hourly traceability and quality performance',
+      meta: [['Tanggal', modelData.date || '-'], ['Line', lineName], ['Model', modelData.model || modelId], ['Week', modelData.labelWeek || '-']],
+      summary: [['Target', modelData.target || 0], ['Output', modelData.outputDay || 0], ['QC Checked', modelData.qcChecking || 0], ['Defect', modelData.actualDefect || 0], ['Defect Rate', `${modelData.defectRatePercentage || 0}%`]],
+      columns: [{ key: 'hour', label: 'Jam', width: 60 }, { key: 'target', label: 'Target', width: 55 }, { key: 'output', label: 'Output', width: 55 }, { key: 'variance', label: 'Selisih', width: 55 }, { key: 'qc', label: 'QC', width: 55 }, { key: 'good', label: 'Good', width: 55 }, { key: 'defect', label: 'Defect', width: 55 }, { key: 'rate', label: 'Rate', width: 55 }, { key: 'defectInfo', label: 'Keterangan Defect', width: 250 }],
+      rows: hourlyRows
+    });
   }
 
   function getQcCheckHourLabel(model = {}, check = {}) {
@@ -1293,6 +1352,8 @@ function createReportService(dependencies) {
     filterProductionDataByLine,
     generateScopedDateReportExcel,
     generateScopedLineReportExcel,
+    generateDateReportPdf,
+    generateLineDetailPdf,
     generateStyledDateReportExcel,
     generateStyledExcelData,
     isValidDateRange,

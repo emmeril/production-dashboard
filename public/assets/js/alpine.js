@@ -1446,12 +1446,12 @@ function dashboard() {
                 const link = document.createElement('a');
                 link.href = url;
                 const selectedPo = String(this.materialOrderReport.poMaterial || 'Semua_PO').replace(/[^a-zA-Z0-9_-]+/g, '_');
-                link.download = `Report_Order_Material_${selectedPo}.xlsx`;
+                link.download = `Report_Order_Material_${selectedPo}.pdf`;
                 document.body.appendChild(link);
                 link.click();
                 window.URL.revokeObjectURL(url);
                 document.body.removeChild(link);
-                this.showToast('Report material berhasil diexport ke Excel', 'success');
+                this.showToast('Report material berhasil diexport ke PDF', 'success');
             } catch (error) {
                 logClientError('Error exporting material order report:', error);
                 this.showToast(error.message || 'Gagal export report material', 'error');
@@ -1477,7 +1477,7 @@ function dashboard() {
                 const link = document.createElement('a');
                 const safePo = poMaterial.replace(/[^a-zA-Z0-9_-]+/g, '_');
                 link.href = url;
-                link.download = `Report_Order_Material_${safePo}.xlsx`;
+                link.download = `Report_Order_Material_${safePo}.pdf`;
                 document.body.appendChild(link);
                 link.click();
                 window.URL.revokeObjectURL(url);
@@ -1845,20 +1845,20 @@ function dashboard() {
                         ? `_${this.reportLineFilter.replace(/[^a-zA-Z0-9_-]+/g, '_')}`
                         : '';
                     a.download = this.reportStartDate === this.reportEndDate
-                        ? `Production_Report${safeLineSuffix}_${this.reportStartDate}.xlsx`
-                        : `Production_Report${safeLineSuffix}_${this.reportStartDate}_to_${this.reportEndDate}.xlsx`;
+                        ? `Production_Report${safeLineSuffix}_${this.reportStartDate}.pdf`
+                        : `Production_Report${safeLineSuffix}_${this.reportStartDate}_to_${this.reportEndDate}.pdf`;
                     document.body.appendChild(a);
                     a.click();
                     window.URL.revokeObjectURL(url);
                     document.body.removeChild(a);
-                    this.showToast('Excel exported successfully', 'success');
+                    this.showToast('PDF berhasil diexport', 'success');
                 } else {
                     const error = await response.json();
-                    this.showToast(error.error || 'Failed to export Excel', 'error');
+                    this.showToast(error.error || 'Gagal export PDF', 'error');
                 }
             } catch (error) {
-                logClientError('Error exporting Excel:', error);
-                this.showToast('Error exporting Excel', 'error');
+                logClientError('Error exporting PDF:', error);
+                this.showToast('Error exporting PDF', 'error');
             }
         },
 
@@ -1884,7 +1884,7 @@ function dashboard() {
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = `Production_QC_Detail_${line.line}_${line.modelId}_${line.date}.xlsx`;
+                a.download = `Production_QC_Detail_${line.line}_${line.modelId}_${line.date}.pdf`;
                 document.body.appendChild(a);
                 a.click();
                 window.URL.revokeObjectURL(url);

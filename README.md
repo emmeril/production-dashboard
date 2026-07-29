@@ -1,6 +1,6 @@
 # Production Dashboard
 
-Dashboard produksi berbasis Express untuk memantau output line, target per jam, defect, laporan harian, export Excel, dan public display monitor.
+Dashboard produksi berbasis Express untuk memantau output line, target per jam, defect, laporan harian, export PDF, dan public display monitor.
 
 ## Fitur Utama
 
@@ -13,7 +13,7 @@ Dashboard produksi berbasis Express untuk memantau output line, target per jam, 
 - Management line dan model produksi.
 - Management user, kategori defect, dan Backup Data untuk admin.
 - Backup Data membuat salinan SQLite lengkap yang bisa diunduh dan dipulihkan kembali dengan backup pengaman otomatis.
-- Laporan berdasarkan tanggal dan export Excel.
+- Laporan berdasarkan tanggal dan export PDF terkendali.
 - Input data historis dipisahkan menjadi template Produksi per jam dan template QC dengan dropdown defect.
 - Public display monitor di `/public-display` dengan layout statik seperti display line.
 - Histori produksi tersimpan di tabel `production_snapshots`; backup fisik SQLite dibuat harian atau secara manual.
@@ -139,11 +139,11 @@ Jika `model` tidak dikirim, server memakai model aktif line tersebut.
 
 Admin tetap bisa melakukan koreksi data bila diperlukan.
 
-## Laporan dan Export Excel
+## Laporan dan Export PDF
 
-Laporan berdasarkan tanggal tersedia untuk `admin`, `admin_operator_sewing`, dan `admin_operator_qc`. Ketiga role menggunakan tampilan report, data, dan template Excel lengkap yang sama. Role `operator` tidak memiliki akses report maupun export.
+Laporan berdasarkan tanggal tersedia untuk `admin`, `admin_operator_sewing`, dan `admin_operator_qc`. Ketiga role menggunakan tampilan report dan dokumen PDF lengkap yang sama. Role `operator` tidak memiliki akses report maupun export.
 
-Export Excel mencakup:
+Export PDF mencakup:
 
 - Summary produksi.
 - Detail produksi per line.
@@ -156,7 +156,7 @@ Endpoint utama:
 | Endpoint | Keterangan |
 | --- | --- |
 | `GET /api/date-report/:date` | Data laporan tanggal. |
-| `GET /api/export-date-report/:date` | Export laporan tanggal ke Excel. |
+| `GET /api/export-date-report/:date` | Export laporan tanggal ke PDF. |
 
 ## Import Data Historis
 

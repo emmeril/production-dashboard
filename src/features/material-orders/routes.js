@@ -4,7 +4,7 @@ function registerMaterialOrderRoutes(app, dependencies) {
     buildMaterialOrderProductionTotals,
     buildMaterialOrderResponse,
     filterMaterialOrderReportRows,
-    generateMaterialOrderReportExcel,
+    generateMaterialOrderReportPdf,
     generateNumericId,
     logger,
     parseNonNegativeInteger,
@@ -45,11 +45,10 @@ function registerMaterialOrderRoutes(app, dependencies) {
     try {
       const filters = { poMaterial };
       const rows = filterMaterialOrderReportRows(readMaterialOrders().orders, filters);
-      const workbook = await generateMaterialOrderReportExcel(rows, summarizeMaterialOrderReport(rows), filters);
-      const buffer = await workbook.xlsx.writeBuffer();
+      const buffer = generateMaterialOrderReportPdf(rows, summarizeMaterialOrderReport(rows), filters);
       const poSuffix = poMaterial ? `_${poMaterial.replace(/[^a-zA-Z0-9_-]+/g, '_')}` : '';
-      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-      res.setHeader('Content-Disposition', `attachment; filename="Report_Order_Material${poSuffix}.xlsx"`);
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="Report_Order_Material${poSuffix}.pdf"`);
       return res.send(buffer);
     } catch (error) {
       logger.error('Gagal export report order material:', error);

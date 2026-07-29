@@ -376,6 +376,8 @@ const {
   filterProductionDataByLine,
   generateScopedDateReportExcel,
   generateScopedLineReportExcel,
+  generateDateReportPdf,
+  generateLineDetailPdf,
   generateStyledDateReportExcel,
   generateStyledExcelData,
   isValidDateRange,
@@ -630,6 +632,7 @@ const {
   deriveMaterialOrderProgressStatus,
   filterMaterialOrderReportRows,
   generateMaterialOrderReportExcel,
+  generateMaterialOrderReportPdf,
   normalizeMaterialOrderRecord,
   normalizeMaterialOrders,
   preserveMaterialOrderProductionIdentity,
@@ -1744,17 +1747,17 @@ app.get('/api/export-date-report', requireLogin, requireDateReportAccess, autoCh
     const selectedLine = String(line || '').trim();
     const data = filterProductionDataByLine(buildDateRangeProductionData(startDate, endDate), selectedLine);
     const reportLabel = startDate === endDate ? startDate : `${startDate} s.d. ${endDate}`;
-    const workbook = await generateStyledDateReportExcel(data, reportLabel);
+    const pdf = generateDateReportPdf(data, reportLabel, selectedLine);
     const safeLineSuffix = selectedLine
       ? `_${selectedLine.replace(/[^a-zA-Z0-9_-]+/g, '_')}`
       : '';
     const downloadFilename = startDate === endDate
-      ? `Production_Report${safeLineSuffix}_${startDate}.xlsx`
-      : `Production_Report${safeLineSuffix}_${startDate}_to_${endDate}.xlsx`;
+      ? `Production_Report${safeLineSuffix}_${startDate}.pdf`
+      : `Production_Report${safeLineSuffix}_${startDate}_to_${endDate}.pdf`;
 
     res.setHeader('Content-Disposition', `attachment; filename="${downloadFilename}"`);
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    await workbook.xlsx.write(res);
+    res.setHeader('Content-Type', 'application/pdf');
+    return res.send(pdf);
   } catch (error) {
     logger.error('Gagal mengekspor laporan rentang tanggal', error);
     res.status(500).json({ error: 'Failed to export date range report: ' + error.message });
@@ -1773,12 +1776,11 @@ app.get('/api/export-date-report/:date', requireLogin, requireDateReportAccess, 
     if (!data) return res.status(404).json({ error: 'Data untuk tanggal tersebut tidak ditemukan' });
     
     const filteredData = filterProductionDataByDate(data, date);
-    const workbook = await generateStyledDateReportExcel(filteredData, date);
-    const downloadFilename = `Production_Report_${date}.xlsx`;
+    const pdf = generateDateReportPdf(filteredData, date);
+    const downloadFilename = `Production_Report_${date}.pdf`;
     res.setHeader('Content-Disposition', `attachment; filename="${downloadFilename}"`);
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    
-    await workbook.xlsx.write(res);
+    res.setHeader('Content-Type', 'application/pdf');
+    return res.send(pdf);
   } catch (error) {
     logger.error('Gagal mengekspor laporan tanggal', error);
     res.status(500).json({ error: 'Failed to export date report: ' + error.message });
@@ -1801,13 +1803,13 @@ app.get('/api/export-date-report/:date/:lineName/:modelId', requireLogin, requir
       return res.status(404).json({ error: 'Detail line/model untuk tanggal tersebut tidak ditemukan' });
     }
 
-    const workbook = await generateStyledExcelData(modelData, lineName, modelId);
+    const pdf = generateLineDetailPdf(modelData, lineName, modelId);
     const safeLineName = lineName.replace(/[^a-zA-Z0-9_-]/g, '_');
     const safeModelId = modelId.replace(/[^a-zA-Z0-9_-]/g, '_');
-    const fileName = `Production_QC_Detail_${safeLineName}_${safeModelId}_${date}.xlsx`;
+    const fileName = `Production_QC_Detail_${safeLineName}_${safeModelId}_${date}.pdf`;
     res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    await workbook.xlsx.write(res);
+    res.setHeader('Content-Type', 'application/pdf');
+    return res.send(pdf);
   } catch (error) {
     logger.error('Export detail date report error:', error);
     res.status(500).json({ error: 'Failed to export line detail: ' + error.message });
@@ -2045,6 +2047,7 @@ registerMaterialOrderRoutes(app, {
   buildMaterialOrderResponse,
   filterMaterialOrderReportRows,
   generateMaterialOrderReportExcel,
+  generateMaterialOrderReportPdf,
   generateNumericId,
   getToday,
   isValidDateInput,
@@ -2374,6 +2377,8 @@ module.exports = {
   filterProductionDataByDate,
   filterProductionDataByLine,
   generateModelId,
+  generateDateReportPdf,
+  generateLineDetailPdf,
   generateStyledDateReportExcel,
   getToday,
   hasDateReportAccess,
@@ -2391,6 +2396,7 @@ module.exports = {
   deriveMaterialOrderProgressStatus,
   summarizeMaterialOrderReport,
   generateMaterialOrderReportExcel,
+  generateMaterialOrderReportPdf,
   normalizeMaterialOrderRecord,
   validateMaterialOrderInput,
   isValidProductionSnapshot,

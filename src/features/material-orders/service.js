@@ -278,15 +278,16 @@ function createMaterialOrderService(dependencies) {
   function flattenMaterialOrderReportRows(orders, productionData = readProductionData(), cumulativeOutputs = buildMaterialOrderCumulativeOutputs(productionData)) {
     return (orders || []).map(order => {
       const response = buildMaterialOrderResponse(order, productionData, cumulativeOutputs);
-      const labelWeeks = [...new Set(response.productions.map(production => production.labelWeek).filter(Boolean))];
-      const modelNames = [...new Set(response.productions.map(production => production.modelName).filter(Boolean))];
-
+      const allocations = buildMaterialOrderAllocationRows(response);
       return {
         ...response,
         orderId: response.id,
         rowId: String(response.id),
-        labelWeek: labelWeeks.join(', '),
-        modelName: modelNames.join(', '),
+        allocations,
+        labelWeek: allocations.map(allocation => `${allocation.allocationIndex}. ${allocation.labelWeek}`).join('\n'),
+        modelName: allocations.map(allocation => `${allocation.allocationIndex}. ${allocation.modelName}`).join('\n'),
+        lineName: allocations.map(allocation => `${allocation.allocationIndex}. ${allocation.lineNames.join(', ') || '-'}`).join('\n'),
+        modelResult: allocations.map(allocation => `${allocation.allocationIndex}. ${allocation.qtyResult}`).join('\n'),
         orderStatus: response.status,
         orderQtyResult: response.qtyResult,
         productionLines: response.productions.map(production => production.lineName)
@@ -323,7 +324,10 @@ function createMaterialOrderService(dependencies) {
         if (row.orderStatus === 'in_production') summary.inProduction += 1;
         if (row.orderStatus === 'completed') summary.completed += 1;
       }
-      summary.qtyResult += Number(row.qtyResult) || 0;
+      if (countedOrders.get(orderKey) === true) {
+        summary.qtyResult += Number(row.orderQtyResult ?? row.qtyResult) || 0;
+        countedOrders.set(orderKey, 'summed');
+      }
       return summary;
     }, { total: 0, qtyOrder: 0, qtyResult: 0, inProduction: 0, completed: 0 });
   }
@@ -496,11 +500,12 @@ function createMaterialOrderService(dependencies) {
       title: 'LAPORAN ORDER MATERIAL', subtitle: 'Material planning and production fulfillment control',
       meta: [['PO Material', filters.poMaterial || 'Semua PO'], ['Dicetak', new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })], ['Klasifikasi', 'Internal - Controlled Copy']],
       summary: [['Total PO', summary.total], ['Qty Order', Number(summary.qtyOrder || 0).toLocaleString('id-ID')], ['Hasil Produksi', Number(summary.qtyResult || 0).toLocaleString('id-ID')], ['Sedang Produksi', summary.inProduction], ['Selesai', summary.completed]],
-      columns: [{ key: 'no', label: 'No', width: 30 }, { key: 'orderDate', label: 'Tanggal', width: 65 }, { key: 'poMaterial', label: 'PO Material', width: 90 }, { key: 'orderMaterial', label: 'Order Material', width: 145 }, { key: 'qtyOrder', label: 'Qty Order', width: 65 }, { key: 'qtyResult', label: 'Hasil', width: 65 }, { key: 'progress', label: 'Progress', width: 60 }, { key: 'statusText', label: 'Status', width: 90 }, { key: 'allocation', label: 'Alokasi Produksi', width: 170 }],
+      columns: [{ key: 'no', label: 'No', width: 26 }, { key: 'orderDate', label: 'Tanggal', width: 58 }, { key: 'poMaterial', label: 'PO Material', width: 75 }, { key: 'orderMaterial', label: 'Order Material', width: 100 }, { key: 'labelWeek', label: 'Week', width: 48 }, { key: 'modelName', label: 'Model Produksi', width: 125 }, { key: 'lineName', label: 'Line', width: 70 }, { key: 'qtyOrder', label: 'Qty Order', width: 55 }, { key: 'modelResult', label: 'Hasil / Model', width: 65 }, { key: 'totalResult', label: 'Total Hasil', width: 58 }, { key: 'progress', label: 'Progress', width: 50 }, { key: 'statusText', label: 'Status', width: 75 }],
       rows: rows.map((order, index) => {
-        const qtyOrder = Number(order.qtyOrder) || 0; const qtyResult = Number(order.orderQtyResult ?? order.qtyResult) || 0;
-        const allocations = buildMaterialOrderAllocationRows(order).map(item => `${item.labelWeek}/${item.modelName}/${item.lineNames.join(',') || '-'}`).join('; ');
-        return { no: index + 1, orderDate: order.orderDate, poMaterial: order.poMaterial, orderMaterial: String(order.orderMaterial || ''), qtyOrder: qtyOrder.toLocaleString('id-ID'), qtyResult: qtyResult.toLocaleString('id-ID'), progress: `${qtyOrder ? Math.min(100, Math.round((qtyResult / qtyOrder) * 100)) : 0}%`, statusText: statusLabel(order.orderStatus || order.status), allocation: allocations || '-' };
+        const qtyOrder = Number(order.qtyOrder) || 0;
+        const totalResult = Number(order.orderQtyResult ?? order.qtyResult) || 0;
+        const modelResult = (order.allocations || []).map(allocation => `${allocation.allocationIndex}. ${Number(allocation.qtyResult || 0).toLocaleString('id-ID')}`).join('\n') || '-';
+        return { no: index + 1, orderDate: order.orderDate, poMaterial: order.poMaterial, orderMaterial: String(order.orderMaterial || ''), labelWeek: order.labelWeek || '-', modelName: order.modelName || '-', lineName: order.lineName || '-', qtyOrder: qtyOrder.toLocaleString('id-ID'), modelResult, totalResult: totalResult.toLocaleString('id-ID'), progress: `${qtyOrder ? Math.min(100, Math.round((totalResult / qtyOrder) * 100)) : 0}%`, statusText: statusLabel(order.orderStatus || order.status) };
       })
     });
   }

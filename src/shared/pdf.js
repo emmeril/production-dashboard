@@ -19,21 +19,23 @@ function shorten(value, width, fontSize = 7) {
 function wrapLines(value, width, fontSize = 7) {
   const source = String(value ?? '-');
   const maxChars = Math.max(3, Math.floor((width - 9) / (fontSize * 0.52)));
-  const words = source.split(/\s+/);
   const lines = [];
-  let line = '';
-  words.forEach(word => {
-    if (!word) return;
-    // Break unusually long tokens (PO/model identifiers) without dropping data.
-    while (word.length > maxChars) {
-      if (line) { lines.push(line); line = ''; }
-      lines.push(word.slice(0, maxChars));
-      word = word.slice(maxChars);
-    }
-    const next = line ? `${line} ${word}` : word;
-    if (next.length > maxChars) { lines.push(line); line = word; } else line = next;
+  source.split(/\r?\n/).forEach(paragraph => {
+    const words = paragraph.split(/\s+/); let line = '';
+    words.forEach(wordValue => {
+      let word = wordValue;
+      if (!word) return;
+      // Break unusually long tokens (PO/model identifiers) without dropping data.
+      while (word.length > maxChars) {
+        if (line) { lines.push(line); line = ''; }
+        lines.push(word.slice(0, maxChars)); word = word.slice(maxChars);
+      }
+      const next = line ? `${line} ${word}` : word;
+      if (next.length > maxChars) { if (line) lines.push(line); line = word; } else line = next;
+    });
+    if (line) lines.push(line);
   });
-  if (line || !lines.length) lines.push(line || '-');
+  if (!lines.length) lines.push('-');
   return lines;
 }
 
@@ -122,7 +124,7 @@ function createPdfReport({ title, subtitle = '', meta = [], summary = [], column
     rect(margin, y - 13 - (rowHeight - 23), pageWidth - margin * 2, rowHeight, rowIndex % 2 ? COLORS.pale : COLORS.white);
     let x = margin;
     columns.forEach((column, index) => {
-      const isNumeric = ['target', 'output', 'qc', 'qcChecked', 'good', 'defect', 'qtyOrder', 'qtyResult', 'no'].includes(column.key);
+      const isNumeric = ['target', 'output', 'qc', 'qcChecked', 'good', 'defect', 'qtyOrder', 'qtyResult', 'modelResult', 'totalResult', 'no'].includes(column.key);
       const lines = cellLines[index];
       lines.forEach((value, lineIndex) => {
         const valueX = isNumeric ? x + scaled[index] - Math.min(scaled[index] - 5, value.length * 3.65 + 6) : x + 5;

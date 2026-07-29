@@ -1339,7 +1339,7 @@
 	                <div x-show="currentPage === 'report' && reportTab === 'material' && canViewMaterialOrders()" class="bg-white rounded-lg shadow overflow-hidden card-shadow mb-6 fade-in">
 	                    <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
 	                        <h3 class="text-lg leading-6 font-medium text-gray-900 flex items-center"><i class="fa-solid fa-file-export text-teal-700 mr-2"></i>Report Material</h3>
-		                        <p class="mt-1 max-w-2xl text-sm text-gray-500">Lihat total output produksi dan qty hasil untuk setiap PO Material. Data tersinkron otomatis setiap 10 detik.</p>
+			                        <p class="mt-1 max-w-2xl text-sm text-gray-500">Lihat hasil setiap model produksi secara terpisah, kemudian total hasil keseluruhan untuk setiap PO Material. Data tersinkron otomatis setiap 10 detik.</p>
 	                    </div>
 	                    <div class="p-4">
 	                        <div class="filter-toolbar line-management-toolbar">
@@ -1387,9 +1387,11 @@
 	                                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PO Material</th>
 	                                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order Material</th>
 		                                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Label/Week</th>
-		                                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Model Produksi</th>
-		                                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Qty Order</th>
-	                                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Hasil Produksi</th>
+			                                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Model Produksi</th>
+			                                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Line Produksi</th>
+			                                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Qty Order</th>
+		                                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hasil Model</th>
+		                                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Hasil Produksi</th>
 		                                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status PO</th>
 		                                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Progress</th>
 		                                            <th scope="col" class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Export</th>
@@ -1401,10 +1403,12 @@
 	                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900" x-text="formatShortDate(order.orderDate)"></td>
 	                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900" x-text="order.poMaterial"></td>
 	                                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500" x-text="order.orderMaterial"></td>
-		                                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500" x-text="order.labelWeek || '-' "></td>
-	                                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500" x-text="order.modelName || '-' "></td>
+			                                                <td class="px-4 py-3 text-sm text-gray-500"><template x-for="allocation in (order.allocations || [])" :key="`week-${order.rowId}-${allocation.allocationIndex}`"><div class="py-1.5 border-b border-gray-100 last:border-0" x-text="allocation.labelWeek || '-'"></div></template></td>
+	                                                <td class="px-4 py-3 text-sm text-gray-700"><template x-for="allocation in (order.allocations || [])" :key="`model-${order.rowId}-${allocation.allocationIndex}`"><div class="flex items-start gap-2 py-1.5 border-b border-gray-100 last:border-0"><span class="inline-flex min-w-5 h-5 items-center justify-center rounded-full bg-blue-50 text-[10px] font-bold text-blue-700" x-text="allocation.allocationIndex"></span><span class="font-medium" x-text="allocation.modelName || '-'"></span></div></template></td>
+	                                                <td class="px-4 py-3 text-sm text-gray-500"><template x-for="allocation in (order.allocations || [])" :key="`line-${order.rowId}-${allocation.allocationIndex}`"><div class="py-1.5 border-b border-gray-100 last:border-0" x-text="(allocation.lineNames || []).join(', ') || '-'"></div></template></td>
 	                                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500" x-text="formatDashboardNumber(order.qtyOrder)"></td>
-	                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-semibold text-gray-700" x-text="formatDashboardNumber(order.qtyResult)"></td>
+	                                                <td class="px-4 py-3 text-sm font-semibold text-blue-700"><template x-for="allocation in (order.allocations || [])" :key="`result-${order.rowId}-${allocation.allocationIndex}`"><div class="py-1.5 border-b border-gray-100 last:border-0" x-text="formatDashboardNumber(allocation.qtyResult)"></div></template></td>
+	                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-bold text-gray-900" x-text="formatDashboardNumber(order.orderQtyResult)"></td>
 		                                                <td class="px-4 py-3 whitespace-nowrap text-sm" x-text="materialOrderStatusLabel(order.status)" :class="materialOrderStatusClass(order.status)"></td>
 		                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-medium" :class="materialOrderProgress(order) >= 100 ? 'text-green-600' : 'text-amber-600'" x-text="materialOrderProgress(order) + '%' "></td>
 		                                                <td class="px-4 py-3 whitespace-nowrap text-center"><button type="button" @click="exportMaterialOrderPo(order)" :disabled="Boolean(materialOrderExportingPo)" class="btn-compact inline-flex items-center border border-transparent font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50"><i class="fa-solid mr-2" :class="materialOrderExportingPo === order.poMaterial ? 'fa-spinner fa-spin' : 'fa-file-pdf'"></i><span x-text="materialOrderExportingPo === order.poMaterial ? 'Export...' : 'PDF PO'"></span></button></td>

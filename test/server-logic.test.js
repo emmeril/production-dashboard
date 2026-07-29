@@ -274,7 +274,7 @@ test('material order totals retain production history after label/week and model
   assert.equal(totals['Line 1::model1'], 45);
 });
 
-test('material order report returns one row per PO and completes it automatically when output reaches the order quantity', () => {
+test('material order report keeps one PO row with readable per-model results and a PO total', () => {
   const productionData = {
     lines: {
       'Line 1': {
@@ -314,8 +314,11 @@ test('material order report returns one row per PO and completes it automaticall
   assert.equal(rows[0].rowId, '1');
   assert.equal(rows[0].currentProductionOutput, 120);
   assert.equal(rows[0].qtyResult, 120);
-  assert.equal(rows[0].labelWeek, 'W30, W31');
-  assert.equal(rows[0].modelName, 'Model A, Model B');
+  assert.equal(rows[0].orderQtyResult, 120);
+  assert.equal(rows[0].labelWeek, '1. W30\n2. W31');
+  assert.equal(rows[0].modelName, '1. Model A\n2. Model B');
+  assert.equal(rows[0].modelResult, '1. 80\n2. 40');
+  assert.deepEqual(rows[0].allocations.map(allocation => allocation.qtyResult), [80, 40]);
   assert.equal(rows[0].productionActive, true);
   assert.equal(rows[0].status, 'completed');
   assert.deepEqual(summary, { total: 1, qtyOrder: 100, qtyResult: 120, inProduction: 0, completed: 1 });

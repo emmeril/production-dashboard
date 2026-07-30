@@ -299,6 +299,7 @@ test('admin can assign a maximum QC quantity to an operator', async () => {
   const created = await createResponse.json();
 
   assert.equal(createResponse.status, 200);
+  assert.equal(created.user.line, 'LINE 1');
   assert.equal(created.user.qcMaxQuantity, 12);
 
   const { response: operatorLoginResponse } = await login('quick-qc-operator', 'operator-password');

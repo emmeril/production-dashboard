@@ -171,7 +171,7 @@ function dashboard() {
                 name: '',
                 role: 'operator',
                 line: '',
-                qcMaxQuantity: 1
+                qcMaxQuantity: 5
             }
         },
 
@@ -479,7 +479,7 @@ function dashboard() {
 	        qcQuantityLimit() {
 	            if (this.currentUser.role === 'admin') return 1000;
 	            if (this.currentUser.role !== 'operator') return 1;
-	            return Math.max(1, Math.min(parseInt(this.currentUser.qcMaxQuantity) || 1, 1000));
+	            return Math.max(1, Math.min(parseInt(this.currentUser.qcMaxQuantity) || 5, 1000));
 	        },
 
 	        adjustQcQuantity(result, delta) {
@@ -2501,7 +2501,7 @@ function dashboard() {
                     name: user.name,
                     role: user.role,
                     line: user.line,
-                    qcMaxQuantity: Math.max(1, parseInt(user.qcMaxQuantity) || 1)
+                    qcMaxQuantity: Math.max(1, parseInt(user.qcMaxQuantity) || 5)
                 };
             } else {
                 this.userModal.isEdit = false;
@@ -2512,7 +2512,7 @@ function dashboard() {
                     name: '',
                     role: 'operator',
                     line: '',
-                    qcMaxQuantity: 1
+                    qcMaxQuantity: 5
                 };
             }
             this.userModal.open = true;

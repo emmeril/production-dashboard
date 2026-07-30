@@ -158,14 +158,16 @@ test('dashboard keeps separate Good and Defect quantities within the operator li
 test('backend returns a distinct maximum QC quantity for each operator', () => {
   assert.equal(getUserQcMaxQuantity({ role: 'operator', qcMaxQuantity: 1 }), 1);
   assert.equal(getUserQcMaxQuantity({ role: 'operator', qcMaxQuantity: 12 }), 12);
+  assert.equal(getUserQcMaxQuantity({ role: 'operator' }), 5);
   assert.equal(getUserQcMaxQuantity({ role: 'operator', qcMaxQuantity: 5000 }), 1000);
   assert.equal(getUserQcMaxQuantity({ role: 'admin' }), 1000);
   assert.equal(getUserQcMaxQuantity({ role: 'ppic', qcMaxQuantity: 10 }), 1);
 });
 
-test('legacy quick QC permission migrates to a maximum quantity of five', () => {
+test('operator maximum QC quantity defaults to five while preserving custom values', () => {
   assert.equal(normalizeUserRecord({ role: 'operator', quickQcEnabled: true }).qcMaxQuantity, 5);
-  assert.equal(normalizeUserRecord({ role: 'operator', quickQcEnabled: false }).qcMaxQuantity, 1);
+  assert.equal(normalizeUserRecord({ role: 'operator', quickQcEnabled: false }).qcMaxQuantity, 5);
+  assert.equal(normalizeUserRecord({ role: 'operator' }).qcMaxQuantity, 5);
   assert.equal(normalizeUserRecord({ role: 'operator', qcMaxQuantity: 12 }).qcMaxQuantity, 12);
 });
 

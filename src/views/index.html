@@ -1674,7 +1674,7 @@
                                                 </td>
                                                 <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500" x-text="user.line || '-'"></td>
 	                                            <td class="px-4 py-3 whitespace-nowrap text-sm">
-	                                                <span x-show="user.role === 'operator'" class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800" x-text="`${user.qcMaxQuantity || 1} unit`"></span>
+	                                                <span x-show="user.role === 'operator'" class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800" x-text="`${user.qcMaxQuantity || 5} unit`"></span>
 	                                                <span x-show="user.role !== 'operator'" class="text-gray-400">-</span>
 	                                            </td>
 	                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-medium">
@@ -2512,7 +2512,7 @@
 	                        <div x-show="userModal.data.role === 'operator'" class="rounded-lg border border-blue-200 bg-blue-50 p-3">
 	                            <label for="qc-max-quantity" class="block text-sm font-semibold text-blue-900">Maksimal Qty QC per Input</label>
 	                            <input type="number" id="qc-max-quantity" x-model.number="userModal.data.qcMaxQuantity" min="1" max="1000" step="1" class="mt-2 block w-full rounded-md border-blue-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" required>
-	                            <p class="mt-1 text-xs text-blue-700">Operator dapat memilih qty dari 1 sampai batas ini dengan tombol minus dan plus.</p>
+	                            <p class="mt-1 text-xs text-blue-700">Default 5. Batas ini berlaku khusus untuk operator dan line yang dipilih pada akun ini.</p>
 	                        </div>
                         </div>
                     </div>

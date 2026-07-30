@@ -8,7 +8,7 @@ Dashboard produksi berbasis Express untuk memantau output line, target per jam, 
 - Dashboard produksi untuk `admin` dan `admin_operator`.
 - Ringkasan line dan detail model aktif per line.
 - Input hasil produksi per jam.
-- QC check `Good` dan `Defect` dengan pengatur qty minus/plus serta batas maksimum berbeda untuk setiap operator.
+- QC check `Good` dan `Defect` dengan pengatur qty minus/plus. Maksimum default 5 dan dapat diatur berbeda untuk setiap operator sesuai line-nya.
 - Lock data produksi per jam untuk operator setelah data disimpan.
 - Management line dan model produksi.
 - Management user, kategori defect, dan Backup Data untuk admin.

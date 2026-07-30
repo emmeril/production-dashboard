@@ -7,7 +7,7 @@ function getUserQcMaxQuantity(user) {
   const quantity = parseInt(user.qcMaxQuantity, 10);
   return Number.isInteger(quantity) && quantity > 0
     ? Math.min(quantity, MAX_QC_BATCH_QUANTITY)
-    : 1;
+    : 5;
 }
 
 function registerProductionRoutes(app, dependencies) {

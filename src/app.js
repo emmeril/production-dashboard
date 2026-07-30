@@ -199,7 +199,7 @@ function isLegacySha256PasswordHash(hashedPassword) {
 
 const MAX_QC_BATCH_QUANTITY = 1000;
 
-function normalizeQcMaxQuantity(value, fallback = 1) {
+function normalizeQcMaxQuantity(value, fallback = 5) {
   const parsed = parseNonNegativeInteger(value, fallback);
   if (!Number.isInteger(parsed) || parsed < 1) return 1;
   return Math.min(parsed, MAX_QC_BATCH_QUANTITY);
@@ -209,9 +209,8 @@ function normalizeUserRecord(user) {
   if (!user || typeof user !== 'object') return user;
 
   const role = normalizeRole(user.role);
-  const legacyMaxQuantity = user.quickQcEnabled === true ? 5 : 1;
   const qcMaxQuantity = role === 'operator'
-    ? normalizeQcMaxQuantity(user.qcMaxQuantity, legacyMaxQuantity)
+    ? normalizeQcMaxQuantity(user.qcMaxQuantity)
     : 1;
 
   return {
@@ -537,8 +536,8 @@ function buildInitialUsersData() {
         "name": "Ahmad Susanto",
         "line": "F1-5A",
         "role": "operator",
-        "quickQcEnabled": false,
-        "qcMaxQuantity": 1,
+        "quickQcEnabled": true,
+        "qcMaxQuantity": 5,
         "sessionVersion": 1
       },
       {

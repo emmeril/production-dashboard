@@ -8,7 +8,7 @@ Dashboard produksi berbasis Express untuk memantau output line, target per jam, 
 - Dashboard produksi untuk `admin` dan `admin_operator`.
 - Ringkasan line dan detail model aktif per line.
 - Input hasil produksi per jam.
-- QC check `Good` dan `Defect` dengan kategori `Jenis Defect` dan `Defect Area`.
+- QC check `Good` dan `Defect` dengan pengatur qty minus/plus serta batas maksimum berbeda untuk setiap operator.
 - Lock data produksi per jam untuk operator setelah data disimpan.
 - Management line dan model produksi.
 - Management user, kategori defect, dan Backup Data untuk admin.
@@ -25,7 +25,7 @@ Dashboard produksi berbasis Express untuk memantau output line, target per jam, 
 | `admin` | Semua fitur, termasuk user, kategori defect, backup, delete line/model, input dan koreksi data. |
 | `admin_operator_sewing` | Dashboard, ringkasan line, management line/model, serta report produksi dan QC lengkap. Pada form Edit Management Line hanya Target Harian yang dapat diubah. |
 | `admin_operator_qc` | Dashboard, ringkasan line, report produksi dan QC lengkap, koreksi hasil QC, dan pengelolaan kategori defect. |
-| `operator` | Ringkasan line dan input line miliknya. Tidak bisa melihat dashboard utama. Data produksi per jam terkunci setelah disimpan. |
+| `operator` | Ringkasan line dan input line miliknya. Tidak bisa melihat dashboard utama. Data produksi per jam terkunci setelah disimpan. Maksimum qty QC per input diatur oleh admin. |
 
 User awal dibuat saat inisialisasi pertama. Password bootstrap disimpan di `database-backups/bootstrap-credentials.json`, atau bisa ditentukan lewat env var `DEFAULT_ADMIN_PASSWORD`, `DEFAULT_ADMIN_OPERATOR_PASSWORD`, dan `DEFAULT_OPERATOR_PASSWORD` sebelum server pertama kali dijalankan.
 

@@ -791,6 +791,8 @@ function createStorageService(dependencies) {
         }
 
         if (normalizedUser.role !== user.role
+          || normalizedUser.quickQcEnabled !== user.quickQcEnabled
+          || normalizedUser.qcMaxQuantity !== user.qcMaxQuantity
           || normalizedUser.sessionVersion !== user.sessionVersion
           || normalizedUser.password !== user.password) {
           migrated = true;

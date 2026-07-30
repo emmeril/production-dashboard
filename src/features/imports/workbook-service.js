@@ -111,7 +111,7 @@ function createImportWorkbookService(dependencies) {
         if (!QC_IMPORT_HOURS.includes(hour)) return;
         const key = `${hour}|${check.type}|${check.area}`;
         const current = defectsByHour.get(key) || { hour, type: check.type, area: check.area, quantity: 0, notes: check.notes || '' };
-        current.quantity += 1;
+        current.quantity += Math.max(parseInt(check.quantity) || 1, 1);
         defectsByHour.set(key, current);
       });
       (sample.hourlyData || []).filter(hour => QC_IMPORT_HOURS.includes(hour.hour)).forEach(hour => {

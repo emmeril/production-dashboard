@@ -197,12 +197,28 @@ function isLegacySha256PasswordHash(hashedPassword) {
   return typeof hashedPassword === 'string' && /^[a-f0-9]{64}$/i.test(hashedPassword);
 }
 
+const MAX_QC_BATCH_QUANTITY = 1000;
+
+function normalizeQcMaxQuantity(value, fallback = 1) {
+  const parsed = parseNonNegativeInteger(value, fallback);
+  if (!Number.isInteger(parsed) || parsed < 1) return 1;
+  return Math.min(parsed, MAX_QC_BATCH_QUANTITY);
+}
+
 function normalizeUserRecord(user) {
   if (!user || typeof user !== 'object') return user;
 
+  const role = normalizeRole(user.role);
+  const legacyMaxQuantity = user.quickQcEnabled === true ? 5 : 1;
+  const qcMaxQuantity = role === 'operator'
+    ? normalizeQcMaxQuantity(user.qcMaxQuantity, legacyMaxQuantity)
+    : 1;
+
   return {
     ...user,
-    role: normalizeRole(user.role),
+    role,
+    quickQcEnabled: role === 'operator' && qcMaxQuantity > 1,
+    qcMaxQuantity,
     sessionVersion: Number.isInteger(user.sessionVersion) && user.sessionVersion > 0
       ? user.sessionVersion
       : 1
@@ -219,6 +235,8 @@ function buildSessionUser(user) {
     username: normalizedUser.username,
     line: normalizedUser.line,
     role: normalizedUser.role,
+    quickQcEnabled: normalizedUser.quickQcEnabled,
+    qcMaxQuantity: normalizedUser.qcMaxQuantity,
     sessionVersion: normalizedUser.sessionVersion
   };
 }
@@ -519,6 +537,8 @@ function buildInitialUsersData() {
         "name": "Ahmad Susanto",
         "line": "F1-5A",
         "role": "operator",
+        "quickQcEnabled": false,
+        "qcMaxQuantity": 1,
         "sessionVersion": 1
       },
       {
@@ -725,7 +745,7 @@ function calculateDefectSeverityBreakdown(model, config = readDefectConfig()) {
   if (Array.isArray(model.qcChecks)) {
     model.qcChecks
       .filter(check => check.result === 'defect')
-      .forEach(check => addDefect(check.type, check.area, 1));
+      .forEach(check => addDefect(check.type, check.area, normalizeQcCheckQuantity(check.quantity)));
   } else {
     (model.hourly_data || []).forEach(hour => {
       (hour.defectDetails || []).forEach(detail => {
@@ -791,6 +811,7 @@ function buildPublicModelResponse(model) {
     qcChecks: qcChecks.map(check => ({
       id: check?.id,
       result: check?.result || '',
+      quantity: normalizeQcCheckQuantity(check?.quantity),
       hourIndex: Number.isInteger(check?.hourIndex) ? check.hourIndex : null,
       hour: check?.hour || '',
       type: check?.type || '',
@@ -1007,6 +1028,11 @@ function isModelActiveInManagement(data, lineName, modelId) {
   return (normalizedLine.activeModels || []).includes(String(modelId));
 }
 
+function normalizeQcCheckQuantity(quantity) {
+  const parsed = parseNonNegativeInteger(quantity, 1);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : 1;
+}
+
 function recalculateModelTotals(model) {
   let totalOutput = 0;
   let totalDefect = 0;
@@ -1019,18 +1045,21 @@ function recalculateModelTotals(model) {
   });
 
   if (Array.isArray(model.qcChecks)) {
-    totalQCChecked = model.qcChecks.length;
-    totalDefect = model.qcChecks.filter(check => check.result === 'defect').length;
-    // Keep hourly QC columns aligned with the individual QC records.
+    totalQCChecked = model.qcChecks.reduce((total, check) => total + normalizeQcCheckQuantity(check.quantity), 0);
+    totalDefect = model.qcChecks
+      .filter(check => check.result === 'defect')
+      .reduce((total, check) => total + normalizeQcCheckQuantity(check.quantity), 0);
+    // Keep hourly QC columns aligned with QC records, including quick-entry batches.
     (model.hourly_data || []).forEach(hour => {
       hour.qcChecked = 0;
       hour.defect = 0;
     });
     model.qcChecks.forEach(check => {
+      const quantity = normalizeQcCheckQuantity(check.quantity);
       const index = parseNonNegativeInteger(check.hourIndex);
       if (Number.isInteger(index) && model.hourly_data[index]) {
-        model.hourly_data[index].qcChecked = (parseInt(model.hourly_data[index].qcChecked) || 0) + 1;
-        if (check.result === 'defect') model.hourly_data[index].defect = (parseInt(model.hourly_data[index].defect) || 0) + 1;
+        model.hourly_data[index].qcChecked = (parseInt(model.hourly_data[index].qcChecked) || 0) + quantity;
+        if (check.result === 'defect') model.hourly_data[index].defect = (parseInt(model.hourly_data[index].defect) || 0) + quantity;
       }
     });
   } else {
@@ -2194,7 +2223,7 @@ app.delete('/api/defect-areas/:id', requireLogin, requireDefectCategoryAccess, a
 });
 
 app.post('/api/users', requireLogin, requireAdmin, async (req, res) => {
-  const { username, password, name, line, role } = req.body;
+  const { username, password, name, line, role, qcMaxQuantity } = req.body;
   const usersData = readUsersData();
   const allowedRoles = ['admin', 'admin_operator_sewing', 'admin_operator_qc', 'ppic', 'operator'];
 
@@ -2218,6 +2247,7 @@ app.post('/api/users', requireLogin, requireAdmin, async (req, res) => {
     name: name.trim(),
     line,
     role,
+    qcMaxQuantity: role === 'operator' ? normalizeQcMaxQuantity(qcMaxQuantity) : 1,
     sessionVersion: 1
   };
 
@@ -2234,7 +2264,7 @@ app.post('/api/users', requireLogin, requireAdmin, async (req, res) => {
 
 app.put('/api/users/:id', requireLogin, requireAdmin, async (req, res) => {
   const userId = parseNonNegativeInteger(req.params.id);
-  const { username, password, name, line, role } = req.body;
+  const { username, password, name, line, role, qcMaxQuantity } = req.body;
   const usersData = readUsersData();
   const allowedRoles = ['admin', 'admin_operator_sewing', 'admin_operator_qc', 'ppic', 'operator'];
 
@@ -2259,6 +2289,7 @@ app.put('/api/users/:id', requireLogin, requireAdmin, async (req, res) => {
     name: name.trim(),
     line,
     role,
+    qcMaxQuantity: role === 'operator' ? normalizeQcMaxQuantity(qcMaxQuantity) : 1,
     sessionVersion: (Number(usersData.users[userIndex].sessionVersion) || 1) + 1
   };
 
@@ -2420,6 +2451,7 @@ module.exports = {
   normalizeLabelWeek,
   normalizeLabelWeekKey,
   normalizeModelName,
+  normalizeUserRecord,
   normalizeProductionLineName,
   normalizeProductionModel,
   resolveActiveDefectCategories,
@@ -2433,6 +2465,7 @@ module.exports = {
   productionImportTemplateWorkbook,
   sewingImportTemplateWorkbook,
   qcImportTemplateWorkbook,
+  recalculateModelTotals,
   pruneDatabaseBackups,
   readProductionData,
   readProductionSnapshotForDate,

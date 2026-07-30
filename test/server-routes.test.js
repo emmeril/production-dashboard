@@ -282,6 +282,46 @@ test('line and model creation reject blank names', async () => {
   assert.equal(blankModelResponse.status, 400);
 });
 
+test('admin can assign a maximum QC quantity to an operator', async () => {
+  const { cookie } = await login('admin', 'admin-password');
+  const createResponse = await fetch(`${baseUrl}/api/users`, {
+    method: 'POST',
+    headers: { Cookie: cookie, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      username: 'quick-qc-operator',
+      password: 'operator-password',
+      name: 'Quick QC Operator',
+      line: 'LINE 1',
+      role: 'operator',
+      qcMaxQuantity: 12
+    })
+  });
+  const created = await createResponse.json();
+
+  assert.equal(createResponse.status, 200);
+  assert.equal(created.user.qcMaxQuantity, 12);
+
+  const { response: operatorLoginResponse } = await login('quick-qc-operator', 'operator-password');
+  const operatorLogin = await operatorLoginResponse.json();
+  assert.equal(operatorLoginResponse.status, 200);
+  assert.equal(operatorLogin.user.qcMaxQuantity, 12);
+});
+
+test('admin QC action records an arbitrary quantity batch', async () => {
+  const { cookie } = await login('admin', 'admin-password');
+  const response = await fetch(`${baseUrl}/api/qc-check/LINE%201/model1`, {
+    method: 'POST',
+    headers: { Cookie: cookie, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ result: 'good', quantity: 7, hourIndex: 0 })
+  });
+  const result = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(result.qcCheck.quantity, 7);
+  assert.equal(result.summary.totalQCChecked, 7);
+  assert.equal(result.data.hourly_data[0].qcChecked, 7);
+});
+
 test('login endpoint throttles repeated invalid attempts', async () => {
   const first = await login('throttled-user', 'wrong-password');
   const second = await login('throttled-user', 'wrong-password');

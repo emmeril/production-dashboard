@@ -580,13 +580,13 @@ function logPublicDisplayError(context, error) {
 	                    const counts = {};
 	                    const qcChecks = this.lineData.data.qcChecks;
 
-		                    if (Array.isArray(qcChecks)) {
-		                        qcChecks
-		                            .filter(check => check.result === 'defect')
-		                            .filter(check => this.matchesDefectMode(check.type, check.area))
-		                            .forEach(check => {
+	                    if (Array.isArray(qcChecks)) {
+	                        qcChecks
+	                            .filter(check => check.result === 'defect')
+	                            .filter(check => this.matchesDefectMode(check.type, check.area))
+	                            .forEach(check => {
 	                                const name = check.type || '-';
-	                                counts[name] = (counts[name] || 0) + 1;
+	                                counts[name] = (counts[name] || 0) + (parseInt(check.quantity) || 1);
 	                            });
 	                    } else {
 		                        (this.lineData.data.hourly_data || []).forEach(hour => {

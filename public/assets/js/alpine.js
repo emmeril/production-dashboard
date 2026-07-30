@@ -108,6 +108,7 @@ function dashboard() {
         reportLineFilter: '',
         productionClockMinute: null,
         qcHourIndex: 0,
+        qcQuantity: 1,
 
         // Forms
         inputForm: {
@@ -168,7 +169,8 @@ function dashboard() {
                 password: '',
                 name: '',
                 role: 'operator',
-                line: ''
+                line: '',
+                qcMaxQuantity: 1
             }
         },
 
@@ -471,6 +473,20 @@ function dashboard() {
 
 	        canManageQc() {
 	            return ['admin', 'operator'].includes(this.currentUser.role);
+	        },
+
+	        qcQuantityLimit() {
+	            if (this.currentUser.role === 'admin') return 1000;
+	            if (this.currentUser.role !== 'operator') return 1;
+	            return Math.max(1, Math.min(parseInt(this.currentUser.qcMaxQuantity) || 1, 1000));
+	        },
+
+	        decreaseQcQuantity() {
+	            this.qcQuantity = Math.max(1, (parseInt(this.qcQuantity) || 1) - 1);
+	        },
+
+	        increaseQcQuantity() {
+	            this.qcQuantity = Math.min(this.qcQuantityLimit(), (parseInt(this.qcQuantity) || 1) + 1);
 	        },
 
 	        canDeleteQc() {
@@ -1935,6 +1951,7 @@ function dashboard() {
                 defectDetails: []
             };
             this.qcHourIndex = 0;
+            this.qcQuantity = 1;
             this.resetDefectEntry();
         },
 
@@ -2096,7 +2113,7 @@ function dashboard() {
 	            }
 	        },
 
-	        async submitQcCheck(result) {
+	        async submitQcCheck(result, quantity = this.qcQuantity) {
 	            if (this.isSavingQc) return;
 
             if (!this.isQcWithinWorkingHours()) {
@@ -2106,6 +2123,12 @@ function dashboard() {
 
 	            if (!this.canManageQc()) {
 	                this.showToast('Anda tidak memiliki akses untuk input QC', 'error');
+	                return;
+	            }
+
+	            const selectedQuantity = Math.max(1, parseInt(quantity) || 1);
+	            if (selectedQuantity > this.qcQuantityLimit()) {
+	                this.showToast(`Qty QC maksimal untuk akun ini adalah ${this.qcQuantityLimit()}`, 'error');
 	                return;
 	            }
 
@@ -2122,6 +2145,7 @@ function dashboard() {
                     headers: { 'Content-Type': 'application/json' },
 	                    body: JSON.stringify({
 	                        result,
+	                        quantity: selectedQuantity,
 	                        hourIndex: this.qcHourIndex,
 	                        type: this.defectEntry.type,
 	                        area: this.defectEntry.area,
@@ -2130,7 +2154,7 @@ function dashboard() {
                 });
 
                 if (response.ok) {
-                    this.showToast(result === 'defect' ? 'QC defect berhasil dicatat' : 'QC good berhasil dicatat', 'success');
+                    this.showToast(`QC ${result === 'defect' ? 'defect' : 'good'} qty ${selectedQuantity} berhasil dicatat`, 'success');
                     if (result === 'defect') this.resetDefectEntry();
                     await this.loadLineDetail(this.currentLine, this.currentModelId);
                     await this.loadDashboardData();
@@ -2476,7 +2500,8 @@ function dashboard() {
                     password: '',
                     name: user.name,
                     role: user.role,
-                    line: user.line
+                    line: user.line,
+                    qcMaxQuantity: Math.max(1, parseInt(user.qcMaxQuantity) || 1)
                 };
             } else {
                 this.userModal.isEdit = false;
@@ -2486,7 +2511,8 @@ function dashboard() {
                     password: '',
                     name: '',
                     role: 'operator',
-                    line: ''
+                    line: '',
+                    qcMaxQuantity: 1
                 };
             }
             this.userModal.open = true;
@@ -3048,7 +3074,9 @@ function dashboard() {
         },
 
         get qcGoodCount() {
-            return (this.lineDetail.qcChecks || []).filter(check => check.result === 'good').length;
+            return (this.lineDetail.qcChecks || [])
+                .filter(check => check.result === 'good')
+                .reduce((total, check) => total + (parseInt(check.quantity) || 1), 0);
         },
 
         get recentDefectChecks() {

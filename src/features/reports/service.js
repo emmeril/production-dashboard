@@ -23,6 +23,11 @@ function createReportService(dependencies) {
     counter[label] = (counter[label] || 0) + (parseInt(amount) || 0 || 1);
   }
 
+  function qcCheckQuantity(check) {
+    const quantity = parseNonNegativeInteger(check?.quantity, 1);
+    return Number.isInteger(quantity) && quantity > 0 ? quantity : 1;
+  }
+
   function formatCounter(counter) {
     const items = Object.entries(counter || {})
       .filter(([, count]) => (parseInt(count) || 0) > 0)
@@ -67,8 +72,8 @@ function createReportService(dependencies) {
     (model.qcChecks || [])
       .filter(check => check.result === 'defect')
       .forEach(check => {
-        addToCounter(typeCounts, check.type, 1);
-        addToCounter(areaCounts, check.area, 1);
+        addToCounter(typeCounts, check.type, qcCheckQuantity(check));
+        addToCounter(areaCounts, check.area, qcCheckQuantity(check));
       });
 
     return {
@@ -224,7 +229,7 @@ function createReportService(dependencies) {
       const hourIndex = Number.isInteger(parseNonNegativeInteger(check.hourIndex)) ? parseNonNegativeInteger(check.hourIndex) : -1;
       const key = `${check.type || 'Tanpa jenis'} - ${check.area || 'Tanpa area'}`;
       qcDefectsByHour[hourIndex] = qcDefectsByHour[hourIndex] || {};
-      qcDefectsByHour[hourIndex][key] = (qcDefectsByHour[hourIndex][key] || 0) + 1;
+      qcDefectsByHour[hourIndex][key] = (qcDefectsByHour[hourIndex][key] || 0) + qcCheckQuantity(check);
     });
     const hourlyRows = (modelData.hourly_data || []).map((hour, hourIndex) => {
       const importedDetails = (hour.defectDetails || []).map(detail => ({
@@ -313,8 +318,8 @@ function createReportService(dependencies) {
     (model.qcChecks || [])
       .filter(check => check.result === 'defect')
       .forEach(check => {
-        addToCounter(summary.typeCounts, check.type, 1);
-        addToCounter(summary.areaCounts, check.area, 1);
+        addToCounter(summary.typeCounts, check.type, qcCheckQuantity(check));
+        addToCounter(summary.areaCounts, check.area, qcCheckQuantity(check));
       });
   }
 
@@ -374,8 +379,8 @@ function createReportService(dependencies) {
         (model.qcChecks || [])
           .filter(check => check.result === 'defect')
           .forEach(check => {
-            addToCounter(summary.typeCounts, check.type, 1);
-            addToCounter(summary.areaCounts, check.area, 1);
+            addToCounter(summary.typeCounts, check.type, qcCheckQuantity(check));
+            addToCounter(summary.areaCounts, check.area, qcCheckQuantity(check));
           });
       });
 
@@ -756,14 +761,14 @@ function createReportService(dependencies) {
   	        .forEach(check => {
   	          hasDefectDetail = true;
   	          const row = lineSheet.getRow(currentRow);
-  	          row.values = [
-  	            getQcCheckHourLabel(model, check),
-  	            check.type || '-',
-  	            getDefectSeverityLabel(check.type),
-  	            check.area || '-',
-  	            1,
-  	            check.notes || ''
-  	          ];
+          row.values = [
+            getQcCheckHourLabel(model, check),
+            check.type || '-',
+            getDefectSeverityLabel(check.type),
+            check.area || '-',
+            qcCheckQuantity(check),
+            check.notes || ''
+          ];
   	          row.eachCell((cell) => {
   	            cell.style = dataStyle;
   	          });
@@ -986,7 +991,7 @@ function createReportService(dependencies) {
     const detail = workbook.addWorksheet(isSewing ? 'DETAIL PER JAM' : 'DETAIL PEMERIKSAAN');
     const headers = isSewing
       ? ['Jam', 'Target Manual', 'Output', 'Selisih', 'Achievement %']
-      : ['No', 'Jam', 'Hasil', 'Jenis Defect', 'Kategori', 'Area Defect', 'Catatan', 'Waktu Pemeriksaan'];
+      : ['No', 'Jam', 'Hasil', 'Qty', 'Jenis Defect', 'Kategori', 'Area Defect', 'Catatan', 'Waktu Pemeriksaan'];
     detail.getRow(1).values = headers;
     detail.getRow(1).eachCell(cell => {
       cell.font = { bold: true, color: { argb: 'FFFFFF' } };
@@ -1008,6 +1013,7 @@ function createReportService(dependencies) {
             index + 1,
             check.hour || '',
             check.result === 'defect' ? 'Defect' : 'Good',
+            qcCheckQuantity(check),
             check.type || '',
             check.result === 'defect' ? getDefectSeverityLabel(check.type) : '',
             check.area || '',
@@ -1023,6 +1029,7 @@ function createReportService(dependencies) {
             index + 1,
             hour.hour || '',
             `Rekap: ${hour.qcChecked || 0} checked / ${hour.defect || 0} defect`,
+            hour.qcChecked || 0,
             categories.types,
             '-',
             categories.areas,

@@ -1,3 +1,15 @@
+const MAX_QC_BATCH_QUANTITY = 1000;
+
+function getUserQcMaxQuantity(user) {
+  if (user?.role === 'admin') return MAX_QC_BATCH_QUANTITY;
+  if (user?.role !== 'operator') return 1;
+
+  const quantity = parseInt(user.qcMaxQuantity, 10);
+  return Number.isInteger(quantity) && quantity > 0
+    ? Math.min(quantity, MAX_QC_BATCH_QUANTITY)
+    : 1;
+}
+
 function registerProductionRoutes(app, dependencies) {
   const {
     ADMIN_OPERATOR_ROLES,
@@ -312,7 +324,7 @@ function registerProductionRoutes(app, dependencies) {
       }
     }
     const { lineName, modelId } = req.params;
-  	  const { result, hourIndex, type, area, notes } = req.body;
+    const { result, quantity, hourIndex, type, area, notes } = req.body;
     const data = readProductionData();
 
     if (!data.lines[lineName] || !data.lines[lineName].models[modelId]) {
@@ -321,6 +333,16 @@ function registerProductionRoutes(app, dependencies) {
 
     if (!['good', 'defect'].includes(result)) {
       return res.status(400).json({ error: 'QC result must be good or defect' });
+    }
+
+    const parsedQuantity = parseNonNegativeInteger(quantity, 1);
+    if (!Number.isInteger(parsedQuantity) || parsedQuantity < 1) {
+      return res.status(400).json({ error: 'Qty QC harus berupa bilangan bulat minimal 1' });
+    }
+
+    const maxQuantity = getUserQcMaxQuantity(req.session.user);
+    if (parsedQuantity > maxQuantity) {
+      return res.status(403).json({ error: `Qty QC maksimal untuk akun ini adalah ${maxQuantity}` });
     }
 
     if (result === 'defect' && (!type || !area)) {
@@ -344,6 +366,7 @@ function registerProductionRoutes(app, dependencies) {
   	  const qcCheck = {
   	    id: generateNumericId(model.qcChecks),
   	    result,
+      quantity: parsedQuantity,
   	    hourIndex: validHourIndex,
   	    hour: validHourIndex !== null ? model.hourly_data[validHourIndex].hour : '',
   	    type: defectCategory?.type || '',
@@ -359,7 +382,7 @@ function registerProductionRoutes(app, dependencies) {
     updateTodayBackup();
 
     res.json({
-      message: result === 'defect' ? 'Defect QC recorded successfully.' : 'Good QC recorded successfully.',
+      message: `${result === 'defect' ? 'Defect' : 'Good'} QC ${parsedQuantity} berhasil dicatat.`,
       qcCheck,
       data: model,
       summary: {
@@ -937,4 +960,4 @@ function registerProductionRoutes(app, dependencies) {
   });
 }
 
-module.exports = { registerProductionRoutes };
+module.exports = { getUserQcMaxQuantity, registerProductionRoutes };

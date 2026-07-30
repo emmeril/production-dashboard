@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const crypto = require('node:crypto');
+const { getUserQcMaxQuantity } = require('../src/features/production/routes');
 
 const {
   app,
@@ -41,11 +42,13 @@ const {
   normalizeLabelWeek,
   normalizeLineName,
   normalizeModelName,
+  normalizeUserRecord,
   normalizeProductionLineName,
   normalizeProductionModel,
   resolveActiveDefectCategories,
   productionImportTemplateWorkbook,
   qcImportTemplateWorkbook,
+  recalculateModelTotals,
   sewingImportTemplateWorkbook,
   summarizeProductionSnapshot,
   summarizeProductionSnapshotByLine,
@@ -104,6 +107,63 @@ test('public model response omits internal user and lock fields', () => {
   assert.equal(publicModel.qcChecks[0].notes, undefined);
   assert.equal(publicModel.qcChecks[0].checkedAt, undefined);
   assert.equal(publicModel.operators[0].name, undefined);
+});
+
+test('QC quick-entry quantity updates totals, hourly data, and public response', () => {
+  const model = {
+    hourly_data: [{ hour: '07:00 - 08:00', targetManual: 10, output: 8, qcChecked: 0, defect: 0 }],
+    qcChecks: [
+      { id: 1, result: 'good', quantity: 5, hourIndex: 0, hour: '07:00 - 08:00' },
+      { id: 2, result: 'defect', quantity: 5, hourIndex: 0, hour: '07:00 - 08:00', type: 'Kotor', area: 'Badan' },
+      { id: 3, result: 'good', hourIndex: 0, hour: '07:00 - 08:00' }
+    ]
+  };
+
+  const totals = recalculateModelTotals(model);
+  const publicModel = buildPublicModelResponse(model);
+  const defectBreakdown = calculateDefectSeverityBreakdown(model, {
+    defectTypes: [{ name: 'Kotor', severity: 'minor', active: true }],
+    defectAreas: [{ name: 'Badan', active: true }]
+  });
+
+  assert.equal(totals.totalQCChecked, 11);
+  assert.equal(totals.totalDefect, 5);
+  assert.equal(model.hourly_data[0].qcChecked, 11);
+  assert.equal(model.hourly_data[0].defect, 5);
+  assert.equal(model.defectRatePercentage, 45.45);
+  assert.equal(defectBreakdown.all.count, 5);
+  assert.equal(defectBreakdown.minor.count, 5);
+  assert.deepEqual(Array.from(publicModel.qcChecks, check => check.quantity), [5, 5, 1]);
+});
+
+test('dashboard quantity stepper respects each operator QC limit', () => {
+  const context = { console, Date, Intl, Map, Math, Set, parseInt };
+  const alpineSource = fs.readFileSync(path.join(__dirname, '..', 'public/assets/js/alpine.js'), 'utf8');
+  vm.runInNewContext(alpineSource, context);
+  const dashboard = context.dashboard();
+
+  dashboard.currentUser = { role: 'operator', qcMaxQuantity: 3 };
+  dashboard.increaseQcQuantity();
+  dashboard.increaseQcQuantity();
+  dashboard.increaseQcQuantity();
+  assert.equal(dashboard.qcQuantity, 3);
+  dashboard.decreaseQcQuantity();
+  assert.equal(dashboard.qcQuantity, 2);
+  assert.equal(dashboard.qcQuantityLimit(), 3);
+});
+
+test('backend returns a distinct maximum QC quantity for each operator', () => {
+  assert.equal(getUserQcMaxQuantity({ role: 'operator', qcMaxQuantity: 1 }), 1);
+  assert.equal(getUserQcMaxQuantity({ role: 'operator', qcMaxQuantity: 12 }), 12);
+  assert.equal(getUserQcMaxQuantity({ role: 'operator', qcMaxQuantity: 5000 }), 1000);
+  assert.equal(getUserQcMaxQuantity({ role: 'admin' }), 1000);
+  assert.equal(getUserQcMaxQuantity({ role: 'ppic', qcMaxQuantity: 10 }), 1);
+});
+
+test('legacy quick QC permission migrates to a maximum quantity of five', () => {
+  assert.equal(normalizeUserRecord({ role: 'operator', quickQcEnabled: true }).qcMaxQuantity, 5);
+  assert.equal(normalizeUserRecord({ role: 'operator', quickQcEnabled: false }).qcMaxQuantity, 1);
+  assert.equal(normalizeUserRecord({ role: 'operator', qcMaxQuantity: 12 }).qcMaxQuantity, 12);
 });
 
 test('static middleware does not expose project root files', async t => {

@@ -998,25 +998,33 @@
 	                                    </div>
 	                                </div>
 
-	                                <div class="flex flex-col items-center gap-1">
-	                                    <div class="inline-flex items-stretch overflow-hidden rounded-lg border border-gray-300 bg-white shadow-sm">
-	                                        <button type="button" @click="decreaseQcQuantity()" :disabled="isSavingQc || qcQuantity <= 1" class="flex h-9 w-10 items-center justify-center text-lg font-bold text-gray-600 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40" aria-label="Kurangi qty QC">&minus;</button>
-	                                        <div class="flex min-w-20 flex-col items-center justify-center border-x border-gray-300 px-4">
-	                                            <span class="text-[10px] font-semibold uppercase tracking-wide text-gray-400">Qty</span>
-	                                            <strong class="text-sm leading-none text-gray-900" x-text="qcQuantity"></strong>
-	                                        </div>
-	                                        <button type="button" @click="increaseQcQuantity()" :disabled="isSavingQc || qcQuantity >= qcQuantityLimit()" class="flex h-9 w-10 items-center justify-center text-lg font-bold text-gray-600 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40" aria-label="Tambah qty QC">+</button>
-	                                    </div>
-	                                    <span class="text-[11px] text-gray-500" x-text="`Maksimal ${qcQuantityLimit()} unit per input`"></span>
-	                                </div>
-
 	                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-	                                    <button type="button" @click="submitQcCheck('good')" :disabled="isSavingQc || !isQcWithinWorkingHours()" :title="!isQcWithinWorkingHours() ? 'Input QC hanya dapat dilakukan pada hari dan jam kerja' : ''" class="schedule-action inline-flex justify-center items-center px-4 py-3 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed">
-	                                        <i class="fa-solid fa-circle-check mr-2"></i>Good
-	                                    </button>
-	                                    <button type="button" @click="submitQcCheck('defect')" :disabled="isSavingQc || !isQcWithinWorkingHours()" :title="!isQcWithinWorkingHours() ? 'Input QC hanya dapat dilakukan pada hari dan jam kerja' : ''" class="schedule-action inline-flex justify-center items-center px-4 py-3 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed">
-	                                        <i class="fa-solid fa-triangle-exclamation mr-2"></i>Defect
-	                                    </button>
+	                                    <div class="flex items-end gap-2">
+	                                        <div class="shrink-0">
+	                                            <span class="mb-1 block text-[10px] font-bold uppercase tracking-wide text-green-700">Qty Good</span>
+	                                            <div class="inline-flex items-stretch overflow-hidden rounded-md border border-green-300 bg-white shadow-sm">
+	                                                <button type="button" @click="adjustQcQuantity('good', -1)" :disabled="isSavingQc || qcGoodQuantity <= 1" class="flex h-10 w-8 items-center justify-center text-base font-bold text-green-700 hover:bg-green-50 disabled:cursor-not-allowed disabled:opacity-40" aria-label="Kurangi qty Good">&minus;</button>
+	                                                <strong class="flex min-w-10 items-center justify-center border-x border-green-200 px-1 text-sm text-gray-900" x-text="qcGoodQuantity"></strong>
+	                                                <button type="button" @click="adjustQcQuantity('good', 1)" :disabled="isSavingQc || qcGoodQuantity >= qcQuantityLimit()" class="flex h-10 w-8 items-center justify-center text-base font-bold text-green-700 hover:bg-green-50 disabled:cursor-not-allowed disabled:opacity-40" aria-label="Tambah qty Good">+</button>
+	                                            </div>
+	                                        </div>
+	                                        <button type="button" @click="submitQcCheck('good')" :disabled="isSavingQc || !isQcWithinWorkingHours()" :title="!isQcWithinWorkingHours() ? 'Input QC hanya dapat dilakukan pada hari dan jam kerja' : ''" class="schedule-action inline-flex min-w-0 flex-1 justify-center items-center px-4 py-3 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed">
+	                                            <i class="fa-solid fa-circle-check mr-2"></i>Good
+	                                        </button>
+	                                    </div>
+	                                    <div class="flex items-end gap-2">
+	                                        <div class="shrink-0">
+	                                            <span class="mb-1 block text-[10px] font-bold uppercase tracking-wide text-red-700">Qty Defect</span>
+	                                            <div class="inline-flex items-stretch overflow-hidden rounded-md border border-red-300 bg-white shadow-sm">
+	                                                <button type="button" @click="adjustQcQuantity('defect', -1)" :disabled="isSavingQc || qcDefectQuantity <= 1" class="flex h-10 w-8 items-center justify-center text-base font-bold text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40" aria-label="Kurangi qty Defect">&minus;</button>
+	                                                <strong class="flex min-w-10 items-center justify-center border-x border-red-200 px-1 text-sm text-gray-900" x-text="qcDefectQuantity"></strong>
+	                                                <button type="button" @click="adjustQcQuantity('defect', 1)" :disabled="isSavingQc || qcDefectQuantity >= qcQuantityLimit()" class="flex h-10 w-8 items-center justify-center text-base font-bold text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40" aria-label="Tambah qty Defect">+</button>
+	                                            </div>
+	                                        </div>
+	                                        <button type="button" @click="submitQcCheck('defect')" :disabled="isSavingQc || !isQcWithinWorkingHours()" :title="!isQcWithinWorkingHours() ? 'Input QC hanya dapat dilakukan pada hari dan jam kerja' : ''" class="schedule-action inline-flex min-w-0 flex-1 justify-center items-center px-4 py-3 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed">
+	                                            <i class="fa-solid fa-triangle-exclamation mr-2"></i>Defect
+	                                        </button>
+	                                    </div>
 	                                </div>
 
 	                                <div class="border border-gray-200 rounded-lg overflow-hidden">

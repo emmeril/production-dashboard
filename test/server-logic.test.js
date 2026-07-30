@@ -136,19 +136,22 @@ test('QC quick-entry quantity updates totals, hourly data, and public response',
   assert.deepEqual(Array.from(publicModel.qcChecks, check => check.quantity), [5, 5, 1]);
 });
 
-test('dashboard quantity stepper respects each operator QC limit', () => {
+test('dashboard keeps separate Good and Defect quantities within the operator limit', () => {
   const context = { console, Date, Intl, Map, Math, Set, parseInt };
   const alpineSource = fs.readFileSync(path.join(__dirname, '..', 'public/assets/js/alpine.js'), 'utf8');
   vm.runInNewContext(alpineSource, context);
   const dashboard = context.dashboard();
 
   dashboard.currentUser = { role: 'operator', qcMaxQuantity: 3 };
-  dashboard.increaseQcQuantity();
-  dashboard.increaseQcQuantity();
-  dashboard.increaseQcQuantity();
-  assert.equal(dashboard.qcQuantity, 3);
-  dashboard.decreaseQcQuantity();
-  assert.equal(dashboard.qcQuantity, 2);
+  dashboard.adjustQcQuantity('good', 1);
+  dashboard.adjustQcQuantity('good', 1);
+  dashboard.adjustQcQuantity('good', 1);
+  dashboard.adjustQcQuantity('defect', 1);
+  assert.equal(dashboard.qcGoodQuantity, 3);
+  assert.equal(dashboard.qcDefectQuantity, 2);
+  dashboard.adjustQcQuantity('good', -1);
+  assert.equal(dashboard.qcGoodQuantity, 2);
+  assert.equal(dashboard.qcDefectQuantity, 2);
   assert.equal(dashboard.qcQuantityLimit(), 3);
 });
 

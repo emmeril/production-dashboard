@@ -108,7 +108,8 @@ function dashboard() {
         reportLineFilter: '',
         productionClockMinute: null,
         qcHourIndex: 0,
-        qcQuantity: 1,
+        qcGoodQuantity: 1,
+        qcDefectQuantity: 1,
 
         // Forms
         inputForm: {
@@ -481,12 +482,10 @@ function dashboard() {
 	            return Math.max(1, Math.min(parseInt(this.currentUser.qcMaxQuantity) || 1, 1000));
 	        },
 
-	        decreaseQcQuantity() {
-	            this.qcQuantity = Math.max(1, (parseInt(this.qcQuantity) || 1) - 1);
-	        },
-
-	        increaseQcQuantity() {
-	            this.qcQuantity = Math.min(this.qcQuantityLimit(), (parseInt(this.qcQuantity) || 1) + 1);
+	        adjustQcQuantity(result, delta) {
+	            const property = result === 'defect' ? 'qcDefectQuantity' : 'qcGoodQuantity';
+	            const current = parseInt(this[property]) || 1;
+	            this[property] = Math.max(1, Math.min(this.qcQuantityLimit(), current + delta));
 	        },
 
 	        canDeleteQc() {
@@ -1951,7 +1950,8 @@ function dashboard() {
                 defectDetails: []
             };
             this.qcHourIndex = 0;
-            this.qcQuantity = 1;
+            this.qcGoodQuantity = 1;
+            this.qcDefectQuantity = 1;
             this.resetDefectEntry();
         },
 
@@ -2113,7 +2113,7 @@ function dashboard() {
 	            }
 	        },
 
-	        async submitQcCheck(result, quantity = this.qcQuantity) {
+	        async submitQcCheck(result, quantity = result === 'defect' ? this.qcDefectQuantity : this.qcGoodQuantity) {
 	            if (this.isSavingQc) return;
 
             if (!this.isQcWithinWorkingHours()) {

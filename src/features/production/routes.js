@@ -10,6 +10,20 @@ function getUserQcMaxQuantity(user) {
     : 5;
 }
 
+const PRODUCTION_ROUTE_QC_FIELDS = ['defect', 'qcChecked', 'defectDetails'];
+
+function rejectProductionQcFields(req, res) {
+  const submittedQcFields = PRODUCTION_ROUTE_QC_FIELDS.filter(field =>
+    Object.prototype.hasOwnProperty.call(req.body || {}, field)
+  );
+  if (submittedQcFields.length === 0) return false;
+
+  res.status(400).json({
+    error: 'Endpoint produksi tidak menerima data QC. Gunakan endpoint QC khusus.'
+  });
+  return true;
+}
+
 function registerProductionRoutes(app, dependencies) {
   const {
     ADMIN_OPERATOR_ROLES,
@@ -52,7 +66,8 @@ function registerProductionRoutes(app, dependencies) {
 
   app.post('/api/update-hourly/:lineName', requireLogin, requireLineAccess, requireProductionWriteAccess, autoCheckDateReset, async (req, res) => {
     const { lineName } = req.params;
-    const { hourIndex, output, defect, qcChecked, targetManual, defectDetails } = req.body;
+    const { hourIndex, output, targetManual } = req.body;
+    if (rejectProductionQcFields(req, res)) return;
     const data = readProductionData();
     const active = getActiveModel(data, lineName);
 
@@ -65,35 +80,26 @@ function registerProductionRoutes(app, dependencies) {
       return res.status(400).json({ error: 'Invalid hour index' });
     }
 
-  	  const currentHour = active.model.hourly_data[index];
-  	  if (rejectUnavailableOperatorProductionHour(req, res, currentHour)) return;
-  	  if (rejectBlankOperatorProductionOutput(req, res, output)) return;
-  	  if (hasAnyRole(req.session.user, ['admin_operator_sewing']) && (defect !== undefined || qcChecked !== undefined || defectDetails !== undefined)) {
-  	    return res.status(403).json({ error: 'Admin Operator Sewing tidak dapat mengubah data QC' });
-  	  }
-
-  	  const nextTargetManual = targetManual !== undefined
-  	    ? parseNonNegativeInteger(targetManual)
-  	    : parseNonNegativeInteger(currentHour.targetManual, 0);
-  	  const nextOutput = parseNonNegativeInteger(output, 0);
-  	  const nextDefect = parseNonNegativeInteger(defect, parseNonNegativeInteger(currentHour.defect, 0));
-  	  const nextQcChecked = parseNonNegativeInteger(qcChecked, parseNonNegativeInteger(currentHour.qcChecked, 0));
-    if ([nextTargetManual, nextOutput, nextDefect, nextQcChecked].includes(null)) {
-  	    return res.status(400).json({ error: 'Data produksi dan QC harus berupa bilangan bulat tidak negatif' });
-  	  }
+    const currentHour = active.model.hourly_data[index];
+    if (rejectUnavailableOperatorProductionHour(req, res, currentHour)) return;
+    if (rejectBlankOperatorProductionOutput(req, res, output)) return;
+    const nextTargetManual = targetManual !== undefined
+      ? parseNonNegativeInteger(targetManual)
+      : parseNonNegativeInteger(currentHour.targetManual, 0);
+    const nextOutput = parseNonNegativeInteger(output, 0);
+    if ([nextTargetManual, nextOutput].includes(null)) {
+      return res.status(400).json({ error: 'Data produksi harus berupa bilangan bulat tidak negatif' });
+    }
 
     active.model.hourly_data[index] = {
       ...currentHour,
-  	    output: nextOutput,
-  	    defect: nextDefect,
-  	    qcChecked: nextQcChecked,
-  	    targetManual: nextTargetManual,
-  	    defectDetails: Array.isArray(defectDetails) ? defectDetails : (currentHour.defectDetails || []),
-  	    productionLocked: req.session.user?.role === 'operator' ? true : Boolean(currentHour.productionLocked),
-  	    productionLockedAt: req.session.user?.role === 'operator' ? new Date().toISOString() : currentHour.productionLockedAt,
-  	    productionLockedBy: req.session.user?.role === 'operator' ? req.session.user.username : currentHour.productionLockedBy,
-  	    selisih: nextOutput - nextTargetManual
-  	  };
+      output: nextOutput,
+      targetManual: nextTargetManual,
+      productionLocked: req.session.user?.role === 'operator' ? true : Boolean(currentHour.productionLocked),
+      productionLockedAt: req.session.user?.role === 'operator' ? new Date().toISOString() : currentHour.productionLockedAt,
+      productionLockedBy: req.session.user?.role === 'operator' ? req.session.user.username : currentHour.productionLockedBy,
+      selisih: nextOutput - nextTargetManual
+    };
 
     const summary = recalculateModelTotals(active.model);
 
@@ -149,7 +155,8 @@ function registerProductionRoutes(app, dependencies) {
 
   app.post('/api/update-hourly-direct/:lineName', requireLogin, requireLineAccess, requireProductionWriteAccess, autoCheckDateReset, async (req, res) => {
     const { lineName } = req.params;
-    const { hourIndex, output, defect, qcChecked, targetManual } = req.body;
+    const { hourIndex, output, targetManual } = req.body;
+    if (rejectProductionQcFields(req, res)) return;
     const data = readProductionData();
     const active = getActiveModel(data, lineName);
 
@@ -162,30 +169,23 @@ function registerProductionRoutes(app, dependencies) {
       return res.status(400).json({ error: 'Invalid hour index' });
     }
 
-  	  const nextOutput = parseNonNegativeInteger(output, 0);
-  	  const nextTargetManual = parseNonNegativeInteger(targetManual, 0);
-  	  const nextDefect = parseNonNegativeInteger(defect, parseNonNegativeInteger(active.model.hourly_data[index].defect, 0));
-  	  const nextQcChecked = parseNonNegativeInteger(qcChecked, parseNonNegativeInteger(active.model.hourly_data[index].qcChecked, 0));
-  	  if (hasAnyRole(req.session.user, ['admin_operator_sewing']) && (defect !== undefined || qcChecked !== undefined)) {
-  	    return res.status(403).json({ error: 'Admin Operator Sewing tidak dapat mengubah data QC' });
-  	  }
-  	  if ([nextOutput, nextTargetManual, nextDefect, nextQcChecked].includes(null)) {
-  	    return res.status(400).json({ error: 'Data produksi dan QC harus berupa bilangan bulat tidak negatif' });
-  	  }
-  	  if (rejectUnavailableOperatorProductionHour(req, res, active.model.hourly_data[index])) return;
-  	  if (rejectBlankOperatorProductionOutput(req, res, output)) return;
+    const nextOutput = parseNonNegativeInteger(output, 0);
+    const nextTargetManual = parseNonNegativeInteger(targetManual, 0);
+    if ([nextOutput, nextTargetManual].includes(null)) {
+      return res.status(400).json({ error: 'Data produksi harus berupa bilangan bulat tidak negatif' });
+    }
+    if (rejectUnavailableOperatorProductionHour(req, res, active.model.hourly_data[index])) return;
+    if (rejectBlankOperatorProductionOutput(req, res, output)) return;
 
-  	  active.model.hourly_data[index] = {
-  	    ...active.model.hourly_data[index],
-  	    output: nextOutput,
-  	    defect: nextDefect,
-  	    qcChecked: nextQcChecked,
-  	    targetManual: nextTargetManual,
-  	    productionLocked: req.session.user?.role === 'operator' ? true : Boolean(active.model.hourly_data[index].productionLocked),
-  	    productionLockedAt: req.session.user?.role === 'operator' ? new Date().toISOString() : active.model.hourly_data[index].productionLockedAt,
-  	    productionLockedBy: req.session.user?.role === 'operator' ? req.session.user.username : active.model.hourly_data[index].productionLockedBy,
-  	    selisih: nextOutput - nextTargetManual
-  	  };
+    active.model.hourly_data[index] = {
+      ...active.model.hourly_data[index],
+      output: nextOutput,
+      targetManual: nextTargetManual,
+      productionLocked: req.session.user?.role === 'operator' ? true : Boolean(active.model.hourly_data[index].productionLocked),
+      productionLockedAt: req.session.user?.role === 'operator' ? new Date().toISOString() : active.model.hourly_data[index].productionLockedAt,
+      productionLockedBy: req.session.user?.role === 'operator' ? req.session.user.username : active.model.hourly_data[index].productionLockedBy,
+      selisih: nextOutput - nextTargetManual
+    };
 
     const summary = recalculateModelTotals(active.model);
 
@@ -205,7 +205,8 @@ function registerProductionRoutes(app, dependencies) {
 
   app.post('/api/update-hourly/:lineName/:modelId', requireLogin, requireLineAccess, requireProductionWriteAccess, autoCheckDateReset, requireActiveModelForOperator, async (req, res) => {
     const { lineName, modelId } = req.params;
-    const { hourIndex, output, defect, qcChecked, targetManual, defectDetails } = req.body;
+    const { hourIndex, output, targetManual } = req.body;
+    if (rejectProductionQcFields(req, res)) return;
 
     const data = readProductionData();
 
@@ -221,25 +222,17 @@ function registerProductionRoutes(app, dependencies) {
     const currentHour = data.lines[lineName].models[modelId].hourly_data[index];
     if (rejectUnavailableOperatorProductionHour(req, res, currentHour)) return;
     if (rejectBlankOperatorProductionOutput(req, res, output)) return;
-    if (hasAnyRole(req.session.user, ['admin_operator_sewing']) && (defect !== undefined || qcChecked !== undefined || defectDetails !== undefined)) {
-      return res.status(403).json({ error: 'Admin Operator Sewing tidak dapat mengubah data QC' });
-    }
     const nextTargetManual = parseNonNegativeInteger(targetManual, parseNonNegativeInteger(currentHour.targetManual, 0));
     const nextOutput = parseNonNegativeInteger(output, 0);
-    const nextDefect = parseNonNegativeInteger(defect, parseNonNegativeInteger(currentHour.defect, 0));
-    const nextQcChecked = parseNonNegativeInteger(qcChecked, parseNonNegativeInteger(currentHour.qcChecked, 0));
-    if ([nextTargetManual, nextOutput, nextDefect, nextQcChecked].includes(null)) {
-      return res.status(400).json({ error: 'Data produksi dan QC harus berupa bilangan bulat tidak negatif' });
+    if ([nextTargetManual, nextOutput].includes(null)) {
+      return res.status(400).json({ error: 'Data produksi harus berupa bilangan bulat tidak negatif' });
     }
     const selisih = nextOutput - nextTargetManual;
 
     data.lines[lineName].models[modelId].hourly_data[index] = {
       ...currentHour,
       output: nextOutput,
-      defect: nextDefect,
-      qcChecked: nextQcChecked,
       targetManual: nextTargetManual,
-      defectDetails: Array.isArray(defectDetails) ? defectDetails : (currentHour.defectDetails || []),
       productionLocked: req.session.user?.role === 'operator' ? true : Boolean(currentHour.productionLocked),
       productionLockedAt: req.session.user?.role === 'operator' ? new Date().toISOString() : currentHour.productionLockedAt,
       productionLockedBy: req.session.user?.role === 'operator' ? req.session.user.username : currentHour.productionLockedBy,
@@ -440,7 +433,8 @@ function registerProductionRoutes(app, dependencies) {
 
   app.post('/api/update-hourly-direct/:lineName/:modelId', requireLogin, requireLineAccess, requireProductionWriteAccess, autoCheckDateReset, requireActiveModelForOperator, async (req, res) => {
     const { lineName, modelId } = req.params;
-    const { hourIndex, output, defect, qcChecked, targetManual, defectDetails } = req.body;
+    const { hourIndex, output, targetManual } = req.body;
+    if (rejectProductionQcFields(req, res)) return;
 
     const data = readProductionData();
 
@@ -458,25 +452,17 @@ function registerProductionRoutes(app, dependencies) {
     if (rejectUnavailableOperatorProductionHour(req, res, currentHour)) return;
     if (rejectBlankOperatorProductionOutput(req, res, output)) return;
 
-    if (hasAnyRole(req.session.user, ['admin_operator_sewing']) && (defect !== undefined || qcChecked !== undefined || defectDetails !== undefined)) {
-      return res.status(403).json({ error: 'Admin Operator Sewing tidak dapat mengubah data QC' });
-    }
     const nextOutput = parseNonNegativeInteger(output, 0);
-    const nextDefect = parseNonNegativeInteger(defect, parseNonNegativeInteger(currentHour.defect, 0));
-    const nextQcChecked = parseNonNegativeInteger(qcChecked, parseNonNegativeInteger(currentHour.qcChecked, 0));
     const nextTargetManual = parseNonNegativeInteger(targetManual, 0);
-    if ([nextOutput, nextDefect, nextQcChecked, nextTargetManual].includes(null)) {
-      return res.status(400).json({ error: 'Data produksi dan QC harus berupa bilangan bulat tidak negatif' });
+    if ([nextOutput, nextTargetManual].includes(null)) {
+      return res.status(400).json({ error: 'Data produksi harus berupa bilangan bulat tidak negatif' });
     }
     const selisih = nextOutput - nextTargetManual;
 
     model.hourly_data[index] = {
       ...currentHour,
       output: nextOutput,
-      defect: nextDefect,
-      qcChecked: nextQcChecked,
       targetManual: nextTargetManual,
-      defectDetails: Array.isArray(defectDetails) ? defectDetails : (currentHour.defectDetails || []),
       productionLocked: req.session.user?.role === 'operator' ? true : Boolean(currentHour.productionLocked),
       productionLockedAt: req.session.user?.role === 'operator' ? new Date().toISOString() : currentHour.productionLockedAt,
       productionLockedBy: req.session.user?.role === 'operator' ? req.session.user.username : currentHour.productionLockedBy,

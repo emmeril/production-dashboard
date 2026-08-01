@@ -54,6 +54,12 @@ Atau jika memakai pnpm:
 pnpm install
 ```
 
+Pada Linux lama, binary bawaan `sqlite3` mungkin membutuhkan versi glibc yang lebih baru. Jika `require('sqlite3')` gagal dengan pesan `GLIBC_* not found`, kompilasi binding lokal dari source:
+
+```bash
+npm_config_build_from_source=true pnpm rebuild sqlite3
+```
+
 ## Menjalankan Aplikasi
 
 Konfigurasi lokal dibaca otomatis dari file `.env`. Environment variable yang sudah diberikan oleh server, PM2, Docker, atau shell tetap memiliki prioritas dan tidak akan ditimpa oleh file tersebut.

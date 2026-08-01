@@ -2,7 +2,6 @@ const fs = require('fs');
 const path = require('path');
 const express = require('express');
 const session = require('express-session');
-const XLSX = require('xlsx');
 const ExcelJS = require('exceljs');
 const crypto = require('crypto');
 const zlib = require('zlib');
@@ -59,6 +58,7 @@ const { createStorageService } = require('./infrastructure/storage/service');
 loadLocalEnvironment(projectRoot);
 
 const app = express();
+app.disable('x-powered-by');
 const port = process.env.PORT || 3000;
 const {
   bootstrapCredentialsPath,
@@ -91,6 +91,13 @@ let dashboardSummaryCache = { signature: '', payload: null };
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'same-origin');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  next();
+});
 app.use((req, res, next) => {
   const requestPath = decodeURIComponent(req.path).replace(/\\/g, '/');
   if (!requestPath.startsWith('/api/')
@@ -446,7 +453,7 @@ const {
 } = createProductionImportService({
   PRODUCTION_HOURS,
   PRODUCTION_IMPORT_MAX_ROWS,
-  XLSX,
+  ExcelJS,
   buildDefectSeverityMaps,
   createHourlyData,
   getDefectSeverity,
@@ -1755,7 +1762,7 @@ registerProductionRoutes(app, {
 });
 
 registerHistoryRoutes(app, {
-  XLSX,
+  ExcelJS,
   checkAndResetDataForNewDay,
   createDatabaseBackup,
   extractHistoryDate,
@@ -2437,7 +2444,10 @@ async function startServer() {
 }
 
 if (require.main === module) {
-  startServer();
+  startServer().catch(error => {
+    logger.error('Server gagal dijalankan', error);
+    process.exitCode = 1;
+  });
 }
 
 module.exports = {

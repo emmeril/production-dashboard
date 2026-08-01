@@ -2,7 +2,7 @@ function createProductionImportService(dependencies) {
   const {
     PRODUCTION_HOURS,
     PRODUCTION_IMPORT_MAX_ROWS,
-    XLSX,
+    ExcelJS,
     buildDefectSeverityMaps,
     createHourlyData,
     getDefectSeverity,
@@ -18,6 +18,50 @@ function createProductionImportService(dependencies) {
   } = dependencies;
 
   const QC_IMPORT_HOURS = createHourlyData(0).map(hour => hour.hour);
+  const EXCEL_EPOCH_UTC = Date.UTC(1899, 11, 30);
+
+  function excelSerialDateParts(value) {
+    const serial = Math.floor(value);
+    const date = new Date(EXCEL_EPOCH_UTC + (serial * 24 * 60 * 60 * 1000));
+    if (Number.isNaN(date.getTime())) return null;
+    return {
+      year: date.getUTCFullYear(),
+      month: date.getUTCMonth() + 1,
+      day: date.getUTCDate()
+    };
+  }
+
+  function normalizeWorkbookCellValue(value) {
+    if (value === undefined || value === null) return '';
+    if (value instanceof Date) return value;
+    if (typeof value !== 'object') return value;
+    if (Object.prototype.hasOwnProperty.call(value, 'result')) {
+      return normalizeWorkbookCellValue(value.result);
+    }
+    if (Array.isArray(value.richText)) {
+      return value.richText.map(part => part.text || '').join('');
+    }
+    if (typeof value.text === 'string') return value.text;
+    return String(value);
+  }
+
+  function worksheetToRows(worksheet) {
+    const rows = [];
+    worksheet.eachRow((row, rowNumber) => {
+      const values = [];
+      for (let column = 1; column <= row.cellCount; column += 1) {
+        values.push(normalizeWorkbookCellValue(row.getCell(column).value));
+      }
+      rows[rowNumber - 1] = values;
+    });
+    return rows.map(row => row || []);
+  }
+
+  async function loadImportWorkbook(buffer) {
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(buffer);
+    return workbook;
+  }
 
   function distributeImportTotal(total) {
     const value = Math.max(0, parseInt(total) || 0);
@@ -36,8 +80,7 @@ function createProductionImportService(dependencies) {
         day: value.getUTCDate()
       };
     } else if (typeof value === 'number' && Number.isFinite(value)) {
-      const parsed = XLSX.SSF.parse_date_code(value);
-      if (parsed) parts = { year: parsed.y, month: parsed.m, day: parsed.d };
+      parts = excelSerialDateParts(value);
     } else {
       const text = String(value || '').trim();
       let match = text.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
@@ -434,17 +477,16 @@ function createProductionImportService(dependencies) {
     return { issues };
   }
 
-  function parseProductionImportWorkbook(buffer, options = {}) {
-    // Keep Excel dates as serial numbers so calendar dates are not shifted by timezone conversion.
-    const workbook = XLSX.read(buffer, { type: 'buffer', cellDates: false });
-    const sheetName = workbook.SheetNames.find(name => normalizeProductionImportHeader(name) === 'dataproduksi')
-      || workbook.SheetNames[0];
-    if (!sheetName) throw new Error('Workbook tidak memiliki worksheet');
-    const sheetRows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1, defval: '', raw: true });
+  async function parseProductionImportWorkbook(buffer, options = {}) {
+    const workbook = await loadImportWorkbook(buffer);
+    const sheet = workbook.worksheets.find(item => normalizeProductionImportHeader(item.name) === 'dataproduksi')
+      || workbook.worksheets[0];
+    if (!sheet) throw new Error('Workbook tidak memiliki worksheet');
+    const sheetRows = worksheetToRows(sheet);
     const parsed = parseProductionImportRows(sheetRows, options);
-    const hourlySheetName = workbook.SheetNames.find(name => normalizeProductionImportHeader(name) === 'detailperjam');
-    if (hourlySheetName) {
-      const hourlyRows = XLSX.utils.sheet_to_json(workbook.Sheets[hourlySheetName], { header: 1, defval: '', raw: true });
+    const hourlySheet = workbook.worksheets.find(item => normalizeProductionImportHeader(item.name) === 'detailperjam');
+    if (hourlySheet) {
+      const hourlyRows = worksheetToRows(hourlySheet);
       const hourlyResult = parseProductionImportHourlySheet(hourlyRows, parsed.rows);
       hourlyResult.issues.forEach(issue => parsed.rows.push({ ...issue, action: 'invalid' }));
       parsed.summary = summarizeProductionImportRows(parsed.rows);
@@ -578,20 +620,19 @@ function createProductionImportService(dependencies) {
     };
   }
 
-  function readImportSheetRows(buffer, normalizedSheetNames) {
-    // Keep Excel dates as serial numbers so calendar dates are not shifted by timezone conversion.
-    const workbook = XLSX.read(buffer, { type: 'buffer', cellDates: false });
+  async function readImportSheetRows(buffer, normalizedSheetNames) {
+    const workbook = await loadImportWorkbook(buffer);
     const acceptedNames = Array.isArray(normalizedSheetNames) ? normalizedSheetNames : [normalizedSheetNames];
-    const sheetName = workbook.SheetNames.find(name => acceptedNames.includes(normalizeProductionImportHeader(name)))
-      || workbook.SheetNames[0];
-    if (!sheetName) throw new Error('Workbook tidak memiliki worksheet');
-    return XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1, defval: '', raw: true });
+    const sheet = workbook.worksheets.find(item => acceptedNames.includes(normalizeProductionImportHeader(item.name)))
+      || workbook.worksheets[0];
+    if (!sheet) throw new Error('Workbook tidak memiliki worksheet');
+    return worksheetToRows(sheet);
   }
 
-  function parseSewingImportWorkbook(buffer, options = {}) {
+  async function parseSewingImportWorkbook(buffer, options = {}) {
     const today = options.today || getToday();
     const getSnapshot = options.getSnapshot || readProductionSnapshotForDate;
-    const sheetRows = readImportSheetRows(buffer, ['dataproduksi', 'datasewing']);
+    const sheetRows = await readImportSheetRows(buffer, ['dataproduksi', 'datasewing']);
     const aliases = {
       date: ['tanggal', 'date'], line: ['line', 'namaline'], labelWeek: ['labelweek', 'label', 'week'],
       model: ['model', 'namamodel'], hour: ['jam', 'hour'], targetManual: ['targetmanual', 'targetperjam', 'target'],
@@ -709,12 +750,12 @@ function createProductionImportService(dependencies) {
     return '';
   }
 
-  function parseQcImportWorkbook(buffer, options = {}) {
+  async function parseQcImportWorkbook(buffer, options = {}) {
     const today = options.today || getToday();
     const getSnapshot = options.getSnapshot || readProductionSnapshotForDate;
     const defectConfig = options.defectConfig || readDefectConfig();
     const severityMaps = buildDefectSeverityMaps(defectConfig);
-    const sheetRows = readImportSheetRows(buffer, 'dataqc');
+    const sheetRows = await readImportSheetRows(buffer, 'dataqc');
     const aliases = {
       date: ['tanggal', 'date'], line: ['line', 'namaline'], labelWeek: ['labelweek', 'label', 'week'],
       model: ['model', 'namamodel'], hour: ['jam', 'hour'], result: ['hasilqc', 'hasil', 'result'],

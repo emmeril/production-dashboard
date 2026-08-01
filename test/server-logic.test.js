@@ -631,7 +631,7 @@ test('historical production Excel template is readable without phantom data rows
     0, 1, 1, '10%', 'Badan (1), Kepala (1)', 'Kotor (1), Bentuk tidak sesuai (1)', 'Migrasi'
   ]);
   const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
-  const parsed = parseProductionImportWorkbook(buffer, {
+  const parsed = await parseProductionImportWorkbook(buffer, {
     today: '2026-07-26',
     getSnapshot: () => null
   });
@@ -652,7 +652,7 @@ test('historical production import preserves calendar dates from Excel date cell
   ]);
   sheet.getCell('A2').numFmt = 'yyyy-mm-dd';
 
-  const parsed = parseProductionImportWorkbook(Buffer.from(await workbook.xlsx.writeBuffer()), {
+  const parsed = await parseProductionImportWorkbook(Buffer.from(await workbook.xlsx.writeBuffer()), {
     today: '2026-07-28',
     getSnapshot: () => null
   });
@@ -684,7 +684,7 @@ test('historical production import preserves validated hourly production results
     ]);
   });
   const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
-  const parsed = parseProductionImportWorkbook(buffer, {
+  const parsed = await parseProductionImportWorkbook(buffer, {
     today: '2026-07-26',
     getSnapshot: () => null
   });
@@ -708,7 +708,7 @@ test('hourly import rejects incomplete hours and totals that differ from summary
   workbook.getWorksheet('Detail Per Jam').addRow([
     '2026-07-20', 'Line 1', 'model1', 'W29', 'Model A', '07:00 - 08:00', 10, 10, 0, 2, 0, 2, '0%'
   ]);
-  const parsed = parseProductionImportWorkbook(Buffer.from(await workbook.xlsx.writeBuffer()), {
+  const parsed = await parseProductionImportWorkbook(Buffer.from(await workbook.xlsx.writeBuffer()), {
     today: '2026-07-26',
     getSnapshot: () => null
   });
@@ -750,7 +750,7 @@ test('sewing import uses a simple one-row-per-hour template', async () => {
   for (let rowNumber = 2; rowNumber <= 9; rowNumber += 1) {
     workbook.getWorksheet('Data Produksi').getCell(`A${rowNumber}`).numFmt = 'yyyy-mm-dd';
   }
-  const parsed = parseSewingImportWorkbook(Buffer.from(await workbook.xlsx.writeBuffer()), {
+  const parsed = await parseSewingImportWorkbook(Buffer.from(await workbook.xlsx.writeBuffer()), {
     today: '2026-07-26',
     getSnapshot: () => null
   });
@@ -817,7 +817,7 @@ test('QC import uses Good/Defect rows and defect category dropdowns', async () =
   const qcSheet = workbook.getWorksheet('Data QC');
   qcSheet.addRow(['2026-07-20', 'Line 1', 'W29', 'Model A', '07:00 - 08:00', 'Good', 7, '', '', '']);
   qcSheet.addRow(['2026-07-20', 'Line 1', 'W29', 'Model A', '07:00 - 08:00', 'Defect', 2, 'Kotor', 'Badan', '']);
-  const parsed = parseQcImportWorkbook(Buffer.from(await workbook.xlsx.writeBuffer()), {
+  const parsed = await parseQcImportWorkbook(Buffer.from(await workbook.xlsx.writeBuffer()), {
     today: '2026-07-26',
     defectConfig: {
       defectTypes: [{ id: 1, name: 'Kotor', severity: 'minor', active: true }],
@@ -846,7 +846,7 @@ test('QC import rejects rows when sewing model has not been imported', async () 
   workbook.getWorksheet('Data QC').addRow([
     '2026-07-20', 'Line 1', 'W29', 'Model A', '07:00 - 08:00', 'Good', 5, '', '', ''
   ]);
-  const parsed = parseQcImportWorkbook(Buffer.from(await workbook.xlsx.writeBuffer()), {
+  const parsed = await parseQcImportWorkbook(Buffer.from(await workbook.xlsx.writeBuffer()), {
     today: '2026-07-26',
     defectConfig: { defectTypes: [], defectAreas: [] },
     getSnapshot: () => null

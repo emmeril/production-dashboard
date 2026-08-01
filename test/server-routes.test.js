@@ -20,6 +20,7 @@ const {
   hashPassword,
   initSequelizeStorage,
   productionImportTemplateWorkbook,
+  readProductionData,
   sequelize,
   sessionStore,
   updateTodayBackup,
@@ -143,6 +144,17 @@ test('PPIC can load production models required by material orders', async () => 
 
   assert.equal(response.status, 200);
   assert.equal(data['LINE 1'].models.model1.model, 'MODEL A');
+});
+
+test('responses include baseline security headers without exposing Express', async () => {
+  const response = await fetch(`${baseUrl}/`);
+
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get('x-powered-by'), null);
+  assert.equal(response.headers.get('x-content-type-options'), 'nosniff');
+  assert.equal(response.headers.get('x-frame-options'), 'DENY');
+  assert.equal(response.headers.get('referrer-policy'), 'same-origin');
+  assert.equal(response.headers.get('permissions-policy'), 'camera=(), microphone=(), geolocation=()');
 });
 
 test('PPIC can manage lines with the same target-only edit restriction as Admin Operator Sewing', async () => {
@@ -402,6 +414,42 @@ test('admin QC action records an arbitrary quantity batch', async () => {
   assert.equal(result.qcCheck.quantity, 7);
   assert.equal(result.summary.totalQCChecked, 7);
   assert.equal(result.data.hourly_data[0].qcChecked, 7);
+});
+
+test('production update endpoints reject QC fields without changing QC state', async () => {
+  const { cookie } = await login('admin', 'admin-password');
+  const before = readProductionData().lines['LINE 1'].models.model1.hourly_data[0];
+  const endpoints = [
+    '/api/update-hourly/LINE%201',
+    '/api/update-hourly-direct/LINE%201',
+    '/api/update-hourly/LINE%201/model1',
+    '/api/update-hourly-direct/LINE%201/model1'
+  ];
+
+  for (const endpoint of endpoints) {
+    const response = await fetch(`${baseUrl}${endpoint}`, {
+      method: 'POST',
+      headers: { Cookie: cookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        hourIndex: 0,
+        output: 99,
+        targetManual: 10,
+        defect: 99,
+        qcChecked: 99,
+        defectDetails: [{ type: 'Invalid bypass', quantity: 99 }]
+      })
+    });
+    const result = await response.json();
+
+    assert.equal(response.status, 400);
+    assert.match(result.error, /endpoint QC khusus/i);
+  }
+
+  const after = readProductionData().lines['LINE 1'].models.model1.hourly_data[0];
+  assert.equal(after.output, before.output);
+  assert.equal(after.defect, before.defect);
+  assert.equal(after.qcChecked, before.qcChecked);
+  assert.deepEqual(after.defectDetails, before.defectDetails);
 });
 
 test('login endpoint throttles repeated invalid attempts', async () => {

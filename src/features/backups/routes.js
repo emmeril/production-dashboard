@@ -458,7 +458,7 @@ function registerBackupRoutes(app, dependencies) {
 
 function registerHistoryRoutes(app, dependencies) {
   const {
-    XLSX,
+    ExcelJS,
     checkAndResetDataForNewDay,
     createDatabaseBackup,
     extractHistoryDate,
@@ -473,6 +473,21 @@ function registerHistoryRoutes(app, dependencies) {
     requireAdmin,
     requireLogin
   } = dependencies;
+
+  function uniqueWorksheetName(value, usedNames) {
+    const base = String(value || 'Sheet')
+      .replace(/[\\/*?:[\]]/g, '_')
+      .slice(0, 31) || 'Sheet';
+    let name = base;
+    let suffix = 1;
+    while (usedNames.has(name)) {
+      const postfix = `_${suffix}`;
+      name = `${base.slice(0, 31 - postfix.length)}${postfix}`;
+      suffix += 1;
+    }
+    usedNames.add(name);
+    return name;
+  }
 
   app.get('/api/history/files', requireLogin, requireAdmin, async (req, res) => {
     try {
@@ -518,7 +533,9 @@ function registerHistoryRoutes(app, dependencies) {
 
       const date = getSnapshotByFilename(filename)?.snapshotDate || extractHistoryDate(filename);
       
-      const workbook = XLSX.utils.book_new();
+      const workbook = new ExcelJS.Workbook();
+      workbook.creator = 'Production Dashboard System';
+      const worksheetNames = new Set();
       
       const summaryData = [
         ['HISTORICAL PRODUCTION REPORT SUMMARY'],
@@ -546,8 +563,8 @@ function registerHistoryRoutes(app, dependencies) {
         });
       });
 
-      const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
-      XLSX.utils.book_append_sheet(workbook, summarySheet, 'Summary');
+      const summarySheet = workbook.addWorksheet(uniqueWorksheetName('Summary', worksheetNames));
+      summaryData.forEach(row => summarySheet.addRow(row));
 
       Object.keys(historyData.lines).forEach(lineName => {
         const line = historyData.lines[lineName];
@@ -604,12 +621,12 @@ function registerHistoryRoutes(app, dependencies) {
             });
           }
 
-          const lineSheet = XLSX.utils.aoa_to_sheet(lineData);
-          XLSX.utils.book_append_sheet(workbook, lineSheet, `${lineName}_${modelId}`);
+          const lineSheet = workbook.addWorksheet(uniqueWorksheetName(`${lineName}_${modelId}`, worksheetNames));
+          lineData.forEach(row => lineSheet.addRow(row));
         });
       });
 
-      const excelBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+      const excelBuffer = Buffer.from(await workbook.xlsx.writeBuffer());
       
       const downloadFilename = `Historical_Production_Report_${date}.xlsx`;
       res.setHeader('Content-Disposition', `attachment; filename="${downloadFilename}"`);

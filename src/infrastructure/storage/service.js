@@ -98,6 +98,7 @@ function createStorageService(dependencies) {
   let databaseInitialized = false;
   const appDataWriteQueues = new Map();
   let snapshotWriteQueue = Promise.resolve();
+  let snapshotWriteFailure = null;
   let databaseBackupCleanupRunning = false;
   let databaseRestoreInProgress = false;
   const LEGACY_DEFAULT_PASSWORD_HASHES_BY_USERNAME = legacyDefaultPasswordHashes;
@@ -216,14 +217,15 @@ function createStorageService(dependencies) {
       createdAt: existing?.createdAt || timestamps.createdAt,
       updatedAt: timestamps.updatedAt
     });
-    cacheSnapshot(record);
 
     snapshotWriteQueue = snapshotWriteQueue
       .catch(() => {})
       .then(async () => {
         await ProductionSnapshot.upsert(record);
+        cacheSnapshot(record);
       })
       .catch(error => {
+        snapshotWriteFailure ||= error;
         logger.error(`Gagal menyimpan snapshot ${filename} ke database`, error.message);
       });
 
@@ -233,6 +235,11 @@ function createStorageService(dependencies) {
   async function flushPendingDatabaseWrites() {
     await Promise.all(Array.from(appDataWriteQueues.values()));
     await snapshotWriteQueue;
+    if (snapshotWriteFailure) {
+      const error = snapshotWriteFailure;
+      snapshotWriteFailure = null;
+      throw error;
+    }
   }
 
   function listDatabaseBackupFiles() {
@@ -757,6 +764,7 @@ function createStorageService(dependencies) {
     } catch (error) {
       logger.error('Inisialisasi Sequelize gagal', error.message);
       databaseInitialized = false;
+      throw error;
     }
   }
 

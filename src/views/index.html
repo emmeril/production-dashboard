@@ -7,10 +7,10 @@
 	<link rel="preconnect" href="https://fonts.googleapis.com">
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 	<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
-			    <script src="https://cdn.tailwindcss.com" defer></script>
-			    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
-			    <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
-	    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+			    <script src="https://cdn.tailwindcss.com/3.4.17" integrity="sha384-igm5BeiBt36UU4gqwWS7imYmelpTsZlQ45FZf+XBn9MuJbn4nQr7yx1yFydocC/K" crossorigin="anonymous" defer></script>
+			    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.15.12/dist/cdn.min.js" integrity="sha384-pb6hrQvo4s23cEUFtj0CZkzGE3jyK3pj26RIupXXxhSrrcUA/Cn0lZgcCrGH0t6L" crossorigin="anonymous" defer></script>
+			    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js" integrity="sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ" crossorigin="anonymous" defer></script>
+	    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha384-PPIZEGYM1v8zp5Py7UjFb79S58UeqCL9pYVnVPURKEqvioPROaVAJKKLzvH2rDnI" crossorigin="anonymous" referrerpolicy="no-referrer">
         <link rel="stylesheet" href="/public/assets/css/style.css">
 </head>
 <body class="dashboard-app bg-gray-100" x-data="dashboard()" x-cloak>
@@ -1486,7 +1486,7 @@
 	                                    </div>
 	                                    <a href="/api/production-import/template/sewing" class="mt-4 inline-flex items-center px-3 py-2 rounded-lg border border-blue-300 bg-white text-blue-800 text-sm font-semibold hover:bg-blue-100"><i class="fa-solid fa-file-excel mr-2"></i>Template Produksi</a>
 	                                    <label class="mt-3 block rounded-lg border-2 border-dashed border-blue-300 bg-white p-4 text-center cursor-pointer hover:bg-blue-100">
-	                                        <input x-ref="sewingImportFile" type="file" accept=".xlsx,.xls" class="sr-only" @change="selectProductionImportFile($event, 'sewing')">
+	                                        <input x-ref="sewingImportFile" type="file" accept=".xlsx" class="sr-only" @change="selectProductionImportFile($event, 'sewing')">
 	                                        <i class="fa-solid fa-upload text-xl text-blue-600"></i>
 	                                        <span class="mt-1 block text-sm font-semibold text-blue-950" x-text="productionImport.kind === 'sewing' && productionImport.fileName ? productionImport.fileName : 'Pilih file Produksi'"></span>
 	                                    </label>
@@ -1499,13 +1499,13 @@
 	                                    </div>
 	                                    <a href="/api/production-import/template/qc" class="mt-4 inline-flex items-center px-3 py-2 rounded-lg border border-amber-300 bg-white text-amber-800 text-sm font-semibold hover:bg-amber-100"><i class="fa-solid fa-file-excel mr-2"></i>Template QC</a>
 	                                    <label class="mt-3 block rounded-lg border-2 border-dashed border-amber-300 bg-white p-4 text-center cursor-pointer hover:bg-amber-100">
-	                                        <input x-ref="qcImportFile" type="file" accept=".xlsx,.xls" class="sr-only" @change="selectProductionImportFile($event, 'qc')">
+	                                        <input x-ref="qcImportFile" type="file" accept=".xlsx" class="sr-only" @change="selectProductionImportFile($event, 'qc')">
 	                                        <i class="fa-solid fa-upload text-xl text-amber-600"></i>
 	                                        <span class="mt-1 block text-sm font-semibold text-amber-950" x-text="productionImport.kind === 'qc' && productionImport.fileName ? productionImport.fileName : 'Pilih file QC'"></span>
 	                                    </label>
 	                                </div>
 	                                <div class="lg:col-span-2 flex flex-col sm:flex-row sm:items-center gap-3 border-t border-gray-200 pt-4">
-	                                    <div class="flex-1 text-sm text-gray-600"><span class="font-semibold" x-text="productionImport.kind ? 'File ' + (productionImport.kind === 'sewing' ? 'Produksi' : 'QC') + ' dipilih' : 'Pilih salah satu file untuk mulai review'"></span><span class="block text-xs text-gray-500">Format .xlsx/.xls, maksimal 10 MB.</span></div>
+                                    <div class="flex-1 text-sm text-gray-600"><span class="font-semibold" x-text="productionImport.kind ? 'File ' + (productionImport.kind === 'sewing' ? 'Produksi' : 'QC') + ' dipilih' : 'Pilih salah satu file untuk mulai review'"></span><span class="block text-xs text-gray-500">Format .xlsx, maksimal 10 MB.</span></div>
 	                                    <button type="button" @click="previewProductionImport()" :disabled="!productionImport.file || productionImport.loading" class="inline-flex items-center justify-center px-5 py-2.5 rounded-lg bg-slate-900 text-white font-semibold hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed">
 	                                        <i class="fa-solid mr-2" :class="productionImport.loading ? 'fa-spinner fa-spin' : 'fa-magnifying-glass-chart'"></i>
 	                                        <span x-text="productionImport.loading ? 'Memeriksa data...' : 'Review Input ' + (productionImport.kind === 'qc' ? 'QC' : 'Produksi')"></span>

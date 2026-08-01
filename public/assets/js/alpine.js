@@ -753,8 +753,8 @@ function dashboard() {
 	                this.showToast('Pilih jenis input Produksi atau QC', 'error');
 	                return;
 	            }
-	            if (!/\.xlsx?$/i.test(file.name)) {
-	                this.showToast('File harus berformat .xlsx atau .xls', 'error');
+	            if (!/\.xlsx$/i.test(file.name)) {
+	                this.showToast('File harus berformat .xlsx', 'error');
 	                return;
 	            }
 

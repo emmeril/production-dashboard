@@ -92,7 +92,9 @@ function registerImportRoutes(app, dependencies) {
       cleanExpiredProductionImportPreviews();
       if (!Buffer.isBuffer(req.body) || req.body.length === 0) return res.status(400).json({ error: 'File Excel wajib diunggah' });
       try {
-        const parsed = kind === 'sewing' ? parseSewingImportWorkbook(req.body) : parseQcImportWorkbook(req.body);
+        const parsed = kind === 'sewing'
+          ? await parseSewingImportWorkbook(req.body)
+          : await parseQcImportWorkbook(req.body);
         if (parsed.summary.total === 0) return res.status(400).json({ error: `Sheet Data ${kind === 'sewing' ? 'Produksi' : 'QC'} belum berisi data` });
         const token = cacheProductionImportPreview(req, parsed, kind);
         return res.json({ token, rows: parsed.rows, summary: parsed.summary, canImport: Boolean(token), kind });
@@ -188,7 +190,7 @@ function registerImportRoutes(app, dependencies) {
       }
 
       try {
-        const parsed = parseProductionImportWorkbook(req.body);
+        const parsed = await parseProductionImportWorkbook(req.body);
         if (parsed.summary.total === 0) {
           return res.status(400).json({ error: 'Sheet Data Produksi belum berisi data' });
         }

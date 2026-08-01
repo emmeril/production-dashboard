@@ -148,6 +148,7 @@ test('PPIC can load production models required by material orders', async () => 
 
 test('responses include baseline security headers without exposing Express', async () => {
   const response = await fetch(`${baseUrl}/`);
+  const html = await response.text();
 
   assert.equal(response.status, 200);
   assert.equal(response.headers.get('x-powered-by'), null);
@@ -155,6 +156,34 @@ test('responses include baseline security headers without exposing Express', asy
   assert.equal(response.headers.get('x-frame-options'), 'DENY');
   assert.equal(response.headers.get('referrer-policy'), 'same-origin');
   assert.equal(response.headers.get('permissions-policy'), 'camera=(), microphone=(), geolocation=()');
+  assert.match(html, /\/public\/assets\/css\/tailwind\.css/);
+  assert.match(html, /\/public\/assets\/css\/fonts\.css/);
+  assert.match(html, /\/public\/assets\/js\/vendor\/alpine\.min\.js/);
+  assert.doesNotMatch(html, /cdn\.tailwindcss\.com|cdn\.jsdelivr\.net|cdnjs\.cloudflare\.com|fonts\.googleapis\.com|fonts\.gstatic\.com/);
+});
+
+test('layout-critical browser assets are served locally', async () => {
+  const assetPaths = [
+    '/public/assets/css/tailwind.css',
+    '/public/assets/css/fonts.css',
+    '/public/assets/css/fontawesome.min.css',
+    '/public/assets/js/vendor/alpine.min.js',
+    '/public/assets/js/vendor/chart.umd.min.js',
+    '/public/assets/webfonts/fa-solid-900.woff2',
+    '/public/assets/fonts/dm-sans-latin-400-normal.woff2'
+  ];
+
+  const responses = await Promise.all(assetPaths.map(assetPath => fetch(`${baseUrl}${assetPath}`)));
+  for (let index = 0; index < responses.length; index += 1) {
+    const response = responses[index];
+    assert.equal(response.status, 200, `${assetPaths[index]} tidak tersedia`);
+    assert.ok((await response.arrayBuffer()).byteLength > 1000, `${assetPaths[index]} tidak lengkap`);
+  }
+
+  const publicDisplayResponse = await fetch(`${baseUrl}/public-display`);
+  const publicDisplayHtml = await publicDisplayResponse.text();
+  assert.match(publicDisplayHtml, /\/public\/assets\/js\/vendor\/alpine\.min\.js/);
+  assert.doesNotMatch(publicDisplayHtml, /cdn\.jsdelivr\.net|fonts\.googleapis\.com/);
 });
 
 test('PPIC can manage lines with the same target-only edit restriction as Admin Operator Sewing', async () => {

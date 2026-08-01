@@ -199,6 +199,7 @@ Retensi backup SQLite dapat diatur dalam satuan hari melalui `DATABASE_BACKUP_RE
 - Konfigurasi, security, session store, dan helper bersama dipisahkan di dalam `src/`.
 - Frontend utama ada di `src/views/index.html` dan `public/assets/js/alpine.js`.
 - Style dashboard ada di `public/assets/css/style.css`.
+- Aset browser layout (Tailwind, Alpine, Chart.js, Font Awesome, dan font utama) disimpan lokal di `public/assets/` agar tampilan tidak bergantung CDN saat runtime. Setelah mengubah class Tailwind, jalankan `npm run build:css` lalu `npm test`.
 - Public display memakai `src/views/public-display.html`, `public/assets/css/public-display.css`, dan `public/assets/js/public-display.js`.
 - Pedoman struktur dan arah refactor lanjutan ada di `docs/ARCHITECTURE.md`.
 

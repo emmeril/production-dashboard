@@ -4,8 +4,10 @@
   "packageManager": "pnpm@10.33.3",
   "main": "server.js",
   "scripts": {
+    "build:css": "tailwindcss -c tailwind.config.js -i src/styles/tailwind.css -o public/assets/css/tailwind.css --minify",
     "start": "node server.js",
-    "check": "npm run check:server && npm run check:client && npm run check:test",
+    "check": "npm run check:server && npm run check:client && npm run check:test && npm run check:assets",
+    "check:assets": "node scripts/check-assets.js",
     "check:server": "node scripts/check-syntax.js server.js ecosystem.config.js src scripts",
     "check:client": "node scripts/check-syntax.js public/assets/js",
     "check:test": "node scripts/check-syntax.js test",
@@ -35,5 +37,13 @@
       "tmp": "0.2.7",
       "uuid": "11.1.1"
     }
+  },
+  "devDependencies": {
+    "@fontsource/dm-sans": "^5.3.0",
+    "@fontsource/manrope": "^5.3.0",
+    "@fortawesome/fontawesome-free": "6.5.2",
+    "alpinejs": "3.15.12",
+    "chart.js": "4.5.1",
+    "tailwindcss": "3.4.17"
   }
 }

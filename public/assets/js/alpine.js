@@ -322,7 +322,9 @@ function dashboard() {
             }
             await this.loadLines();
             await this.loadCurrentPageData();
-            await this.loadDashboardData();
+            if (this.currentPage === 'dashboard' || this.currentPage === 'line-summary') {
+                await this.loadDashboardData();
+            }
             this.startMaterialOrderAutoSync();
         },
 
@@ -367,7 +369,9 @@ function dashboard() {
                     }
                     await this.loadLines();
                     await this.loadCurrentPageData();
-                    await this.loadDashboardData();
+                    if (this.currentPage === 'dashboard' || this.currentPage === 'line-summary') {
+                        await this.loadDashboardData();
+                    }
                     this.startMaterialOrderAutoSync();
                 } else {
                     const error = await response.json();
@@ -1026,8 +1030,6 @@ function dashboard() {
 	                return;
 	            }
 
-	            await this.loadLines();
-
             // Calculate dashboard totals from all models
             let totalOutput = 0;
             let totalTarget = 0;
@@ -1091,18 +1093,13 @@ function dashboard() {
         async loadMaterialOrders(options = {}) {
             const silent = options.silent === true;
             try {
-                const [response, totalsResponse] = await Promise.all([
-                    fetch('/api/material-orders'),
-                    fetch('/api/material-orders/production-totals')
-                ]);
-                const [result, totalsResult] = await Promise.all([
-                    response.json(),
-                    totalsResponse.json()
-                ]);
+                const response = await fetch('/api/material-orders/sync');
+                const result = await response.json();
                 if (!response.ok) throw new Error(result.error || 'Gagal memuat order material');
-                if (!totalsResponse.ok) throw new Error(totalsResult.error || 'Gagal memuat akumulasi produksi');
-                this.materialOrders = Array.isArray(result) ? result : [];
-                this.materialOrderProductionTotals = totalsResult && typeof totalsResult === 'object' ? totalsResult : {};
+                this.materialOrders = Array.isArray(result.orders) ? result.orders : [];
+                this.materialOrderProductionTotals = result.productionTotals && typeof result.productionTotals === 'object'
+                    ? result.productionTotals
+                    : {};
                 if (this.materialOrderModal.open) this.syncMaterialOrderActualQty();
                 this.materialOrderLastSyncedAt = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
                 this.materialOrderCurrentPage = Math.max(1, Math.min(

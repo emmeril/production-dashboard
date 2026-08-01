@@ -5,6 +5,7 @@ const session = require('express-session');
 const XLSX = require('xlsx');
 const ExcelJS = require('exceljs');
 const crypto = require('crypto');
+const zlib = require('zlib');
 const sqlite3 = require('sqlite3');
 const { Sequelize, DataTypes } = require('sequelize');
 const {
@@ -14,6 +15,7 @@ const {
 } = require('./config/environment');
 const { createAppPaths, projectRoot } = require('./config/paths');
 const { SQLiteSessionStore } = require('./infrastructure/sqlite-session-store');
+const { createResponseCompressionMiddleware } = require('./infrastructure/response-compression');
 const {
   hashPassword,
   hashPasswordAsync,
@@ -83,7 +85,9 @@ const LOGIN_RATE_LIMIT_MAX_ATTEMPTS_PER_IP = Math.max(
 const LOGIN_RATE_LIMIT_MAX_KEYS = 10000;
 const DUMMY_LOGIN_PASSWORD_HASH = '$2b$12$a/7OiB7tI8XcFXs7Uh/Nf.4ZTMJq1yxVox7HjwvKusghIreR7P46a';
 let lastScheduledDatabaseBackupDate = '';
+let lastRequestDateResetCheckAt = 0;
 const loginRateLimitEntries = new Map();
+let dashboardSummaryCache = { signature: '', payload: null };
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -95,7 +99,8 @@ app.use((req, res, next) => {
   }
   return next();
 });
-app.use('/public', express.static(publicDir));
+app.use(createResponseCompressionMiddleware());
+app.use('/public', express.static(publicDir, { maxAge: '1h' }));
 
 const sessionSecret = process.env.SESSION_SECRET;
 if (!sessionSecret) {
@@ -343,6 +348,7 @@ const {
   readMaterialOrders,
   readProductionData,
   readPublicDisplaySettings,
+  readSnapshotPayload,
   readSnapshotData,
   readUsersData,
   readWorkScheduleSettings,
@@ -389,7 +395,8 @@ const {
   projectRoot,
   readBootstrapCredentials,
   sequelize,
-  sqlite3
+  sqlite3,
+  zlib
 });
 
 const {
@@ -1452,7 +1459,11 @@ function rejectBlankOperatorProductionOutput(req, res, output) {
 }
 
 function autoCheckDateReset(req, res, next) {
-  checkAndResetDataForNewDay();
+  const now = Date.now();
+  if (now - lastRequestDateResetCheckAt >= 30000) {
+    lastRequestDateResetCheckAt = now;
+    checkAndResetDataForNewDay();
+  }
   next();
 }
 
@@ -1548,6 +1559,7 @@ registerBackupRoutes(app, {
   path,
   productionSnapshotCache,
   readProductionData,
+  readSnapshotPayload,
   readSnapshotData,
   recoverProductionSnapshotsFromDatabaseBackups,
   requireAdmin,
@@ -1581,6 +1593,19 @@ app.get('/api/dashboard-summary', requireLogin, requireAdminOrAdminOperator, aut
     const currentData = readProductionData();
     const defectConfig = readDefectConfig();
     const managedLineNames = new Set(Object.keys(currentData.lines || {}));
+    const signature = [
+      JSON.stringify(currentData),
+      JSON.stringify(defectConfig),
+      Array.from(productionSnapshotCache.values())
+        .filter(snapshot => snapshot.type === 'daily')
+        .sort((a, b) => String(a.filename).localeCompare(String(b.filename)))
+        .map(snapshot => `${snapshot.filename}:${snapshot.contentHash || snapshot.updatedAt}`)
+        .join('|')
+    ].join('::');
+
+    if (dashboardSummaryCache.signature === signature && dashboardSummaryCache.payload) {
+      return res.json(dashboardSummaryCache.payload);
+    }
 
     productionSnapshotCache.forEach(snapshot => {
       if (snapshot.type !== 'daily' || snapshotsByDate.has(snapshot.snapshotDate)) return;
@@ -1617,13 +1642,15 @@ app.get('/api/dashboard-summary', requireLogin, requireAdminOrAdminOperator, aut
       delete item.typeCounts;
     });
 
-    res.json({
+    const payload = {
       daily,
       lineDaily,
       lines: Array.from(lineNames).sort((a, b) => a.localeCompare(b)),
       topDefectAreas: topCounterItems(totalAreaCounts, 5),
       topDefectTypes: topCounterItems(totalTypeCounts, 5)
-    });
+    };
+    dashboardSummaryCache = { signature, payload };
+    return res.json(payload);
   } catch (error) {
     logger.error('Error building dashboard summary:', error);
     res.status(500).json({ error: 'Failed to build dashboard summary' });

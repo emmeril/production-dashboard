@@ -30,7 +30,8 @@ function createStorageService(dependencies) {
     projectRoot,
     readBootstrapCredentials,
     sequelize,
-    sqlite3
+    sqlite3,
+    zlib
   } = dependencies;
 
   const AppData = sequelize.define('AppData', {
@@ -157,8 +158,10 @@ function createStorageService(dependencies) {
   }
 
   function cacheSnapshot(record) {
+    const { payload, ...metadata } = record;
     productionSnapshotCache.set(record.filename, {
-      ...record,
+      ...metadata,
+      compressedPayload: zlib.gzipSync(Buffer.from(payload, 'utf8')),
       createdAt: new Date(record.createdAt),
       updatedAt: new Date(record.updatedAt)
     });
@@ -170,9 +173,22 @@ function createStorageService(dependencies) {
     rows.forEach(cacheSnapshot);
   }
 
+  function readSnapshotPayload(snapshot) {
+    if (!snapshot) return '';
+    if (typeof snapshot.payload === 'string') return snapshot.payload;
+    if (snapshot.compressedPayload) {
+      try {
+        return zlib.gunzipSync(snapshot.compressedPayload).toString('utf8');
+      } catch (error) {
+        logger.warn(`Gagal membuka payload snapshot ${snapshot.filename}: ${error.message}`);
+      }
+    }
+    return '';
+  }
+
   function readSnapshotData(snapshot) {
     if (!snapshot) return null;
-    const data = parsePayload(snapshot.payload, null);
+    const data = parsePayload(readSnapshotPayload(snapshot), null);
     return data ? normalizeProductionDataIdentities(data) : null;
   }
 
@@ -664,6 +680,9 @@ function createStorageService(dependencies) {
   async function initSequelizeStorage() {
     try {
       await sequelize.authenticate();
+      await sequelize.query('PRAGMA journal_mode = WAL');
+      await sequelize.query('PRAGMA synchronous = NORMAL');
+      await sequelize.query('PRAGMA busy_timeout = 15000');
       await AppData.sync();
       await ProductionSnapshot.sync();
 
@@ -890,6 +909,7 @@ function createStorageService(dependencies) {
     readMaterialOrders,
     readProductionData,
     readPublicDisplaySettings,
+    readSnapshotPayload,
     readSnapshotData,
     readUsersData,
     readWorkScheduleSettings,

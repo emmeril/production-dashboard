@@ -14,6 +14,7 @@ function createMaterialOrderService(dependencies) {
   } = dependencies;
 
   const MATERIAL_ORDER_STATUSES = ['planned', 'in_production', 'completed'];
+  let historicalCumulativeCache = { signature: '', totals: null };
 
   function buildInitialMaterialOrders() {
     return { orders: [] };
@@ -145,6 +146,14 @@ function createMaterialOrderService(dependencies) {
     model.materialOrderIdentityAliases = [...new Set([...aliases, currentIdentity])];
   }
 
+  function getHistoricalSnapshotSignature() {
+    return Array.from(productionSnapshotCache.values())
+      .filter(snapshot => snapshot.type === 'daily' && snapshot.snapshotDate !== getToday())
+      .sort((a, b) => String(a.filename).localeCompare(String(b.filename)))
+      .map(snapshot => `${snapshot.filename}:${snapshot.contentHash || snapshot.updatedAt}`)
+      .join('|');
+  }
+
   function getMaterialOrderHistoricalProductionData() {
     const today = getToday();
     const dates = new Set();
@@ -158,12 +167,33 @@ function createMaterialOrderService(dependencies) {
       .filter(Boolean);
   }
 
-  function buildMaterialOrderCumulativeOutputs(productionData = readProductionData(), historicalData = null) {
+  function buildHistoricalCumulativeOutputs() {
+    const signature = getHistoricalSnapshotSignature();
+    if (historicalCumulativeCache.signature === signature && historicalCumulativeCache.totals) {
+      return historicalCumulativeCache.totals;
+    }
+
     const totals = {};
-    const sources = [
-      ...(Array.isArray(historicalData) ? historicalData : getMaterialOrderHistoricalProductionData()),
-      productionData
-    ];
+    getMaterialOrderHistoricalProductionData().forEach(data => {
+      Object.entries(data?.lines || {}).forEach(([lineName, line]) => {
+        Object.values(line.models || {}).forEach(model => {
+          const identity = materialOrderProductionIdentity(lineName, model);
+          totals[identity] = (totals[identity] || 0) + getMaterialOrderActualQty(model);
+        });
+      });
+    });
+
+    historicalCumulativeCache = { signature, totals };
+    return totals;
+  }
+
+  function buildMaterialOrderCumulativeOutputs(productionData = readProductionData(), historicalData = null) {
+    const totals = Array.isArray(historicalData)
+      ? {}
+      : { ...buildHistoricalCumulativeOutputs() };
+    const sources = Array.isArray(historicalData)
+      ? [...historicalData, productionData]
+      : [productionData];
 
     sources.forEach(data => {
       Object.entries(data?.lines || {}).forEach(([lineName, line]) => {

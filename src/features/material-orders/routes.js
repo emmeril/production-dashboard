@@ -27,6 +27,19 @@ function registerMaterialOrderRoutes(app, dependencies) {
     res.json(orders);
   });
 
+  app.get('/api/material-orders/sync', requireLogin, requireMaterialOrderViewAccess, async (req, res) => {
+    const productionData = readProductionData();
+    const cumulativeOutputs = buildMaterialOrderCumulativeOutputs(productionData);
+    const orders = readMaterialOrders().orders
+      .map(order => buildMaterialOrderResponse(order, productionData, cumulativeOutputs))
+      .sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0));
+
+    return res.json({
+      orders,
+      productionTotals: buildMaterialOrderProductionTotals(productionData, cumulativeOutputs)
+    });
+  });
+
   app.get('/api/material-orders/production-totals', requireLogin, requireMaterialOrderViewAccess, async (req, res) => {
     const productionData = readProductionData();
     const cumulativeOutputs = buildMaterialOrderCumulativeOutputs(productionData);

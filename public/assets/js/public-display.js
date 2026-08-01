@@ -128,6 +128,20 @@ function logPublicDisplayError(context, error) {
                             const rotationSlot = this.rotationIndex % this.activeModelIds.length;
                             selectedModelId = this.activeModelIds[rotationSlot];
                             this.rotationIndex = (rotationSlot + 1) % this.activeModelIds.length;
+
+                            const selectedModel = (activeModelsPayload.activeModels || [])
+                                .find(item => item.modelId === selectedModelId);
+                            if (selectedModel?.data) {
+                                this.lineData.data = selectedModel.data;
+                                this.currentModelId = selectedModelId;
+                                this.errorMessage = '';
+                                this.dataUpdated = true;
+                                if (this.dataUpdatedTimer) clearTimeout(this.dataUpdatedTimer);
+                                this.dataUpdatedTimer = setTimeout(() => {
+                                    this.dataUpdated = false;
+                                }, 1000);
+                                return;
+                            }
                         } else {
                             this.activeModelIds = [selectedModelId];
                         }

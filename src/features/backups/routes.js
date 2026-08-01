@@ -20,6 +20,7 @@ function registerBackupRoutes(app, dependencies) {
     path,
     productionSnapshotCache,
     readProductionData,
+    readSnapshotPayload,
     readSnapshotData,
     recoverProductionSnapshotsFromDatabaseBackups,
     requireAdmin,
@@ -129,7 +130,7 @@ function registerBackupRoutes(app, dependencies) {
     }
 
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    res.type('application/json').send(snapshot.payload);
+    res.type('application/json').send(readSnapshotPayload(snapshot));
   });
 
   app.get('/api/download-database-backup/:filename', requireLogin, requireAdmin, async (req, res) => {

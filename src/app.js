@@ -23,8 +23,10 @@ const {
 const {
   ADMIN_OPERATOR_ROLES,
   DASHBOARD_VIEWER_ROLES,
+  LINE_MANAGER_ROLES,
   PPIC_ROLE,
   REPORT_VIEWER_ROLES,
+  TARGET_ONLY_LINE_MANAGER_ROLES,
   hasAnyRole,
   normalizeRole
 } = require('./security/roles');
@@ -1319,7 +1321,7 @@ function requireAdminOrAdminOperator(req, res, next) {
 }
 
 function requireLineManagementAccess(req, res, next) {
-  if (hasAnyRole(getAuthenticatedSessionUser(req), ['admin', 'admin_operator_sewing'])) {
+  if (hasAnyRole(getAuthenticatedSessionUser(req), LINE_MANAGER_ROLES)) {
     next();
   } else {
     res.status(403).json({ error: 'Forbidden - Line management access required' });
@@ -1689,6 +1691,7 @@ app.get('/api/current-user', async (req, res) => {
 registerProductionRoutes(app, {
   ADMIN_OPERATOR_ROLES,
   PPIC_ROLE,
+  TARGET_ONLY_LINE_MANAGER_ROLES,
   PRODUCTION_HOURS,
   applyDailyTarget,
   autoCheckDateReset,

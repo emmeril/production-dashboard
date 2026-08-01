@@ -1070,7 +1070,7 @@
                 <div x-show="currentPage === 'admin-management' && canManageLines()" class="fade-in">
                     <div class="mb-6">
 	                        <h1 class="text-2xl font-bold text-gray-800 flex items-center"><i class="fa-solid fa-list-check text-blue-600 mr-3"></i>Management Line</h1>
-	                        <p class="text-gray-600" x-text="currentUser.role === 'admin_operator_sewing' ? 'Tambah dan kelola line produksi; pada form Edit hanya Target Harian yang dapat diubah' : 'Kelola lines, model, dan konfigurasi sistem'"></p>
+	                        <p class="text-gray-600" x-text="hasTargetOnlyLineAccess() ? 'Tambah dan kelola line produksi; pada form Edit hanya Target Harian yang dapat diubah' : 'Kelola lines, model, dan konfigurasi sistem'"></p>
                     </div>
 
                     <!-- Line Management - Untuk admin dan admin_operator -->
@@ -2320,29 +2320,29 @@
                         <div class="space-y-4">
                             <div>
                                 <label for="line-name" class="block text-sm font-medium text-gray-700">Nama Line</label>
-                                <input type="text" id="line-name" x-model="lineModal.data.lineName" @input="lineModal.data.lineName = normalizeProductionLineName($event.target.value)" class="uppercase mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed disabled:opacity-100" :readonly="lineModal.isEdit" :disabled="currentUser.role === 'admin_operator_sewing' && lineModal.isEdit" required>
+                                <input type="text" id="line-name" x-model="lineModal.data.lineName" @input="lineModal.data.lineName = normalizeProductionLineName($event.target.value)" class="uppercase mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed disabled:opacity-100" :readonly="lineModal.isEdit" :disabled="hasTargetOnlyLineAccess() && lineModal.isEdit" required>
                             </div>
                             <div x-show="lineModal.isEdit">
                                 <label for="model-id" class="block text-sm font-medium text-gray-700">Model ID</label>
-                                <input type="text" id="model-id" x-model="lineModal.data.modelId" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed disabled:opacity-100" :disabled="currentUser.role === 'admin_operator_sewing' && lineModal.isEdit" readonly>
+                                <input type="text" id="model-id" x-model="lineModal.data.modelId" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed disabled:opacity-100" :disabled="hasTargetOnlyLineAccess() && lineModal.isEdit" readonly>
                             </div>
                             <div>
                                 <label for="label-week" class="block text-sm font-medium text-gray-700">Label/Week</label>
-                                <input type="text" id="label-week" x-model="lineModal.data.labelWeek" @input="lineModal.data.labelWeek = $event.target.value.toUpperCase()" @blur="lineModal.data.labelWeek = normalizeLabelWeek(lineModal.data.labelWeek)" :disabled="currentUser.role === 'admin_operator_sewing' && lineModal.isEdit" class="uppercase mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed disabled:opacity-100" required>
+                                <input type="text" id="label-week" x-model="lineModal.data.labelWeek" @input="lineModal.data.labelWeek = $event.target.value.toUpperCase()" @blur="lineModal.data.labelWeek = normalizeLabelWeek(lineModal.data.labelWeek)" :disabled="hasTargetOnlyLineAccess() && lineModal.isEdit" class="uppercase mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed disabled:opacity-100" required>
                             </div>
                             <div>
                                 <label for="model" class="block text-sm font-medium text-gray-700">Model</label>
-                                <input type="text" id="model" x-model="lineModal.data.model" @input="lineModal.data.model = normalizeProductionModel($event.target.value)" :disabled="currentUser.role === 'admin_operator_sewing' && lineModal.isEdit" class="uppercase mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed disabled:opacity-100" required>
+                                <input type="text" id="model" x-model="lineModal.data.model" @input="lineModal.data.model = normalizeProductionModel($event.target.value)" :disabled="hasTargetOnlyLineAccess() && lineModal.isEdit" class="uppercase mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed disabled:opacity-100" required>
                             </div>
                             <div>
                                 <label for="target" class="block text-sm font-medium text-gray-700">Target Harian</label>
                                 <input type="number" id="target" x-model="lineModal.data.target" min="1" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" required>
-	                            <p x-show="currentUser.role === 'admin_operator_sewing' && lineModal.isEdit" class="text-xs text-blue-600 mt-1">Hanya Target Harian yang dapat diubah.</p>
+	                            <p x-show="hasTargetOnlyLineAccess() && lineModal.isEdit" class="text-xs text-blue-600 mt-1">Hanya Target Harian yang dapat diubah.</p>
                             </div>
                             <!-- Tanggal operasional dikunci agar tidak memicu reset data harian. -->
                             <div>
                                 <label for="date" class="block text-sm font-medium text-gray-700">Tanggal</label>
-                                <input type="date" id="date" x-model="lineModal.data.date" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed disabled:opacity-100" :disabled="currentUser.role === 'admin_operator_sewing' && lineModal.isEdit" readonly required>
+                                <input type="date" id="date" x-model="lineModal.data.date" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed disabled:opacity-100" :disabled="hasTargetOnlyLineAccess() && lineModal.isEdit" readonly required>
 	                                <p class="text-xs text-gray-500 mt-1">Tanggal mengikuti tanggal operasional Asia/Jakarta.</p>
                             </div>
                         </div>

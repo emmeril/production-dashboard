@@ -461,7 +461,11 @@ function dashboard() {
         },
 
 	        canManageLines() {
-	            return ['admin', 'admin_operator_sewing'].includes(this.currentUser.role);
+	            return ['admin', 'admin_operator_sewing', 'ppic'].includes(this.currentUser.role);
+	        },
+
+	        hasTargetOnlyLineAccess() {
+	            return ['admin_operator_sewing', 'ppic'].includes(this.currentUser.role);
 	        },
 
 	        canManageDefectCategories() {
@@ -2352,7 +2356,7 @@ function dashboard() {
                 if (this.lineModal.isEdit) {
                     url = `/api/lines/${this.lineModal.data.lineName}`;
                     method = 'PUT';
-                    bodyData = this.currentUser.role === 'admin_operator_sewing'
+                    bodyData = this.hasTargetOnlyLineAccess()
                         ? {
                             lineName: this.lineModal.data.lineName,
                             modelId: this.lineModal.data.modelId,

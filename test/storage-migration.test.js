@@ -29,7 +29,7 @@ test('legacy history is migrated into SQLite before JSON files are removed', () 
     (async () => {
       await server.initSequelizeStorage();
       const snapshot = server.readProductionSnapshotForDate('2026-07-21');
-      console.log('MIGRATION_RESULT=' + JSON.stringify({ output: snapshot.lines['Line 1'].models.model1.outputDay }));
+      console.log('MIGRATION_RESULT=' + JSON.stringify({ output: snapshot.lines['LINE 1'].models.model1.outputDay }));
       await server.sequelize.close();
     })().catch(error => {
       console.error(error);
@@ -235,8 +235,8 @@ test('missing snapshots are recovered from SQLite backups without replacing acti
       );
       const secondRecoveryCount = await server.recoverProductionSnapshotsFromDatabaseBackups();
       console.log('RECOVERY_RESULT=' + JSON.stringify({
-        recoveredOutput: recovered.lines['Line 1'].models.model1.outputDay,
-        currentOutput: current.lines['Line 1'].models.model1.outputDay,
+        recoveredOutput: recovered.lines['LINE 1'].models.model1.outputDay,
+        currentOutput: current.lines['LINE 1'].models.model1.outputDay,
         filenames: rows.map(row => row.filename),
         secondRecoveryCount
       }));
@@ -377,7 +377,7 @@ test('database restore replaces active application data and creates a safety bac
       }
       console.log('DATABASE_RESTORE_RESULT=' + JSON.stringify({
         activeLine: restored.activeLine,
-        output: restored.lines['Restored Line'].models.model1.outputDay,
+        output: restored.lines['RESTORED LINE'].models.model1.outputDay,
         restoredFrom: result.restoredFrom,
         safetyBackupCreated: safetyFiles.includes(result.safetyBackup),
         appDataCount: result.appDataCount,
@@ -409,7 +409,7 @@ test('database restore replaces active application data and creates a safety bac
     assert.equal(result.status, 0, result.stderr || result.stdout);
     assert.match(
       result.stdout,
-      /DATABASE_RESTORE_RESULT={"activeLine":"Restored Line","output":88,"restoredFrom":"production-dashboard_2026-07-27_manual_1_abcdef12.sqlite","safetyBackupCreated":true,"appDataCount":6,"invalidBackupCode":"INVALID_DATABASE_BACKUP"}/
+      /DATABASE_RESTORE_RESULT={"activeLine":"RESTORED LINE","output":88,"restoredFrom":"production-dashboard_2026-07-27_manual_1_abcdef12.sqlite","safetyBackupCreated":true,"appDataCount":6,"invalidBackupCode":"INVALID_DATABASE_BACKUP"}/
     );
   } finally {
     fs.rmSync(tempDir, { recursive: true, force: true });

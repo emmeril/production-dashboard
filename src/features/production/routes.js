@@ -14,6 +14,7 @@ function registerProductionRoutes(app, dependencies) {
   const {
     ADMIN_OPERATOR_ROLES,
     PPIC_ROLE,
+    TARGET_ONLY_LINE_MANAGER_ROLES,
     PRODUCTION_HOURS,
     applyDailyTarget,
     autoCheckDateReset,
@@ -641,14 +642,14 @@ function registerProductionRoutes(app, dependencies) {
   app.put('/api/lines/:lineName', requireLogin, requireLineManagementAccess, autoCheckDateReset, async (req, res) => {
     const lineName = req.params.lineName;
     const { labelWeek, model, target, modelId, date } = req.body;
-    const isSewingAdmin = hasAnyRole(req.session.user, ['admin_operator_sewing']);
+    const hasTargetOnlyLineAccess = hasAnyRole(req.session.user, TARGET_ONLY_LINE_MANAGER_ROLES);
     const data = readProductionData();
 
-    if (isSewingAdmin) {
+    if (hasTargetOnlyLineAccess) {
       const allowedFields = new Set(['lineName', 'modelId', 'target']);
       const unsupportedFields = Object.keys(req.body).filter(field => !allowedFields.has(field));
       if (unsupportedFields.length > 0) {
-        return res.status(403).json({ error: 'Admin Operator Sewing hanya dapat mengubah Target Harian' });
+        return res.status(403).json({ error: 'Role ini hanya dapat mengubah Target Harian' });
       }
     }
 
@@ -670,7 +671,7 @@ function registerProductionRoutes(app, dependencies) {
     }
 
     const targetModel = data.lines[lineName].models[targetModelId];
-    if (!isSewingAdmin) {
+    if (!hasTargetOnlyLineAccess) {
       const nextLabelWeek = labelWeek === undefined ? targetModel.labelWeek : normalizeLabelWeek(labelWeek);
       const normalizedModel = model === undefined ? { value: targetModel.model, error: '' } : normalizeModelName(model);
       if (normalizedModel.error) return res.status(400).json({ error: normalizedModel.error });
@@ -682,7 +683,7 @@ function registerProductionRoutes(app, dependencies) {
     targetModel.target = newTarget;
     applyDailyTarget(targetModel, newTarget);
     
-    if (!isSewingAdmin && date) {
+    if (!hasTargetOnlyLineAccess && date) {
       targetModel.date = date;
     }
 
@@ -840,6 +841,14 @@ function registerProductionRoutes(app, dependencies) {
   app.post('/api/update-line/:lineName/:modelId', requireLogin, requireLineAccess, requireLineManagementAccess, autoCheckDateReset, async (req, res) => {
     const { lineName, modelId } = req.params;
     const newData = req.body;
+    const hasTargetOnlyLineAccess = hasAnyRole(req.session.user, TARGET_ONLY_LINE_MANAGER_ROLES);
+
+    if (hasTargetOnlyLineAccess) {
+      const unsupportedFields = Object.keys(newData).filter(field => field !== 'target');
+      if (unsupportedFields.length > 0) {
+        return res.status(403).json({ error: 'Role ini hanya dapat mengubah Target Harian' });
+      }
+    }
 
     const data = readProductionData();
 

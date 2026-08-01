@@ -10,6 +10,7 @@ process.env.DATABASE_PATH = path.join(tempDir, 'dashboard.sqlite');
 process.env.DATABASE_BACKUP_DIR = path.join(tempDir, 'database-backups');
 process.env.LEGACY_HISTORY_DIR = path.join(tempDir, 'history');
 process.env.SESSION_SECRET = 'route-test-session-secret';
+process.env.SESSION_COOKIE_SECURE = 'false';
 process.env.LOGIN_RATE_LIMIT_MAX_ATTEMPTS = '2';
 process.env.LOGIN_RATE_LIMIT_WINDOW_MS = '60000';
 
@@ -141,7 +142,87 @@ test('PPIC can load production models required by material orders', async () => 
   const data = await response.json();
 
   assert.equal(response.status, 200);
-  assert.equal(data['Line 1'].models.model1.model, 'Model A');
+  assert.equal(data['LINE 1'].models.model1.model, 'MODEL A');
+});
+
+test('PPIC can manage lines with the same target-only edit restriction as Admin Operator Sewing', async () => {
+  const lineName = 'LINE PPIC TEST';
+  const { response: ppicLoginResponse, cookie: ppicCookie } = await login('ppic', 'ppic-password');
+  const { response: adminLoginResponse, cookie: adminCookie } = await login('admin', 'admin-password');
+  assert.equal(ppicLoginResponse.status, 200);
+  assert.equal(adminLoginResponse.status, 200);
+  assert.ok(ppicCookie);
+  assert.ok(adminCookie);
+
+  try {
+    const createLineResponse = await fetch(`${baseUrl}/api/lines`, {
+      method: 'POST',
+      headers: { Cookie: ppicCookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        lineName,
+        labelWeek: 'W31',
+        model: 'Model PPIC A',
+        target: 160,
+        date: getToday()
+      })
+    });
+    assert.equal(createLineResponse.status, 200);
+
+    const addModelResponse = await fetch(`${baseUrl}/api/lines/${encodeURIComponent(lineName)}/models`, {
+      method: 'POST',
+      headers: { Cookie: ppicCookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        labelWeek: 'W32',
+        model: 'Model PPIC B',
+        target: 180,
+        date: getToday()
+      })
+    });
+    const addedModel = await addModelResponse.json();
+    assert.equal(addModelResponse.status, 200);
+    assert.equal(addedModel.modelId, 'model2');
+
+    const updateTargetResponse = await fetch(`${baseUrl}/api/lines/${encodeURIComponent(lineName)}`, {
+      method: 'PUT',
+      headers: { Cookie: ppicCookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ lineName, modelId: 'model1', target: 200 })
+    });
+    const updatedModel = await updateTargetResponse.json();
+    assert.equal(updateTargetResponse.status, 200);
+    assert.equal(updatedModel.data.target, 200);
+
+    const updateIdentityResponse = await fetch(`${baseUrl}/api/lines/${encodeURIComponent(lineName)}`, {
+      method: 'PUT',
+      headers: { Cookie: ppicCookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ lineName, modelId: 'model1', labelWeek: 'W99', target: 200 })
+    });
+    const updateIdentityError = await updateIdentityResponse.json();
+    assert.equal(updateIdentityResponse.status, 403);
+    assert.match(updateIdentityError.error, /hanya dapat mengubah Target Harian/);
+
+    const activateModelResponse = await fetch(
+      `${baseUrl}/api/lines/${encodeURIComponent(lineName)}/active-model`,
+      {
+        method: 'POST',
+        headers: { Cookie: ppicCookie, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ modelId: 'model2' })
+      }
+    );
+    const activeModels = await activateModelResponse.json();
+    assert.equal(activateModelResponse.status, 200);
+    assert.deepEqual(activeModels.activeModels, ['model1', 'model2']);
+
+    const deleteModelResponse = await fetch(
+      `${baseUrl}/api/lines/${encodeURIComponent(lineName)}/models/model2`,
+      { method: 'DELETE', headers: { Cookie: ppicCookie } }
+    );
+    assert.equal(deleteModelResponse.status, 403);
+  } finally {
+    await fetch(`${baseUrl}/api/lines/${encodeURIComponent(lineName)}`, {
+      method: 'DELETE',
+      headers: { Cookie: adminCookie }
+    });
+  }
 });
 
 test('material report filters by PO Material only and exports without a PO filter', async () => {
@@ -246,8 +327,8 @@ test('historical Excel import completes preview, confirmation, and date report f
   assert.equal(reportResponse.status, 200);
   assert.equal(report.length, 1);
   assert.equal(report[0].date, importDate);
-  assert.equal(report[0].line, 'Line Import');
-  assert.equal(report[0].model, 'Model Historis');
+  assert.equal(report[0].line, 'LINE IMPORT');
+  assert.equal(report[0].model, 'MODEL HISTORIS');
   assert.equal(report[0].output, 90);
 });
 

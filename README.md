@@ -4,8 +4,8 @@ Dashboard produksi berbasis Express untuk memantau output line, target per jam, 
 
 ## Fitur Utama
 
-- Login berbasis role: `admin`, `admin_operator`, dan `operator`.
-- Dashboard produksi untuk `admin` dan `admin_operator`.
+- Login berbasis role: `admin`, `admin_operator`, `admin_operator_qc`, `ppic`, dan `operator`.
+- Dashboard produksi untuk `admin`, admin operator, dan `ppic`.
 - Ringkasan line dan detail model aktif per line.
 - Input hasil produksi per jam.
 - QC check `Good` dan `Defect` dengan pengatur qty minus/plus. Maksimum default 5 dan dapat diatur berbeda untuk setiap operator sesuai line-nya.
@@ -25,6 +25,7 @@ Dashboard produksi berbasis Express untuk memantau output line, target per jam, 
 | `admin` | Semua fitur, termasuk user, kategori defect, backup, delete line/model, input dan koreksi data. |
 | `admin_operator_sewing` | Dashboard, ringkasan line, management line/model, serta report produksi dan QC lengkap. Pada form Edit Management Line hanya Target Harian yang dapat diubah. |
 | `admin_operator_qc` | Dashboard, ringkasan line, report produksi dan QC lengkap, koreksi hasil QC, dan pengelolaan kategori defect. |
+| `ppic` | Dashboard, management line/model, order material, serta report produksi, QC, dan material. Pada form Edit Management Line hanya Target Harian yang dapat diubah. |
 | `operator` | Ringkasan line dan input line miliknya. Tidak bisa melihat dashboard utama. Data produksi per jam terkunci setelah disimpan. Maksimum qty QC per input diatur oleh admin. |
 
 User awal dibuat saat inisialisasi pertama. Password bootstrap disimpan di `database-backups/bootstrap-credentials.json`, atau bisa ditentukan lewat env var `DEFAULT_ADMIN_PASSWORD`, `DEFAULT_ADMIN_OPERATOR_PASSWORD`, dan `DEFAULT_OPERATOR_PASSWORD` sebelum server pertama kali dijalankan.
@@ -141,7 +142,7 @@ Admin tetap bisa melakukan koreksi data bila diperlukan.
 
 ## Laporan dan Export PDF
 
-Laporan berdasarkan tanggal tersedia untuk `admin`, `admin_operator_sewing`, dan `admin_operator_qc`. Ketiga role menggunakan tampilan report dan dokumen PDF lengkap yang sama. Role `operator` tidak memiliki akses report maupun export.
+Laporan berdasarkan tanggal tersedia untuk `admin`, `admin_operator_sewing`, `admin_operator_qc`, dan `ppic`. Keempat role menggunakan tampilan report dan dokumen PDF lengkap yang sama. Role `operator` tidak memiliki akses report maupun export.
 
 Export PDF mencakup:
 

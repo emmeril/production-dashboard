@@ -943,7 +943,7 @@ test('material order keeps saved model selections visible while rejecting a dupl
   assert.match(notifications[0][0], /sudah dipilih/);
 });
 
-test('PPIC can view the dashboard and fully manage material orders and reports', () => {
+test('PPIC can view the dashboard and manage material orders, lines, and reports', () => {
   const context = { console, Date, Intl, Map, Math, Set, parseInt };
   const alpineSource = fs.readFileSync(path.join(__dirname, '..', 'public/assets/js/alpine.js'), 'utf8');
   vm.runInNewContext(alpineSource, context);
@@ -955,9 +955,61 @@ test('PPIC can view the dashboard and fully manage material orders and reports',
   assert.equal(dashboard.canViewDashboard(), true);
   assert.equal(dashboard.canViewMaterialOrders(), true);
   assert.equal(dashboard.canManageMaterialOrders(), true);
+  assert.equal(dashboard.canManageLines(), true);
+  assert.equal(dashboard.hasTargetOnlyLineAccess(), true);
   assert.equal(dashboard.canViewReport(), true);
   assert.equal(dashboard.canViewLineSummary(), false);
-  assert.deepEqual(Array.from(dashboard.navigation, item => item.page), ['dashboard', 'material-orders', 'report']);
+  assert.deepEqual(
+    Array.from(dashboard.navigation, item => item.page),
+    ['dashboard', 'material-orders', 'admin-management', 'report']
+  );
+});
+
+test('PPIC line edits send only model identity and daily target fields', async () => {
+  const requests = [];
+  const context = {
+    console,
+    Date,
+    Intl,
+    Map,
+    Math,
+    Set,
+    parseInt,
+    fetch: async (url, options) => {
+      requests.push({ url, options });
+      return { ok: true };
+    }
+  };
+  const alpineSource = fs.readFileSync(path.join(__dirname, '..', 'public/assets/js/alpine.js'), 'utf8');
+  vm.runInNewContext(alpineSource, context);
+
+  const dashboard = context.dashboard();
+  dashboard.currentUser = { role: 'ppic' };
+  dashboard.lineModal = {
+    open: true,
+    isEdit: true,
+    data: {
+      lineName: 'LINE 1',
+      modelId: 'model1',
+      labelWeek: 'W31',
+      model: 'MODEL BARU',
+      target: 200,
+      date: '2026-08-01'
+    }
+  };
+  dashboard.showToast = () => {};
+  dashboard.loadLines = async () => {};
+  dashboard.loadDashboardData = async () => {};
+
+  await dashboard.saveLine();
+
+  assert.equal(requests.length, 1);
+  assert.equal(requests[0].url, '/api/lines/LINE 1');
+  assert.deepEqual(JSON.parse(requests[0].options.body), {
+    lineName: 'LINE 1',
+    modelId: 'model1',
+    target: 200
+  });
 });
 
 test('PPIC follows the work schedule while Admin remains exempt', () => {

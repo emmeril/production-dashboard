@@ -166,6 +166,7 @@ test('branding settings are public to read but only admin can update them', asyn
   const publicResponse = await fetch(`${baseUrl}/api/branding-settings`);
   const defaults = await publicResponse.json();
   assert.equal(publicResponse.status, 200);
+  assert.equal(publicResponse.headers.get('cache-control'), 'no-store');
   assert.equal(defaults.appName, 'Production Dashboard');
 
   const { cookie: ppicCookie } = await login('ppic', 'ppic-password');

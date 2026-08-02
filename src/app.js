@@ -2130,6 +2130,7 @@ app.put('/api/public-display-settings', requireLogin, requireAdmin, async (req, 
 });
 
 app.get('/api/branding-settings', (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
   res.json(readBrandingSettings());
 });
 

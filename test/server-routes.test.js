@@ -320,6 +320,8 @@ test('material report filters by PO Material only and exports without a PO filte
   assert.match(exportResponse.headers.get('content-type') || '', /application\/pdf/);
   assert.equal(pdf.subarray(0, 8).toString(), '%PDF-1.4');
   assert.ok(pdf.byteLength > 1000);
+  assert.match(pdf.toString('binary'), /Dashboard Pabrik/);
+  assert.match(pdf.toString('binary'), /Copyright 2026 Pabrik/);
 });
 
 test('single-date report export returns a PDF document', async () => {
@@ -333,6 +335,16 @@ test('single-date report export returns a PDF document', async () => {
   assert.match(response.headers.get('content-type') || '', /application\/pdf/);
   assert.equal(pdf.subarray(0, 8).toString(), '%PDF-1.4');
   assert.ok(pdf.byteLength > 1000);
+  assert.match(pdf.toString('binary'), /Dashboard Pabrik/);
+  assert.match(pdf.toString('binary'), /Copyright 2026 Pabrik/);
+
+  const detailResponse = await fetch(`${baseUrl}/api/export-date-report/${getToday()}/LINE%201/model1`, {
+    headers: { Cookie: cookie }
+  });
+  const detailPdf = Buffer.from(await detailResponse.arrayBuffer());
+  assert.equal(detailResponse.status, 200);
+  assert.match(detailPdf.toString('binary'), /Dashboard Pabrik/);
+  assert.match(detailPdf.toString('binary'), /Copyright 2026 Pabrik/);
 });
 
 test('historical Excel import completes preview, confirmation, and date report flow', async () => {

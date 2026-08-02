@@ -9,6 +9,7 @@ function createMaterialOrderService(dependencies) {
     normalizeLabelWeekKey,
     normalizeProductionLineName,
     productionSnapshotCache,
+    readBrandingSettings = () => ({}),
     readProductionData,
     readProductionSnapshotForDate
   } = dependencies;
@@ -550,6 +551,7 @@ function createMaterialOrderService(dependencies) {
   function generateMaterialOrderReportPdf(rows, summary, filters = {}) {
     const statusLabel = status => ({ planned: 'Direncanakan', in_production: 'Sedang Produksi', paused: 'Ditunda', completed: 'Selesai' }[status] || status || '-');
     return createPdfReport({
+      branding: readBrandingSettings(),
       title: 'LAPORAN ORDER MATERIAL', subtitle: 'Material planning and production fulfillment control',
       meta: [['PO Material', filters.poMaterial || 'Semua PO'], ['Dicetak', new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })], ['Klasifikasi', 'Internal - Controlled Copy']],
       summary: [['Total PO', summary.total], ['Qty Order', Number(summary.qtyOrder || 0).toLocaleString('id-ID')], ['Hasil Produksi', Number(summary.qtyResult || 0).toLocaleString('id-ID')], ['Sedang Produksi', summary.inProduction], ['Selesai', summary.completed]],

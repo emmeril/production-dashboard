@@ -6,7 +6,7 @@ const COLORS = {
 };
 
 function pdfText(value) {
-  return String(value ?? '-').replace(/[^\x20-\x7E]/g, '?')
+  return String(value ?? '-').replace(/©/g, '(c)').replace(/[^\x20-\x7E]/g, '?')
     .replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)');
 }
 
@@ -39,9 +39,11 @@ function wrapLines(value, width, fontSize = 7) {
   return lines;
 }
 
-function createPdfReport({ title, subtitle = '', meta = [], summary = [], columns = [], rows = [], footer = 'PRODUCTION DASHBOARD  |  CONTROLLED DOCUMENT' }) {
+function createPdfReport({ title, subtitle = '', meta = [], summary = [], columns = [], rows = [], branding = {}, footer = '' }) {
   const pageWidth = 842; const pageHeight = 595; const margin = 30;
   const pages = []; let current = []; let y = 0; let pageNumber = 1;
+  const appName = String(branding.appName || 'Production Dashboard').trim() || 'Production Dashboard';
+  const copyrightText = String(branding.copyrightText || footer || 'Copyright (c) Production Dashboard').trim();
   const command = value => current.push(value);
   const rect = (x, yy, width, height, fill, stroke = '') => {
     command(`${fill} rg ${x} ${yy} ${width} ${height} re f`);
@@ -55,8 +57,7 @@ function createPdfReport({ title, subtitle = '', meta = [], summary = [], column
     rect(0, 0, pageWidth, pageHeight, COLORS.paper);
     rect(0, pageHeight - 9, pageWidth, 9, COLORS.teal);
     rect(0, pageHeight - 9, 178, 9, COLORS.orange);
-    text(margin, pageHeight - 36, 'PRODUCTION', 9, true, COLORS.teal);
-    text(margin + 67, pageHeight - 36, 'CONTROL SYSTEM', 9, true, COLORS.navy);
+    text(margin, pageHeight - 36, shorten(appName, 240, 9), 9, true, COLORS.navy);
     text(pageWidth - 178, pageHeight - 36, 'INTERNAL OPERATIONS', 7, true, COLORS.muted);
     if (continuation) {
       text(margin, pageHeight - 62, title, 13, true, COLORS.navy);
@@ -67,7 +68,7 @@ function createPdfReport({ title, subtitle = '', meta = [], summary = [], column
   };
   const finishPage = () => {
     rule(margin, 35, pageWidth - margin, COLORS.line);
-    text(margin, 21, footer, 6.5, true, COLORS.muted);
+    text(margin, 21, shorten(copyrightText, 320, 6.5), 6.5, true, COLORS.muted);
     text(pageWidth - 230, 21, `GENERATED ${printedAt} WIB`, 6.5, false, COLORS.muted);
     text(pageWidth - 52, 21, String(pageNumber).padStart(2, '0'), 7.5, true, COLORS.navy);
     pages.push(current.join('\n'));

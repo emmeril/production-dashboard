@@ -440,6 +440,7 @@ const {
   getToday,
   isValidDateInput,
   parseNonNegativeInteger,
+  readBrandingSettings,
   readDefectConfig,
   readProductionData,
   readSnapshotData
@@ -713,6 +714,7 @@ const {
   normalizeLabelWeekKey,
   normalizeProductionLineName,
   productionSnapshotCache,
+  readBrandingSettings,
   readProductionData,
   readProductionSnapshotForDate
 });

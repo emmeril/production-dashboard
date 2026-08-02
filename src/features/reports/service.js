@@ -12,6 +12,7 @@ function createReportService(dependencies) {
     getToday,
     isValidDateInput,
     parseNonNegativeInteger,
+    readBrandingSettings = () => ({}),
     readDefectConfig,
     readProductionData,
     readSnapshotData
@@ -208,6 +209,7 @@ function createReportService(dependencies) {
       qc: sum.qc + row.qcChecked, defect: sum.defect + row.defect
     }), { target: 0, output: 0, qc: 0, defect: 0 });
     return createPdfReport({
+      branding: readBrandingSettings(),
       title: 'LAPORAN PRODUKSI & QUALITY CONTROL',
       subtitle: 'Industrial performance report - fixed document format',
       meta: [['Periode', period], ['Line', lineFilter || 'Semua Line'], ['Dicetak', new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })]],
@@ -250,6 +252,7 @@ function createReportService(dependencies) {
       };
     });
     return createPdfReport({
+      branding: readBrandingSettings(),
       title: 'DETAIL PRODUKSI & QUALITY CONTROL', subtitle: 'Hourly traceability and quality performance',
       meta: [['Tanggal', modelData.date || '-'], ['Line', lineName], ['Model', modelData.model || modelId], ['Week', modelData.labelWeek || '-']],
       summary: [['Target', modelData.target || 0], ['Output', modelData.outputDay || 0], ['QC Checked', modelData.qcChecking || 0], ['Defect', modelData.actualDefect || 0], ['Defect Rate', `${modelData.defectRatePercentage || 0}%`]],

@@ -69,6 +69,10 @@ function dashboard() {
         mobileMenuOpen: false,
         sidebarCollapsed: false,
         navigation: [],
+        brandingSettings: {
+            appName: 'Production Dashboard',
+            copyrightText: 'Copyright © Production Dashboard'
+        },
 
         // Data
         lines: [],
@@ -307,6 +311,7 @@ function dashboard() {
         async init() {
             this.refreshProductionClock();
             setInterval(() => this.refreshProductionClock(), 30000);
+            await this.loadBrandingSettings();
             await this.checkAuth();
             if (!this.isAuthenticated) {
                 this.setupNavigation();
@@ -359,6 +364,7 @@ function dashboard() {
                     this.currentUser = data.user;
                     this.isAuthenticated = true;
                     this.loginError = '';
+                    await this.loadBrandingSettings();
                     await this.loadWorkScheduleSettings();
                     this.setupNavigation();
                     const initialRoute = this.getInitialRouteState();
@@ -425,6 +431,7 @@ function dashboard() {
                         { name: 'Manajemen User', page: 'user-management', iconClass: 'fa-users-gear' },
                         { name: 'Kategori Defect', page: 'defect-categories', iconClass: 'fa-triangle-exclamation' },
                         { name: 'Hari Kerja', page: 'work-schedule-settings', iconClass: 'fa-calendar-days' },
+                        { name: 'Branding Aplikasi', page: 'branding-settings', iconClass: 'fa-palette' },
                         { name: 'Public Display', page: 'public-display-settings', iconClass: 'fa-tv' },
                         { name: 'Backup Data', page: 'backup', iconClass: 'fa-cloud-arrow-down' }
                     );
@@ -582,7 +589,7 @@ function dashboard() {
                 return this.canViewMaterialOrders();
             }
 
-            if (state.currentPage === 'production-import' || state.currentPage === 'user-management' || state.currentPage === 'defect-categories' || state.currentPage === 'work-schedule-settings' || state.currentPage === 'public-display-settings' || state.currentPage === 'backup' || state.currentPage === 'system-actions') {
+            if (state.currentPage === 'production-import' || state.currentPage === 'user-management' || state.currentPage === 'defect-categories' || state.currentPage === 'work-schedule-settings' || state.currentPage === 'branding-settings' || state.currentPage === 'public-display-settings' || state.currentPage === 'backup' || state.currentPage === 'system-actions') {
 	                return state.currentPage === 'defect-categories'
 	                    ? this.canManageDefectCategories()
 	                    : this.currentUser.role === 'admin';
@@ -661,6 +668,10 @@ function dashboard() {
 	                await this.loadWorkScheduleSettings();
 	            }
 
+	            if (this.currentPage === 'branding-settings') {
+	                await this.loadBrandingSettings();
+	            }
+
 	            if (this.currentPage === 'backup') {
 	                await this.loadBackupData();
 	            }
@@ -703,6 +714,9 @@ function dashboard() {
 	            }
 	            if (page === 'work-schedule-settings') {
 	                this.loadWorkScheduleSettings();
+	            }
+	            if (page === 'branding-settings') {
+	                this.loadBrandingSettings();
 	            }
 	            if (page === 'backup') {
 	                this.loadBackupData();
@@ -1671,6 +1685,44 @@ function dashboard() {
                 this.showToast('Error deleting defect category', 'error');
 	            }
 	        },
+
+        normalizeBrandingSettings(settings = {}) {
+            const appName = String(settings.appName || '').trim();
+            const copyrightText = String(settings.copyrightText || '').trim();
+            return {
+                appName: (appName || 'Production Dashboard').slice(0, 100),
+                copyrightText: (copyrightText || 'Copyright © Production Dashboard').slice(0, 200)
+            };
+        },
+
+        async loadBrandingSettings() {
+            try {
+                const response = await fetch('/api/branding-settings');
+                if (!response.ok) throw new Error('Gagal memuat branding aplikasi');
+                this.brandingSettings = this.normalizeBrandingSettings(await response.json());
+                document.title = this.brandingSettings.appName;
+            } catch (error) {
+                logClientError('Error loading branding settings:', error);
+            }
+        },
+
+        async saveBrandingSettings() {
+            try {
+                const response = await fetch('/api/branding-settings', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(this.normalizeBrandingSettings(this.brandingSettings))
+                });
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.error || 'Gagal menyimpan branding aplikasi');
+                this.brandingSettings = this.normalizeBrandingSettings(result.settings);
+                document.title = this.brandingSettings.appName;
+                this.showToast(result.message, 'success');
+            } catch (error) {
+                logClientError('Error saving branding settings:', error);
+                this.showToast(error.message, 'error');
+            }
+        },
 
 	        normalizePublicDisplaySettings(settings = {}) {
 	            const defaults = {

@@ -2,6 +2,7 @@ function createStorageService(dependencies) {
   const {
     DataTypes,
     buildInitialDefectConfig,
+    buildInitialBrandingSettings,
     buildInitialMaterialOrders,
     buildInitialProductionData,
     buildInitialPublicDisplaySettings,
@@ -21,6 +22,7 @@ function createStorageService(dependencies) {
     legacyHistoryDir,
     logger,
     normalizeDefectConfig,
+    normalizeBrandingSettings,
     normalizeMaterialOrders,
     normalizeProductionDataIdentities,
     normalizePublicDisplaySettings,
@@ -80,6 +82,7 @@ function createStorageService(dependencies) {
   const PRODUCTION_DATA_KEY = 'production_data';
   const USERS_DATA_KEY = 'users_data';
   const DEFECT_CONFIG_KEY = 'defect_config';
+  const BRANDING_SETTINGS_KEY = 'branding_settings';
   const PUBLIC_DISPLAY_SETTINGS_KEY = 'public_display_settings';
   const WORK_SCHEDULE_SETTINGS_KEY = 'work_schedule_settings';
   const MATERIAL_ORDERS_KEY = 'material_orders';
@@ -91,6 +94,7 @@ function createStorageService(dependencies) {
   let productionDataCache = { lines: {}, activeLine: '' };
   let usersDataCache = { users: [] };
   let defectConfigCache = { defectTypes: [], defectAreas: [] };
+  let brandingSettingsCache = {};
   let publicDisplaySettingsCache = {};
   let workScheduleSettingsCache = {};
   let materialOrdersCache = { orders: [] };
@@ -669,6 +673,10 @@ function createStorageService(dependencies) {
       rowsByKey.get(DEFECT_CONFIG_KEY)?.payload || '',
       buildInitialDefectConfig()
     ));
+    brandingSettingsCache = normalizeBrandingSettings(parsePayload(
+      rowsByKey.get(BRANDING_SETTINGS_KEY)?.payload || '',
+      buildInitialBrandingSettings()
+    ));
     publicDisplaySettingsCache = normalizePublicDisplaySettings(parsePayload(
       rowsByKey.get(PUBLIC_DISPLAY_SETTINGS_KEY)?.payload || '',
       buildInitialPublicDisplaySettings()
@@ -699,6 +707,7 @@ function createStorageService(dependencies) {
       let productionRow = await AppData.findByPk(PRODUCTION_DATA_KEY);
       let usersRow = await AppData.findByPk(USERS_DATA_KEY);
       let defectConfigRow = await AppData.findByPk(DEFECT_CONFIG_KEY);
+      let brandingSettingsRow = await AppData.findByPk(BRANDING_SETTINGS_KEY);
       let publicDisplaySettingsRow = await AppData.findByPk(PUBLIC_DISPLAY_SETTINGS_KEY);
       let workScheduleSettingsRow = await AppData.findByPk(WORK_SCHEDULE_SETTINGS_KEY);
       let materialOrdersRow = await AppData.findByPk(MATERIAL_ORDERS_KEY);
@@ -734,6 +743,11 @@ function createStorageService(dependencies) {
       if (!defectConfigRow) {
         await upsertAppData(DEFECT_CONFIG_KEY, buildInitialDefectConfig());
         defectConfigRow = await AppData.findByPk(DEFECT_CONFIG_KEY);
+      }
+
+      if (!brandingSettingsRow) {
+        await upsertAppData(BRANDING_SETTINGS_KEY, buildInitialBrandingSettings());
+        brandingSettingsRow = await AppData.findByPk(BRANDING_SETTINGS_KEY);
       }
 
       if (!publicDisplaySettingsRow) {
@@ -775,6 +789,7 @@ function createStorageService(dependencies) {
       productionDataCache = buildInitialProductionData();
       usersDataCache = buildInitialUsersData();
       defectConfigCache = buildInitialDefectConfig();
+      brandingSettingsCache = buildInitialBrandingSettings();
       publicDisplaySettingsCache = buildInitialPublicDisplaySettings();
       workScheduleSettingsCache = buildInitialWorkScheduleSettings();
       materialOrdersCache = buildInitialMaterialOrders();
@@ -856,6 +871,22 @@ function createStorageService(dependencies) {
     }
   }
 
+  function readBrandingSettings() {
+    try {
+      brandingSettingsCache = normalizeBrandingSettings(brandingSettingsCache);
+      return brandingSettingsCache;
+    } catch (error) {
+      logger.error('Gagal membaca branding settings cache', error.message);
+      return buildInitialBrandingSettings();
+    }
+  }
+
+  function writeBrandingSettings(data) {
+    brandingSettingsCache = normalizeBrandingSettings(data);
+    return upsertAppData(BRANDING_SETTINGS_KEY, brandingSettingsCache)
+      .then(() => brandingSettingsCache);
+  }
+
   function writeDefectConfig(data) {
     defectConfigCache = normalizeDefectConfig(data);
     return upsertAppData(DEFECT_CONFIG_KEY, defectConfigCache);
@@ -914,6 +945,7 @@ function createStorageService(dependencies) {
     productionSnapshotCache,
     pruneDatabaseBackups,
     readDefectConfig,
+    readBrandingSettings,
     readMaterialOrders,
     readProductionData,
     readPublicDisplaySettings,
@@ -928,6 +960,7 @@ function createStorageService(dependencies) {
     storeProductionSnapshot,
     validateDatabaseBackupForRestore,
     writeDefectConfig,
+    writeBrandingSettings,
     writeMaterialOrders,
     writeProductionData,
     writePublicDisplaySettings,

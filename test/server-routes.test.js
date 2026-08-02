@@ -162,6 +162,37 @@ test('responses include baseline security headers without exposing Express', asy
   assert.doesNotMatch(html, /cdn\.tailwindcss\.com|cdn\.jsdelivr\.net|cdnjs\.cloudflare\.com|fonts\.googleapis\.com|fonts\.gstatic\.com/);
 });
 
+test('branding settings are public to read but only admin can update them', async () => {
+  const publicResponse = await fetch(`${baseUrl}/api/branding-settings`);
+  const defaults = await publicResponse.json();
+  assert.equal(publicResponse.status, 200);
+  assert.equal(defaults.appName, 'Production Dashboard');
+
+  const { cookie: ppicCookie } = await login('ppic', 'ppic-password');
+  const forbiddenResponse = await fetch(`${baseUrl}/api/branding-settings`, {
+    method: 'PUT',
+    headers: { Cookie: ppicCookie, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ appName: 'Tidak Diizinkan', copyrightText: 'Tidak Diizinkan' })
+  });
+  assert.equal(forbiddenResponse.status, 403);
+
+  const { cookie: adminCookie } = await login('admin', 'admin-password');
+  const updateResponse = await fetch(`${baseUrl}/api/branding-settings`, {
+    method: 'PUT',
+    headers: { Cookie: adminCookie, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ appName: '  Dashboard Pabrik  ', copyrightText: '  Copyright 2026 Pabrik  ' })
+  });
+  const updateResult = await updateResponse.json();
+  assert.equal(updateResponse.status, 200);
+  assert.deepEqual(updateResult.settings, {
+    appName: 'Dashboard Pabrik',
+    copyrightText: 'Copyright 2026 Pabrik'
+  });
+
+  const savedResponse = await fetch(`${baseUrl}/api/branding-settings`);
+  assert.deepEqual(await savedResponse.json(), updateResult.settings);
+});
+
 test('layout-critical browser assets are served locally', async () => {
   const assetPaths = [
     '/public/assets/css/tailwind.css',

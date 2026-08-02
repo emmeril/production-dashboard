@@ -352,6 +352,7 @@ const {
   productionSnapshotCache,
   pruneDatabaseBackups,
   readDefectConfig,
+  readBrandingSettings,
   readMaterialOrders,
   readProductionData,
   readPublicDisplaySettings,
@@ -366,6 +367,7 @@ const {
   storeProductionSnapshot,
   validateDatabaseBackupForRestore,
   writeDefectConfig,
+  writeBrandingSettings,
   writeMaterialOrders,
   writeProductionData,
   writePublicDisplaySettings,
@@ -374,6 +376,7 @@ const {
 } = createStorageService({
   DataTypes,
   buildInitialDefectConfig,
+  buildInitialBrandingSettings,
   buildInitialMaterialOrders: (...args) => buildInitialMaterialOrders(...args),
   buildInitialProductionData,
   buildInitialPublicDisplaySettings,
@@ -393,6 +396,7 @@ const {
   legacyHistoryDir,
   logger,
   normalizeDefectConfig,
+  normalizeBrandingSettings,
   normalizeMaterialOrders: (...args) => normalizeMaterialOrders(...args),
   normalizeProductionDataIdentities,
   normalizePublicDisplaySettings,
@@ -620,6 +624,13 @@ function buildInitialPublicDisplaySettings() {
   };
 }
 
+function buildInitialBrandingSettings() {
+  return {
+    appName: 'Production Dashboard',
+    copyrightText: 'Copyright © Production Dashboard'
+  };
+}
+
 function buildInitialWorkScheduleSettings() {
   return {
     enabled: true,
@@ -665,6 +676,17 @@ function normalizePublicDisplaySettings(settings = {}) {
     metricFontSize: normalizeNumberSetting(settings.metricFontSize, defaults.metricFontSize, 32, 110),
     percentFontSize: normalizeNumberSetting(settings.percentFontSize, defaults.percentFontSize, 20, 72),
     refreshInterval: normalizeNumberSetting(settings.refreshInterval, defaults.refreshInterval, 0, 60000)
+  };
+}
+
+function normalizeBrandingSettings(settings = {}) {
+  const defaults = buildInitialBrandingSettings();
+  const appName = String(settings.appName || '').trim().slice(0, 100);
+  const copyrightText = String(settings.copyrightText || '').trim().slice(0, 200);
+
+  return {
+    appName: appName || defaults.appName,
+    copyrightText: copyrightText || defaults.copyrightText
   };
 }
 
@@ -2103,6 +2125,15 @@ app.get('/api/public-display-settings', async (req, res) => {
 app.put('/api/public-display-settings', requireLogin, requireAdmin, async (req, res) => {
   const settings = await writePublicDisplaySettings(req.body || {});
   res.json({ message: 'Public display settings updated successfully', settings });
+});
+
+app.get('/api/branding-settings', (req, res) => {
+  res.json(readBrandingSettings());
+});
+
+app.put('/api/branding-settings', requireLogin, requireAdmin, async (req, res) => {
+  const settings = await writeBrandingSettings(req.body || {});
+  res.json({ message: 'Branding berhasil disimpan', settings });
 });
 
 app.get('/api/work-schedule-settings', requireLogin, async (req, res) => {

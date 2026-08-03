@@ -288,6 +288,7 @@ function createReportService(dependencies) {
       target: 0,
       output: 0,
       defect: 0,
+      good: 0,
       criticalDefect: 0,
       majorDefect: 0,
       minorDefect: 0,
@@ -330,6 +331,7 @@ function createReportService(dependencies) {
     summary.defectRate = summary.qcChecked > 0
       ? parseFloat(((summary.defect / summary.qcChecked) * 100).toFixed(2))
       : 0;
+    summary.good = Math.max(summary.qcChecked - summary.defect, 0);
     return summary;
   }
 
@@ -341,6 +343,7 @@ function createReportService(dependencies) {
       target: 0,
       output: 0,
       defect: 0,
+      good: 0,
       criticalDefect: 0,
       majorDefect: 0,
       minorDefect: 0,
@@ -393,6 +396,7 @@ function createReportService(dependencies) {
     summary.defectRate = summary.qcChecked > 0
       ? parseFloat(((summary.defect / summary.qcChecked) * 100).toFixed(2))
       : 0;
+    summary.good = Math.max(summary.qcChecked - summary.defect, 0);
 
     return summary;
   }

@@ -731,6 +731,10 @@
 	            background: #28a745;
 	        }
 
+	        .chart-bar-good {
+	            background: #14b8a6;
+	        }
+
 	        .chart-bar-defect {
 	            background: #dc3545;
 	        }

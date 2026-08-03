@@ -2902,6 +2902,15 @@ function dashboard() {
 	                            maxBarThickness: 22
                         },
                         {
+                            label: 'Good Hasil QC',
+                            data: data.map(item => item.good ?? Math.max((Number(item.qcChecked) || 0) - (Number(item.defect) || 0), 0)),
+                            backgroundColor: 'rgba(20, 184, 166, 0.6)',
+                            borderColor: '#0f766e',
+                            borderWidth: 1,
+                            borderRadius: 4,
+                            maxBarThickness: 22
+                        },
+                        {
                             label: 'Defect',
                             data: data.map(item => item.defect || 0),
                             backgroundColor: 'rgba(220, 53, 69, 0.6)',

@@ -3309,16 +3309,22 @@ function dashboard() {
                         date,
                         target: 0,
                         output: 0,
+                        qcChecked: 0,
                         defect: 0
                     };
 
                     current.target += parseInt(item.target) || 0;
                     current.output += parseInt(item.output) || 0;
+                    current.qcChecked += parseInt(item.qcChecked) || 0;
                     current.defect += parseInt(item.defect) || 0;
                     groupedByLineDateModel.set(key, current);
                 });
 
             return Array.from(groupedByLineDateModel.values())
+                .map(item => ({
+                    ...item,
+                    good: Math.max(item.qcChecked - item.defect, 0)
+                }))
                 .sort((a, b) => new Date(a.date) - new Date(b.date)
                     || a.lineName.localeCompare(b.lineName, undefined, { numeric: true })
                     || a.model.localeCompare(b.model));

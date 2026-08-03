@@ -1319,8 +1319,8 @@ test('dashboard chart includes only models active in Management Line', () => {
     { lineName: 'Line 1', modelId: 'model3', data: { lineActiveModels: ['model1', 'model2'], labelWeek: '', model: 'Model C', target: 35, outputDay: 30 } }
   ];
   dashboard.dashboardData.lineDaily = [
-    { date: '2026-07-22', lineName: 'Line 1', modelId: 'model1', model: 'Model A', target: 15, output: 10 },
-    { date: '2026-07-22', lineName: 'Line 1', modelId: 'model2', model: 'Model B', target: 25, output: 20 },
+    { date: '2026-07-22', lineName: 'Line 1', modelId: 'model1', model: 'Model A', target: 15, output: 10, qcChecked: 8, defect: 1 },
+    { date: '2026-07-22', lineName: 'Line 1', modelId: 'model2', model: 'Model B', target: 25, output: 20, qcChecked: 15, defect: 2 },
     { date: '2026-07-22', lineName: 'Line 1', modelId: 'model3', model: 'Model C', target: 35, output: 30 }
   ];
 
@@ -1331,6 +1331,10 @@ test('dashboard chart includes only models active in Management Line', () => {
   assert.equal(dashboard.selectedDashboardSummary.modelCount, 2);
   assert.equal(dashboard.selectedDashboardSummary.target, 40);
   assert.equal(dashboard.selectedDashboardSummary.output, 30);
+  assert.deepEqual(
+    Array.from(dashboard.allDashboardChartData, item => item.good),
+    [7, 13]
+  );
   assert.deepEqual(
     Array.from(dashboard.filteredDashboardLines, item => item.modelId),
     ['model1', 'model2']

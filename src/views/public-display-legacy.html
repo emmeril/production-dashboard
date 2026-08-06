@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DISPLAY LINE - LEGACY</title>
+    <link rel="stylesheet" href="/public/assets/css/public-display.css">
+    <link rel="stylesheet" href="/public/assets/css/public-display-legacy.css?v=20260806-webview66">
+</head>
+<body>
+    <div id="legacy-loading-overlay" class="error-overlay legacy-loading-overlay">
+        <div class="error-content">
+            <h2 class="error-title">MEMUAT DISPLAY...</h2>
+            <p class="error-message">Menunggu data produksi.</p>
+        </div>
+    </div>
+
+    <div id="legacy-display-root" class="tg">
+        <table class="main-table" border="0">
+            <tbody>
+                <tr>
+                    <td id="legacy-line-title" style="text-align:center;vertical-align:middle;font-weight:bold;font-size:24px;">LINE: Loading...</td>
+                    <td id="legacy-model-name" colspan="2" rowspan="2" style="text-align:center;vertical-align:middle;font-weight:bold;font-size:24px;white-space:normal;word-break:break-word;overflow-wrap:break-word;">Loading...</td>
+                    <td rowspan="7" valign="top" style="width:20%;padding:1px;vertical-align:top;">
+                        <table class="histor">
+                            <thead>
+                                <tr><td colspan="3"><div class="date" id="legacy-current-date">Loading...</div></td></tr>
+                                <tr><td colspan="3"><div class="clock" id="legacy-current-clock">--:--:--</div></td></tr>
+                                <tr><td id="legacy-hour-target-side" colspan="3" style="font-size:14px;color:#fff;">TARGET : 0</td></tr>
+                                <tr>
+                                    <th>JAM</th>
+                                    <th>GOOD</th>
+                                    <th>DEFECT</th>
+                                </tr>
+                            </thead>
+                            <tbody id="legacy-hourly-rows"></tbody>
+                        </table>
+                        <table class="table-defect" style="margin-top:5px;color:white;font-weight:bold;">
+                            <thead><tr><th colspan="3" class="top-defect-title">TOP 3 DEFECT</th></tr></thead>
+                            <tbody id="legacy-top-defect-rows"></tbody>
+                        </table>
+                    </td>
+                </tr>
+                <tr>
+                    <td id="legacy-week-label" style="text-align:center;vertical-align:middle;font-weight:bold;font-size:20px;">WEEK : -</td>
+                </tr>
+                <tr>
+                    <td class="bawah">TARGET</td>
+                    <td class="bawah">BALANCE</td>
+                    <td class="bawah">PRODUCTIVITY</td>
+                </tr>
+                <tr>
+                    <td id="legacy-hour-target" class="isin">0</td>
+                    <td id="legacy-balance" class="isie">0</td>
+                    <td id="legacy-output-day" class="isi">0</td>
+                </tr>
+                <tr>
+                    <td id="legacy-target-progress" class="perday">0.0%</td>
+                    <td id="legacy-balance-progress" class="perday">0.0%</td>
+                    <td id="legacy-output-progress" class="perday">0.0%</td>
+                </tr>
+                <tr>
+                    <td id="legacy-defect-title" colspan="2" class="bawah">ACT DEFECT</td>
+                    <td class="bawah">DEFECT %</td>
+                </tr>
+                <tr>
+                    <td id="legacy-defect-count" colspan="2" class="outday1">0</td>
+                    <td id="legacy-defect-rate" class="outday1">0.0%</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="footer-control legacy-footer-control">
+            <span>Defect</span>
+            <select id="legacy-defect-mode">
+                <option value="all">Semua</option>
+                <option value="critical">Critical</option>
+                <option value="major">Major</option>
+                <option value="minor">Minor</option>
+            </select>
+            <span>Auto Refresh</span>
+            <select id="legacy-refresh-interval">
+                <option value="0">Mati</option>
+                <option value="5000">5 Detik</option>
+                <option value="10000">10 Detik</option>
+                <option value="30000">30 Detik</option>
+                <option value="60000">1 Menit</option>
+            </select>
+        </div>
+    </div>
+
+    <div id="legacy-schedule-overlay" class="error-overlay schedule-overlay legacy-hidden">
+        <div class="error-content">
+            <h2 class="error-title">DI LUAR JAM KERJA</h2>
+            <p class="error-message">Data produksi akan ditampilkan kembali pada hari dan jam kerja yang telah diatur oleh admin.</p>
+            <p id="legacy-schedule-description" class="error-message"></p>
+        </div>
+    </div>
+
+    <div id="legacy-error-overlay" class="error-overlay legacy-hidden">
+        <div class="error-content">
+            <h2 class="error-title">Error</h2>
+            <p id="legacy-error-message" class="error-message"></p>
+            <button id="legacy-error-close" class="error-button" type="button">Tutup</button>
+        </div>
+    </div>
+
+    <script src="/public/assets/js/public-display-legacy.js?v=20260806-webview66"></script>
+</body>
+</html>

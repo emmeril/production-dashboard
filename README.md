@@ -125,7 +125,9 @@ Proteksi login membatasi percobaan gagal per akun/IP. Nilai default dapat disesu
 | `/leader` | Route SPA lama untuk dashboard. |
 | `/line/:lineName` | Detail line tertentu. |
 | `/input/:lineName` | Input data line tertentu. |
-| `/public-display?line=LINE_NAME&model=MODEL_ID` | Public display monitor untuk line dan model tertentu. |
+| `/public-display?line=LINE_NAME&model=MODEL_ID` | Public display utama (mode legacy, kompatibel dengan STB WebView 66+). |
+| `/public-display-legacy?line=LINE_NAME&model=MODEL_ID` | Alias public display mode legacy. |
+| `/public-display-modern?line=LINE_NAME&model=MODEL_ID` | Public display modern berbasis Alpine.js. |
 
 Contoh public display:
 

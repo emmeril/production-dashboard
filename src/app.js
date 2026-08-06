@@ -2405,6 +2405,14 @@ app.delete('/api/users/:id', requireLogin, requireAdmin, async (req, res) => {
 });
 
 app.get('/public-display', async (req, res) => {
+  res.sendFile(path.join(viewsDir, 'public-display-legacy.html'));
+});
+
+app.get('/public-display-legacy', async (req, res) => {
+  res.sendFile(path.join(viewsDir, 'public-display-legacy.html'));
+});
+
+app.get('/public-display-modern', async (req, res) => {
   res.sendFile(path.join(viewsDir, 'public-display.html'));
 });
 

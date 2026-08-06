@@ -22,7 +22,8 @@ function sha384(buffer) {
 
 const indexHtml = read('src/views/index.html').toString('utf8');
 const publicDisplayHtml = read('src/views/public-display.html').toString('utf8');
-const renderedViews = indexHtml + publicDisplayHtml;
+const publicDisplayLegacyHtml = read('src/views/public-display-legacy.html').toString('utf8');
+const renderedViews = indexHtml + publicDisplayHtml + publicDisplayLegacyHtml;
 const forbiddenRuntimeCdns = [
   'cdn.tailwindcss.com',
   'cdn.jsdelivr.net/npm/alpinejs',
@@ -41,12 +42,35 @@ const requiredAssets = [
   'public/assets/css/fonts.css',
   'public/assets/css/fontawesome.min.css',
   'public/assets/js/vendor/alpine.min.js',
-  'public/assets/js/vendor/chart.umd.min.js'
+  'public/assets/js/vendor/chart.umd.min.js',
+  'public/assets/js/public-display-legacy.js'
 ];
 
 requiredAssets.forEach(relativePath => {
   assert(fs.existsSync(absolutePath(relativePath)), `Aset lokal tidak ditemukan: ${relativePath}`);
   assert(read(relativePath).length > 1000, `Aset lokal tidak lengkap: ${relativePath}`);
+});
+
+assert(fs.existsSync(absolutePath('public/assets/css/public-display-legacy.css')), 'CSS public display legacy tidak ditemukan');
+
+const legacyDisplayScript = read('public/assets/js/public-display-legacy.js').toString('utf8');
+const forbiddenLegacySyntax = [
+  ['optional chaining', /\?\./],
+  ['nullish coalescing', /\?\?/],
+  ['arrow function', /=>/],
+  ['template literal', /`/],
+  ['const declaration', /\bconst\b/],
+  ['let declaration', /\blet\b/],
+  ['async function', /\basync\b/],
+  ['fetch API', /\bfetch\s*\(/],
+  ['Promise API', /\bPromise\b/],
+  ['Array.includes', /\.includes\s*\(/],
+  ['Array.flatMap', /\.flatMap\s*\(/],
+  ['queueMicrotask', /\bqueueMicrotask\b/]
+];
+
+forbiddenLegacySyntax.forEach(([name, pattern]) => {
+  assert(!pattern.test(legacyDisplayScript), `Public display legacy memakai ${name} yang tidak aman untuk WebView 66`);
 });
 
 const vendorCopies = [

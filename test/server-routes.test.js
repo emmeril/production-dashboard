@@ -214,8 +214,14 @@ test('layout-critical browser assets are served locally', async () => {
 
   const publicDisplayResponse = await fetch(`${baseUrl}/public-display`);
   const publicDisplayHtml = await publicDisplayResponse.text();
-  assert.match(publicDisplayHtml, /\/public\/assets\/js\/vendor\/alpine\.min\.js/);
+  assert.match(publicDisplayHtml, /\/public\/assets\/js\/public-display-legacy\.js/);
   assert.doesNotMatch(publicDisplayHtml, /cdn\.jsdelivr\.net|fonts\.googleapis\.com/);
+  assert.doesNotMatch(publicDisplayHtml, /alpine\.min\.js|x-data|x-show|x-if/);
+
+  const modernDisplayResponse = await fetch(`${baseUrl}/public-display-modern`);
+  const modernDisplayHtml = await modernDisplayResponse.text();
+  assert.equal(modernDisplayResponse.status, 200);
+  assert.match(modernDisplayHtml, /\/public\/assets\/js\/vendor\/alpine\.min\.js/);
 });
 
 test('PPIC can manage lines with the same target-only edit restriction as Admin Operator Sewing', async () => {

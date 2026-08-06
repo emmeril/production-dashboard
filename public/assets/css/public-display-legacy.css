@@ -1,0 +1,31 @@
+/* Compatibility overrides for Android System WebView 66. */
+.error-overlay {
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+}
+
+.legacy-hidden {
+    display: none;
+}
+
+#legacy-display-root {
+    display: none;
+}
+
+.legacy-loading-overlay .error-title {
+    color: #ffeb3b;
+}
+
+.legacy-footer-control select {
+    margin-left: 4px;
+    margin-right: 8px;
+}
+
+@media (max-width: 640px) {
+    .error-content {
+        width: auto;
+        margin: 16px;
+    }
+}

@@ -164,9 +164,22 @@
     function applyDisplaySettings() {
         var settings = state.settings;
         var style = document.body.style;
+        var viewportWidth = window.innerWidth || document.documentElement.clientWidth || 1280;
+        var viewportHeight = window.innerHeight || document.documentElement.clientHeight || 720;
+        var availableWidth = Math.max(240, viewportWidth - settings.marginLeft - 8);
+        var availableHeight = Math.max(240, viewportHeight - settings.marginTop - 8);
+        var evaluationWidth = Math.max(240, Math.floor(availableWidth * (settings.layoutWidth / 100)));
+        var evaluationInnerHeight = Math.max(220, availableHeight - 6);
+        var evaluationHeaderHeight = Math.min(evaluationInnerHeight - 120, Math.max(72, Math.floor(evaluationInnerHeight * 0.16)));
+        var evaluationContentHeight = evaluationInnerHeight - evaluationHeaderHeight;
         style.setProperty('--display-layout-width', settings.layoutWidth + '%');
         style.setProperty('--display-margin-left', settings.marginLeft + 'px');
         style.setProperty('--display-margin-top', settings.marginTop + 'px');
+        style.setProperty('--qc-evaluation-layout-width', evaluationWidth + 'px');
+        style.setProperty('--qc-evaluation-layout-height', availableHeight + 'px');
+        style.setProperty('--qc-evaluation-header-height', evaluationHeaderHeight + 'px');
+        style.setProperty('--qc-evaluation-content-height', evaluationContentHeight + 'px');
+        style.setProperty('--qc-evaluation-photo-max-height', Math.max(100, evaluationContentHeight - 32) + 'px');
         style.setProperty('--display-cell-font-size', settings.cellFontSize + 'px');
         style.setProperty('--display-output-font-size', Math.max(settings.cellFontSize + 2, 12) + 'px');
         style.setProperty('--display-clock-font-size', Math.max(settings.cellFontSize + 4, 14) + 'px');
@@ -743,6 +756,7 @@
 
     function init() {
         attachControls();
+        window.addEventListener('resize', applyDisplaySettings);
         updateDateTime();
         state.clockTimer = window.setInterval(function () {
             updateDateTime();

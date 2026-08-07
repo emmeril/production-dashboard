@@ -1972,21 +1972,25 @@
 
 		                <!-- Evaluasi Produk QC - Admin dan Admin Operator QC -->
 		                <div x-show="currentPage === 'qc-product-evaluations' && canManageQcEvaluations()" class="fade-in qc-evaluation-page">
-		                    <div class="mb-6">
+		                    <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
 		                        <div>
 		                            <h1 class="text-2xl font-bold text-gray-800 flex items-center"><i class="fa-solid fa-camera-retro text-blue-600 mr-3"></i>Evaluasi Produk QC</h1>
 		                            <p class="text-gray-600">Tandai lokasi defect pada foto produk nyata, lalu publikasikan ke semua line atau line tertentu.</p>
 		                        </div>
+		                        <button type="button" @click="openQcEvaluationModal()" class="btn-compact inline-flex justify-center items-center border border-transparent font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"><i class="fa-solid fa-plus mr-2"></i>Buat Evaluasi Baru</button>
 		                    </div>
 
-		                    <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
-		                        <section class="xl:col-span-2 bg-white rounded-lg shadow card-shadow overflow-hidden">
+		                    <div>
+		                        <div x-show="qcEvaluationModalOpen" class="fixed inset-0 overflow-y-auto z-50 qc-evaluation-modal" x-cloak @keydown.escape.window="closeQcEvaluationModal()">
+		                            <div class="flex min-h-screen items-start justify-center px-4 py-8">
+		                                <div class="fixed inset-0 bg-gray-900 opacity-70" @click="closeQcEvaluationModal()"></div>
+		                        <section class="relative w-full bg-white rounded-lg shadow-xl card-shadow overflow-hidden qc-evaluation-modal-panel">
 		                            <div class="px-4 py-5 sm:px-6 border-b border-gray-200 flex items-center justify-between gap-3">
 		                                <div>
 		                                    <h3 class="text-lg leading-6 font-medium text-gray-900 flex items-center"><i class="fa-solid fa-pen-ruler text-blue-600 mr-2"></i><span x-text="qcEvaluationForm.id ? 'Edit Evaluasi' : 'Buat Evaluasi Baru'"></span></h3>
 		                                    <p class="mt-1 text-sm text-gray-500">Pilih kategori defect, lalu klik langsung pada posisi defect di foto.</p>
 		                                </div>
-		                                <button x-show="qcEvaluationForm.id" type="button" @click="resetQcEvaluationForm()" class="btn-action btn-action-neutral"><i class="fa-solid fa-plus"></i>Baru</button>
+		                                <button type="button" @click="closeQcEvaluationModal()" :disabled="qcEvaluationSaving" class="rounded-md p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-700" title="Tutup"><i class="fa-solid fa-xmark text-lg"></i></button>
 		                            </div>
 
 		                            <form @submit.prevent="saveQcProductEvaluation()" class="p-4 space-y-5 qc-evaluation-form">
@@ -2068,13 +2072,18 @@
 	                                                <option value="selected">Line tertentu</option>
 	                                            </select>
 	                                        </label>
-	                                        <label x-show="qcEvaluationForm.targetMode === 'selected'" class="block">
+	                                        <div x-show="qcEvaluationForm.targetMode === 'selected'" class="block">
 	                                            <span class="text-sm font-medium text-gray-700">Pilih line <span class="text-red-600">*</span></span>
-	                                            <select multiple size="4" x-model="qcEvaluationForm.lines" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm">
-	                                                <template x-for="line in lines" :key="line.name"><option :value="line.name" x-text="line.name"></option></template>
-	                                            </select>
-	                                            <small class="mt-1 block text-xs text-gray-500">Gunakan Ctrl/Cmd untuk memilih lebih dari satu line.</small>
-	                                        </label>
+	                                            <div class="qc-line-check-list mt-1">
+	                                                <template x-for="line in lines" :key="line.name">
+	                                                    <label class="qc-line-check">
+	                                                        <input type="checkbox" :value="line.name" x-model="qcEvaluationForm.lines">
+	                                                        <span x-text="line.name"></span>
+	                                                    </label>
+	                                                </template>
+	                                            </div>
+	                                            <small x-show="lines.length" class="mt-1 block text-xs text-gray-500"><span x-text="qcEvaluationForm.lines.length"></span> line dipilih.</small>
+	                                        </div>
 	                                    </div>
 	                                    <p x-show="qcEvaluationForm.targetMode === 'selected' && !lines.length" class="mt-2 text-sm text-gray-500">Belum ada line tersedia.</p>
 	                                </fieldset>
@@ -2088,12 +2097,14 @@
 
 		                                <div class="flex flex-wrap gap-2 pt-1">
 		                                    <button type="submit" :disabled="qcEvaluationSaving || qcEvaluationImageProcessing" class="btn-action btn-action-primary"><i class="fa-solid" :class="qcEvaluationSaving ? 'fa-spinner fa-spin' : 'fa-paper-plane'"></i><span x-text="qcEvaluationSaving ? 'Menyimpan...' : (qcEvaluationForm.id ? 'Simpan Perubahan' : 'Publikasikan Evaluasi')"></span></button>
-		                                    <button type="button" @click="resetQcEvaluationForm()" class="btn-action btn-action-neutral"><i class="fa-solid fa-rotate-left"></i>Reset</button>
+		                                    <button type="button" @click="closeQcEvaluationModal()" :disabled="qcEvaluationSaving" class="btn-action btn-action-neutral"><i class="fa-solid fa-xmark"></i>Batal</button>
 		                                </div>
 		                            </form>
 		                        </section>
+		                            </div>
+		                        </div>
 
-		                        <section class="bg-white rounded-lg shadow card-shadow overflow-hidden self-start qc-evaluation-list-card">
+		                        <section class="bg-white rounded-lg shadow card-shadow overflow-hidden qc-evaluation-list-card">
 		                            <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
 		                                <h3 class="text-lg leading-6 font-medium text-gray-900 flex items-center"><i class="fa-solid fa-images text-blue-600 mr-2"></i>Evaluasi Tersimpan</h3>
 		                                <p class="mt-1 text-sm text-gray-500"><span x-text="qcProductEvaluations.filter(item => item.active !== false).length"></span> aktif dari <span x-text="qcProductEvaluations.length"></span> evaluasi.</p>
@@ -2101,13 +2112,37 @@
 		                            <div class="p-4 border-b border-gray-200">
 		                                <div class="filter-toolbar line-management-toolbar mb-0">
 		                                    <div class="filter-group">
+		                                        <span class="filter-caption"><i class="fa-solid fa-magnifying-glass"></i>Pencarian</span>
+		                                        <div class="filter-control filter-control-search has-icon">
+		                                            <i class="fa-solid fa-magnifying-glass filter-control-icon"></i>
+		                                            <input type="text" x-model="qcEvaluationSearchTerm" @input="qcEvaluationCurrentPage = 1" placeholder="Cari evaluasi..." class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+		                                        </div>
+		                                    </div>
+		                                    <div class="filter-group">
+		                                        <span class="filter-caption"><i class="fa-solid fa-filter"></i>Status</span>
+		                                        <select x-model="qcEvaluationStatusFilter" @change="qcEvaluationCurrentPage = 1" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+		                                            <option value="">Semua status</option>
+		                                            <option value="active">Tayang</option>
+		                                            <option value="draft">Draft</option>
+		                                        </select>
+		                                    </div>
+		                                    <div class="filter-group">
+		                                        <span class="filter-caption"><i class="fa-solid fa-table-list"></i>Tampilkan</span>
+		                                        <select x-model.number="qcEvaluationItemsPerPage" @change="qcEvaluationCurrentPage = 1" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+		                                            <option value="5">5</option>
+		                                            <option value="10">10</option>
+		                                            <option value="20">20</option>
+		                                            <option value="50">50</option>
+		                                        </select>
+		                                    </div>
+		                                    <div class="filter-group">
 		                                        <span class="filter-caption"><i class="fa-solid fa-tv"></i>Public Display</span>
 		                                        <a :href="publicDisplayPreviewUrl('all')" target="_blank" rel="noopener noreferrer" class="btn-action btn-action-neutral"><i class="fa-solid fa-up-right-from-square"></i>Buka Display</a>
 		                                    </div>
 		                                </div>
 		                            </div>
-		                            <div x-show="qcProductEvaluations.length" class="divide-y divide-gray-200 max-h-[75rem] overflow-y-auto">
-		                                <template x-for="evaluation in qcProductEvaluations" :key="evaluation.id">
+		                            <div x-show="filteredQcProductEvaluations.length" class="divide-y divide-gray-200 max-h-[75rem] overflow-y-auto">
+		                                <template x-for="evaluation in paginatedQcProductEvaluations" :key="evaluation.id">
 		                                    <article class="p-4 qc-evaluation-list-item">
 		                                        <div class="relative overflow-hidden rounded-md bg-gray-100 qc-evaluation-thumbnail">
 		                                            <img :src="evaluation.photoDataUrl" :alt="evaluation.title" class="block h-48 w-full object-contain">
@@ -2128,7 +2163,22 @@
 		                                    </article>
 		                                </template>
 		                            </div>
-		                            <div x-show="!qcProductEvaluations.length" class="backup-empty-state"><i class="fa-solid fa-camera"></i><span>Belum ada evaluasi foto produk.</span></div>
+		                            <div x-show="filteredQcProductEvaluations.length" class="bg-white px-4 py-3 flex flex-wrap gap-3 items-center justify-between border-t border-gray-200">
+		                                <div class="text-sm font-medium text-gray-700">
+		                                    <span x-text="(qcEvaluationCurrentPage - 1) * Number(qcEvaluationItemsPerPage) + 1"></span>
+		                                    <span class="mx-1">-</span>
+		                                    <span x-text="Math.min(qcEvaluationCurrentPage * Number(qcEvaluationItemsPerPage), filteredQcProductEvaluations.length)"></span>
+		                                    <span class="ml-1 text-gray-500">dari <span x-text="filteredQcProductEvaluations.length"></span></span>
+		                                </div>
+		                                <div class="flex space-x-1">
+		                                    <button @click="qcEvaluationCurrentPage = 1" :disabled="qcEvaluationCurrentPage === 1" class="pagination-btn" :class="{'disabled': qcEvaluationCurrentPage === 1}">&laquo;</button>
+		                                    <button @click="qcEvaluationCurrentPage--" :disabled="qcEvaluationCurrentPage === 1" class="pagination-btn" :class="{'disabled': qcEvaluationCurrentPage === 1}">&lsaquo;</button>
+		                                    <template x-for="page in qcEvaluationPages" :key="page"><button @click="qcEvaluationCurrentPage = page" class="pagination-btn" :class="{'active': page === qcEvaluationCurrentPage}" x-text="page"></button></template>
+		                                    <button @click="qcEvaluationCurrentPage++" :disabled="qcEvaluationCurrentPage >= totalQcEvaluationPages" class="pagination-btn" :class="{'disabled': qcEvaluationCurrentPage >= totalQcEvaluationPages}">&rsaquo;</button>
+		                                    <button @click="qcEvaluationCurrentPage = totalQcEvaluationPages" :disabled="qcEvaluationCurrentPage >= totalQcEvaluationPages" class="pagination-btn" :class="{'disabled': qcEvaluationCurrentPage >= totalQcEvaluationPages}">&raquo;</button>
+		                                </div>
+		                            </div>
+		                            <div x-show="!filteredQcProductEvaluations.length" class="backup-empty-state"><i class="fa-solid fa-camera"></i><span x-text="qcEvaluationSearchTerm || qcEvaluationStatusFilter ? 'Evaluasi tidak ditemukan untuk filter yang dipilih.' : 'Belum ada evaluasi foto produk.'"></span></div>
 		                        </section>
 		                    </div>
 		                </div>

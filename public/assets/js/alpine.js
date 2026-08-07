@@ -217,6 +217,11 @@ function dashboard() {
 	            refreshInterval: 10000
 	        },
 	        qcProductEvaluations: [],
+	        qcEvaluationSearchTerm: '',
+	        qcEvaluationStatusFilter: '',
+	        qcEvaluationCurrentPage: 1,
+	        qcEvaluationItemsPerPage: 5,
+	        qcEvaluationModalOpen: false,
 	        qcEvaluationSaving: false,
 	        qcEvaluationImageProcessing: false,
 	        qcEvaluationForm: {
@@ -721,6 +726,10 @@ function dashboard() {
 	                this.currentPage = this.getDefaultPage();
 	                this.savePageState();
 	                return;
+	            }
+	            if (page !== 'qc-product-evaluations' && this.qcEvaluationModalOpen) {
+	                this.qcEvaluationModalOpen = false;
+	                this.resetQcEvaluationForm();
 	            }
             this.currentPage = page;
             this.savePageState();
@@ -1778,8 +1787,19 @@ function dashboard() {
 	                markers: []
 	            };
 	            this.qcMarkerDraft = { label: '', area: '', severity: 'minor', notes: '' };
-	            const input = document.getElementById('qc-evaluation-photo-input');
+	            const input = typeof document !== 'undefined' ? document.getElementById('qc-evaluation-photo-input') : null;
 	            if (input) input.value = '';
+	        },
+
+	        openQcEvaluationModal() {
+	            this.resetQcEvaluationForm();
+	            this.qcEvaluationModalOpen = true;
+	        },
+
+	        closeQcEvaluationModal() {
+	            if (this.qcEvaluationSaving) return;
+	            this.qcEvaluationModalOpen = false;
+	            this.resetQcEvaluationForm();
 	        },
 
 	        async loadQcProductEvaluations() {
@@ -1788,6 +1808,7 @@ function dashboard() {
 	                const result = await response.json();
 	                if (!response.ok) throw new Error(result.error || 'Gagal memuat evaluasi produk QC');
 	                this.qcProductEvaluations = Array.isArray(result.evaluations) ? result.evaluations : [];
+	                this.qcEvaluationCurrentPage = Math.max(1, Math.min(this.qcEvaluationCurrentPage, this.totalQcEvaluationPages || 1));
 	            } catch (error) {
 	                logClientError('Error loading QC product evaluations:', error);
 	                this.showToast(error.message, 'error');
@@ -1927,11 +1948,11 @@ function dashboard() {
 	            this.qcEvaluationForm = JSON.parse(JSON.stringify(evaluation));
             this.qcEvaluationForm.modelId = this.qcEvaluationForm.modelId || '';
             this.qcEvaluationForm.modelLine = this.qcEvaluationForm.modelLine || '';
-            this.qcEvaluationForm.modelSelectionKey = this.qcEvaluationForm.modelLine && this.qcEvaluationForm.modelId
-                ? `${this.qcEvaluationForm.modelLine}::${this.qcEvaluationForm.modelId}` : '';
+	            this.qcEvaluationForm.modelSelectionKey = this.qcEvaluationForm.modelLine && this.qcEvaluationForm.modelId
+	                ? `${this.qcEvaluationForm.modelLine}::${this.qcEvaluationForm.modelId}` : '';
 	            this.qcEvaluationForm.lines = this.qcEvaluationForm.lines || [];
 	            this.qcEvaluationForm.markers = this.qcEvaluationForm.markers || [];
-	            window.scrollTo({ top: 0, behavior: 'smooth' });
+	            this.qcEvaluationModalOpen = true;
 	        },
 
 	        async saveQcProductEvaluation() {
@@ -1956,7 +1977,9 @@ function dashboard() {
 	                const result = await response.json();
 	                if (!response.ok) throw new Error(result.error || 'Evaluasi gagal disimpan');
 	                this.showToast(result.message, 'success');
+	                this.qcEvaluationModalOpen = false;
 	                this.resetQcEvaluationForm();
+	                this.qcEvaluationCurrentPage = 1;
 	                await this.loadQcProductEvaluations();
 	            } catch (error) {
 	                logClientError('Error saving QC product evaluation:', error);
@@ -1989,7 +2012,10 @@ function dashboard() {
 	                const response = await fetch(`/api/qc-product-evaluations/${encodeURIComponent(evaluation.id)}`, { method: 'DELETE' });
 	                const result = await response.json();
 	                if (!response.ok) throw new Error(result.error || 'Evaluasi gagal dihapus');
-	                if (this.qcEvaluationForm.id === evaluation.id) this.resetQcEvaluationForm();
+	                if (this.qcEvaluationForm.id === evaluation.id) {
+	                    this.qcEvaluationModalOpen = false;
+	                    this.resetQcEvaluationForm();
+	                }
 	                await this.loadQcProductEvaluations();
 	                this.showToast(result.message, 'success');
 	            } catch (error) {
@@ -3348,6 +3374,37 @@ function dashboard() {
         get activeDefectAreas() {
             return (this.defectAreas || []).filter(area => area.active !== false);
         },
+
+	        get filteredQcProductEvaluations() {
+	            const search = this.qcEvaluationSearchTerm.trim().toLowerCase();
+	            const status = this.qcEvaluationStatusFilter;
+	            return (this.qcProductEvaluations || []).filter(evaluation => {
+	                const isActive = evaluation.active !== false;
+	                const matchesStatus = !status || (status === 'active' ? isActive : !isActive);
+	                const matchesSearch = !search || [
+	                    evaluation.title,
+	                    evaluation.productName,
+	                    evaluation.modelId,
+	                    evaluation.createdBy,
+	                    ...(evaluation.lines || [])
+	                ].some(value => String(value || '').toLowerCase().includes(search));
+	                return matchesStatus && matchesSearch;
+	            });
+	        },
+
+	        get paginatedQcProductEvaluations() {
+	            const perPage = Number(this.qcEvaluationItemsPerPage) || 5;
+	            const start = (this.qcEvaluationCurrentPage - 1) * perPage;
+	            return this.filteredQcProductEvaluations.slice(start, start + perPage);
+	        },
+
+	        get totalQcEvaluationPages() {
+	            return Math.ceil(this.filteredQcProductEvaluations.length / (Number(this.qcEvaluationItemsPerPage) || 5));
+	        },
+
+	        get qcEvaluationPages() {
+	            return this.paginationPages(this.qcEvaluationCurrentPage, this.totalQcEvaluationPages);
+	        },
 
 	        get filteredDefectTypes() {
 	            const search = this.defectTypeSearchTerm.trim().toLowerCase();

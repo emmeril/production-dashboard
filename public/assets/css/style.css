@@ -2269,6 +2269,52 @@ button:not(.pagination-btn):not([class*="rounded-full"]):not([class*="p-1"]):not
     display: block;
 }
 
+.qc-line-check-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .4rem;
+    max-height: 9.5rem;
+    padding: .55rem;
+    overflow-y: auto;
+    border: 1px solid #d1d5db;
+    border-radius: .375rem;
+    background: #fff;
+}
+
+.qc-line-check {
+    display: flex;
+    align-items: center;
+    gap: .45rem;
+    min-width: 0;
+    padding: .4rem .5rem;
+    border: 1px solid #e5e7eb;
+    border-radius: .3rem;
+    background: #f8fafc;
+    color: #374151;
+    font-size: .82rem;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.qc-line-check:hover {
+    border-color: #93c5fd;
+    background: #eff6ff;
+}
+
+.qc-line-check input[type="checkbox"] {
+    flex: 0 0 auto;
+    width: 1rem;
+    height: 1rem;
+    margin: 0;
+    accent-color: #2563eb;
+}
+
+.qc-line-check span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 .qc-publish-option small {
     margin-top: .15rem;
     color: #64748b;
@@ -2279,7 +2325,20 @@ button:not(.pagination-btn):not([class*="rounded-full"]):not([class*="p-1"]):not
     justify-content: flex-start;
 }
 
+.qc-evaluation-modal {
+    z-index: 70;
+}
+
+.qc-evaluation-modal-panel {
+    width: min(1120px, calc(100vw - 2rem));
+    max-height: calc(100vh - 4rem);
+    overflow-y: auto;
+}
+
 .qc-evaluation-list-item {
+    display: grid;
+    grid-template-columns: 220px minmax(0, 1fr);
+    column-gap: 1rem;
     transition: background-color .15s ease;
 }
 
@@ -2288,7 +2347,12 @@ button:not(.pagination-btn):not([class*="rounded-full"]):not([class*="p-1"]):not
 }
 
 .qc-evaluation-thumbnail {
+    grid-row: 1 / span 6;
     border: 1px solid #e2e8f0;
+}
+
+.qc-evaluation-list-item > :not(.qc-evaluation-thumbnail) {
+    grid-column: 2;
 }
 
 .qc-marker-count {
@@ -2311,5 +2375,22 @@ button:not(.pagination-btn):not([class*="rounded-full"]):not([class*="p-1"]):not
     .qc-evaluation-list-card .filter-group,
     .qc-evaluation-list-card .btn-action {
         width: 100%;
+    }
+
+    .qc-line-check-list {
+        grid-template-columns: 1fr;
+    }
+
+    .qc-evaluation-modal-panel {
+        width: calc(100vw - 1rem);
+        max-height: calc(100vh - 1rem);
+    }
+
+    .qc-evaluation-list-item {
+        display: block;
+    }
+
+    .qc-evaluation-list-item > :not(.qc-evaluation-thumbnail) {
+        grid-column: auto;
     }
 }

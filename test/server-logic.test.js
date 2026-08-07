@@ -990,6 +990,34 @@ test('Admin Operator QC can manage marked product photo evaluations', () => {
   );
 });
 
+test('QC product evaluations use the dashboard pagination and filters', () => {
+  const context = { console, Date, Intl, Map, Math, Set, parseInt };
+  const alpineSource = fs.readFileSync(path.join(__dirname, '..', 'public/assets/js/alpine.js'), 'utf8');
+  vm.runInNewContext(alpineSource, context);
+
+  const dashboard = context.dashboard();
+  dashboard.qcProductEvaluations = Array.from({ length: 7 }, (_, index) => ({
+    id: `evaluation-${index + 1}`,
+    title: `Evaluasi ${index + 1}`,
+    productName: index === 6 ? 'Model Khusus' : 'Model A',
+    active: index % 2 === 0,
+    lines: ['LINE 1']
+  }));
+  dashboard.qcEvaluationItemsPerPage = 5;
+
+  assert.equal(dashboard.totalQcEvaluationPages, 2);
+  assert.equal(dashboard.paginatedQcProductEvaluations.length, 5);
+  dashboard.qcEvaluationCurrentPage = 2;
+  assert.equal(dashboard.paginatedQcProductEvaluations.length, 2);
+
+  dashboard.qcEvaluationCurrentPage = 1;
+  dashboard.qcEvaluationStatusFilter = 'active';
+  assert.equal(dashboard.filteredQcProductEvaluations.length, 4);
+  dashboard.qcEvaluationStatusFilter = '';
+  dashboard.qcEvaluationSearchTerm = 'khusus';
+  assert.deepEqual(Array.from(dashboard.filteredQcProductEvaluations, item => item.id), ['evaluation-7']);
+});
+
 test('PPIC line edits send only model identity and daily target fields', async () => {
   const requests = [];
   const context = {

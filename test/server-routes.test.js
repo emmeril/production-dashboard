@@ -603,6 +603,70 @@ test('production update endpoints reject QC fields without changing QC state', a
   assert.deepEqual(after.defectDetails, before.defectDetails);
 });
 
+test('linked material-order models and lines cannot be hard deleted', async () => {
+  const { cookie } = await login('admin', 'admin-password');
+  const headers = { Cookie: cookie, 'Content-Type': 'application/json' };
+
+  const createLineResponse = await fetch(`${baseUrl}/api/lines`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      lineName: 'Line Protected',
+      labelWeek: 'W40',
+      model: 'Model Utama',
+      target: 80,
+      date: getToday()
+    })
+  });
+  assert.equal(createLineResponse.status, 200);
+
+  const createModelResponse = await fetch(`${baseUrl}/api/lines/LINE%20PROTECTED/models`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      labelWeek: 'W40',
+      model: 'Model Tertaut',
+      target: 80,
+      date: getToday()
+    })
+  });
+  const createdModel = await createModelResponse.json();
+  assert.equal(createModelResponse.status, 200);
+
+  const createOrderResponse = await fetch(`${baseUrl}/api/material-orders`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      poMaterial: 'PO-PROTECTED-DELETE',
+      orderMaterial: 'Material History',
+      qtyOrder: 100,
+      orderDate: getToday(),
+      productions: [{
+        lineName: 'LINE PROTECTED',
+        modelId: createdModel.modelId,
+        status: 'planned'
+      }]
+    })
+  });
+  assert.equal(createOrderResponse.status, 201);
+
+  const deleteModelResponse = await fetch(
+    `${baseUrl}/api/lines/LINE%20PROTECTED/models/${createdModel.modelId}`,
+    { method: 'DELETE', headers: { Cookie: cookie } }
+  );
+  const deleteModelResult = await deleteModelResponse.json();
+  assert.equal(deleteModelResponse.status, 409);
+  assert.match(deleteModelResult.error, /Order Material.*PO-PROTECTED-DELETE/i);
+
+  const deleteLineResponse = await fetch(`${baseUrl}/api/lines/LINE%20PROTECTED`, {
+    method: 'DELETE',
+    headers: { Cookie: cookie }
+  });
+  const deleteLineResult = await deleteLineResponse.json();
+  assert.equal(deleteLineResponse.status, 409);
+  assert.match(deleteLineResult.error, /Order Material.*PO-PROTECTED-DELETE/i);
+});
+
 test('login endpoint throttles repeated invalid attempts', async () => {
   const first = await login('throttled-user', 'wrong-password');
   const second = await login('throttled-user', 'wrong-password');

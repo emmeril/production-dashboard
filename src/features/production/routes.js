@@ -24,6 +24,36 @@ function rejectProductionQcFields(req, res) {
   return true;
 }
 
+function modelHasRecordedActivity(model = {}) {
+  if (['outputDay', 'qcChecking', 'actualDefect'].some(field => Number(model[field]) > 0)) return true;
+  if (Array.isArray(model.qcChecks) && model.qcChecks.length > 0) return true;
+  if ((model.hourly_data || []).some(hour =>
+    ['output', 'qcChecked', 'defect'].some(field => Number(hour?.[field]) > 0)
+  )) return true;
+  return (model.operators || []).some(operator =>
+    ['output', 'defect'].some(field => Number(operator?.[field]) > 0)
+  );
+}
+
+function findLinkedMaterialOrders(materialOrders = [], lineName, modelId = '') {
+  const normalizedLineName = String(lineName || '').trim().toUpperCase();
+  const normalizedModelId = String(modelId || '').trim();
+
+  return (materialOrders || []).filter(order => {
+    const productions = Array.isArray(order.productions) && order.productions.length > 0
+      ? order.productions
+      : (order.lineName || order.modelId ? [order] : []);
+    return productions.some(production => {
+      const productionLines = String(production.lineName || '')
+        .split(',')
+        .map(value => value.trim().toUpperCase())
+        .filter(Boolean);
+      return productionLines.includes(normalizedLineName)
+        && (!normalizedModelId || String(production.modelId || '').trim() === normalizedModelId);
+    });
+  });
+}
+
 function registerProductionRoutes(app, dependencies) {
   const {
     ADMIN_OPERATOR_ROLES,
@@ -48,6 +78,7 @@ function registerProductionRoutes(app, dependencies) {
     normalizeModelName,
     parseNonNegativeInteger,
     preserveMaterialOrderProductionIdentity,
+    readMaterialOrders,
     readProductionData,
     recalculateModelTotals,
     rejectBlankOperatorProductionOutput,
@@ -702,6 +733,18 @@ function registerProductionRoutes(app, dependencies) {
       return res.status(404).json({ error: 'Model not found' });
     }
 
+    const linkedOrders = findLinkedMaterialOrders(readMaterialOrders().orders, lineName, modelId);
+    if (linkedOrders.length > 0) {
+      const poList = linkedOrders.slice(0, 3).map(order => order.poMaterial).filter(Boolean).join(', ');
+      return res.status(409).json({
+        error: `Model tidak dapat dihapus karena terhubung dengan Order Material${poList ? ` (${poList})` : ''}. Tambahkan atau aktifkan model pengganti, lalu nonaktifkan model ini agar history tetap tersimpan.`
+      });
+    }
+    if (modelHasRecordedActivity(data.lines[lineName].models[modelId])) {
+      return res.status(409).json({
+        error: 'Model tidak dapat dihapus karena sudah memiliki hasil produksi atau QC. Tambahkan atau aktifkan model pengganti, lalu nonaktifkan model ini agar history tetap tersimpan.'
+      });
+    }
     if (Object.keys(data.lines[lineName].models).length === 1) {
       return res.status(400).json({ error: 'Cannot delete the last model in a line' });
     }
@@ -735,6 +778,19 @@ function registerProductionRoutes(app, dependencies) {
 
     if (!data.lines[lineName]) {
       return res.status(404).json({ error: 'Line not found' });
+    }
+
+    const linkedOrders = findLinkedMaterialOrders(readMaterialOrders().orders, lineName);
+    if (linkedOrders.length > 0) {
+      const poList = linkedOrders.slice(0, 3).map(order => order.poMaterial).filter(Boolean).join(', ');
+      return res.status(409).json({
+        error: `Line tidak dapat dihapus karena terhubung dengan Order Material${poList ? ` (${poList})` : ''}. Line dipertahankan agar history tetap tersimpan.`
+      });
+    }
+    if (Object.values(data.lines[lineName].models || {}).some(modelHasRecordedActivity)) {
+      return res.status(409).json({
+        error: 'Line tidak dapat dihapus karena sudah memiliki hasil produksi atau QC. Line dipertahankan agar history tetap tersimpan.'
+      });
     }
 
     delete data.lines[lineName];
@@ -955,4 +1011,9 @@ function registerProductionRoutes(app, dependencies) {
   });
 }
 
-module.exports = { getUserQcMaxQuantity, registerProductionRoutes };
+module.exports = {
+  findLinkedMaterialOrders,
+  getUserQcMaxQuantity,
+  modelHasRecordedActivity,
+  registerProductionRoutes
+};

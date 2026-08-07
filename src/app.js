@@ -1783,6 +1783,7 @@ registerProductionRoutes(app, {
   normalizeModelName,
   parseNonNegativeInteger,
   preserveMaterialOrderProductionIdentity,
+  readMaterialOrders,
   readProductionData,
   recalculateModelTotals,
   rejectBlankOperatorProductionOutput,

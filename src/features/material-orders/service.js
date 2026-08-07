@@ -25,6 +25,9 @@ function createMaterialOrderService(dependencies) {
     return {
       lineName: normalizeProductionLineName(production.lineName),
       modelId: String(production.modelId || '').trim(),
+      labelWeek: normalizeLabelWeek(production.labelWeek),
+      modelName: String(production.modelName || '').trim(),
+      productionIdentity: normalizeMaterialOrderIdentity(production.productionIdentity),
       status: MATERIAL_ORDER_STATUSES.includes(production.status) ? production.status : 'planned',
       qtyResult: Math.max(0, parseInt(production.qtyResult) || 0)
     };
@@ -122,6 +125,10 @@ function createMaterialOrderService(dependencies) {
     return `${normalize(lineName)}::${normalizeLabelWeekKey(model.labelWeek)}::${normalize(model.model)}`;
   }
 
+  function materialOrderProductionReference(lineName, modelId) {
+    return `reference::${normalizeProductionLineName(lineName).toLowerCase()}::${String(modelId || '').trim().toLowerCase()}`;
+  }
+
   function normalizeMaterialOrderIdentity(identity) {
     const parts = String(identity || '').split('::');
     if (parts.length !== 3) return String(identity || '').trim().toLowerCase();
@@ -177,9 +184,12 @@ function createMaterialOrderService(dependencies) {
     const totals = {};
     getMaterialOrderHistoricalProductionData().forEach(data => {
       Object.entries(data?.lines || {}).forEach(([lineName, line]) => {
-        Object.values(line.models || {}).forEach(model => {
+        Object.entries(line.models || {}).forEach(([modelId, model]) => {
+          const output = getMaterialOrderActualQty(model);
           const identity = materialOrderProductionIdentity(lineName, model);
-          totals[identity] = (totals[identity] || 0) + getMaterialOrderActualQty(model);
+          const reference = materialOrderProductionReference(lineName, modelId);
+          totals[identity] = (totals[identity] || 0) + output;
+          totals[reference] = (totals[reference] || 0) + output;
         });
       });
     });
@@ -198,9 +208,12 @@ function createMaterialOrderService(dependencies) {
 
     sources.forEach(data => {
       Object.entries(data?.lines || {}).forEach(([lineName, line]) => {
-        Object.values(line.models || {}).forEach(model => {
+        Object.entries(line.models || {}).forEach(([modelId, model]) => {
+          const output = getMaterialOrderActualQty(model);
           const identity = materialOrderProductionIdentity(lineName, model);
-          totals[identity] = (totals[identity] || 0) + getMaterialOrderActualQty(model);
+          const reference = materialOrderProductionReference(lineName, modelId);
+          totals[identity] = (totals[identity] || 0) + output;
+          totals[reference] = (totals[reference] || 0) + output;
         });
       });
     });
@@ -220,6 +233,24 @@ function createMaterialOrderService(dependencies) {
     return matchedOutputs.length > 0
       ? matchedOutputs.reduce((total, identity) => total + getMaterialOrderActualQty(null, cumulativeOutputs[identity]), 0)
       : getMaterialOrderActualQty(model);
+  }
+
+  function getStoredMaterialOrderCumulativeOutput(production, cumulativeOutputs = {}) {
+    const storedIdentity = normalizeMaterialOrderIdentity(production.productionIdentity)
+      || (production.labelWeek && production.modelName
+        ? materialOrderProductionIdentity(production.lineName, {
+            labelWeek: production.labelWeek,
+            model: production.modelName
+          })
+        : '');
+    if (storedIdentity && Object.prototype.hasOwnProperty.call(cumulativeOutputs, storedIdentity)) {
+      return getMaterialOrderActualQty(null, cumulativeOutputs[storedIdentity]);
+    }
+
+    const reference = materialOrderProductionReference(production.lineName, production.modelId);
+    return Object.prototype.hasOwnProperty.call(cumulativeOutputs, reference)
+      ? getMaterialOrderActualQty(null, cumulativeOutputs[reference])
+      : getMaterialOrderActualQty(null, production.qtyResult);
   }
 
   function buildMaterialOrderProductionTotals(productionData = readProductionData(), cumulativeOutputs = buildMaterialOrderCumulativeOutputs(productionData)) {
@@ -264,6 +295,9 @@ function createMaterialOrderService(dependencies) {
         errors.push(`${rowLabel}: line atau model produksi tidak ditemukan`);
       } else {
         production.qtyResult = getMaterialOrderActualQty(model);
+        production.labelWeek = normalizeLabelWeek(model.labelWeek);
+        production.modelName = String(model.model || '').trim();
+        production.productionIdentity = materialOrderProductionIdentity(production.lineName, model);
       }
       if (!MATERIAL_ORDER_STATUSES.includes(rawProduction.status)) {
         errors.push(`${rowLabel}: Status produksi tidak valid`);
@@ -293,14 +327,17 @@ function createMaterialOrderService(dependencies) {
       const activeModels = productionLine?.activeModels || [];
       const currentProductionOutput = model
         ? getMaterialOrderCumulativeOutput(production.lineName, model, cumulativeOutputs)
-        : getMaterialOrderActualQty(null, production.qtyResult);
+        : getStoredMaterialOrderCumulativeOutput(production, cumulativeOutputs);
 
       return {
         ...production,
         qtyResult: currentProductionOutput,
         allocationIndex: index + 1,
-        modelName: model?.model || '',
-        labelWeek: model?.labelWeek || '',
+        modelName: model?.model || production.modelName || '',
+        labelWeek: model?.labelWeek || production.labelWeek || '',
+        productionIdentity: model
+          ? materialOrderProductionIdentity(production.lineName, model)
+          : production.productionIdentity,
         currentProductionOutput,
         productionActive: activeModels.includes(production.modelId)
           || productionLine?.activeModel === production.modelId,

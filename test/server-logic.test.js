@@ -4,7 +4,11 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const crypto = require('node:crypto');
-const { getUserQcMaxQuantity } = require('../src/features/production/routes');
+const {
+  findLinkedMaterialOrders,
+  getUserQcMaxQuantity,
+  modelHasRecordedActivity
+} = require('../src/features/production/routes');
 
 const {
   app,
@@ -314,6 +318,59 @@ test('material order production totals accumulate daily snapshots and current ou
   const totals = buildMaterialOrderProductionTotals(current, cumulative);
 
   assert.deepEqual(totals, { 'Line 1::model1': 65, 'Line 2::model7': 67 });
+});
+
+test('material order keeps historical output when its current line or model is missing', () => {
+  const history = [{
+    lines: {
+      'Line 1': {
+        models: {
+          model1: { labelWeek: 'W30', model: 'Model A', outputDay: 40 }
+        }
+      }
+    }
+  }];
+  const current = { lines: {} };
+  const cumulative = buildMaterialOrderCumulativeOutputs(current, history);
+  const [row] = filterMaterialOrderReportRows([{
+    id: 10,
+    orderDate: '2026-07-25',
+    poMaterial: 'PO-HISTORY',
+    orderMaterial: 'Kain',
+    qtyOrder: 100,
+    productions: [{
+      lineName: 'Line 1',
+      modelId: 'model1',
+      labelWeek: 'W30',
+      modelName: 'Model A',
+      productionIdentity: 'line 1::w30::model a',
+      status: 'in_production',
+      qtyResult: 5
+    }]
+  }], {}, current, cumulative);
+
+  assert.equal(row.qtyResult, 40);
+  assert.equal(row.modelName, '1. Model A');
+  assert.equal(row.labelWeek, '1. W30');
+  assert.equal(row.linkedModelExists, false);
+});
+
+test('line deletion protection detects production activity and material-order links', () => {
+  assert.equal(modelHasRecordedActivity({ outputDay: 1 }), true);
+  assert.equal(modelHasRecordedActivity({ hourly_data: [{ output: 0, qcChecked: 2 }] }), true);
+  assert.equal(modelHasRecordedActivity({ outputDay: 0, qcChecks: [], hourly_data: [] }), false);
+
+  const orders = [{
+    id: 1,
+    poMaterial: 'PO-1',
+    productions: [
+      { lineName: 'Line 1', modelId: 'model1' },
+      { lineName: 'Line 2', modelId: 'model2' }
+    ]
+  }];
+  assert.deepEqual(findLinkedMaterialOrders(orders, 'line 1', 'model1').map(order => order.id), [1]);
+  assert.deepEqual(findLinkedMaterialOrders(orders, 'LINE 2').map(order => order.id), [1]);
+  assert.deepEqual(findLinkedMaterialOrders(orders, 'LINE 1', 'model9'), []);
 });
 
 test('material order status follows quantity progress with three automatic states', () => {

@@ -409,7 +409,7 @@ test('database restore replaces active application data and creates a safety bac
     assert.equal(result.status, 0, result.stderr || result.stdout);
     assert.match(
       result.stdout,
-      /DATABASE_RESTORE_RESULT={"activeLine":"RESTORED LINE","output":88,"restoredFrom":"production-dashboard_2026-07-27_manual_1_abcdef12.sqlite","safetyBackupCreated":true,"appDataCount":7,"invalidBackupCode":"INVALID_DATABASE_BACKUP"}/
+      /DATABASE_RESTORE_RESULT={"activeLine":"RESTORED LINE","output":88,"restoredFrom":"production-dashboard_2026-07-27_manual_1_abcdef12.sqlite","safetyBackupCreated":true,"appDataCount":8,"invalidBackupCode":"INVALID_DATABASE_BACKUP"}/
     );
   } finally {
     fs.rmSync(tempDir, { recursive: true, force: true });

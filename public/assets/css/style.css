@@ -2204,3 +2204,112 @@ button:not(.pagination-btn):not([class*="rounded-full"]):not([class*="p-1"]):not
   .2xl\:col-span-2 { grid-column: span 2 / span 2; }
   .2xl\:col-span-3 { grid-column: span 3 / span 3; }
 }
+
+/* Evaluasi Produk QC follows the same neutral card and toolbar language used
+   by Management Line, Kategori Defect, and Public Display settings. */
+.qc-evaluation-page .card-shadow {
+    border: 1px solid #e2e8f0;
+}
+
+.qc-evaluation-form input[type="text"],
+.qc-evaluation-form select,
+.qc-evaluation-form textarea,
+#qc-evaluation-photo-input {
+    min-height: 38px;
+    border: 1px solid #d1d5db;
+    border-radius: .375rem;
+    background-color: #fff;
+}
+
+#qc-evaluation-photo-input {
+    padding: .35rem;
+}
+
+#qc-evaluation-photo-input::file-selector-button {
+    margin-right: .75rem;
+    padding: .5rem .75rem;
+    border: 0;
+    border-radius: .3rem;
+    background: #eaf2ff;
+    color: #1d4ed8;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.qc-marker-toolbar {
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .7);
+}
+
+.qc-evaluation-form fieldset {
+    background: #f8fafc;
+}
+
+.qc-publish-option {
+    display: flex;
+    align-items: flex-start;
+    gap: .65rem;
+    padding: .75rem .9rem;
+    border: 1px solid #dbeafe;
+    border-radius: .375rem;
+    background: #eff6ff;
+    color: #1e3a8a;
+    font-size: .875rem;
+    cursor: pointer;
+}
+
+.qc-publish-option input {
+    flex: 0 0 auto;
+    margin-top: .15rem;
+    width: 1rem;
+    height: 1rem;
+}
+
+.qc-publish-option span,
+.qc-publish-option small {
+    display: block;
+}
+
+.qc-publish-option small {
+    margin-top: .15rem;
+    color: #64748b;
+    font-weight: 400;
+}
+
+.qc-evaluation-list-card .filter-toolbar {
+    justify-content: flex-start;
+}
+
+.qc-evaluation-list-item {
+    transition: background-color .15s ease;
+}
+
+.qc-evaluation-list-item:hover {
+    background: #f8fafc;
+}
+
+.qc-evaluation-thumbnail {
+    border: 1px solid #e2e8f0;
+}
+
+.qc-marker-count {
+    position: absolute;
+    top: .5rem;
+    right: .5rem;
+    padding: .25rem .55rem;
+    border-radius: 999px;
+    background: rgba(15, 23, 42, .82);
+    color: #fff;
+    font-size: .72rem;
+    font-weight: 700;
+}
+
+@media (max-width: 640px) {
+    .qc-evaluation-page .btn-action {
+        min-height: 34px;
+    }
+
+    .qc-evaluation-list-card .filter-group,
+    .qc-evaluation-list-card .btn-action {
+        width: 100%;
+    }
+}

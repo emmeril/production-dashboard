@@ -2173,7 +2173,25 @@ function validateQcEvaluationImage(photoDataUrl) {
 
 function normalizeQcEvaluationInput(input, existing = null) {
   const title = String(input?.title || '').trim().slice(0, 120);
-  const productName = String(input?.productName || '').trim().slice(0, 120);
+  const modelId = String(input?.modelId || existing?.modelId || '').trim().slice(0, 100);
+  const modelLine = String(input?.modelLine || existing?.modelLine || '').trim().slice(0, 120);
+  let selectedModel = null;
+  if (modelId) {
+    const productionLines = readProductionData().lines || {};
+    if (modelLine && productionLines[modelLine]?.models?.[modelId]) {
+      selectedModel = productionLines[modelLine].models[modelId];
+    } else {
+      for (const line of Object.values(productionLines)) {
+        if (line?.models?.[modelId]) {
+          selectedModel = line.models[modelId];
+          break;
+        }
+      }
+    }
+    if (!selectedModel) return { error: 'Model yang dipilih tidak tersedia di Management Line.' };
+  }
+  if (!modelId && !existing) return { error: 'Pilih model produk dari daftar yang tersedia.' };
+  const productName = String(selectedModel?.model || input?.productName || existing?.productName || modelId).trim().slice(0, 120);
   const targetMode = input?.targetMode === 'selected' ? 'selected' : 'all';
   const lines = normalizeQcEvaluationLines(targetMode, input?.lines);
   const photoValidation = validateQcEvaluationImage(input?.photoDataUrl || existing?.photoDataUrl);
@@ -2218,6 +2236,8 @@ function normalizeQcEvaluationInput(input, existing = null) {
   return {
     value: {
       title,
+      modelId,
+      modelLine,
       productName,
       notes: String(input?.notes || '').trim().slice(0, 1000),
       targetMode,

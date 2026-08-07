@@ -222,6 +222,9 @@ function dashboard() {
 	        qcEvaluationForm: {
 	            id: null,
 	            title: '',
+	            modelId: '',
+	            modelLine: '',
+	            modelSelectionKey: '',
 	            productName: '',
 	            notes: '',
 	            targetMode: 'all',
@@ -1763,6 +1766,9 @@ function dashboard() {
 	            this.qcEvaluationForm = {
 	                id: null,
 	                title: '',
+	                modelId: '',
+	                modelLine: '',
+	                modelSelectionKey: '',
 	                productName: '',
 	                notes: '',
 	                targetMode: 'all',
@@ -1792,6 +1798,37 @@ function dashboard() {
 	            const selected = (this.defectTypes || []).find(item => item.name === this.qcMarkerDraft.label);
 	            this.qcMarkerDraft.severity = selected?.severity || 'minor';
 	        },
+
+	        qcEvaluationModelOptions() {
+	            const options = [];
+	            const seen = new Set();
+	            (this.linesWithModels || []).forEach(model => {
+	                const key = `${model.lineName}::${model.modelId}`;
+
+	                if (seen.has(key)) return;
+	                seen.add(key);
+	                options.push({
+	                    key,
+	                    lineName: model.lineName,
+	                    modelId: model.modelId,
+	                    modelName: model.data?.model || model.modelId
+	                });
+	            });
+            return options.sort((left, right) => left.lineName.localeCompare(right.lineName) || left.modelName.localeCompare(right.modelName));
+        },
+
+        syncQcEvaluationModelName() {
+            const selected = this.qcEvaluationModelOptions().find(item => item.key === this.qcEvaluationForm.modelSelectionKey);
+            if (!selected) {
+                this.qcEvaluationForm.modelId = '';
+                this.qcEvaluationForm.modelLine = '';
+                this.qcEvaluationForm.productName = '';
+                return;
+            }
+            this.qcEvaluationForm.modelId = selected.modelId;
+            this.qcEvaluationForm.modelLine = selected.lineName;
+            this.qcEvaluationForm.productName = selected.modelName;
+        },
 
 	        async handleQcEvaluationPhoto(event) {
 	            const file = event?.target?.files?.[0];
@@ -1888,6 +1925,10 @@ function dashboard() {
 
 	        editQcProductEvaluation(evaluation) {
 	            this.qcEvaluationForm = JSON.parse(JSON.stringify(evaluation));
+            this.qcEvaluationForm.modelId = this.qcEvaluationForm.modelId || '';
+            this.qcEvaluationForm.modelLine = this.qcEvaluationForm.modelLine || '';
+            this.qcEvaluationForm.modelSelectionKey = this.qcEvaluationForm.modelLine && this.qcEvaluationForm.modelId
+                ? `${this.qcEvaluationForm.modelLine}::${this.qcEvaluationForm.modelId}` : '';
 	            this.qcEvaluationForm.lines = this.qcEvaluationForm.lines || [];
 	            this.qcEvaluationForm.markers = this.qcEvaluationForm.markers || [];
 	            window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1895,8 +1936,8 @@ function dashboard() {
 
 	        async saveQcProductEvaluation() {
 	            const form = this.qcEvaluationForm;
-	            if (!form.title.trim() || !form.photoDataUrl || !form.markers.length) {
-	                this.showToast('Lengkapi judul, foto, dan minimal satu titik defect', 'error');
+            if (!form.title.trim() || !form.photoDataUrl || !form.markers.length || (!form.id && !form.modelId)) {
+                this.showToast('Lengkapi model, judul, foto, dan minimal satu titik defect', 'error');
 	                return;
 	            }
 	            if (form.targetMode === 'selected' && !form.lines.length) {

@@ -246,6 +246,8 @@ test('admin operator QC can publish marked product photos to selected public dis
     headers: { Cookie: qcCookie, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       title: 'Evaluasi Body Depan',
+      modelId: 'model1',
+      modelLine: 'LINE 1',
       productName: 'Model A',
       targetMode: 'selected',
       lines: ['line 1', 'Line Tidak Ada'],
@@ -265,6 +267,7 @@ test('admin operator QC can publish marked product photos to selected public dis
   const created = await createResponse.json();
   assert.equal(createResponse.status, 201);
   assert.deepEqual(created.evaluation.lines, ['LINE 1']);
+  assert.equal(created.evaluation.productName, 'MODEL A');
   assert.equal(created.evaluation.markers[0].x, 42.123);
 
   const matchingResponse = await fetch(`${baseUrl}/api/public/qc-product-evaluations?line=LINE%201`);
@@ -282,6 +285,8 @@ test('admin operator QC can publish marked product photos to selected public dis
     headers: { Cookie: qcCookie, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       title: 'Tanpa titik',
+      modelId: 'model1',
+      modelLine: 'LINE 1',
       targetMode: 'all',
       photoDataUrl: 'data:image/png;base64,iVBORw0KGgo=',
       markers: []

@@ -100,10 +100,13 @@
 .qc-evaluation-content {
     height: var(--qc-evaluation-content-height, 84%);
     display: flex;
+    min-height: 0;
+    overflow: hidden;
 }
 
 .qc-evaluation-photo-panel {
     width: 70%;
+    height: 100%;
     padding: 16px;
     display: flex;
     align-items: center;
@@ -161,17 +164,42 @@
 
 .qc-evaluation-detail-panel {
     width: 30%;
+    height: 100%;
     padding: 18px;
+    display: flex;
+    flex-direction: column;
     background: #102541;
     box-sizing: border-box;
-    overflow-y: auto;
+    overflow: hidden;
 }
 
 .qc-evaluation-detail-panel h2 {
+    flex: 0 0 auto;
     margin: 0 0 14px;
     color: #fca5a5;
     font-size: calc(var(--display-side-font-size, 14px) + 8px);
     letter-spacing: 1px;
+}
+
+.qc-evaluation-marker-list {
+    flex: 1 1 auto;
+    min-height: 0;
+    padding-right: 4px;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.qc-evaluation-marker-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.qc-evaluation-marker-list::-webkit-scrollbar-track {
+    background: rgba(15, 23, 42, .45);
+}
+
+.qc-evaluation-marker-list::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: #64748b;
 }
 
 .qc-evaluation-marker-item {
@@ -198,6 +226,7 @@
 }
 
 .qc-evaluation-notes {
+    flex: 0 0 auto;
     margin-top: 14px;
     padding: 12px;
     border-radius: 6px;

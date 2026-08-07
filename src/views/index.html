@@ -7,7 +7,7 @@
 	<link rel="stylesheet" href="/public/assets/css/fonts.css?v=20260802">
 	<link rel="stylesheet" href="/public/assets/css/tailwind.css?v=3.4.17">
 	<link rel="stylesheet" href="/public/assets/css/fontawesome.min.css?v=6.5.2">
-	<link rel="stylesheet" href="/public/assets/css/style.css?v=20260807-qc-photo-v1">
+	<link rel="stylesheet" href="/public/assets/css/style.css?v=20260807-qc-badge-v1">
 	<script src="/public/assets/js/vendor/alpine.min.js?v=3.15.12" defer></script>
 	<script src="/public/assets/js/vendor/chart.umd.min.js?v=4.5.1" defer></script>
 </head>
@@ -2044,14 +2044,14 @@
 		                                    <div class="relative overflow-hidden rounded-lg border-2 border-dashed border-gray-300 bg-gray-900 cursor-crosshair select-none" @click="addQcEvaluationMarker($event)">
 		                                        <img :src="qcEvaluationForm.photoDataUrl" alt="Foto produk untuk penandaan defect" class="block h-auto w-full pointer-events-none">
 		                                        <template x-for="(marker, index) in qcEvaluationForm.markers" :key="marker.id">
-		                                            <span class="absolute flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white text-sm font-extrabold text-white shadow-lg pointer-events-none" :style="`left:${marker.x}%;top:${marker.y}%;background:${qcMarkerColor(marker.severity)}`" x-text="index + 1"></span>
+		                                            <span class="qc-photo-marker-badge absolute -translate-x-1/2 -translate-y-1/2 border-2 border-white text-white shadow-lg pointer-events-none" :style="`left:${marker.x}%;top:${marker.y}%;background:${qcMarkerColor(marker.severity)}`" x-text="index + 1"></span>
 		                                        </template>
 		                                    </div>
 
 		                                    <div x-show="qcEvaluationForm.markers.length" class="rounded-lg border border-gray-200 divide-y divide-gray-200">
 		                                        <template x-for="(marker, index) in qcEvaluationForm.markers" :key="marker.id">
 		                                            <div class="flex items-start gap-3 p-3">
-		                                                <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white" :style="`background:${qcMarkerColor(marker.severity)}`" x-text="index + 1"></span>
+		                                                <span class="qc-marker-list-badge text-white" :style="`background:${qcMarkerColor(marker.severity)}`" x-text="index + 1"></span>
 		                                                <div class="min-w-0 flex-1">
 		                                                    <div class="font-semibold text-gray-900"><span x-text="marker.label"></span><span class="font-normal text-gray-500"> · </span><span x-text="marker.area"></span></div>
 		                                                    <p x-show="marker.notes" class="mt-0.5 text-sm text-gray-600" x-text="marker.notes"></p>

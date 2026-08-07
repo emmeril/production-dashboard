@@ -89,8 +89,8 @@ let lastRequestDateResetCheckAt = 0;
 const loginRateLimitEntries = new Map();
 let dashboardSummaryCache = { signature: '', payload: null };
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
@@ -356,6 +356,7 @@ const {
   readMaterialOrders,
   readProductionData,
   readPublicDisplaySettings,
+  readQcProductEvaluations,
   readSnapshotPayload,
   readSnapshotData,
   readUsersData,
@@ -371,6 +372,7 @@ const {
   writeMaterialOrders,
   writeProductionData,
   writePublicDisplaySettings,
+  writeQcProductEvaluations,
   writeUsersData,
   writeWorkScheduleSettings
 } = createStorageService({
@@ -380,6 +382,7 @@ const {
   buildInitialMaterialOrders: (...args) => buildInitialMaterialOrders(...args),
   buildInitialProductionData,
   buildInitialPublicDisplaySettings,
+  buildInitialQcProductEvaluations,
   buildInitialUsersData,
   buildInitialWorkScheduleSettings,
   crypto,
@@ -400,6 +403,7 @@ const {
   normalizeMaterialOrders: (...args) => normalizeMaterialOrders(...args),
   normalizeProductionDataIdentities,
   normalizePublicDisplaySettings,
+  normalizeQcProductEvaluations,
   normalizeUserRecord,
   normalizeWorkScheduleSettings,
   path,
@@ -622,6 +626,16 @@ function buildInitialPublicDisplaySettings() {
     metricFontSize: 66,
     percentFontSize: 40,
     refreshInterval: 10000
+  };
+}
+
+function buildInitialQcProductEvaluations() {
+  return { evaluations: [] };
+}
+
+function normalizeQcProductEvaluations(data = {}) {
+  return {
+    evaluations: Array.isArray(data.evaluations) ? data.evaluations : []
   };
 }
 
@@ -2127,6 +2141,167 @@ app.get('/api/public-display-settings', async (req, res) => {
 app.put('/api/public-display-settings', requireLogin, requireAdmin, async (req, res) => {
   const settings = await writePublicDisplaySettings(req.body || {});
   res.json({ message: 'Public display settings updated successfully', settings });
+});
+
+const QC_EVALUATION_MAX_IMAGE_BYTES = 3 * 1024 * 1024;
+const QC_EVALUATION_MAX_MARKERS = 40;
+const QC_EVALUATION_MAX_RECORDS = 50;
+
+function normalizeQcEvaluationLines(targetMode, requestedLines) {
+  if (targetMode === 'all') return [];
+
+  const productionLines = Object.keys(readProductionData().lines || {});
+  const linesByKey = new Map(productionLines.map(lineName => [lineName.toLowerCase(), lineName]));
+  return [...new Set((Array.isArray(requestedLines) ? requestedLines : [])
+    .map(lineName => linesByKey.get(String(lineName || '').trim().toLowerCase()))
+    .filter(Boolean))];
+}
+
+function validateQcEvaluationImage(photoDataUrl) {
+  const match = String(photoDataUrl || '').match(/^data:image\/(jpeg|png|webp);base64,([A-Za-z0-9+/=]+)$/);
+  if (!match) {
+    return { error: 'Foto wajib berformat JPG, PNG, atau WebP.' };
+  }
+
+  const byteLength = Buffer.byteLength(match[2], 'base64');
+  if (!byteLength || byteLength > QC_EVALUATION_MAX_IMAGE_BYTES) {
+    return { error: 'Ukuran foto setelah kompresi maksimal 3 MB.' };
+  }
+
+  return { value: `data:image/${match[1]};base64,${match[2]}` };
+}
+
+function normalizeQcEvaluationInput(input, existing = null) {
+  const title = String(input?.title || '').trim().slice(0, 120);
+  const productName = String(input?.productName || '').trim().slice(0, 120);
+  const targetMode = input?.targetMode === 'selected' ? 'selected' : 'all';
+  const lines = normalizeQcEvaluationLines(targetMode, input?.lines);
+  const photoValidation = validateQcEvaluationImage(input?.photoDataUrl || existing?.photoDataUrl);
+
+  if (!title) return { error: 'Judul evaluasi wajib diisi.' };
+  if (photoValidation.error) return photoValidation;
+  if (targetMode === 'selected' && !lines.length) {
+    return { error: 'Pilih minimal satu line tujuan yang tersedia.' };
+  }
+
+  const rawMarkers = Array.isArray(input?.markers) ? input.markers : [];
+  if (!rawMarkers.length) return { error: 'Tambahkan minimal satu titik defect pada foto.' };
+  if (rawMarkers.length > QC_EVALUATION_MAX_MARKERS) {
+    return { error: `Maksimal ${QC_EVALUATION_MAX_MARKERS} titik defect per foto.` };
+  }
+
+  const markers = [];
+  for (let index = 0; index < rawMarkers.length; index += 1) {
+    const marker = rawMarkers[index] || {};
+    const x = Number(marker.x);
+    const y = Number(marker.y);
+    const label = String(marker.label || '').trim().slice(0, 80);
+    const area = String(marker.area || '').trim().slice(0, 80);
+    const severity = ['minor', 'major', 'critical'].includes(marker.severity) ? marker.severity : 'minor';
+    if (!Number.isFinite(x) || !Number.isFinite(y) || x < 0 || x > 100 || y < 0 || y > 100) {
+      return { error: `Posisi titik defect ${index + 1} tidak valid.` };
+    }
+    if (!label || !area) {
+      return { error: `Jenis dan area defect pada titik ${index + 1} wajib diisi.` };
+    }
+    markers.push({
+      id: String(marker.id || `marker-${index + 1}`).slice(0, 80),
+      x: Number(x.toFixed(3)),
+      y: Number(y.toFixed(3)),
+      label,
+      area,
+      severity,
+      notes: String(marker.notes || '').trim().slice(0, 300)
+    });
+  }
+
+  return {
+    value: {
+      title,
+      productName,
+      notes: String(input?.notes || '').trim().slice(0, 1000),
+      targetMode,
+      lines,
+      active: input?.active !== false,
+      photoDataUrl: photoValidation.value,
+      markers
+    }
+  };
+}
+
+app.get('/api/qc-product-evaluations', requireLogin, requireQcManageAccess, (req, res) => {
+  const records = readQcProductEvaluations().evaluations || [];
+  res.setHeader('Cache-Control', 'no-store');
+  res.json({ evaluations: records });
+});
+
+app.get('/api/public/qc-product-evaluations', (req, res) => {
+  const lineName = String(req.query.line || '').trim().toLowerCase();
+  const evaluations = (readQcProductEvaluations().evaluations || [])
+    .filter(item => item.active !== false)
+    .filter(item => item.targetMode === 'all'
+      || (lineName && (item.lines || []).some(line => String(line).toLowerCase() === lineName)))
+    .sort((left, right) => String(right.updatedAt || '').localeCompare(String(left.updatedAt || '')));
+  res.setHeader('Cache-Control', 'no-store');
+  res.json({ evaluations });
+});
+
+app.post('/api/qc-product-evaluations', requireLogin, requireQcManageAccess, async (req, res) => {
+  const store = readQcProductEvaluations();
+  if ((store.evaluations || []).length >= QC_EVALUATION_MAX_RECORDS) {
+    return res.status(400).json({ error: `Maksimal ${QC_EVALUATION_MAX_RECORDS} evaluasi tersimpan.` });
+  }
+
+  const normalized = normalizeQcEvaluationInput(req.body);
+  if (normalized.error) return res.status(400).json({ error: normalized.error });
+
+  const now = new Date().toISOString();
+  const user = getAuthenticatedSessionUser(req);
+  const evaluation = {
+    id: typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : crypto.randomBytes(16).toString('hex'),
+    ...normalized.value,
+    createdAt: now,
+    updatedAt: now,
+    createdBy: user?.name || user?.username || 'Admin QC',
+    updatedBy: user?.name || user?.username || 'Admin QC'
+  };
+  const evaluations = [evaluation, ...(store.evaluations || [])];
+  await writeQcProductEvaluations({ evaluations });
+  return res.status(201).json({ message: 'Evaluasi foto produk berhasil dipublikasikan.', evaluation });
+});
+
+app.put('/api/qc-product-evaluations/:id', requireLogin, requireQcManageAccess, async (req, res) => {
+  const store = readQcProductEvaluations();
+  const index = (store.evaluations || []).findIndex(item => String(item.id) === String(req.params.id));
+  if (index === -1) return res.status(404).json({ error: 'Evaluasi foto produk tidak ditemukan.' });
+
+  const existing = store.evaluations[index];
+  const normalized = normalizeQcEvaluationInput(req.body, existing);
+  if (normalized.error) return res.status(400).json({ error: normalized.error });
+
+  const user = getAuthenticatedSessionUser(req);
+  const evaluation = {
+    ...existing,
+    ...normalized.value,
+    id: existing.id,
+    createdAt: existing.createdAt,
+    createdBy: existing.createdBy,
+    updatedAt: new Date().toISOString(),
+    updatedBy: user?.name || user?.username || 'Admin QC'
+  };
+  store.evaluations[index] = evaluation;
+  await writeQcProductEvaluations(store);
+  return res.json({ message: 'Evaluasi foto produk berhasil diperbarui.', evaluation });
+});
+
+app.delete('/api/qc-product-evaluations/:id', requireLogin, requireQcManageAccess, async (req, res) => {
+  const store = readQcProductEvaluations();
+  const index = (store.evaluations || []).findIndex(item => String(item.id) === String(req.params.id));
+  if (index === -1) return res.status(404).json({ error: 'Evaluasi foto produk tidak ditemukan.' });
+
+  const [evaluation] = store.evaluations.splice(index, 1);
+  await writeQcProductEvaluations(store);
+  return res.json({ message: 'Evaluasi foto produk berhasil dihapus.', evaluation: { id: evaluation.id } });
 });
 
 app.get('/api/branding-settings', (req, res) => {

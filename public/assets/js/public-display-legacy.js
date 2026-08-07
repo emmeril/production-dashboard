@@ -22,6 +22,11 @@
         refreshInterval: 10000,
         refreshTimer: null,
         clockTimer: null,
+        qcEvaluationTimer: null,
+        qcEvaluationLastLoadedAt: 0,
+        qcEvaluations: [],
+        qcEvaluationIndex: -1,
+        qcEvaluationVisible: false,
         requestId: 0,
         isWithinWorkSchedule: false,
         workScheduleSettings: {
@@ -186,6 +191,104 @@
         });
     }
 
+    function qcMarkerColor(severity) {
+        if (severity === 'critical') return '#dc2626';
+        if (severity === 'major') return '#ea580c';
+        return '#eab308';
+    }
+
+    function clearChildren(target) {
+        while (target && target.firstChild) target.removeChild(target.firstChild);
+    }
+
+    function renderQcEvaluation(evaluation) {
+        var markers = evaluation.markers || [];
+        var markerLayer = element('legacy-qc-evaluation-markers');
+        var markerList = element('legacy-qc-evaluation-marker-list');
+        var index;
+        setText('legacy-qc-evaluation-title', evaluation.title || 'Evaluasi Produk');
+        setText('legacy-qc-evaluation-product', evaluation.productName || 'Foto produk aktual');
+        setText('legacy-qc-evaluation-line', state.lineName || '-');
+        setText('legacy-qc-evaluation-notes', evaluation.notes || 'Perhatikan setiap lokasi defect yang ditandai dan lakukan evaluasi proses.');
+        element('legacy-qc-evaluation-photo').src = evaluation.photoDataUrl || '';
+        clearChildren(markerLayer);
+        clearChildren(markerList);
+
+        for (index = 0; index < markers.length; index += 1) {
+            var marker = markers[index];
+            var color = qcMarkerColor(marker.severity);
+            var markerElement = document.createElement('span');
+            markerElement.className = 'qc-evaluation-marker';
+            markerElement.style.left = numberOr(marker.x, 0) + '%';
+            markerElement.style.top = numberOr(marker.y, 0) + '%';
+            markerElement.style.backgroundColor = color;
+            markerElement.textContent = String(index + 1);
+            markerLayer.appendChild(markerElement);
+
+            var item = document.createElement('div');
+            item.className = 'qc-evaluation-marker-item';
+            item.style.borderLeftColor = color;
+            var heading = document.createElement('strong');
+            heading.textContent = (index + 1) + '. ' + (marker.label || 'Defect');
+            var area = document.createElement('span');
+            area.textContent = 'Area: ' + (marker.area || '-');
+            item.appendChild(heading);
+            item.appendChild(area);
+            if (marker.notes) {
+                var notes = document.createElement('small');
+                notes.textContent = marker.notes;
+                item.appendChild(notes);
+            }
+            markerList.appendChild(item);
+        }
+    }
+
+    function scheduleNextQcEvaluation(delay) {
+        if (state.qcEvaluationTimer) window.clearTimeout(state.qcEvaluationTimer);
+        if (!state.qcEvaluations.length) {
+            state.qcEvaluationTimer = null;
+            return;
+        }
+        state.qcEvaluationTimer = window.setTimeout(showNextQcEvaluation, delay);
+    }
+
+    function hideQcEvaluation() {
+        state.qcEvaluationVisible = false;
+        setVisible('legacy-qc-evaluation-overlay', false);
+        scheduleNextQcEvaluation(30000);
+    }
+
+    function showNextQcEvaluation() {
+        if (!state.qcEvaluations.length) return;
+        state.qcEvaluationIndex = (state.qcEvaluationIndex + 1) % state.qcEvaluations.length;
+        renderQcEvaluation(state.qcEvaluations[state.qcEvaluationIndex]);
+        state.qcEvaluationVisible = true;
+        setVisible('legacy-qc-evaluation-overlay', true, 'block');
+        if (state.qcEvaluationTimer) window.clearTimeout(state.qcEvaluationTimer);
+        state.qcEvaluationTimer = window.setTimeout(hideQcEvaluation, 15000);
+    }
+
+    function loadQcEvaluations(force) {
+        var now = new Date().getTime();
+        if (!force && now - state.qcEvaluationLastLoadedAt < 30000) return;
+        state.qcEvaluationLastLoadedAt = now;
+        requestJson('/api/public/qc-product-evaluations?line=' + encodeURIComponent(state.lineName), function (error, payload) {
+            if (error) {
+                logError('Gagal memuat evaluasi foto produk QC', error);
+                return;
+            }
+            state.qcEvaluations = payload && payload.evaluations ? payload.evaluations : [];
+            if (!state.qcEvaluations.length) {
+                if (state.qcEvaluationTimer) window.clearTimeout(state.qcEvaluationTimer);
+                state.qcEvaluationTimer = null;
+                state.qcEvaluationVisible = false;
+                setVisible('legacy-qc-evaluation-overlay', false);
+                return;
+            }
+            if (!state.qcEvaluationVisible && !state.qcEvaluationTimer) scheduleNextQcEvaluation(10000);
+        });
+    }
+
     function workScheduleDescription() {
         var names = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
         var schedule = state.workScheduleSettings || {};
@@ -323,6 +426,7 @@
     }
 
     function refreshAll() {
+        loadQcEvaluations(false);
         loadWorkScheduleStatus(function (withinSchedule) {
             if (withinSchedule) loadLineData();
         });
@@ -661,6 +765,7 @@
         }
         setText('legacy-line-title', 'LINE: ' + state.lineName);
         loadDisplaySettings(function () {
+            loadQcEvaluations(true);
             refreshAll();
             setupAutoRefresh();
         });

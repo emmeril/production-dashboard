@@ -2192,3 +2192,15 @@ button:not(.pagination-btn):not([class*="rounded-full"]):not([class*="p-1"]):not
     border-color: var(--accent);
     outline-color: rgba(8, 127, 140, 0.16);
 }
+/* QC product photo evaluation helpers (kept here so the page also works when
+   the optional Tailwind build tool is not installed on the runtime host). */
+.cursor-crosshair { cursor: crosshair; }
+.pointer-events-none { pointer-events: none; }
+.max-h-\[75rem\] { max-height: 75rem; }
+.-translate-x-1\/2.-translate-y-1\/2 { transform: translate(-50%, -50%); }
+.file\:mr-3::file-selector-button { margin-right: .75rem; }
+@media (min-width: 1536px) {
+  .2xl\:grid-cols-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .2xl\:col-span-2 { grid-column: span 2 / span 2; }
+  .2xl\:col-span-3 { grid-column: span 3 / span 3; }
+}

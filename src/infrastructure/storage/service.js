@@ -6,6 +6,7 @@ function createStorageService(dependencies) {
     buildInitialMaterialOrders,
     buildInitialProductionData,
     buildInitialPublicDisplaySettings,
+    buildInitialQcProductEvaluations,
     buildInitialUsersData,
     buildInitialWorkScheduleSettings,
     crypto,
@@ -26,6 +27,7 @@ function createStorageService(dependencies) {
     normalizeMaterialOrders,
     normalizeProductionDataIdentities,
     normalizePublicDisplaySettings,
+    normalizeQcProductEvaluations,
     normalizeUserRecord,
     normalizeWorkScheduleSettings,
     path,
@@ -84,6 +86,7 @@ function createStorageService(dependencies) {
   const DEFECT_CONFIG_KEY = 'defect_config';
   const BRANDING_SETTINGS_KEY = 'branding_settings';
   const PUBLIC_DISPLAY_SETTINGS_KEY = 'public_display_settings';
+  const QC_PRODUCT_EVALUATIONS_KEY = 'qc_product_evaluations';
   const WORK_SCHEDULE_SETTINGS_KEY = 'work_schedule_settings';
   const MATERIAL_ORDERS_KEY = 'material_orders';
   const DATABASE_BACKUP_RETENTION_DAYS = Math.max(
@@ -96,6 +99,7 @@ function createStorageService(dependencies) {
   let defectConfigCache = { defectTypes: [], defectAreas: [] };
   let brandingSettingsCache = {};
   let publicDisplaySettingsCache = {};
+  let qcProductEvaluationsCache = { evaluations: [] };
   let workScheduleSettingsCache = {};
   let materialOrdersCache = { orders: [] };
   const productionSnapshotCache = new Map();
@@ -681,6 +685,10 @@ function createStorageService(dependencies) {
       rowsByKey.get(PUBLIC_DISPLAY_SETTINGS_KEY)?.payload || '',
       buildInitialPublicDisplaySettings()
     ));
+    qcProductEvaluationsCache = normalizeQcProductEvaluations(parsePayload(
+      rowsByKey.get(QC_PRODUCT_EVALUATIONS_KEY)?.payload || '',
+      buildInitialQcProductEvaluations()
+    ));
     workScheduleSettingsCache = normalizeWorkScheduleSettings(parsePayload(
       rowsByKey.get(WORK_SCHEDULE_SETTINGS_KEY)?.payload || '',
       buildInitialWorkScheduleSettings()
@@ -709,6 +717,7 @@ function createStorageService(dependencies) {
       let defectConfigRow = await AppData.findByPk(DEFECT_CONFIG_KEY);
       let brandingSettingsRow = await AppData.findByPk(BRANDING_SETTINGS_KEY);
       let publicDisplaySettingsRow = await AppData.findByPk(PUBLIC_DISPLAY_SETTINGS_KEY);
+      let qcProductEvaluationsRow = await AppData.findByPk(QC_PRODUCT_EVALUATIONS_KEY);
       let workScheduleSettingsRow = await AppData.findByPk(WORK_SCHEDULE_SETTINGS_KEY);
       let materialOrdersRow = await AppData.findByPk(MATERIAL_ORDERS_KEY);
 
@@ -755,6 +764,11 @@ function createStorageService(dependencies) {
         publicDisplaySettingsRow = await AppData.findByPk(PUBLIC_DISPLAY_SETTINGS_KEY);
       }
 
+      if (!qcProductEvaluationsRow) {
+        await upsertAppData(QC_PRODUCT_EVALUATIONS_KEY, buildInitialQcProductEvaluations());
+        qcProductEvaluationsRow = await AppData.findByPk(QC_PRODUCT_EVALUATIONS_KEY);
+      }
+
       if (!workScheduleSettingsRow) {
         await upsertAppData(WORK_SCHEDULE_SETTINGS_KEY, buildInitialWorkScheduleSettings());
         workScheduleSettingsRow = await AppData.findByPk(WORK_SCHEDULE_SETTINGS_KEY);
@@ -791,6 +805,7 @@ function createStorageService(dependencies) {
       defectConfigCache = buildInitialDefectConfig();
       brandingSettingsCache = buildInitialBrandingSettings();
       publicDisplaySettingsCache = buildInitialPublicDisplaySettings();
+      qcProductEvaluationsCache = buildInitialQcProductEvaluations();
       workScheduleSettingsCache = buildInitialWorkScheduleSettings();
       materialOrdersCache = buildInitialMaterialOrders();
     }
@@ -908,6 +923,22 @@ function createStorageService(dependencies) {
       .then(() => publicDisplaySettingsCache);
   }
 
+  function readQcProductEvaluations() {
+    try {
+      qcProductEvaluationsCache = normalizeQcProductEvaluations(qcProductEvaluationsCache);
+      return qcProductEvaluationsCache;
+    } catch (error) {
+      logger.error('Gagal membaca evaluasi foto produk QC', error.message);
+      return buildInitialQcProductEvaluations();
+    }
+  }
+
+  function writeQcProductEvaluations(data) {
+    qcProductEvaluationsCache = normalizeQcProductEvaluations(data);
+    return upsertAppData(QC_PRODUCT_EVALUATIONS_KEY, qcProductEvaluationsCache)
+      .then(() => qcProductEvaluationsCache);
+  }
+
   function readWorkScheduleSettings() {
     workScheduleSettingsCache = normalizeWorkScheduleSettings(workScheduleSettingsCache);
     return workScheduleSettingsCache;
@@ -949,6 +980,7 @@ function createStorageService(dependencies) {
     readMaterialOrders,
     readProductionData,
     readPublicDisplaySettings,
+    readQcProductEvaluations,
     readSnapshotPayload,
     readSnapshotData,
     readUsersData,
@@ -964,6 +996,7 @@ function createStorageService(dependencies) {
     writeMaterialOrders,
     writeProductionData,
     writePublicDisplaySettings,
+    writeQcProductEvaluations,
     writeUsersData,
     writeWorkScheduleSettings
   };

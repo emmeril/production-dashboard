@@ -85,6 +85,15 @@ test.before(async () => {
         line: 'all',
         role: 'ppic',
         sessionVersion: 1
+      },
+      {
+        id: 3,
+        username: 'qc-admin',
+        password: hashPassword('qc-password'),
+        name: 'QC Administrator',
+        line: 'all',
+        role: 'admin_operator_qc',
+        sessionVersion: 1
       }
     ]
   });
@@ -222,6 +231,64 @@ test('layout-critical browser assets are served locally', async () => {
   const modernDisplayHtml = await modernDisplayResponse.text();
   assert.equal(modernDisplayResponse.status, 200);
   assert.match(modernDisplayHtml, /\/public\/assets\/js\/vendor\/alpine\.min\.js/);
+});
+
+test('admin operator QC can publish marked product photos to selected public display lines', async () => {
+  const { cookie: ppicCookie } = await login('ppic', 'ppic-password');
+  const forbiddenResponse = await fetch(`${baseUrl}/api/qc-product-evaluations`, {
+    headers: { Cookie: ppicCookie }
+  });
+  assert.equal(forbiddenResponse.status, 403);
+
+  const { cookie: qcCookie } = await login('qc-admin', 'qc-password');
+  const createResponse = await fetch(`${baseUrl}/api/qc-product-evaluations`, {
+    method: 'POST',
+    headers: { Cookie: qcCookie, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      title: 'Evaluasi Body Depan',
+      productName: 'Model A',
+      targetMode: 'selected',
+      lines: ['line 1', 'Line Tidak Ada'],
+      active: true,
+      photoDataUrl: 'data:image/png;base64,iVBORw0KGgo=',
+      markers: [{
+        id: 'point-1',
+        x: 42.12345,
+        y: 67.98765,
+        label: 'Broken Stitch',
+        area: 'Body Depan',
+        severity: 'major',
+        notes: 'Periksa tension benang'
+      }]
+    })
+  });
+  const created = await createResponse.json();
+  assert.equal(createResponse.status, 201);
+  assert.deepEqual(created.evaluation.lines, ['LINE 1']);
+  assert.equal(created.evaluation.markers[0].x, 42.123);
+
+  const matchingResponse = await fetch(`${baseUrl}/api/public/qc-product-evaluations?line=LINE%201`);
+  const matching = await matchingResponse.json();
+  assert.equal(matchingResponse.status, 200);
+  assert.equal(matchingResponse.headers.get('cache-control'), 'no-store');
+  assert.equal(matching.evaluations.length, 1);
+  assert.equal(matching.evaluations[0].title, 'Evaluasi Body Depan');
+
+  const otherLineResponse = await fetch(`${baseUrl}/api/public/qc-product-evaluations?line=LINE%202`);
+  assert.deepEqual(await otherLineResponse.json(), { evaluations: [] });
+
+  const invalidResponse = await fetch(`${baseUrl}/api/qc-product-evaluations`, {
+    method: 'POST',
+    headers: { Cookie: qcCookie, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      title: 'Tanpa titik',
+      targetMode: 'all',
+      photoDataUrl: 'data:image/png;base64,iVBORw0KGgo=',
+      markers: []
+    })
+  });
+  assert.equal(invalidResponse.status, 400);
+  assert.match((await invalidResponse.json()).error, /minimal satu titik/i);
 });
 
 test('PPIC can manage lines with the same target-only edit restriction as Admin Operator Sewing', async () => {

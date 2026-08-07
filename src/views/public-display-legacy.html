@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DISPLAY LINE - LEGACY</title>
     <link rel="stylesheet" href="/public/assets/css/public-display.css">
-    <link rel="stylesheet" href="/public/assets/css/public-display-legacy.css?v=20260806-webview66">
+    <link rel="stylesheet" href="/public/assets/css/public-display-legacy.css?v=20260807-qc-evaluation">
 </head>
 <body>
     <div id="legacy-loading-overlay" class="error-overlay legacy-loading-overlay">
@@ -89,6 +89,32 @@
         </div>
     </div>
 
+    <div id="legacy-qc-evaluation-overlay" class="qc-evaluation-overlay legacy-hidden">
+        <div class="qc-evaluation-shell">
+            <div class="qc-evaluation-header">
+                <div>
+                    <span class="qc-evaluation-kicker">EVALUASI QUALITY CONTROL</span>
+                    <h1 id="legacy-qc-evaluation-title">Evaluasi Produk</h1>
+                    <p id="legacy-qc-evaluation-product"></p>
+                </div>
+                <div class="qc-evaluation-line-badge">LINE <strong id="legacy-qc-evaluation-line">-</strong></div>
+            </div>
+            <div class="qc-evaluation-content">
+                <div class="qc-evaluation-photo-panel">
+                    <div id="legacy-qc-evaluation-photo-stage" class="qc-evaluation-photo-stage">
+                        <img id="legacy-qc-evaluation-photo" alt="Foto produk evaluasi QC">
+                        <div id="legacy-qc-evaluation-markers" class="qc-evaluation-markers"></div>
+                    </div>
+                </div>
+                <div class="qc-evaluation-detail-panel">
+                    <h2>LOKASI DEFECT</h2>
+                    <div id="legacy-qc-evaluation-marker-list" class="qc-evaluation-marker-list"></div>
+                    <div id="legacy-qc-evaluation-notes" class="qc-evaluation-notes"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div id="legacy-schedule-overlay" class="error-overlay schedule-overlay legacy-hidden">
         <div class="error-content">
             <h2 class="error-title">DI LUAR JAM KERJA</h2>
@@ -105,6 +131,6 @@
         </div>
     </div>
 
-    <script src="/public/assets/js/public-display-legacy.js?v=20260806-webview66"></script>
+    <script src="/public/assets/js/public-display-legacy.js?v=20260807-qc-evaluation"></script>
 </body>
 </html>

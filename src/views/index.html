@@ -7,7 +7,7 @@
 	<link rel="stylesheet" href="/public/assets/css/fonts.css?v=20260802">
 	<link rel="stylesheet" href="/public/assets/css/tailwind.css?v=3.4.17">
 	<link rel="stylesheet" href="/public/assets/css/fontawesome.min.css?v=6.5.2">
-	<link rel="stylesheet" href="/public/assets/css/style.css?v=20260803-good-qc-v1">
+	<link rel="stylesheet" href="/public/assets/css/style.css?v=20260807-qc-photo-v1">
 	<script src="/public/assets/js/vendor/alpine.min.js?v=3.15.12" defer></script>
 	<script src="/public/assets/js/vendor/chart.umd.min.js?v=4.5.1" defer></script>
 </head>
@@ -1970,6 +1970,149 @@
 		                    </div>
 		                </div>
 
+		                <!-- Evaluasi Produk QC - Admin dan Admin Operator QC -->
+		                <div x-show="currentPage === 'qc-product-evaluations' && canManageQcEvaluations()" class="fade-in">
+		                    <div class="mb-6 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+		                        <div>
+		                            <h1 class="text-2xl font-bold text-gray-800 flex items-center"><i class="fa-solid fa-camera-retro text-blue-600 mr-3"></i>Evaluasi Produk QC</h1>
+		                            <p class="text-gray-600">Tandai lokasi defect pada foto produk nyata, lalu publikasikan ke semua line atau line tertentu.</p>
+		                        </div>
+		                        <a :href="publicDisplayPreviewUrl('all')" target="_blank" rel="noopener noreferrer" class="btn-action btn-action-neutral"><i class="fa-solid fa-up-right-from-square"></i>Buka Public Display</a>
+		                    </div>
+
+		                    <div class="grid grid-cols-1 2xl:grid-cols-5 gap-6">
+		                        <section class="2xl:col-span-3 bg-white rounded-lg shadow card-shadow overflow-hidden">
+		                            <div class="px-4 py-5 sm:px-6 border-b border-gray-200 flex items-center justify-between gap-3">
+		                                <div>
+		                                    <h2 class="text-lg font-semibold text-gray-900" x-text="qcEvaluationForm.id ? 'Edit Evaluasi' : 'Buat Evaluasi Baru'"></h2>
+		                                    <p class="mt-1 text-sm text-gray-500">Pilih kategori defect, lalu klik langsung pada posisi defect di foto.</p>
+		                                </div>
+		                                <button x-show="qcEvaluationForm.id" type="button" @click="resetQcEvaluationForm()" class="btn-action btn-action-neutral"><i class="fa-solid fa-plus"></i>Baru</button>
+		                            </div>
+
+		                            <form @submit.prevent="saveQcProductEvaluation()" class="p-4 sm:p-6 space-y-5">
+		                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+		                                    <label class="block">
+		                                        <span class="text-sm font-medium text-gray-700">Judul evaluasi <span class="text-red-600">*</span></span>
+		                                        <input type="text" maxlength="120" x-model="qcEvaluationForm.title" required placeholder="Contoh: Evaluasi Defect Body Depan" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm">
+		                                    </label>
+		                                    <label class="block">
+		                                        <span class="text-sm font-medium text-gray-700">Nama produk / model</span>
+		                                        <input type="text" maxlength="120" x-model="qcEvaluationForm.productName" placeholder="Contoh: Jacket Model A" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm">
+		                                    </label>
+		                                </div>
+
+		                                <div>
+		                                    <label for="qc-evaluation-photo-input" class="block text-sm font-medium text-gray-700">Foto produk nyata <span class="text-red-600">*</span></label>
+		                                    <input id="qc-evaluation-photo-input" type="file" accept="image/jpeg,image/png,image/webp" @change="handleQcEvaluationPhoto($event)" class="mt-1 block w-full text-sm text-gray-600 file:mr-3 file:rounded-md file:border-0 file:bg-blue-50 file:px-4 file:py-2 file:font-semibold file:text-blue-700 hover:file:bg-blue-100">
+		                                    <p class="mt-1 text-xs text-gray-500">JPG/PNG/WebP, maksimal 12 MB. Foto otomatis dikompres dan disimpan bersama database.</p>
+		                                    <div x-show="qcEvaluationImageProcessing" class="mt-3 rounded-md bg-blue-50 px-4 py-3 text-sm text-blue-700"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Memproses dan mengompres foto...</div>
+		                                </div>
+
+		                                <div x-show="qcEvaluationForm.photoDataUrl" class="space-y-3">
+		                                    <div class="rounded-lg border border-blue-200 bg-blue-50 p-3">
+		                                        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+		                                            <label class="block">
+		                                                <span class="text-xs font-semibold uppercase tracking-wide text-gray-600">Jenis defect</span>
+		                                                <select x-model="qcMarkerDraft.label" @change="selectQcMarkerType()" class="mt-1 block w-full rounded-md border-gray-300 text-sm">
+		                                                    <option value="">Pilih jenis</option>
+		                                                    <template x-for="type in defectTypes.filter(item => item.active !== false)" :key="type.id || type.name"><option :value="type.name" x-text="type.name"></option></template>
+		                                                </select>
+		                                            </label>
+		                                            <label class="block">
+		                                                <span class="text-xs font-semibold uppercase tracking-wide text-gray-600">Area defect</span>
+		                                                <select x-model="qcMarkerDraft.area" class="mt-1 block w-full rounded-md border-gray-300 text-sm">
+		                                                    <option value="">Pilih area</option>
+		                                                    <template x-for="area in defectAreas.filter(item => item.active !== false)" :key="area.id || area.name"><option :value="area.name" x-text="area.name"></option></template>
+		                                                </select>
+		                                            </label>
+		                                            <label class="block xl:col-span-2">
+		                                                <span class="text-xs font-semibold uppercase tracking-wide text-gray-600">Catatan titik (opsional)</span>
+		                                                <input type="text" maxlength="300" x-model="qcMarkerDraft.notes" placeholder="Instruksi perbaikan atau temuan" class="mt-1 block w-full rounded-md border-gray-300 text-sm">
+		                                            </label>
+		                                        </div>
+		                                        <p class="mt-2 text-sm font-medium text-blue-800"><i class="fa-solid fa-location-dot mr-1"></i>Setelah memilih jenis dan area, klik lokasi defect pada foto.</p>
+		                                    </div>
+
+		                                    <div class="relative overflow-hidden rounded-lg border-2 border-dashed border-gray-300 bg-gray-900 cursor-crosshair select-none" @click="addQcEvaluationMarker($event)">
+		                                        <img :src="qcEvaluationForm.photoDataUrl" alt="Foto produk untuk penandaan defect" class="block h-auto w-full pointer-events-none">
+		                                        <template x-for="(marker, index) in qcEvaluationForm.markers" :key="marker.id">
+		                                            <span class="absolute flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white text-sm font-extrabold text-white shadow-lg pointer-events-none" :style="`left:${marker.x}%;top:${marker.y}%;background:${qcMarkerColor(marker.severity)}`" x-text="index + 1"></span>
+		                                        </template>
+		                                    </div>
+
+		                                    <div x-show="qcEvaluationForm.markers.length" class="rounded-lg border border-gray-200 divide-y divide-gray-200">
+		                                        <template x-for="(marker, index) in qcEvaluationForm.markers" :key="marker.id">
+		                                            <div class="flex items-start gap-3 p-3">
+		                                                <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white" :style="`background:${qcMarkerColor(marker.severity)}`" x-text="index + 1"></span>
+		                                                <div class="min-w-0 flex-1">
+		                                                    <div class="font-semibold text-gray-900"><span x-text="marker.label"></span><span class="font-normal text-gray-500"> · </span><span x-text="marker.area"></span></div>
+		                                                    <p x-show="marker.notes" class="mt-0.5 text-sm text-gray-600" x-text="marker.notes"></p>
+		                                                </div>
+		                                                <button type="button" @click.stop="removeQcEvaluationMarker(index)" class="rounded-md p-2 text-red-600 hover:bg-red-50" title="Hapus titik"><i class="fa-solid fa-trash"></i></button>
+		                                            </div>
+		                                        </template>
+		                                    </div>
+		                                </div>
+
+		                                <fieldset class="rounded-lg border border-gray-200 p-4">
+		                                    <legend class="px-2 text-sm font-semibold text-gray-800">Tujuan Public Display</legend>
+		                                    <div class="flex flex-wrap gap-4">
+		                                        <label class="inline-flex items-center gap-2"><input type="radio" value="all" x-model="qcEvaluationForm.targetMode" class="text-blue-600"><span class="text-sm font-medium text-gray-700">Semua line</span></label>
+		                                        <label class="inline-flex items-center gap-2"><input type="radio" value="selected" x-model="qcEvaluationForm.targetMode" class="text-blue-600"><span class="text-sm font-medium text-gray-700">Line tertentu</span></label>
+		                                    </div>
+		                                    <div x-show="qcEvaluationForm.targetMode === 'selected'" class="mt-3 flex flex-wrap gap-2">
+		                                        <template x-for="line in lines" :key="line.name">
+		                                            <button type="button" @click="toggleQcEvaluationLine(line.name)" class="rounded-full border px-3 py-1.5 text-sm font-medium transition" :class="qcEvaluationForm.lines.includes(line.name) ? 'border-blue-600 bg-blue-600 text-white' : 'border-gray-300 bg-white text-gray-700 hover:border-blue-400'" x-text="line.name"></button>
+		                                        </template>
+		                                        <span x-show="!lines.length" class="text-sm text-gray-500">Belum ada line tersedia.</span>
+		                                    </div>
+		                                </fieldset>
+
+		                                <label class="block">
+		                                    <span class="text-sm font-medium text-gray-700">Catatan evaluasi</span>
+		                                    <textarea rows="3" maxlength="1000" x-model="qcEvaluationForm.notes" placeholder="Ringkasan temuan dan tindakan yang perlu dilakukan" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm"></textarea>
+		                                </label>
+
+		                                <label class="inline-flex items-center gap-2 rounded-md bg-green-50 px-3 py-2 text-sm font-medium text-green-800"><input type="checkbox" x-model="qcEvaluationForm.active" class="rounded text-green-600"><span>Langsung tampilkan di public display</span></label>
+
+		                                <div class="flex flex-wrap gap-2 pt-1">
+		                                    <button type="submit" :disabled="qcEvaluationSaving || qcEvaluationImageProcessing" class="btn-action btn-action-primary"><i class="fa-solid" :class="qcEvaluationSaving ? 'fa-spinner fa-spin' : 'fa-paper-plane'"></i><span x-text="qcEvaluationSaving ? 'Menyimpan...' : (qcEvaluationForm.id ? 'Simpan Perubahan' : 'Publikasikan Evaluasi')"></span></button>
+		                                    <button type="button" @click="resetQcEvaluationForm()" class="btn-action btn-action-neutral"><i class="fa-solid fa-rotate-left"></i>Reset</button>
+		                                </div>
+		                            </form>
+		                        </section>
+
+		                        <section class="2xl:col-span-2 bg-white rounded-lg shadow card-shadow overflow-hidden self-start">
+		                            <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+		                                <h2 class="text-lg font-semibold text-gray-900">Evaluasi Tersimpan</h2>
+		                                <p class="mt-1 text-sm text-gray-500"><span x-text="qcProductEvaluations.filter(item => item.active !== false).length"></span> aktif dari <span x-text="qcProductEvaluations.length"></span> evaluasi.</p>
+		                            </div>
+		                            <div x-show="qcProductEvaluations.length" class="divide-y divide-gray-200 max-h-[75rem] overflow-y-auto">
+		                                <template x-for="evaluation in qcProductEvaluations" :key="evaluation.id">
+		                                    <article class="p-4">
+		                                        <div class="relative overflow-hidden rounded-lg bg-gray-900">
+		                                            <img :src="evaluation.photoDataUrl" :alt="evaluation.title" class="block h-48 w-full object-contain">
+		                                            <span class="absolute left-2 top-2 rounded-full px-2.5 py-1 text-xs font-bold shadow" :class="evaluation.active !== false ? 'bg-green-500 text-white' : 'bg-gray-700 text-white'" x-text="evaluation.active !== false ? 'Tayang' : 'Draft'"></span>
+		                                            <span class="absolute right-2 top-2 rounded-full bg-black bg-opacity-70 px-2.5 py-1 text-xs font-bold text-white"><i class="fa-solid fa-location-dot mr-1"></i><span x-text="evaluation.markers.length"></span> titik</span>
+		                                        </div>
+		                                        <h3 class="mt-3 font-bold text-gray-900" x-text="evaluation.title"></h3>
+		                                        <p x-show="evaluation.productName" class="text-sm text-gray-600" x-text="evaluation.productName"></p>
+		                                        <p class="mt-2 text-xs font-semibold text-blue-700"><i class="fa-solid fa-tv mr-1"></i><span x-text="qcEvaluationTargetLabel(evaluation)"></span></p>
+		                                        <p class="mt-1 text-xs text-gray-500">Diperbarui <span x-text="formatDateTime(evaluation.updatedAt)"></span> oleh <span x-text="evaluation.updatedBy || evaluation.createdBy || '-' "></span></p>
+		                                        <div class="mt-3 flex flex-wrap gap-2">
+		                                            <button type="button" @click="editQcProductEvaluation(evaluation)" class="btn-action btn-action-primary"><i class="fa-solid fa-pen"></i>Edit</button>
+		                                            <button type="button" @click="toggleQcProductEvaluation(evaluation)" class="btn-action btn-action-neutral"><i class="fa-solid" :class="evaluation.active !== false ? 'fa-eye-slash' : 'fa-eye'"></i><span x-text="evaluation.active !== false ? 'Hentikan' : 'Tayangkan'"></span></button>
+		                                            <button type="button" @click="deleteQcProductEvaluation(evaluation)" class="btn-action btn-action-danger"><i class="fa-solid fa-trash"></i>Hapus</button>
+		                                        </div>
+		                                    </article>
+		                                </template>
+		                            </div>
+		                            <div x-show="!qcProductEvaluations.length" class="px-6 py-14 text-center text-gray-500"><i class="fa-solid fa-camera text-4xl text-gray-300"></i><p class="mt-3 font-medium">Belum ada evaluasi foto produk.</p></div>
+		                        </section>
+		                    </div>
+		                </div>
+
 		                <!-- Public Display Settings - Hanya untuk Admin -->
 		                <div x-show="currentPage === 'public-display-settings' && currentUser.role === 'admin'" class="fade-in">
 		                    <div class="mb-6">
@@ -2706,6 +2849,6 @@
         </div>
     </div>
 
-   <script src="/public/assets/js/alpine.js?v=20260803-good-qc-v2"></script>
+   <script src="/public/assets/js/alpine.js?v=20260807-qc-photo-v1"></script>
 </body>
 </html>

@@ -216,6 +216,26 @@ function dashboard() {
 	            percentFontSize: 40,
 	            refreshInterval: 10000
 	        },
+	        qcProductEvaluations: [],
+	        qcEvaluationSaving: false,
+	        qcEvaluationImageProcessing: false,
+	        qcEvaluationForm: {
+	            id: null,
+	            title: '',
+	            productName: '',
+	            notes: '',
+	            targetMode: 'all',
+	            lines: [],
+	            active: true,
+	            photoDataUrl: '',
+	            markers: []
+	        },
+	        qcMarkerDraft: {
+	            label: '',
+	            area: '',
+	            severity: 'minor',
+	            notes: ''
+	        },
 	        workScheduleSettings: {
 	            enabled: true,
 	            workDays: [1, 2, 3, 4, 5, 6],
@@ -438,6 +458,9 @@ function dashboard() {
                 } else if (this.canManageDefectCategories()) {
                     this.navigation.push({ name: 'Kategori Defect', page: 'defect-categories', iconClass: 'fa-triangle-exclamation' });
 	                }
+	            if (this.canManageQcEvaluations()) {
+	                this.navigation.push({ name: 'Evaluasi Produk QC', page: 'qc-product-evaluations', iconClass: 'fa-camera-retro' });
+	            }
 	            } else {
 	                this.navigation = baseNav;
 	            }
@@ -480,6 +503,10 @@ function dashboard() {
 	        },
 
 	        canManageDefectCategories() {
+	            return ['admin', 'admin_operator_qc'].includes(this.currentUser.role);
+	        },
+
+	        canManageQcEvaluations() {
 	            return ['admin', 'admin_operator_qc'].includes(this.currentUser.role);
 	        },
 
@@ -589,10 +616,10 @@ function dashboard() {
                 return this.canViewMaterialOrders();
             }
 
-            if (state.currentPage === 'production-import' || state.currentPage === 'user-management' || state.currentPage === 'defect-categories' || state.currentPage === 'work-schedule-settings' || state.currentPage === 'branding-settings' || state.currentPage === 'public-display-settings' || state.currentPage === 'backup' || state.currentPage === 'system-actions') {
-	                return state.currentPage === 'defect-categories'
-	                    ? this.canManageDefectCategories()
-	                    : this.currentUser.role === 'admin';
+	        if (state.currentPage === 'production-import' || state.currentPage === 'user-management' || state.currentPage === 'defect-categories' || state.currentPage === 'qc-product-evaluations' || state.currentPage === 'work-schedule-settings' || state.currentPage === 'branding-settings' || state.currentPage === 'public-display-settings' || state.currentPage === 'backup' || state.currentPage === 'system-actions') {
+	                if (state.currentPage === 'defect-categories') return this.canManageDefectCategories();
+	                if (state.currentPage === 'qc-product-evaluations') return this.canManageQcEvaluations();
+	                return this.currentUser.role === 'admin';
 	            }
 
 	            if (state.currentPage === 'input-data') {
@@ -664,6 +691,10 @@ function dashboard() {
 	                await this.loadPublicDisplaySettings();
 	            }
 
+	            if (this.currentPage === 'qc-product-evaluations') {
+	                await Promise.all([this.loadQcProductEvaluations(), this.loadDefectConfig()]);
+	            }
+
 	            if (this.currentPage === 'work-schedule-settings') {
 	                await this.loadWorkScheduleSettings();
 	            }
@@ -711,6 +742,10 @@ function dashboard() {
             }
 	            if (page === 'public-display-settings') {
 	                this.loadPublicDisplaySettings();
+	            }
+	            if (page === 'qc-product-evaluations') {
+	                this.loadQcProductEvaluations();
+	                this.loadDefectConfig();
 	            }
 	            if (page === 'work-schedule-settings') {
 	                this.loadWorkScheduleSettings();
@@ -1723,6 +1758,210 @@ function dashboard() {
                 this.showToast(error.message, 'error');
             }
         },
+
+	        resetQcEvaluationForm() {
+	            this.qcEvaluationForm = {
+	                id: null,
+	                title: '',
+	                productName: '',
+	                notes: '',
+	                targetMode: 'all',
+	                lines: [],
+	                active: true,
+	                photoDataUrl: '',
+	                markers: []
+	            };
+	            this.qcMarkerDraft = { label: '', area: '', severity: 'minor', notes: '' };
+	            const input = document.getElementById('qc-evaluation-photo-input');
+	            if (input) input.value = '';
+	        },
+
+	        async loadQcProductEvaluations() {
+	            try {
+	                const response = await fetch('/api/qc-product-evaluations');
+	                const result = await response.json();
+	                if (!response.ok) throw new Error(result.error || 'Gagal memuat evaluasi produk QC');
+	                this.qcProductEvaluations = Array.isArray(result.evaluations) ? result.evaluations : [];
+	            } catch (error) {
+	                logClientError('Error loading QC product evaluations:', error);
+	                this.showToast(error.message, 'error');
+	            }
+	        },
+
+	        selectQcMarkerType() {
+	            const selected = (this.defectTypes || []).find(item => item.name === this.qcMarkerDraft.label);
+	            this.qcMarkerDraft.severity = selected?.severity || 'minor';
+	        },
+
+	        async handleQcEvaluationPhoto(event) {
+	            const file = event?.target?.files?.[0];
+	            if (!file) return;
+	            if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+	                this.showToast('Gunakan foto JPG, PNG, atau WebP', 'error');
+	                event.target.value = '';
+	                return;
+	            }
+	            if (file.size > 12 * 1024 * 1024) {
+	                this.showToast('Ukuran foto asli maksimal 12 MB', 'error');
+	                event.target.value = '';
+	                return;
+	            }
+
+	            this.qcEvaluationImageProcessing = true;
+	            try {
+	                const source = await new Promise((resolve, reject) => {
+	                    const reader = new FileReader();
+	                    reader.onload = () => resolve(reader.result);
+	                    reader.onerror = () => reject(new Error('Foto gagal dibaca'));
+	                    reader.readAsDataURL(file);
+	                });
+	                const image = await new Promise((resolve, reject) => {
+	                    const preview = new Image();
+	                    preview.onload = () => resolve(preview);
+	                    preview.onerror = () => reject(new Error('Format foto tidak dapat dibuka'));
+	                    preview.src = source;
+	                });
+	                const maxSide = 1800;
+	                const scale = Math.min(1, maxSide / Math.max(image.naturalWidth, image.naturalHeight));
+	                const canvas = document.createElement('canvas');
+	                canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+	                canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+	                const context = canvas.getContext('2d');
+	                context.fillStyle = '#ffffff';
+	                context.fillRect(0, 0, canvas.width, canvas.height);
+	                context.drawImage(image, 0, 0, canvas.width, canvas.height);
+	                let compressed = canvas.toDataURL('image/jpeg', 0.82);
+	                if (compressed.length > 4 * 1024 * 1024) {
+	                    compressed = canvas.toDataURL('image/jpeg', 0.68);
+	                }
+	                if (compressed.length > 4 * 1024 * 1024) {
+	                    throw new Error('Foto masih terlalu besar setelah dikompres. Gunakan resolusi lebih kecil.');
+	                }
+	                this.qcEvaluationForm.photoDataUrl = compressed;
+	                this.qcEvaluationForm.markers = [];
+	            } catch (error) {
+	                logClientError('Error processing QC evaluation photo:', error);
+	                this.showToast(error.message, 'error');
+	                event.target.value = '';
+	            } finally {
+	                this.qcEvaluationImageProcessing = false;
+	            }
+	        },
+
+	        addQcEvaluationMarker(event) {
+	            if (!this.qcEvaluationForm.photoDataUrl) return;
+	            if (!this.qcMarkerDraft.label || !this.qcMarkerDraft.area) {
+	                this.showToast('Pilih jenis dan area defect sebelum klik foto', 'error');
+	                return;
+	            }
+	            if (this.qcEvaluationForm.markers.length >= 40) {
+	                this.showToast('Maksimal 40 titik defect per foto', 'error');
+	                return;
+	            }
+	            const bounds = event.currentTarget.getBoundingClientRect();
+	            const x = ((event.clientX - bounds.left) / bounds.width) * 100;
+	            const y = ((event.clientY - bounds.top) / bounds.height) * 100;
+	            this.qcEvaluationForm.markers.push({
+	                id: `marker-${Date.now()}-${this.qcEvaluationForm.markers.length + 1}`,
+	                x: Math.max(0, Math.min(100, x)),
+	                y: Math.max(0, Math.min(100, y)),
+	                label: this.qcMarkerDraft.label,
+	                area: this.qcMarkerDraft.area,
+	                severity: this.qcMarkerDraft.severity || 'minor',
+	                notes: this.qcMarkerDraft.notes || ''
+	            });
+	        },
+
+	        removeQcEvaluationMarker(index) {
+	            this.qcEvaluationForm.markers.splice(index, 1);
+	        },
+
+	        qcMarkerColor(severity) {
+	            return severity === 'critical' ? '#dc2626' : severity === 'major' ? '#ea580c' : '#eab308';
+	        },
+
+	        toggleQcEvaluationLine(lineName) {
+	            const index = this.qcEvaluationForm.lines.indexOf(lineName);
+	            if (index === -1) this.qcEvaluationForm.lines.push(lineName);
+	            else this.qcEvaluationForm.lines.splice(index, 1);
+	        },
+
+	        editQcProductEvaluation(evaluation) {
+	            this.qcEvaluationForm = JSON.parse(JSON.stringify(evaluation));
+	            this.qcEvaluationForm.lines = this.qcEvaluationForm.lines || [];
+	            this.qcEvaluationForm.markers = this.qcEvaluationForm.markers || [];
+	            window.scrollTo({ top: 0, behavior: 'smooth' });
+	        },
+
+	        async saveQcProductEvaluation() {
+	            const form = this.qcEvaluationForm;
+	            if (!form.title.trim() || !form.photoDataUrl || !form.markers.length) {
+	                this.showToast('Lengkapi judul, foto, dan minimal satu titik defect', 'error');
+	                return;
+	            }
+	            if (form.targetMode === 'selected' && !form.lines.length) {
+	                this.showToast('Pilih minimal satu line tujuan', 'error');
+	                return;
+	            }
+	            this.qcEvaluationSaving = true;
+	            try {
+	                const response = await fetch(form.id
+	                    ? `/api/qc-product-evaluations/${encodeURIComponent(form.id)}`
+	                    : '/api/qc-product-evaluations', {
+	                    method: form.id ? 'PUT' : 'POST',
+	                    headers: { 'Content-Type': 'application/json' },
+	                    body: JSON.stringify(form)
+	                });
+	                const result = await response.json();
+	                if (!response.ok) throw new Error(result.error || 'Evaluasi gagal disimpan');
+	                this.showToast(result.message, 'success');
+	                this.resetQcEvaluationForm();
+	                await this.loadQcProductEvaluations();
+	            } catch (error) {
+	                logClientError('Error saving QC product evaluation:', error);
+	                this.showToast(error.message, 'error');
+	            } finally {
+	                this.qcEvaluationSaving = false;
+	            }
+	        },
+
+	        async toggleQcProductEvaluation(evaluation) {
+	            try {
+	                const response = await fetch(`/api/qc-product-evaluations/${encodeURIComponent(evaluation.id)}`, {
+	                    method: 'PUT',
+	                    headers: { 'Content-Type': 'application/json' },
+	                    body: JSON.stringify({ ...evaluation, active: evaluation.active === false })
+	                });
+	                const result = await response.json();
+	                if (!response.ok) throw new Error(result.error || 'Status publikasi gagal diubah');
+	                await this.loadQcProductEvaluations();
+	                this.showToast(result.message, 'success');
+	            } catch (error) {
+	                logClientError('Error toggling QC product evaluation:', error);
+	                this.showToast(error.message, 'error');
+	            }
+	        },
+
+	        async deleteQcProductEvaluation(evaluation) {
+	            if (!confirm(`Hapus evaluasi "${evaluation.title}"?`)) return;
+	            try {
+	                const response = await fetch(`/api/qc-product-evaluations/${encodeURIComponent(evaluation.id)}`, { method: 'DELETE' });
+	                const result = await response.json();
+	                if (!response.ok) throw new Error(result.error || 'Evaluasi gagal dihapus');
+	                if (this.qcEvaluationForm.id === evaluation.id) this.resetQcEvaluationForm();
+	                await this.loadQcProductEvaluations();
+	                this.showToast(result.message, 'success');
+	            } catch (error) {
+	                logClientError('Error deleting QC product evaluation:', error);
+	                this.showToast(error.message, 'error');
+	            }
+	        },
+
+	        qcEvaluationTargetLabel(evaluation) {
+	            return evaluation.targetMode === 'all'
+	                ? 'Semua line'
+	                : (evaluation.lines || []).join(', ');
+	        },
 
 	        normalizePublicDisplaySettings(settings = {}) {
 	            const defaults = {

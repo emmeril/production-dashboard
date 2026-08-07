@@ -973,6 +973,23 @@ test('PPIC can view the dashboard and manage material orders, lines, and reports
   );
 });
 
+test('Admin Operator QC can manage marked product photo evaluations', () => {
+  const context = { console, Date, Intl, Map, Math, Set, parseInt };
+  const alpineSource = fs.readFileSync(path.join(__dirname, '..', 'public/assets/js/alpine.js'), 'utf8');
+  vm.runInNewContext(alpineSource, context);
+
+  const dashboard = context.dashboard();
+  dashboard.currentUser = { role: 'admin_operator_qc' };
+  dashboard.setupNavigation();
+
+  assert.equal(dashboard.canManageQcEvaluations(), true);
+  assert.equal(dashboard.canUseRouteState({ currentPage: 'qc-product-evaluations' }), true);
+  assert.deepEqual(
+    Array.from(dashboard.navigation, item => item.page),
+    ['dashboard', 'line-summary', 'defect-categories', 'qc-product-evaluations', 'report']
+  );
+});
+
 test('PPIC line edits send only model identity and daily target fields', async () => {
   const requests = [];
   const context = {

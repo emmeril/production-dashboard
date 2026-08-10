@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DISPLAY LINE - LEGACY</title>
     <link rel="stylesheet" href="/public/assets/css/public-display.css">
-    <link rel="stylesheet" href="/public/assets/css/public-display-legacy.css?v=20260807-qc-panel-v1">
+    <link rel="stylesheet" href="/public/assets/css/public-display-legacy.css?v=20260810-display-responsive-v2">
 </head>
 <body>
     <div id="legacy-loading-overlay" class="error-overlay legacy-loading-overlay">
@@ -19,14 +19,14 @@
         <table class="main-table" border="0">
             <tbody>
                 <tr>
-                    <td id="legacy-line-title" style="text-align:center;vertical-align:middle;font-weight:bold;font-size:24px;">LINE: Loading...</td>
-                    <td id="legacy-model-name" colspan="2" rowspan="2" style="text-align:center;vertical-align:middle;font-weight:bold;font-size:24px;white-space:normal;word-break:break-word;overflow-wrap:break-word;">Loading...</td>
-                    <td rowspan="7" valign="top" style="width:20%;padding:1px;vertical-align:top;">
+                    <td id="legacy-line-title" class="production-line-title" style="text-align:center;vertical-align:middle;font-weight:bold;">LINE: Loading...</td>
+                    <td id="legacy-model-name" class="production-model-title" colspan="2" rowspan="2" style="text-align:center;vertical-align:middle;font-weight:bold;white-space:normal;word-break:break-word;overflow-wrap:break-word;">Loading...</td>
+                    <td rowspan="7" valign="top" class="production-side-panel">
                         <table class="histor">
                             <thead>
                                 <tr><td colspan="3"><div class="date" id="legacy-current-date">Loading...</div></td></tr>
                                 <tr><td colspan="3"><div class="clock" id="legacy-current-clock">--:--:--</div></td></tr>
-                                <tr><td id="legacy-hour-target-side" colspan="3" style="font-size:14px;color:#fff;">TARGET : 0</td></tr>
+                                <tr><td id="legacy-hour-target-side" class="production-hour-target" colspan="3">TARGET : 0</td></tr>
                                 <tr>
                                     <th>JAM</th>
                                     <th>GOOD</th>
@@ -35,14 +35,14 @@
                             </thead>
                             <tbody id="legacy-hourly-rows"></tbody>
                         </table>
-                        <table class="table-defect" style="margin-top:5px;color:white;font-weight:bold;">
+                        <table class="table-defect" style="color:white;font-weight:bold;">
                             <thead><tr><th colspan="3" class="top-defect-title">TOP 3 DEFECT</th></tr></thead>
                             <tbody id="legacy-top-defect-rows"></tbody>
                         </table>
                     </td>
                 </tr>
                 <tr>
-                    <td id="legacy-week-label" style="text-align:center;vertical-align:middle;font-weight:bold;font-size:20px;">WEEK : -</td>
+                    <td id="legacy-week-label" class="production-week-label" style="text-align:center;vertical-align:middle;font-weight:bold;">WEEK : -</td>
                 </tr>
                 <tr>
                     <td class="bawah">TARGET</td>
@@ -92,7 +92,7 @@
     <div id="legacy-qc-evaluation-overlay" class="qc-evaluation-overlay legacy-hidden">
         <div class="qc-evaluation-shell">
             <div class="qc-evaluation-header">
-                <div>
+                <div class="qc-evaluation-heading">
                     <span class="qc-evaluation-kicker">EVALUASI QUALITY CONTROL</span>
                     <h1 id="legacy-qc-evaluation-title">Evaluasi Produk</h1>
                     <p id="legacy-qc-evaluation-product"></p>
@@ -131,6 +131,6 @@
         </div>
     </div>
 
-    <script src="/public/assets/js/public-display-legacy.js?v=20260810-qc-work-schedule-v1"></script>
+    <script src="/public/assets/js/public-display-legacy.js?v=20260810-display-responsive-v2"></script>
 </body>
 </html>

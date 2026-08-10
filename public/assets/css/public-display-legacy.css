@@ -30,8 +30,8 @@
     bottom: auto;
     left: var(--qc-evaluation-margin-left, 30px);
     z-index: 10000;
-    width: var(--qc-evaluation-layout-width, 98%);
-    height: calc(100vh - var(--qc-evaluation-margin-top, 12px) - 8px);
+    width: var(--qc-evaluation-layout-width, calc(100vw - 38px));
+    height: var(--qc-evaluation-layout-height, calc(100vh - 20px));
     padding: 0;
     background: #061326;
     color: #fff;
@@ -147,7 +147,7 @@
 .qc-evaluation-photo-stage img {
     display: block;
     max-width: 100%;
-    max-height: calc(100vh - var(--qc-evaluation-margin-top, 12px) - 158px);
+    max-height: var(--qc-evaluation-photo-max-height, calc(100vh - 170px));
     width: auto;
     height: auto;
     object-fit: contain;

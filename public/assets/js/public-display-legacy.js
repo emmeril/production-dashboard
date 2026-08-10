@@ -188,12 +188,19 @@
         var settings = state.settings;
         var qcSettings = settings.qc || DEFAULT_SETTINGS.qc;
         var style = document.body.style;
+        var viewportWidth = window.innerWidth || document.documentElement.clientWidth || 1280;
+        var viewportHeight = window.innerHeight || document.documentElement.clientHeight || 720;
+        var evaluationAvailableWidth = Math.max(240, viewportWidth - qcSettings.marginLeft - 8);
+        var evaluationAvailableHeight = Math.max(240, viewportHeight - qcSettings.marginTop - 8);
+        var evaluationWidth = Math.max(240, Math.floor(evaluationAvailableWidth * (qcSettings.layoutWidth / 100)));
         style.setProperty('--display-layout-width', settings.layoutWidth + '%');
         style.setProperty('--display-margin-left', settings.marginLeft + 'px');
         style.setProperty('--display-margin-top', settings.marginTop + 'px');
         style.setProperty('--qc-evaluation-margin-left', qcSettings.marginLeft + 'px');
         style.setProperty('--qc-evaluation-margin-top', qcSettings.marginTop + 'px');
-        style.setProperty('--qc-evaluation-layout-width', qcSettings.layoutWidth + '%');
+        style.setProperty('--qc-evaluation-layout-width', evaluationWidth + 'px');
+        style.setProperty('--qc-evaluation-layout-height', evaluationAvailableHeight + 'px');
+        style.setProperty('--qc-evaluation-photo-max-height', Math.max(100, evaluationAvailableHeight - 158) + 'px');
         style.setProperty('--qc-evaluation-photo-width', qcSettings.photoWidth + '%');
         style.setProperty('--qc-evaluation-detail-width', (100 - qcSettings.photoWidth) + '%');
         style.setProperty('--qc-evaluation-side-font-size', qcSettings.detailFontSize + 'px');
@@ -805,6 +812,7 @@
 
     function init() {
         attachControls();
+        window.addEventListener('resize', applyDisplaySettings);
         updateDateTime();
         state.clockTimer = window.setInterval(function () {
             updateDateTime();

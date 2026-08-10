@@ -258,11 +258,18 @@
 
     function scheduleNextQcEvaluation(delay) {
         if (state.qcEvaluationTimer) window.clearTimeout(state.qcEvaluationTimer);
-        if (!state.qcEvaluations.length) {
+        if (!state.isWithinWorkSchedule || !state.qcEvaluations.length) {
             state.qcEvaluationTimer = null;
             return;
         }
         state.qcEvaluationTimer = window.setTimeout(showNextQcEvaluation, delay);
+    }
+
+    function stopQcEvaluationRotation() {
+        if (state.qcEvaluationTimer) window.clearTimeout(state.qcEvaluationTimer);
+        state.qcEvaluationTimer = null;
+        state.qcEvaluationVisible = false;
+        setVisible('legacy-qc-evaluation-overlay', false);
     }
 
     function hideQcEvaluation() {
@@ -272,7 +279,10 @@
     }
 
     function showNextQcEvaluation() {
-        if (!state.qcEvaluations.length) return;
+        if (!state.isWithinWorkSchedule || !state.qcEvaluations.length) {
+            stopQcEvaluationRotation();
+            return;
+        }
         state.qcEvaluationIndex = (state.qcEvaluationIndex + 1) % state.qcEvaluations.length;
         renderQcEvaluation(state.qcEvaluations[state.qcEvaluationIndex]);
         state.qcEvaluationVisible = true;
@@ -282,20 +292,30 @@
     }
 
     function loadQcEvaluations(force) {
+        if (!state.isWithinWorkSchedule) {
+            stopQcEvaluationRotation();
+            return;
+        }
         var now = new Date().getTime();
-        if (!force && now - state.qcEvaluationLastLoadedAt < 30000) return;
+        if (!force && now - state.qcEvaluationLastLoadedAt < 30000) {
+            if (state.qcEvaluations.length && !state.qcEvaluationVisible && !state.qcEvaluationTimer) {
+                scheduleNextQcEvaluation(10000);
+            }
+            return;
+        }
         state.qcEvaluationLastLoadedAt = now;
         requestJson('/api/public/qc-product-evaluations?line=' + encodeURIComponent(state.lineName), function (error, payload) {
+            if (!state.isWithinWorkSchedule) {
+                stopQcEvaluationRotation();
+                return;
+            }
             if (error) {
                 logError('Gagal memuat evaluasi foto produk QC', error);
                 return;
             }
             state.qcEvaluations = payload && payload.evaluations ? payload.evaluations : [];
             if (!state.qcEvaluations.length) {
-                if (state.qcEvaluationTimer) window.clearTimeout(state.qcEvaluationTimer);
-                state.qcEvaluationTimer = null;
-                state.qcEvaluationVisible = false;
-                setVisible('legacy-qc-evaluation-overlay', false);
+                stopQcEvaluationRotation();
                 return;
             }
             if (!state.qcEvaluationVisible && !state.qcEvaluationTimer) scheduleNextQcEvaluation(10000);
@@ -318,6 +338,7 @@
 
     function showScheduleOverlay() {
         state.data = emptyLineData();
+        stopQcEvaluationRotation();
         hideLoading();
         hideError();
         setVisible('legacy-display-root', false);
@@ -332,6 +353,8 @@
     function loadWorkScheduleStatus(callback) {
         requestJson('/api/public/work-schedule-status', function (error, result) {
             if (error) {
+                state.isWithinWorkSchedule = false;
+                stopQcEvaluationRotation();
                 logError('Gagal memuat jadwal kerja', error);
                 showError(error.message);
                 callback(false);
@@ -439,9 +462,10 @@
     }
 
     function refreshAll() {
-        loadQcEvaluations(false);
         loadWorkScheduleStatus(function (withinSchedule) {
-            if (withinSchedule) loadLineData();
+            if (!withinSchedule) return;
+            loadQcEvaluations(false);
+            loadLineData();
         });
     }
 
@@ -453,7 +477,9 @@
                 refreshAll();
             } else {
                 loadWorkScheduleStatus(function (withinSchedule) {
-                    if (withinSchedule && element('legacy-display-root').style.display === 'none') loadLineData();
+                    if (!withinSchedule) return;
+                    loadQcEvaluations(false);
+                    if (element('legacy-display-root').style.display === 'none') loadLineData();
                 });
             }
         }, interval);
@@ -779,7 +805,6 @@
         }
         setText('legacy-line-title', 'LINE: ' + state.lineName);
         loadDisplaySettings(function () {
-            loadQcEvaluations(true);
             refreshAll();
             setupAutoRefresh();
         });

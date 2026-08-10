@@ -180,11 +180,6 @@
         var evaluationSideFontSize;
         var evaluationBodyFontSize;
         var evaluationMarkerSize;
-        var productionCellFontSize;
-        var productionSideFontSize;
-        var productionMetricFontSize;
-        var productionPercentFontSize;
-        var productionSideWidth;
         evaluationScale = Math.max(0.68, Math.min(evaluationScale, 1.5));
         evaluationPanelPadding = Math.max(8, Math.min(24, Math.round(16 * evaluationScale)));
         evaluationHeaderPaddingX = Math.max(12, Math.min(36, Math.round(24 * evaluationScale)));
@@ -192,20 +187,9 @@
         evaluationSideFontSize = Math.max(11, Math.min(24, Math.round(settings.sideFontSize * evaluationScale)));
         evaluationBodyFontSize = Math.max(12, Math.min(28, Math.round(settings.cellFontSize * evaluationScale)));
         evaluationMarkerSize = Math.max(26, Math.min(58, Math.round(settings.metricFontSize * 0.58 * evaluationScale)));
-        productionCellFontSize = Math.max(10, Math.min(26, Math.round(settings.cellFontSize * evaluationScale)));
-        productionSideFontSize = Math.max(9, Math.min(22, Math.round(settings.sideFontSize * evaluationScale)));
-        productionMetricFontSize = Math.max(32, Math.min(100, Math.round(settings.metricFontSize * evaluationScale)));
-        productionPercentFontSize = Math.max(22, Math.min(64, Math.round(settings.percentFontSize * evaluationScale)));
-        productionSideWidth = evaluationWidth < 1000 ? 28 : (evaluationWidth < 1400 ? 24 : 22);
         style.setProperty('--display-layout-width', settings.layoutWidth + '%');
         style.setProperty('--display-margin-left', settings.marginLeft + 'px');
         style.setProperty('--display-margin-top', settings.marginTop + 'px');
-        style.setProperty('--production-layout-width', evaluationWidth + 'px');
-        style.setProperty('--production-layout-height', availableHeight + 'px');
-        style.setProperty('--production-side-width', productionSideWidth + '%');
-        style.setProperty('--production-header-font-size', Math.max(14, Math.min(36, Math.round(24 * evaluationScale))) + 'px');
-        style.setProperty('--production-week-font-size', Math.max(12, Math.min(30, Math.round(20 * evaluationScale))) + 'px');
-        style.setProperty('--production-table-padding', Math.max(1, Math.min(5, Math.round(3 * evaluationScale))) + 'px');
         style.setProperty('--qc-evaluation-layout-width', evaluationWidth + 'px');
         style.setProperty('--qc-evaluation-layout-height', availableHeight + 'px');
         style.setProperty('--qc-evaluation-header-height', evaluationHeaderHeight + 'px');
@@ -231,15 +215,13 @@
         style.setProperty('--qc-evaluation-marker-offset', Math.round(evaluationMarkerSize / -2) + 'px');
         style.setProperty('--qc-evaluation-marker-font-size', Math.max(13, Math.min(28, Math.round(settings.percentFontSize * 0.48 * evaluationScale))) + 'px');
         style.setProperty('--qc-evaluation-notes-max-height', Math.max(68, Math.floor(evaluationContentHeight * 0.3)) + 'px');
-        style.setProperty('--display-body-font-size', Math.max(11, productionCellFontSize + 2) + 'px');
-        style.setProperty('--display-cell-font-size', productionCellFontSize + 'px');
-        style.setProperty('--display-output-font-size', Math.max(productionCellFontSize + 2, 12) + 'px');
-        style.setProperty('--display-clock-font-size', Math.max(productionCellFontSize + 4, 14) + 'px');
-        style.setProperty('--display-hour-font-size', Math.max(productionSideFontSize - 2, 9) + 'px');
-        style.setProperty('--display-side-font-size', productionSideFontSize + 'px');
-        style.setProperty('--display-metric-font-size', productionMetricFontSize + 'px');
-        style.setProperty('--display-long-metric-font-size', Math.max(28, Math.round(productionMetricFontSize * 0.82)) + 'px');
-        style.setProperty('--display-percent-font-size', productionPercentFontSize + 'px');
+        style.setProperty('--display-cell-font-size', settings.cellFontSize + 'px');
+        style.setProperty('--display-output-font-size', Math.max(settings.cellFontSize + 2, 12) + 'px');
+        style.setProperty('--display-clock-font-size', Math.max(settings.cellFontSize + 4, 14) + 'px');
+        style.setProperty('--display-hour-font-size', Math.max(settings.sideFontSize - 2, 10) + 'px');
+        style.setProperty('--display-side-font-size', settings.sideFontSize + 'px');
+        style.setProperty('--display-metric-font-size', settings.metricFontSize + 'px');
+        style.setProperty('--display-percent-font-size', settings.percentFontSize + 'px');
         state.refreshInterval = settings.refreshInterval;
         element('legacy-refresh-interval').value = String(state.refreshInterval);
     }
@@ -675,7 +657,7 @@
         setMetricClass('legacy-balance', 'isie', balance < 0);
         setMetricClass('legacy-defect-count', 'outday1', (parseFloat(selectedDefect.rate) || 0) > 3);
         setMetricClass('legacy-defect-rate', 'outday1', (parseFloat(selectedDefect.rate) || 0) > 3);
-        element('legacy-balance').style.fontSize = String(Math.abs(balance)).length >= 3 ? 'var(--display-long-metric-font-size, 54px)' : '';
+        element('legacy-balance').style.fontSize = String(Math.abs(balance)).length >= 3 ? '3.8em' : '';
     }
 
     function appendCell(row, text, className) {

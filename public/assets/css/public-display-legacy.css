@@ -30,8 +30,8 @@
     bottom: auto;
     left: var(--qc-evaluation-margin-left, 30px);
     z-index: 10000;
-    width: var(--qc-evaluation-layout-width, calc(100vw - 38px));
-    height: var(--qc-evaluation-layout-height, calc(100vh - 20px));
+    width: var(--qc-evaluation-layout-width, 98%);
+    height: calc(100vh - var(--qc-evaluation-margin-top, 12px) - 8px);
     padding: 0;
     background: #061326;
     color: #fff;
@@ -49,7 +49,7 @@
 }
 
 .qc-evaluation-header {
-    height: var(--qc-evaluation-header-height, 16%);
+    height: 112px;
     min-height: 0;
     padding: var(--qc-evaluation-header-padding-y, 14px) var(--qc-evaluation-header-padding-x, 24px);
     background: #991b1b;
@@ -117,7 +117,7 @@
 }
 
 .qc-evaluation-content {
-    height: var(--qc-evaluation-content-height, 84%);
+    height: calc(100% - 112px);
     display: flex;
     min-height: 0;
     overflow: hidden;
@@ -147,7 +147,7 @@
 .qc-evaluation-photo-stage img {
     display: block;
     max-width: 100%;
-    max-height: var(--qc-evaluation-photo-max-height, 72vh);
+    max-height: calc(100vh - var(--qc-evaluation-margin-top, 12px) - 158px);
     width: auto;
     height: auto;
     object-fit: contain;
@@ -270,73 +270,9 @@
     display: none;
 }
 
-@media (max-height: 600px) and (orientation: landscape) {
-    .qc-evaluation-shell {
-        border-width: 2px;
-        border-radius: 8px;
-    }
-
-    .qc-evaluation-kicker {
-        margin-bottom: 2px;
-        letter-spacing: 1px;
-    }
-
-    .qc-evaluation-header p {
-        margin-top: 2px;
-    }
-
-    .qc-evaluation-line-badge {
-        border-width: 1px;
-        border-radius: 6px;
-    }
-
-    .qc-evaluation-marker {
-        border-width: 2px;
-        box-shadow: 0 0 0 3px rgba(0, 0, 0, .35), 0 2px 8px rgba(0, 0, 0, .9);
-    }
-}
-
 @media (orientation: portrait), (max-width: 700px) {
     .error-content {
         width: auto;
         margin: 16px;
-    }
-
-    .qc-evaluation-overlay {
-        padding: 6px;
-    }
-
-    .qc-evaluation-header {
-        padding: 10px;
-    }
-
-    .qc-evaluation-header h1 {
-        font-size: 22px;
-    }
-
-    .qc-evaluation-content {
-        display: block;
-        overflow-y: auto;
-    }
-
-    .qc-evaluation-photo-panel {
-        width: 100%;
-        height: 58%;
-        min-height: 220px;
-    }
-
-    .qc-evaluation-detail-panel {
-        width: 100%;
-        height: auto;
-        min-height: 42%;
-        overflow: visible;
-    }
-
-    .qc-evaluation-marker-list {
-        overflow: visible;
-    }
-
-    .qc-evaluation-notes {
-        max-height: none;
     }
 }

@@ -9,7 +9,18 @@
         sideFontSize: 14,
         metricFontSize: 66,
         percentFontSize: 40,
-        refreshInterval: 10000
+        refreshInterval: 10000,
+        qc: {
+            layoutWidth: 98,
+            marginLeft: 30,
+            marginTop: 12,
+            photoWidth: 65,
+            titleFontSize: 34,
+            bodyFontSize: 16,
+            detailFontSize: 14,
+            markerSize: 38,
+            markerFontSize: 19
+        }
     };
 
     var state = {
@@ -149,6 +160,7 @@
 
     function normalizeDisplaySettings(settings) {
         settings = settings || {};
+        var qcSettings = settings.qc || {};
         return {
             layoutWidth: numberOr(settings.layoutWidth, DEFAULT_SETTINGS.layoutWidth),
             marginLeft: numberOr(settings.marginLeft, DEFAULT_SETTINGS.marginLeft),
@@ -157,23 +169,35 @@
             sideFontSize: numberOr(settings.sideFontSize, DEFAULT_SETTINGS.sideFontSize),
             metricFontSize: numberOr(settings.metricFontSize, DEFAULT_SETTINGS.metricFontSize),
             percentFontSize: numberOr(settings.percentFontSize, DEFAULT_SETTINGS.percentFontSize),
-            refreshInterval: numberOr(settings.refreshInterval, DEFAULT_SETTINGS.refreshInterval)
+            refreshInterval: numberOr(settings.refreshInterval, DEFAULT_SETTINGS.refreshInterval),
+            qc: {
+                layoutWidth: numberOr(qcSettings.layoutWidth, DEFAULT_SETTINGS.qc.layoutWidth),
+                marginLeft: numberOr(qcSettings.marginLeft, DEFAULT_SETTINGS.qc.marginLeft),
+                marginTop: numberOr(qcSettings.marginTop, DEFAULT_SETTINGS.qc.marginTop),
+                photoWidth: numberOr(qcSettings.photoWidth, DEFAULT_SETTINGS.qc.photoWidth),
+                titleFontSize: numberOr(qcSettings.titleFontSize, DEFAULT_SETTINGS.qc.titleFontSize),
+                bodyFontSize: numberOr(qcSettings.bodyFontSize, DEFAULT_SETTINGS.qc.bodyFontSize),
+                detailFontSize: numberOr(qcSettings.detailFontSize, DEFAULT_SETTINGS.qc.detailFontSize),
+                markerSize: numberOr(qcSettings.markerSize, DEFAULT_SETTINGS.qc.markerSize),
+                markerFontSize: numberOr(qcSettings.markerFontSize, DEFAULT_SETTINGS.qc.markerFontSize)
+            }
         };
     }
 
     function applyDisplaySettings() {
         var settings = state.settings;
+        var qcSettings = settings.qc || DEFAULT_SETTINGS.qc;
         var style = document.body.style;
         var viewportWidth = window.innerWidth || document.documentElement.clientWidth || 1280;
         var viewportHeight = window.innerHeight || document.documentElement.clientHeight || 720;
-        var availableWidth = Math.max(240, viewportWidth - settings.marginLeft - 8);
-        var availableHeight = Math.max(240, viewportHeight - settings.marginTop - 8);
-        var evaluationWidth = Math.max(240, Math.floor(availableWidth * (settings.layoutWidth / 100)));
-        var evaluationInnerHeight = Math.max(220, availableHeight - 6);
+        var evaluationAvailableWidth = Math.max(240, viewportWidth - qcSettings.marginLeft - 8);
+        var evaluationAvailableHeight = Math.max(240, viewportHeight - qcSettings.marginTop - 8);
+        var evaluationWidth = Math.max(240, Math.floor(evaluationAvailableWidth * (qcSettings.layoutWidth / 100)));
+        var evaluationInnerHeight = Math.max(220, evaluationAvailableHeight - 6);
         var evaluationHeaderHeight = Math.min(evaluationInnerHeight - 120, Math.max(72, Math.floor(evaluationInnerHeight * 0.16)));
         var evaluationContentHeight = evaluationInnerHeight - evaluationHeaderHeight;
         var evaluationScale = Math.min(viewportWidth / 1280, viewportHeight / 720);
-        var evaluationPhotoWidth = evaluationWidth < 1000 ? 60 : (evaluationWidth < 1400 ? 65 : 68);
+        var evaluationPhotoWidth = qcSettings.photoWidth;
         var evaluationPanelPadding;
         var evaluationHeaderPaddingX;
         var evaluationHeaderPaddingY;
@@ -184,14 +208,16 @@
         evaluationPanelPadding = Math.max(8, Math.min(24, Math.round(16 * evaluationScale)));
         evaluationHeaderPaddingX = Math.max(12, Math.min(36, Math.round(24 * evaluationScale)));
         evaluationHeaderPaddingY = Math.max(8, Math.min(20, Math.round(14 * evaluationScale)));
-        evaluationSideFontSize = Math.max(11, Math.min(24, Math.round(settings.sideFontSize * evaluationScale)));
-        evaluationBodyFontSize = Math.max(12, Math.min(28, Math.round(settings.cellFontSize * evaluationScale)));
-        evaluationMarkerSize = Math.max(26, Math.min(58, Math.round(settings.metricFontSize * 0.58 * evaluationScale)));
+        evaluationSideFontSize = Math.max(9, Math.min(30, Math.round(qcSettings.detailFontSize * evaluationScale)));
+        evaluationBodyFontSize = Math.max(10, Math.min(36, Math.round(qcSettings.bodyFontSize * evaluationScale)));
+        evaluationMarkerSize = Math.max(20, Math.min(90, Math.round(qcSettings.markerSize * evaluationScale)));
         style.setProperty('--display-layout-width', settings.layoutWidth + '%');
         style.setProperty('--display-margin-left', settings.marginLeft + 'px');
         style.setProperty('--display-margin-top', settings.marginTop + 'px');
+        style.setProperty('--qc-evaluation-margin-left', qcSettings.marginLeft + 'px');
+        style.setProperty('--qc-evaluation-margin-top', qcSettings.marginTop + 'px');
         style.setProperty('--qc-evaluation-layout-width', evaluationWidth + 'px');
-        style.setProperty('--qc-evaluation-layout-height', availableHeight + 'px');
+        style.setProperty('--qc-evaluation-layout-height', evaluationAvailableHeight + 'px');
         style.setProperty('--qc-evaluation-header-height', evaluationHeaderHeight + 'px');
         style.setProperty('--qc-evaluation-content-height', evaluationContentHeight + 'px');
         style.setProperty('--qc-evaluation-photo-max-height', Math.max(100, evaluationContentHeight - (evaluationPanelPadding * 2)) + 'px');
@@ -209,11 +235,11 @@
         style.setProperty('--qc-evaluation-notes-padding', Math.max(7, Math.round(evaluationPanelPadding * 0.7)) + 'px');
         style.setProperty('--qc-evaluation-side-font-size', evaluationSideFontSize + 'px');
         style.setProperty('--qc-evaluation-body-font-size', evaluationBodyFontSize + 'px');
-        style.setProperty('--qc-evaluation-title-font-size', Math.max(22, Math.min(52, Math.round(settings.cellFontSize * 2.1 * evaluationScale))) + 'px');
-        style.setProperty('--qc-evaluation-badge-font-size', Math.max(19, Math.min(40, Math.round((settings.cellFontSize + 12) * evaluationScale))) + 'px');
+        style.setProperty('--qc-evaluation-title-font-size', Math.max(16, Math.min(72, Math.round(qcSettings.titleFontSize * evaluationScale))) + 'px');
+        style.setProperty('--qc-evaluation-badge-font-size', Math.max(17, Math.min(48, Math.round((qcSettings.bodyFontSize + 12) * evaluationScale))) + 'px');
         style.setProperty('--qc-evaluation-marker-size', evaluationMarkerSize + 'px');
         style.setProperty('--qc-evaluation-marker-offset', Math.round(evaluationMarkerSize / -2) + 'px');
-        style.setProperty('--qc-evaluation-marker-font-size', Math.max(13, Math.min(28, Math.round(settings.percentFontSize * 0.48 * evaluationScale))) + 'px');
+        style.setProperty('--qc-evaluation-marker-font-size', Math.max(10, Math.min(40, Math.round(qcSettings.markerFontSize * evaluationScale))) + 'px');
         style.setProperty('--qc-evaluation-notes-max-height', Math.max(68, Math.floor(evaluationContentHeight * 0.3)) + 'px');
         style.setProperty('--display-cell-font-size', settings.cellFontSize + 'px');
         style.setProperty('--display-output-font-size', Math.max(settings.cellFontSize + 2, 12) + 'px');

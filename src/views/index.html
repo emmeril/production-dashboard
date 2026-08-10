@@ -7,7 +7,7 @@
 	<link rel="stylesheet" href="/public/assets/css/fonts.css?v=20260802">
 	<link rel="stylesheet" href="/public/assets/css/tailwind.css?v=3.4.17">
 	<link rel="stylesheet" href="/public/assets/css/fontawesome.min.css?v=6.5.2">
-	<link rel="stylesheet" href="/public/assets/css/style.css?v=20260807-qc-badge-v1">
+	<link rel="stylesheet" href="/public/assets/css/style.css?v=20260810-public-display-settings-v2">
 	<script src="/public/assets/js/vendor/alpine.min.js?v=3.15.12" defer></script>
 	<script src="/public/assets/js/vendor/chart.umd.min.js?v=4.5.1" defer></script>
 </head>
@@ -2187,33 +2187,47 @@
 		                <div x-show="currentPage === 'public-display-settings' && currentUser.role === 'admin'" class="fade-in">
 		                    <div class="mb-6">
 		                        <h1 class="text-2xl font-bold text-gray-800 flex items-center"><i class="fa-solid fa-tv text-blue-600 mr-3"></i>Public Display</h1>
-		                        <p class="text-gray-600">Atur ukuran layout public display untuk monitor atau TV</p>
+		                        <p class="text-gray-600">Atur layout Produksi dan Evaluasi QC secara terpisah untuk monitor atau TV</p>
 		                    </div>
 
 		                    <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
-		                        <div class="xl:col-span-2 bg-white rounded-lg shadow overflow-hidden card-shadow">
+		                        <div class="min-w-0 xl:col-span-2 bg-white rounded-lg shadow overflow-hidden card-shadow">
 		                            <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
 		                                <h3 class="text-lg leading-6 font-medium text-gray-900 flex items-center"><i class="fa-solid fa-sliders text-blue-600 mr-2"></i>Ukuran Layout</h3>
-		                                <p class="mt-1 max-w-2xl text-sm text-gray-500">Sesuaikan lebar, jarak tepi, dan ukuran teks display</p>
+		                                <p class="mt-1 max-w-2xl text-sm text-gray-500">Pengaturan Produksi dan Evaluasi QC disimpan dalam kelompok terpisah.</p>
 		                            </div>
-		                            <form class="p-4 space-y-5" @submit.prevent="savePublicDisplaySettings()">
-		                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+		                            <form class="public-display-settings-form min-w-0 p-4 space-y-6" @submit.prevent="savePublicDisplaySettings()">
+		                                <div class="flex gap-2 rounded-lg bg-gray-100 p-1" role="tablist" aria-label="Jenis layout public display">
+		                                    <button type="button" role="tab" @click="publicDisplaySettingsTab = 'production'" :aria-selected="publicDisplaySettingsTab === 'production'" class="btn-compact flex-1 inline-flex items-center justify-center border font-medium rounded-md" :class="publicDisplaySettingsTab === 'production' ? 'border-transparent bg-blue-600 text-white shadow-sm' : 'border-transparent bg-white text-gray-700'">
+		                                        <i class="fa-solid fa-chart-column mr-2"></i>Produksi
+		                                    </button>
+		                                    <button type="button" role="tab" @click="publicDisplaySettingsTab = 'qc'" :aria-selected="publicDisplaySettingsTab === 'qc'" class="btn-compact flex-1 inline-flex items-center justify-center border font-medium rounded-md" :class="publicDisplaySettingsTab === 'qc' ? 'border-transparent bg-red-600 text-white shadow-sm' : 'border-transparent bg-white text-gray-700'">
+		                                        <i class="fa-solid fa-camera-retro mr-2"></i>Evaluasi QC
+		                                    </button>
+		                                </div>
+
+		                                <section x-show="publicDisplaySettingsTab === 'production'" class="display-settings-panel min-w-0" role="tabpanel">
+		                                    <div class="mb-4 border-b border-gray-200 pb-3">
+		                                        <h4 class="text-base font-semibold text-gray-900">Layout Produksi</h4>
+		                                        <p class="mt-1 text-xs text-gray-500">Mengatur tabel produksi utama, panel jam, angka besar, dan interval refresh.</p>
+		                                    </div>
+		                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 		                                    <div>
-		                                        <label class="block text-sm font-medium text-gray-700">Lebar Layout (%)</label>
+		                                        <label class="block text-sm font-medium text-gray-700">Lebar Produksi (%)</label>
 		                                        <div class="mt-1 flex items-center gap-3">
 		                                            <input type="range" min="60" max="100" x-model.number="publicDisplaySettings.layoutWidth" class="w-full">
 		                                            <input type="number" min="60" max="100" x-model.number="publicDisplaySettings.layoutWidth" class="w-24 rounded-md border-gray-300 shadow-sm sm:text-sm">
 		                                        </div>
 		                                    </div>
 		                                    <div>
-		                                        <label class="block text-sm font-medium text-gray-700">Margin Kiri (px)</label>
+		                                        <label class="block text-sm font-medium text-gray-700">Margin Kiri Produksi (px)</label>
 		                                        <div class="mt-1 flex items-center gap-3">
 		                                            <input type="range" min="0" max="120" x-model.number="publicDisplaySettings.marginLeft" class="w-full">
 		                                            <input type="number" min="0" max="120" x-model.number="publicDisplaySettings.marginLeft" class="w-24 rounded-md border-gray-300 shadow-sm sm:text-sm">
 		                                        </div>
 		                                    </div>
 		                                    <div>
-		                                        <label class="block text-sm font-medium text-gray-700">Margin Atas (px)</label>
+		                                        <label class="block text-sm font-medium text-gray-700">Margin Atas Produksi (px)</label>
 		                                        <div class="mt-1 flex items-center gap-3">
 		                                            <input type="range" min="0" max="80" x-model.number="publicDisplaySettings.marginTop" class="w-full">
 		                                            <input type="number" min="0" max="80" x-model.number="publicDisplaySettings.marginTop" class="w-24 rounded-md border-gray-300 shadow-sm sm:text-sm">
@@ -2257,14 +2271,90 @@
 		                                            <option value="60000">1 Menit</option>
 		                                        </select>
 		                                    </div>
-		                                </div>
-
-		                                <div class="flex flex-wrap gap-2 pt-2">
-		                                    <button type="submit" class="btn-compact inline-flex items-center border border-transparent font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700">
-		                                        <i class="fa-solid fa-floppy-disk mr-2"></i>Simpan Setting
+		                                    </div>
+		                                    <button type="button" @click="resetPublicDisplayProductionSettings()" class="mt-4 btn-compact inline-flex items-center border border-gray-300 font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50">
+		                                        <i class="fa-solid fa-rotate-left mr-2"></i>Reset Produksi
 		                                    </button>
-		                                    <button type="button" @click="resetPublicDisplaySettings()" class="btn-compact inline-flex items-center border border-gray-300 font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50">
-		                                        <i class="fa-solid fa-rotate-left mr-2"></i>Reset Default
+		                                </section>
+
+		                                <section x-show="publicDisplaySettingsTab === 'qc'" class="display-settings-panel min-w-0" role="tabpanel">
+		                                    <div class="mb-4 border-b border-red-200 pb-3">
+		                                        <h4 class="text-base font-semibold text-gray-900">Layout Evaluasi QC</h4>
+		                                        <p class="mt-1 text-xs text-gray-500">Khusus overlay foto evaluasi, panel detail defect, judul, dan marker. Tidak mengubah layout Produksi.</p>
+		                                    </div>
+		                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+		                                        <div>
+		                                            <label class="block text-sm font-medium text-gray-700">Lebar Layout QC (%)</label>
+		                                            <div class="mt-1 flex items-center gap-3">
+		                                                <input type="range" min="60" max="100" x-model.number="publicDisplaySettings.qc.layoutWidth" class="w-full">
+		                                                <input type="number" min="60" max="100" x-model.number="publicDisplaySettings.qc.layoutWidth" class="w-24 rounded-md border-gray-300 shadow-sm sm:text-sm">
+		                                            </div>
+		                                        </div>
+		                                        <div>
+		                                            <label class="block text-sm font-medium text-gray-700">Margin Kiri QC (px)</label>
+		                                            <div class="mt-1 flex items-center gap-3">
+		                                                <input type="range" min="0" max="120" x-model.number="publicDisplaySettings.qc.marginLeft" class="w-full">
+		                                                <input type="number" min="0" max="120" x-model.number="publicDisplaySettings.qc.marginLeft" class="w-24 rounded-md border-gray-300 shadow-sm sm:text-sm">
+		                                            </div>
+		                                        </div>
+		                                        <div>
+		                                            <label class="block text-sm font-medium text-gray-700">Margin Atas QC (px)</label>
+		                                            <div class="mt-1 flex items-center gap-3">
+		                                                <input type="range" min="0" max="80" x-model.number="publicDisplaySettings.qc.marginTop" class="w-full">
+		                                                <input type="number" min="0" max="80" x-model.number="publicDisplaySettings.qc.marginTop" class="w-24 rounded-md border-gray-300 shadow-sm sm:text-sm">
+		                                            </div>
+		                                        </div>
+		                                        <div>
+		                                            <label class="block text-sm font-medium text-gray-700">Lebar Area Foto QC (%)</label>
+		                                            <div class="mt-1 flex items-center gap-3">
+		                                                <input type="range" min="50" max="80" x-model.number="publicDisplaySettings.qc.photoWidth" class="w-full">
+		                                                <input type="number" min="50" max="80" x-model.number="publicDisplaySettings.qc.photoWidth" class="w-24 rounded-md border-gray-300 shadow-sm sm:text-sm">
+		                                            </div>
+		                                        </div>
+		                                        <div>
+		                                            <label class="block text-sm font-medium text-gray-700">Font Judul QC (px)</label>
+		                                            <div class="mt-1 flex items-center gap-3">
+		                                                <input type="range" min="20" max="60" x-model.number="publicDisplaySettings.qc.titleFontSize" class="w-full">
+		                                                <input type="number" min="20" max="60" x-model.number="publicDisplaySettings.qc.titleFontSize" class="w-24 rounded-md border-gray-300 shadow-sm sm:text-sm">
+		                                            </div>
+		                                        </div>
+		                                        <div>
+		                                            <label class="block text-sm font-medium text-gray-700">Font Nama Produk QC (px)</label>
+		                                            <div class="mt-1 flex items-center gap-3">
+		                                                <input type="range" min="10" max="30" x-model.number="publicDisplaySettings.qc.bodyFontSize" class="w-full">
+		                                                <input type="number" min="10" max="30" x-model.number="publicDisplaySettings.qc.bodyFontSize" class="w-24 rounded-md border-gray-300 shadow-sm sm:text-sm">
+		                                            </div>
+		                                        </div>
+		                                        <div>
+		                                            <label class="block text-sm font-medium text-gray-700">Font Detail Defect QC (px)</label>
+		                                            <div class="mt-1 flex items-center gap-3">
+		                                                <input type="range" min="10" max="24" x-model.number="publicDisplaySettings.qc.detailFontSize" class="w-full">
+		                                                <input type="number" min="10" max="24" x-model.number="publicDisplaySettings.qc.detailFontSize" class="w-24 rounded-md border-gray-300 shadow-sm sm:text-sm">
+		                                            </div>
+		                                        </div>
+		                                        <div>
+		                                            <label class="block text-sm font-medium text-gray-700">Ukuran Marker QC (px)</label>
+		                                            <div class="mt-1 flex items-center gap-3">
+		                                                <input type="range" min="24" max="72" x-model.number="publicDisplaySettings.qc.markerSize" class="w-full">
+		                                                <input type="number" min="24" max="72" x-model.number="publicDisplaySettings.qc.markerSize" class="w-24 rounded-md border-gray-300 shadow-sm sm:text-sm">
+		                                            </div>
+		                                        </div>
+		                                        <div>
+		                                            <label class="block text-sm font-medium text-gray-700">Font Nomor Marker QC (px)</label>
+		                                            <div class="mt-1 flex items-center gap-3">
+		                                                <input type="range" min="12" max="32" x-model.number="publicDisplaySettings.qc.markerFontSize" class="w-full">
+		                                                <input type="number" min="12" max="32" x-model.number="publicDisplaySettings.qc.markerFontSize" class="w-24 rounded-md border-gray-300 shadow-sm sm:text-sm">
+		                                            </div>
+		                                        </div>
+		                                    </div>
+		                                    <button type="button" @click="resetPublicDisplayQcSettings()" class="mt-4 btn-compact inline-flex items-center border border-red-200 font-medium rounded-md shadow-sm text-red-700 bg-white hover:bg-red-50">
+		                                        <i class="fa-solid fa-rotate-left mr-2"></i>Reset Evaluasi QC
+		                                    </button>
+		                                </section>
+
+		                                <div class="flex flex-wrap gap-2 pt-2 border-t border-gray-200">
+		                                    <button type="submit" class="btn-compact inline-flex items-center border border-transparent font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700">
+		                                        <i class="fa-solid fa-floppy-disk mr-2"></i>Simpan Semua Setting
 		                                    </button>
 		                                </div>
 		                            </form>
@@ -2919,6 +3009,6 @@
         </div>
     </div>
 
-   <script src="/public/assets/js/alpine.js?v=20260807-qc-photo-v1"></script>
+   <script src="/public/assets/js/alpine.js?v=20260810-public-display-qc-settings-v2"></script>
 </body>
 </html>

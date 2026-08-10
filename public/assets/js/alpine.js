@@ -214,8 +214,20 @@ function dashboard() {
 	            sideFontSize: 14,
 	            metricFontSize: 66,
 	            percentFontSize: 40,
-	            refreshInterval: 10000
+	            refreshInterval: 10000,
+	            qc: {
+	                layoutWidth: 98,
+	                marginLeft: 30,
+	                marginTop: 12,
+	                photoWidth: 65,
+	                titleFontSize: 34,
+	                bodyFontSize: 16,
+	                detailFontSize: 14,
+	                markerSize: 38,
+	                markerFontSize: 19
+	            }
 	        },
+	        publicDisplaySettingsTab: 'production',
 	        qcProductEvaluations: [],
 	        qcEvaluationSearchTerm: '',
 	        qcEvaluationStatusFilter: '',
@@ -2039,8 +2051,20 @@ function dashboard() {
 	                sideFontSize: 14,
 	                metricFontSize: 66,
 	                percentFontSize: 40,
-	                refreshInterval: 10000
+	                refreshInterval: 10000,
+	                qc: {
+	                    layoutWidth: 98,
+	                    marginLeft: 30,
+	                    marginTop: 12,
+	                    photoWidth: 65,
+	                    titleFontSize: 34,
+	                    bodyFontSize: 16,
+	                    detailFontSize: 14,
+	                    markerSize: 38,
+	                    markerFontSize: 19
+	                }
 	            };
+	            const qcSettings = settings.qc && typeof settings.qc === 'object' ? settings.qc : {};
 
 	            return {
 	                layoutWidth: Number(settings.layoutWidth ?? defaults.layoutWidth),
@@ -2050,7 +2074,18 @@ function dashboard() {
 	                sideFontSize: Number(settings.sideFontSize ?? defaults.sideFontSize),
 	                metricFontSize: Number(settings.metricFontSize ?? defaults.metricFontSize),
 	                percentFontSize: Number(settings.percentFontSize ?? defaults.percentFontSize),
-	                refreshInterval: Number(settings.refreshInterval ?? defaults.refreshInterval)
+	                refreshInterval: Number(settings.refreshInterval ?? defaults.refreshInterval),
+	                qc: {
+	                    layoutWidth: Number(qcSettings.layoutWidth ?? defaults.qc.layoutWidth),
+	                    marginLeft: Number(qcSettings.marginLeft ?? defaults.qc.marginLeft),
+	                    marginTop: Number(qcSettings.marginTop ?? defaults.qc.marginTop),
+	                    photoWidth: Number(qcSettings.photoWidth ?? defaults.qc.photoWidth),
+	                    titleFontSize: Number(qcSettings.titleFontSize ?? defaults.qc.titleFontSize),
+	                    bodyFontSize: Number(qcSettings.bodyFontSize ?? defaults.qc.bodyFontSize),
+	                    detailFontSize: Number(qcSettings.detailFontSize ?? defaults.qc.detailFontSize),
+	                    markerSize: Number(qcSettings.markerSize ?? defaults.qc.markerSize),
+	                    markerFontSize: Number(qcSettings.markerFontSize ?? defaults.qc.markerFontSize)
+	                }
 	            };
 	        },
 
@@ -2092,6 +2127,26 @@ function dashboard() {
 
 	        resetPublicDisplaySettings() {
 	            this.publicDisplaySettings = this.normalizePublicDisplaySettings();
+	        },
+
+	        resetPublicDisplayProductionSettings() {
+	            const defaults = this.normalizePublicDisplaySettings();
+	            this.publicDisplaySettings = {
+	                ...this.publicDisplaySettings,
+	                layoutWidth: defaults.layoutWidth,
+	                marginLeft: defaults.marginLeft,
+	                marginTop: defaults.marginTop,
+	                cellFontSize: defaults.cellFontSize,
+	                sideFontSize: defaults.sideFontSize,
+	                metricFontSize: defaults.metricFontSize,
+	                percentFontSize: defaults.percentFontSize,
+	                refreshInterval: defaults.refreshInterval
+	            };
+	        },
+
+	        resetPublicDisplayQcSettings() {
+	            const defaults = this.normalizePublicDisplaySettings();
+	            this.publicDisplaySettings.qc = { ...defaults.qc };
 	        },
 
 	        async loadWorkScheduleSettings() {

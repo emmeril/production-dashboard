@@ -203,6 +203,53 @@ test('branding settings are public to read but only admin can update them', asyn
   assert.deepEqual(await savedResponse.json(), updateResult.settings);
 });
 
+test('admin can save separate production and QC public display settings', async () => {
+  const { cookie: adminCookie } = await login('admin', 'admin-password');
+  const updateResponse = await fetch(`${baseUrl}/api/public-display-settings`, {
+    method: 'PUT',
+    headers: { Cookie: adminCookie, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      layoutWidth: 91,
+      marginLeft: 20,
+      marginTop: 10,
+      cellFontSize: 17,
+      sideFontSize: 15,
+      metricFontSize: 70,
+      percentFontSize: 42,
+      refreshInterval: 30000,
+      qc: {
+        layoutWidth: 86,
+        marginLeft: 14,
+        marginTop: 8,
+        photoWidth: 68,
+        titleFontSize: 38,
+        bodyFontSize: 17,
+        detailFontSize: 15,
+        markerSize: 44,
+        markerFontSize: 21
+      }
+    })
+  });
+  const updated = await updateResponse.json();
+
+  assert.equal(updateResponse.status, 200);
+  assert.equal(updated.settings.layoutWidth, 91);
+  assert.deepEqual(updated.settings.qc, {
+    layoutWidth: 86,
+    marginLeft: 14,
+    marginTop: 8,
+    photoWidth: 68,
+    titleFontSize: 38,
+    bodyFontSize: 17,
+    detailFontSize: 15,
+    markerSize: 44,
+    markerFontSize: 21
+  });
+
+  const savedResponse = await fetch(`${baseUrl}/api/public-display-settings`);
+  assert.deepEqual(await savedResponse.json(), updated.settings);
+});
+
 test('layout-critical browser assets are served locally', async () => {
   const assetPaths = [
     '/public/assets/css/tailwind.css',

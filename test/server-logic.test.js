@@ -12,6 +12,7 @@ const {
 
 const {
   app,
+  buildInitialPublicDisplaySettings,
   buildPublicModelResponse,
   buildMaterialOrderCumulativeOutputs,
   buildMaterialOrderProductionTotals,
@@ -49,6 +50,7 @@ const {
   normalizeUserRecord,
   normalizeProductionLineName,
   normalizeProductionModel,
+  normalizePublicDisplaySettings,
   resolveActiveDefectCategories,
   productionImportTemplateWorkbook,
   qcImportTemplateWorkbook,
@@ -111,6 +113,48 @@ test('public model response omits internal user and lock fields', () => {
   assert.equal(publicModel.qcChecks[0].notes, undefined);
   assert.equal(publicModel.qcChecks[0].checkedAt, undefined);
   assert.equal(publicModel.operators[0].name, undefined);
+});
+
+test('public display settings keep production and QC layouts separate', () => {
+  const defaults = buildInitialPublicDisplaySettings();
+  const migrated = normalizePublicDisplaySettings({
+    layoutWidth: 82,
+    marginLeft: 12,
+    metricFontSize: 72
+  });
+
+  assert.equal(migrated.layoutWidth, 82);
+  assert.equal(migrated.marginLeft, 12);
+  assert.equal(migrated.metricFontSize, 72);
+  assert.deepEqual(migrated.qc, defaults.qc);
+
+  const normalized = normalizePublicDisplaySettings({
+    layoutWidth: 90,
+    qc: {
+      layoutWidth: 75,
+      marginLeft: 18,
+      marginTop: 9,
+      photoWidth: 70,
+      titleFontSize: 40,
+      bodyFontSize: 18,
+      detailFontSize: 15,
+      markerSize: 46,
+      markerFontSize: 21
+    }
+  });
+
+  assert.equal(normalized.layoutWidth, 90);
+  assert.deepEqual(normalized.qc, {
+    layoutWidth: 75,
+    marginLeft: 18,
+    marginTop: 9,
+    photoWidth: 70,
+    titleFontSize: 40,
+    bodyFontSize: 18,
+    detailFontSize: 15,
+    markerSize: 46,
+    markerFontSize: 21
+  });
 });
 
 test('QC quick-entry quantity updates totals, hourly data, and public response', () => {

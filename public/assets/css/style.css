@@ -2207,6 +2207,39 @@ button:not(.pagination-btn):not([class*="rounded-full"]):not([class*="p-1"]):not
 
 /* Evaluasi Produk QC follows the same neutral card and toolbar language used
    by Management Line, Kategori Defect, and Public Display settings. */
+.public-display-settings-form,
+.public-display-settings-form .display-settings-panel,
+.public-display-settings-form .display-settings-panel > .grid,
+.public-display-settings-form .display-settings-panel > .grid > div,
+.public-display-settings-form .flex.items-center {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.public-display-settings-form .display-settings-panel {
+    width: 100%;
+}
+
+.public-display-settings-form input[type="range"] {
+    flex: 1 1 0%;
+    width: auto;
+    min-width: 0;
+}
+
+.public-display-settings-form input[type="number"] {
+    flex: 0 0 6rem;
+    width: 6rem;
+    min-width: 0;
+    max-width: 40%;
+}
+
+@media (max-width: 640px) {
+    .public-display-settings-form input[type="number"] {
+        flex-basis: 5rem;
+        width: 5rem;
+    }
+}
+
 .qc-evaluation-page .card-shadow {
     border: 1px solid #e2e8f0;
 }

@@ -625,7 +625,18 @@ function buildInitialPublicDisplaySettings() {
     sideFontSize: 14,
     metricFontSize: 66,
     percentFontSize: 40,
-    refreshInterval: 10000
+    refreshInterval: 10000,
+    qc: {
+      layoutWidth: 98,
+      marginLeft: 30,
+      marginTop: 12,
+      photoWidth: 65,
+      titleFontSize: 34,
+      bodyFontSize: 16,
+      detailFontSize: 14,
+      markerSize: 38,
+      markerFontSize: 19
+    }
   };
 }
 
@@ -681,6 +692,7 @@ function normalizeNumberSetting(value, fallback, min, max) {
 
 function normalizePublicDisplaySettings(settings = {}) {
   const defaults = buildInitialPublicDisplaySettings();
+  const qcSettings = settings.qc && typeof settings.qc === 'object' ? settings.qc : {};
 
   return {
     layoutWidth: normalizeNumberSetting(settings.layoutWidth, defaults.layoutWidth, 60, 100),
@@ -690,7 +702,18 @@ function normalizePublicDisplaySettings(settings = {}) {
     sideFontSize: normalizeNumberSetting(settings.sideFontSize, defaults.sideFontSize, 10, 24),
     metricFontSize: normalizeNumberSetting(settings.metricFontSize, defaults.metricFontSize, 32, 110),
     percentFontSize: normalizeNumberSetting(settings.percentFontSize, defaults.percentFontSize, 20, 72),
-    refreshInterval: normalizeNumberSetting(settings.refreshInterval, defaults.refreshInterval, 0, 60000)
+    refreshInterval: normalizeNumberSetting(settings.refreshInterval, defaults.refreshInterval, 0, 60000),
+    qc: {
+      layoutWidth: normalizeNumberSetting(qcSettings.layoutWidth, defaults.qc.layoutWidth, 60, 100),
+      marginLeft: normalizeNumberSetting(qcSettings.marginLeft, defaults.qc.marginLeft, 0, 120),
+      marginTop: normalizeNumberSetting(qcSettings.marginTop, defaults.qc.marginTop, 0, 80),
+      photoWidth: normalizeNumberSetting(qcSettings.photoWidth, defaults.qc.photoWidth, 50, 80),
+      titleFontSize: normalizeNumberSetting(qcSettings.titleFontSize, defaults.qc.titleFontSize, 20, 60),
+      bodyFontSize: normalizeNumberSetting(qcSettings.bodyFontSize, defaults.qc.bodyFontSize, 10, 30),
+      detailFontSize: normalizeNumberSetting(qcSettings.detailFontSize, defaults.qc.detailFontSize, 10, 24),
+      markerSize: normalizeNumberSetting(qcSettings.markerSize, defaults.qc.markerSize, 24, 72),
+      markerFontSize: normalizeNumberSetting(qcSettings.markerFontSize, defaults.qc.markerFontSize, 12, 32)
+    }
   };
 }
 
@@ -2141,7 +2164,7 @@ app.get('/api/public-display-settings', async (req, res) => {
 
 app.put('/api/public-display-settings', requireLogin, requireAdmin, async (req, res) => {
   const settings = await writePublicDisplaySettings(req.body || {});
-  res.json({ message: 'Public display settings updated successfully', settings });
+  res.json({ message: 'Pengaturan layout Produksi dan Evaluasi QC berhasil disimpan', settings });
 });
 
 const QC_EVALUATION_MAX_IMAGE_BYTES = 3 * 1024 * 1024;
@@ -2690,6 +2713,7 @@ if (require.main === module) {
 
 module.exports = {
   app,
+  buildInitialPublicDisplaySettings,
   buildPublicModelResponse,
   calculateDefectSeverityBreakdown,
   buildDateReportRows,
@@ -2720,6 +2744,7 @@ module.exports = {
   generateMaterialOrderReportExcel,
   generateMaterialOrderReportPdf,
   normalizeMaterialOrderRecord,
+  normalizePublicDisplaySettings,
   validateMaterialOrderInput,
   isValidProductionSnapshot,
   isBlankInputValue,

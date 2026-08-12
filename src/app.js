@@ -2108,6 +2108,42 @@ app.delete('/api/production/:lineName/:modelId/:hourIndex', requireLogin, requir
   res.json({ message: 'Hasil sewing berhasil dihapus', data: model, summary });
 });
 
+app.delete('/api/qc-check/:lineName/:modelId/bulk', requireLogin, requireLineAccess, requireQcManageAccess, autoCheckDateReset, async (req, res) => {
+  const { lineName, modelId } = req.params;
+  const checkIds = Array.isArray(req.body?.checkIds) ? req.body.checkIds : [];
+  const normalizedIds = new Set(checkIds.map(id => String(id)).filter(Boolean));
+
+  if (normalizedIds.size === 0) {
+    return res.status(400).json({ error: 'Pilih minimal satu data QC untuk dihapus' });
+  }
+  if (normalizedIds.size > 500) {
+    return res.status(400).json({ error: 'Maksimal 500 data QC dapat dihapus sekaligus' });
+  }
+
+  const data = readProductionData();
+  const model = data.lines?.[lineName]?.models?.[modelId];
+  if (!model) return res.status(404).json({ error: 'Line atau model tidak ditemukan' });
+
+  model.qcChecks = Array.isArray(model.qcChecks) ? model.qcChecks : [];
+  const deletedChecks = model.qcChecks.filter(check => normalizedIds.has(String(check.id)));
+  if (deletedChecks.length === 0) {
+    return res.status(404).json({ error: 'Data QC yang dipilih tidak ditemukan' });
+  }
+
+  model.qcChecks = model.qcChecks.filter(check => !normalizedIds.has(String(check.id)));
+  const summary = recalculateModelTotals(model);
+  await writeProductionData(data);
+  updateTodayBackup();
+
+  res.json({
+    message: `${deletedChecks.length} data QC berhasil dihapus`,
+    deletedCount: deletedChecks.length,
+    deletedCheckIds: deletedChecks.map(check => check.id),
+    data: model,
+    summary
+  });
+});
+
 app.delete('/api/qc-check/:lineName/:modelId/:checkId', requireLogin, requireLineAccess, requireQcManageAccess, autoCheckDateReset, async (req, res) => {
   const { lineName, modelId, checkId } = req.params;
   const data = readProductionData();

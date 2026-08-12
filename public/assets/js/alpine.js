@@ -337,6 +337,8 @@ function dashboard() {
 	        qcItemsPerPage: 10,
 	        qcSearchTerm: '',
 	        qcResultFilter: '',
+	        selectedQcCheckIds: [],
+	        isDeletingQcChecks: false,
 
 	        // Defect category pagination
 	        defectTypeCurrentPage: 1,
@@ -901,6 +903,7 @@ function dashboard() {
 	            this.qcCurrentPage = 1;
 	            this.qcSearchTerm = '';
 	            this.qcResultFilter = '';
+	            this.selectedQcCheckIds = [];
 	            this.loadLineDetail(lineName, modelId);
 	            this.changePage('line-detail');
 	        },
@@ -2594,6 +2597,7 @@ function dashboard() {
 	                    this.showToast(error.error || 'Gagal menghapus data QC', 'error');
 	                    return;
 	                }
+	                this.selectedQcCheckIds = this.selectedQcCheckIds.filter(id => id !== String(checkId));
 	                this.showToast('Data QC berhasil dihapus', 'success');
 	                await this.loadLineDetail(this.currentLine, this.currentModelId);
 	                this.qcCurrentPage = Math.min(this.qcCurrentPage, this.totalQcPages);
@@ -2601,6 +2605,71 @@ function dashboard() {
 	            } catch (error) {
 	                logClientError('Error deleting QC check:', error);
 	                this.showToast('Error menghapus data QC', 'error');
+	            }
+	        },
+
+	        isQcCheckSelected(checkId) {
+	            return this.selectedQcCheckIds.includes(String(checkId));
+	        },
+
+	        toggleQcCheckSelection(checkId) {
+	            const id = String(checkId);
+	            if (this.isQcCheckSelected(id)) {
+	                this.selectedQcCheckIds = this.selectedQcCheckIds.filter(selectedId => selectedId !== id);
+	                return;
+	            }
+	            this.selectedQcCheckIds = [...this.selectedQcCheckIds, id];
+	        },
+
+	        get areAllPaginatedQcChecksSelected() {
+	            return this.paginatedQcChecks.length > 0
+	                && this.paginatedQcChecks.every(check => this.isQcCheckSelected(check.id));
+	        },
+
+	        toggleAllPaginatedQcChecks() {
+	            const pageIds = this.paginatedQcChecks.map(check => String(check.id));
+	            if (this.areAllPaginatedQcChecksSelected) {
+	                this.selectedQcCheckIds = this.selectedQcCheckIds.filter(id => !pageIds.includes(id));
+	                return;
+	            }
+	            this.selectedQcCheckIds = [...new Set([...this.selectedQcCheckIds, ...pageIds])];
+	        },
+
+	        async deleteSelectedQcChecks() {
+	            if (!this.canDeleteQc() || this.isDeletingQcChecks) return;
+
+	            const availableIds = new Set(this.allQcChecks.map(check => String(check.id)));
+	            const checkIds = this.selectedQcCheckIds.filter(id => availableIds.has(id));
+	            if (checkIds.length === 0) {
+	                this.selectedQcCheckIds = [];
+	                this.showToast('Pilih data QC yang ingin dihapus', 'error');
+	                return;
+	            }
+	            if (!confirm(`Hapus ${checkIds.length} data QC yang dipilih?`)) return;
+
+	            this.isDeletingQcChecks = true;
+	            try {
+	                const response = await fetch(`/api/qc-check/${this.currentLine}/${this.currentModelId}/bulk`, {
+	                    method: 'DELETE',
+	                    headers: { 'Content-Type': 'application/json' },
+	                    body: JSON.stringify({ checkIds })
+	                });
+	                const result = await response.json();
+	                if (!response.ok) {
+	                    this.showToast(result.error || 'Gagal menghapus data QC terpilih', 'error');
+	                    return;
+	                }
+
+	                this.selectedQcCheckIds = [];
+	                this.showToast(result.message || `${checkIds.length} data QC berhasil dihapus`, 'success');
+	                await this.loadLineDetail(this.currentLine, this.currentModelId);
+	                this.qcCurrentPage = Math.min(this.qcCurrentPage, this.totalQcPages);
+	                await this.loadDashboardData();
+	            } catch (error) {
+	                logClientError('Error deleting selected QC checks:', error);
+	                this.showToast('Error menghapus data QC terpilih', 'error');
+	            } finally {
+	                this.isDeletingQcChecks = false;
 	            }
 	        },
 

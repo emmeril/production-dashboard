@@ -614,6 +614,38 @@ test('admin QC action records an arbitrary quantity batch', async () => {
   assert.equal(result.data.hourly_data[0].qcChecked, 7);
 });
 
+test('QC manager can bulk delete selected QC checks', async () => {
+  const { cookie } = await login('qc-admin', 'qc-password');
+  const adminSession = await login('admin', 'admin-password');
+  const createdChecks = [];
+  const beforeTotal = readProductionData().lines['LINE 1'].models.model1.qcChecks
+    .reduce((total, check) => total + (parseInt(check.quantity) || 1), 0);
+
+  for (const quantity of [2, 3]) {
+    const createResponse = await fetch(`${baseUrl}/api/qc-check/LINE%201/model1`, {
+      method: 'POST',
+      headers: { Cookie: adminSession.cookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ result: 'good', quantity, hourIndex: 0 })
+    });
+    const created = await createResponse.json();
+    assert.equal(createResponse.status, 200);
+    createdChecks.push(created.qcCheck.id);
+  }
+
+  const response = await fetch(`${baseUrl}/api/qc-check/LINE%201/model1/bulk`, {
+    method: 'DELETE',
+    headers: { Cookie: cookie, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ checkIds: createdChecks })
+  });
+  const result = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(result.deletedCount, 2);
+  assert.deepEqual(result.deletedCheckIds, createdChecks);
+  assert.equal(result.data.qcChecks.some(check => createdChecks.includes(check.id)), false);
+  assert.equal(result.summary.totalQCChecked, beforeTotal);
+});
+
 test('production update endpoints reject QC fields without changing QC state', async () => {
   const { cookie } = await login('admin', 'admin-password');
   const before = readProductionData().lines['LINE 1'].models.model1.hourly_data[0];

@@ -826,12 +826,21 @@
 	                                    </select>
 	                                </div>
 	                            </div>
+	                            <div class="filter-group ml-auto">
+	                                <button type="button" @click="deleteSelectedQcChecks()" :disabled="selectedQcCheckIds.length === 0 || isDeletingQcChecks || isWorkScheduleLocked()" class="schedule-action btn-action btn-action-danger disabled:cursor-not-allowed disabled:opacity-50">
+	                                    <i class="fa-solid" :class="isDeletingQcChecks ? 'fa-spinner fa-spin' : 'fa-trash-can'"></i>
+	                                    <span x-text="selectedQcCheckIds.length ? `Hapus Terpilih (${selectedQcCheckIds.length})` : 'Hapus Terpilih'"></span>
+	                                </button>
+	                            </div>
 	                        </div>
 	                    </div>
 	                    <div class="overflow-x-auto">
 	                        <table class="min-w-full divide-y divide-gray-200">
 	                            <thead class="bg-gray-50">
 	                                <tr>
+	                                    <th class="w-12 px-4 py-3 text-center">
+	                                        <input type="checkbox" @change="toggleAllPaginatedQcChecks()" :checked="areAllPaginatedQcChecksSelected" :disabled="paginatedQcChecks.length === 0 || isDeletingQcChecks || isWorkScheduleLocked()" aria-label="Pilih semua data QC di halaman ini" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+	                                    </th>
 	                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Jam</th>
 	                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Hasil</th>
 	                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Qty</th>
@@ -843,7 +852,10 @@
 	                            </thead>
 	                            <tbody class="bg-white divide-y divide-gray-200">
 	                                <template x-for="check in paginatedQcChecks" :key="check.id">
-	                                    <tr>
+	                                    <tr :class="isQcCheckSelected(check.id) ? 'bg-blue-50' : ''">
+	                                        <td class="px-4 py-3 text-center">
+	                                            <input type="checkbox" @change="toggleQcCheckSelection(check.id)" :checked="isQcCheckSelected(check.id)" :disabled="isDeletingQcChecks || isWorkScheduleLocked()" :aria-label="`Pilih data QC ${check.hour || ''}`" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+	                                        </td>
 	                                        <td class="px-4 py-3 text-sm text-gray-700" x-text="check.hour || '-'"></td>
 	                                        <td class="px-4 py-3 text-sm font-semibold" :class="check.result === 'defect' ? 'text-red-600' : 'text-green-600'" x-text="check.result === 'defect' ? 'Defect' : 'Good'"></td>
 	                                        <td class="px-4 py-3 text-sm font-semibold text-gray-800" x-text="check.quantity || 1"></td>
@@ -857,7 +869,7 @@
 	                                    </tr>
 	                                </template>
 	                                <tr x-show="filteredQcChecks.length === 0">
-	                                    <td colspan="7" class="px-4 py-6 text-center text-sm text-gray-500">Belum ada data hasil QC.</td>
+	                                    <td colspan="8" class="px-4 py-6 text-center text-sm text-gray-500">Belum ada data hasil QC.</td>
 	                                </tr>
 	                            </tbody>
 	                        </table>

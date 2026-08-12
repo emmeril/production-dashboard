@@ -1636,16 +1636,29 @@
 		                                    <i class="fa-solid fa-user-plus mr-2"></i>Tambah User Baru
 		                                </button>
 	                                </div>
-	                                <div class="filter-group">
-	                                    <div class="filter-control filter-control-search has-icon">
-	                                        <i class="fa-solid fa-magnifying-glass filter-control-icon"></i>
-	                                        <input type="text" x-model="userSearchTerm" placeholder="Cari user..." class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-	                                    </div>
-	                                </div>
-	                                <div class="filter-group">
+                                <div class="filter-group">
+                                    <div class="filter-control filter-control-search has-icon">
+                                        <i class="fa-solid fa-magnifying-glass filter-control-icon"></i>
+                                        <input type="text" x-model="userSearchTerm" @input="currentUserPage = 1" placeholder="Cari user..." class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    </div>
+                                </div>
+                                <div class="filter-group">
+                                    <span class="filter-caption"><i class="fa-solid fa-user-tag"></i>Role</span>
+                                    <div class="filter-control">
+                                        <select x-model="userRoleFilter" @change="currentUserPage = 1" aria-label="Filter berdasarkan role" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                            <option value="">Semua Role</option>
+                                            <option value="admin">Admin</option>
+                                            <option value="admin_operator_sewing">Admin Operator Sewing</option>
+                                            <option value="admin_operator_qc">Admin Operator QC</option>
+                                            <option value="ppic">PPIC</option>
+                                            <option value="operator">Operator</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="filter-group">
 	                                    <span class="filter-caption"><i class="fa-solid fa-table-list"></i>Tampilkan</span>
 	                                    <div class="filter-control filter-control-page-size">
-	                                        <select x-model="usersPerPage" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                        <select x-model="usersPerPage" @change="currentUserPage = 1" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
 	                                        <option value="5">5</option>
 	                                        <option value="10">10</option>
 	                                        <option value="20">20</option>
@@ -1703,7 +1716,7 @@
                             <!-- Pagination Controls for Users -->
                             <div class="flex items-center justify-between mt-4">
                                 <div class="text-sm font-medium text-gray-700">
-                                    <span x-text="(currentUserPage - 1) * usersPerPage + 1"></span>
+                                    <span x-text="filteredUsers.length ? (currentUserPage - 1) * usersPerPage + 1 : 0"></span>
                                     <span class="mx-1">-</span>
                                     <span x-text="Math.min(currentUserPage * usersPerPage, filteredUsers.length)"></span>
                                 </div>
@@ -3021,6 +3034,6 @@
         </div>
     </div>
 
-   <script src="/public/assets/js/alpine.js?v=20260810-public-display-qc-settings-v2"></script>
+   <script src="/public/assets/js/alpine.js?v=20260812-user-role-filter"></script>
 </body>
 </html>

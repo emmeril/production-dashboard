@@ -314,6 +314,7 @@ function dashboard() {
         currentUserPage: 1,
         usersPerPage: 10,
         userSearchTerm: '',
+        userRoleFilter: '',
 
         // Material order pagination and filters
         materialOrderCurrentPage: 1,
@@ -4036,11 +4037,12 @@ function dashboard() {
 
             const searchTerm = this.userSearchTerm.toLowerCase();
             return this.users.filter(user =>
-                !searchTerm ||
-                user.username.toLowerCase().includes(searchTerm) ||
-                user.name.toLowerCase().includes(searchTerm) ||
-                user.role.toLowerCase().includes(searchTerm) ||
-                (user.line && user.line.toLowerCase().includes(searchTerm))
+                (!this.userRoleFilter || user.role === this.userRoleFilter) &&
+                (!searchTerm ||
+                    user.username.toLowerCase().includes(searchTerm) ||
+                    user.name.toLowerCase().includes(searchTerm) ||
+                    user.role.toLowerCase().includes(searchTerm) ||
+                    (user.line && user.line.toLowerCase().includes(searchTerm)))
             );
         },
 

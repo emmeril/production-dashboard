@@ -22,6 +22,9 @@
             markerFontSize: 19
         }
     };
+    var QC_DASHBOARD_DURATION = 30000;
+    var QC_EVALUATION_DURATION = 15000;
+    var QC_ROTATION_DURATION = QC_DASHBOARD_DURATION + QC_EVALUATION_DURATION;
 
     var state = {
         lineName: '',
@@ -287,15 +290,6 @@
         }
     }
 
-    function scheduleNextQcEvaluation(delay) {
-        if (state.qcEvaluationTimer) window.clearTimeout(state.qcEvaluationTimer);
-        if (!state.isWithinWorkSchedule || !state.qcEvaluations.length) {
-            state.qcEvaluationTimer = null;
-            return;
-        }
-        state.qcEvaluationTimer = window.setTimeout(showNextQcEvaluation, delay);
-    }
-
     function stopQcEvaluationRotation() {
         if (state.qcEvaluationTimer) window.clearTimeout(state.qcEvaluationTimer);
         state.qcEvaluationTimer = null;
@@ -303,23 +297,32 @@
         setVisible('legacy-qc-evaluation-overlay', false);
     }
 
-    function hideQcEvaluation() {
-        state.qcEvaluationVisible = false;
-        setVisible('legacy-qc-evaluation-overlay', false);
-        scheduleNextQcEvaluation(30000);
-    }
-
-    function showNextQcEvaluation() {
+    function synchronizeQcEvaluation() {
         if (!state.isWithinWorkSchedule || !state.qcEvaluations.length) {
             stopQcEvaluationRotation();
             return;
         }
-        state.qcEvaluationIndex = (state.qcEvaluationIndex + 1) % state.qcEvaluations.length;
-        renderQcEvaluation(state.qcEvaluations[state.qcEvaluationIndex]);
-        state.qcEvaluationVisible = true;
-        setVisible('legacy-qc-evaluation-overlay', true, 'block');
         if (state.qcEvaluationTimer) window.clearTimeout(state.qcEvaluationTimer);
-        state.qcEvaluationTimer = window.setTimeout(hideQcEvaluation, 15000);
+        state.qcEvaluationTimer = null;
+
+        var now = Date.now();
+        var phase = now % QC_ROTATION_DURATION;
+        var cycle = Math.floor(now / QC_ROTATION_DURATION);
+        var nextTransition;
+
+        if (phase < QC_DASHBOARD_DURATION) {
+            state.qcEvaluationVisible = false;
+            setVisible('legacy-qc-evaluation-overlay', false);
+            nextTransition = QC_DASHBOARD_DURATION - phase;
+        } else {
+            state.qcEvaluationIndex = cycle % state.qcEvaluations.length;
+            renderQcEvaluation(state.qcEvaluations[state.qcEvaluationIndex]);
+            state.qcEvaluationVisible = true;
+            setVisible('legacy-qc-evaluation-overlay', true, 'block');
+            nextTransition = QC_ROTATION_DURATION - phase;
+        }
+
+        state.qcEvaluationTimer = window.setTimeout(synchronizeQcEvaluation, Math.max(50, nextTransition));
     }
 
     function loadQcEvaluations(force) {
@@ -329,9 +332,7 @@
         }
         var now = new Date().getTime();
         if (!force && now - state.qcEvaluationLastLoadedAt < 30000) {
-            if (state.qcEvaluations.length && !state.qcEvaluationVisible && !state.qcEvaluationTimer) {
-                scheduleNextQcEvaluation(10000);
-            }
+            if (state.qcEvaluations.length && !state.qcEvaluationTimer) synchronizeQcEvaluation();
             return;
         }
         state.qcEvaluationLastLoadedAt = now;
@@ -349,7 +350,7 @@
                 stopQcEvaluationRotation();
                 return;
             }
-            if (!state.qcEvaluationVisible && !state.qcEvaluationTimer) scheduleNextQcEvaluation(10000);
+            synchronizeQcEvaluation();
         });
     }
 

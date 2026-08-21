@@ -32,6 +32,7 @@
         defectMode: 'all',
         refreshInterval: 10000,
         refreshTimer: null,
+        refreshStartTimer: null,
         clockTimer: null,
         qcEvaluationTimer: null,
         qcEvaluationLastLoadedAt: 0,
@@ -469,9 +470,9 @@
                 showError('Tidak ada model aktif untuk line ini');
                 return;
             }
-            var slot = state.rotationIndex % state.activeModelIds.length;
+            var slot = synchronizedRotationSlot(state.activeModelIds.length);
             var selectedModelId = state.activeModelIds[slot];
-            state.rotationIndex = (slot + 1) % state.activeModelIds.length;
+            state.rotationIndex = slot;
             var selectedModel = findActiveModel(models, selectedModelId);
             if (selectedModel && selectedModel.data) {
                 acceptLineData(selectedModelId, selectedModel.data);
@@ -501,8 +502,11 @@
 
     function setupAutoRefresh() {
         if (state.refreshTimer) window.clearInterval(state.refreshTimer);
+        if (state.refreshStartTimer) window.clearTimeout(state.refreshStartTimer);
+        state.refreshTimer = null;
+        state.refreshStartTimer = null;
         var interval = state.refreshInterval > 0 ? state.refreshInterval : 60000;
-        state.refreshTimer = window.setInterval(function () {
+        var refresh = function () {
             if (state.refreshInterval > 0) {
                 refreshAll();
             } else {
@@ -512,7 +516,20 @@
                     if (element('legacy-display-root').style.display === 'none') loadLineData();
                 });
             }
-        }, interval);
+        };
+        // Anchor refreshes to wall-clock slots so displays opened at
+        // different times still switch models together.
+        var delay = interval - (Date.now() % interval);
+        state.refreshStartTimer = window.setTimeout(function () {
+            refresh();
+            state.refreshTimer = window.setInterval(refresh, interval);
+        }, delay);
+    }
+
+    function synchronizedRotationSlot(modelCount) {
+        if (!modelCount) return 0;
+        if (state.refreshInterval <= 0) return state.rotationIndex % modelCount;
+        return Math.floor(Date.now() / state.refreshInterval) % modelCount;
     }
 
     function parseHourRange(value) {

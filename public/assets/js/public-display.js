@@ -57,6 +57,7 @@ function logPublicDisplayError(context, error) {
                 },
                 refreshInterval: 10000,
                 refreshTimer: null,
+                refreshStartTimer: null,
                 refreshController: null,
                 refreshRequestId: 0,
                 dataUpdatedTimer: null,
@@ -125,9 +126,9 @@ function logPublicDisplayError(context, error) {
                                 throw new Error('Tidak ada model aktif untuk line ini');
                             }
 
-                            const rotationSlot = this.rotationIndex % this.activeModelIds.length;
+                            const rotationSlot = this.getSynchronizedRotationSlot(this.activeModelIds.length);
                             selectedModelId = this.activeModelIds[rotationSlot];
-                            this.rotationIndex = (rotationSlot + 1) % this.activeModelIds.length;
+                            this.rotationIndex = rotationSlot;
 
                             const selectedModel = (activeModelsPayload.activeModels || [])
                                 .find(item => item.modelId === selectedModelId);
@@ -276,14 +277,32 @@ function logPublicDisplayError(context, error) {
                 setupAutoRefresh() {
                     if (this.refreshTimer) {
                         clearInterval(this.refreshTimer);
+                        this.refreshTimer = null;
+                    }
+                    if (this.refreshStartTimer) {
+                        clearTimeout(this.refreshStartTimer);
+                        this.refreshStartTimer = null;
                     }
 
                     if (this.refreshInterval > 0) {
-                        this.refreshTimer = setInterval(async () => {
+                        const refresh = async () => {
                             await this.loadWorkScheduleStatus();
                             if (this.isWithinWorkSchedule) await this.loadLineData();
-                        }, this.refreshInterval);
+                        };
+                        // Anchor refreshes to wall-clock slots so displays opened at
+                        // different times still switch models together.
+                        const delay = this.refreshInterval - (Date.now() % this.refreshInterval);
+                        this.refreshStartTimer = setTimeout(() => {
+                            refresh();
+                            this.refreshTimer = setInterval(refresh, this.refreshInterval);
+                        }, delay);
                     }
+                },
+
+                getSynchronizedRotationSlot(modelCount) {
+                    if (!modelCount) return 0;
+                    if (this.refreshInterval <= 0) return this.rotationIndex % modelCount;
+                    return Math.floor(Date.now() / this.refreshInterval) % modelCount;
                 },
 
 	                changeRefreshInterval() {
